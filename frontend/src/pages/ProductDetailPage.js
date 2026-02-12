@@ -115,7 +115,10 @@ const ProductDetailPage = () => {
 
         {/* Details */}
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
+          <div className="flex items-center gap-3 mb-2">
+            <p className="text-sm text-muted-foreground">{product.category}</p>
+            {product.luxury_collection && <LuxuryBadge />}
+          </div>
           <h1 className="text-4xl font-heading font-medium tracking-tight mb-4">{product.name}</h1>
           
           <div className="flex items-center gap-3 mb-6">
