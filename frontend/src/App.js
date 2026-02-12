@@ -13,6 +13,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import AccountPage from './pages/AccountPage';
 import WishlistPage from './pages/WishlistPage';
+import RegionalCollectionsPage from './pages/RegionalCollectionsPage';
+import LuxuryCollectionPage from './pages/LuxuryCollectionPage';
 import LookbookPage from './pages/LookbookPage';
 import BlogPage from './pages/BlogPage';
 import AboutPage from './pages/AboutPage';
@@ -38,6 +40,8 @@ function App() {
                 <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
                 <Route path="/account" element={<AccountPage />} />
                 <Route path="/wishlist" element={<WishlistPage />} />
+                <Route path="/regional-collections" element={<RegionalCollectionsPage />} />
+                <Route path="/luxury-collection" element={<LuxuryCollectionPage />} />
                 <Route path="/lookbook" element={<LookbookPage />} />
                 <Route path="/blog" element={<BlogPage />} />
                 <Route path="/about" element={<AboutPage />} />
