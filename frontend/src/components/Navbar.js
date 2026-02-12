@@ -15,10 +15,10 @@ const Navbar = () => {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
   const categories = [
-    { name: 'Sarees', path: '/products?category=Sarees' },
-    { name: 'Lehengas', path: '/products?category=Lehengas' },
-    { name: 'Suits', path: '/products?category=Suits' },
-    { name: 'Dupattas', path: '/products?category=Dupattas' },
+    { name: 'Women Wear', path: '/products?category=Women Ethnic Wear' },
+    { name: 'Home & Lifestyle', path: '/products?category=Home %26 Lifestyle' },
+    { name: 'Regional Collections', path: '/regional-collections' },
+    { name: 'Luxury Collection', path: '/luxury-collection' },
     { name: 'Lookbook', path: '/lookbook' },
   ];
 
@@ -66,10 +66,8 @@ const Navbar = () => {
             </Sheet>
 
             {/* Logo */}
-            <Link to="/" data-testid="logo" className="flex items-center">
-              <h1 className="text-2xl md:text-3xl font-heading font-medium tracking-tight text-primary">
-                Shri Ramya
-              </h1>
+            <Link to="/" data-testid="logo" className="flex items-center gap-3">
+              <img src="/logo.svg" alt="Shri Ramya" className="h-12" />
             </Link>
 
             {/* Desktop Menu */}
