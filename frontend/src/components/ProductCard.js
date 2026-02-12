@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { wishlistAPI } from '../lib/api';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
+import LuxuryBadge from './LuxuryBadge';
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
@@ -65,11 +66,19 @@ const ProductCard = ({ product }) => {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
         />
         
-        {hasDiscount && (
-          <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-3 py-1 text-sm font-medium rounded">
-            {Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
-          </div>
-        )}
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+          {product.luxury_collection && <LuxuryBadge />}
+          {hasDiscount && (
+            <div className="bg-primary text-primary-foreground px-3 py-1 text-sm font-medium rounded">
+              {Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
+            </div>
+          )}
+          {product.handmade && (
+            <div className="bg-secondary/90 text-secondary-foreground px-3 py-1 text-xs font-medium rounded">
+              HANDCRAFTED
+            </div>
+          )}
+        </div>
 
         {/* Hover Actions */}
         <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-foreground/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
