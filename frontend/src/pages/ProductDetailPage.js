@@ -198,6 +198,18 @@ const ProductDetailPage = () => {
                 <p className="text-muted-foreground font-accent italic">{product.fabric}</p>
               </div>
             )}
+            {product.craft_style && (
+              <div>
+                <h3 className="font-body font-semibold mb-2">Craft Style</h3>
+                <p className="text-muted-foreground">{product.craft_style}</p>
+              </div>
+            )}
+            {product.state_of_origin && (
+              <div>
+                <h3 className="font-body font-semibold mb-2">Origin</h3>
+                <p className="text-muted-foreground">{product.state_of_origin}, India</p>
+              </div>
+            )}
             {product.occasion && (
               <div>
                 <h3 className="font-body font-semibold mb-2">Occasion</h3>
@@ -212,6 +224,11 @@ const ProductDetailPage = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Craft Story Section */}
+      <div className="mb-16">
+        <CraftStorySection product={product} />
       </div>
 
       {/* Recommendations */}
