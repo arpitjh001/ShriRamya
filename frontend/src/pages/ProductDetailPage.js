@@ -7,6 +7,8 @@ import { ShoppingCart, Heart, Truck, Shield, RefreshCw } from 'lucide-react';
 import { formatPrice } from '../lib/utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
+import CraftStorySection from '../components/CraftStorySection';
+import LuxuryBadge from '../components/LuxuryBadge';
 import { motion } from 'framer-motion';
 
 const ProductDetailPage = () => {
