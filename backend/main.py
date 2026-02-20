@@ -468,6 +468,58 @@ async def add_to_cart(data: CartItem, session_id: Optional[str] = None):
     
     return await db.carts.find_one({"session_id": session_id}, {"_id": 0})
 
+@api_router.patch("/cart/item/{product_id}")
+async def update_cart_item_quantity(
+    product_id: str, 
+    quantity: int,
+    session_id: Optional[str] = None
+):
+    """
+    Update cart item quantity
+    """
+    if not session_id:
+        raise HTTPException(400, "session_id is required")
+    
+    if quantity < 0:
+        raise HTTPException(400, "Quantity cannot be negative")
+    
+    cart = await db.carts.find_one({"session_id": session_id})
+    
+    if not cart:
+        raise HTTPException(404, "Cart not found")
+    
+    # Find the item
+    item_index = None
+    for i, item in enumerate(cart["items"]):
+        if item["product_id"] == product_id:
+            item_index = i
+            break
+    
+    if item_index is None:
+        raise HTTPException(404, "Item not found in cart")
+    
+    # Check stock if quantity is being increased
+    if quantity > 0:
+        product = await db.products.find_one({"id": product_id})
+        if product and product.get("stock_quantity", 0) < quantity:
+            raise HTTPException(400, f"Only {product.get('stock_quantity', 0)} items in stock")
+    
+    if quantity == 0:
+        # Remove item if quantity is 0
+        cart["items"].pop(item_index)
+    else:
+        # Update quantity
+        cart["items"][item_index]["quantity"] = quantity
+    
+    # Update cart
+    cart["updated_at"] = datetime.now(timezone.utc)
+    await db.carts.update_one(
+        {"session_id": session_id},
+        {"$set": {"items": cart["items"], "updated_at": cart["updated_at"]}}
+    )
+    
+    return await db.carts.find_one({"session_id": session_id}, {"_id": 0})
+
 @api_router.delete("/cart/item/{product_id}")
 async def remove_from_cart(product_id: str, session_id: Optional[str] = None):
     """
