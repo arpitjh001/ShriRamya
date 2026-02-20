@@ -3,12 +3,13 @@ import { useParams } from 'react-router-dom';
 import { productsAPI } from '../lib/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
-import { ShoppingCart, Heart, Truck, Shield, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles } from 'lucide-react';
 import { formatPrice } from '../lib/utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
 import CraftStorySection from '../components/CraftStorySection';
 import LuxuryBadge from '../components/LuxuryBadge';
+import TryOnModal from '../components/VirtualTryOn/TryOnModal';
 import { motion } from 'framer-motion';
 
 const ProductDetailPage = () => {
@@ -19,6 +20,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariation, setSelectedVariation] = useState(null);
+  const [tryOnModalOpen, setTryOnModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
