@@ -518,7 +518,8 @@ async def update_cart_item_quantity(
         {"$set": {"items": cart["items"], "updated_at": cart["updated_at"]}}
     )
     
-    return await db.carts.find_one({"session_id": session_id}, {"_id": 0})
+    updated_cart = await db.carts.find_one({"session_id": session_id}, {"_id": 0})
+    return convert_objectid(updated_cart)
 
 @api_router.delete("/cart/item/{product_id}")
 async def remove_from_cart(product_id: str, session_id: Optional[str] = None):
