@@ -651,3 +651,239 @@ app.include_router(api_router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
+
+# =====================
+# VIRTUAL TRY-ON
+# =====================
+
+import replicate
+import base64
+import shutil
+from fastapi import UploadFile, File, BackgroundTasks
+from pathlib import Path
+from PIL import Image
+import io
+
+# Try-On storage
+TRYON_DIR = Path("/tmp/tryon")
+TRYON_DIR.mkdir(exist_ok=True)
+
+# Replicate API (use Emergent key or user's key)
+REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
+
+class TryOnRequest(BaseModel):
+    product_id: str
+    model_image_url: Optional[str] = None
+
+class TryOnStatus(BaseModel):
+    id: str
+    status: str  # pending, processing, completed, failed
+    result_url: Optional[str] = None
+    error: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# In-memory storage for try-on jobs (use Redis in production)
+tryon_jobs = {}
+
+def cleanup_old_images():
+    """Remove images older than 24 hours"""
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        for file in TRYON_DIR.glob("*"):
+            if file.stat().st_mtime < cutoff.timestamp():
+                file.unlink()
+                logger.info(f"Cleaned up old try-on image: {file.name}")
+    except Exception as e:
+        logger.error(f"Cleanup error: {str(e)}")
+
+async def process_tryon_async(job_id: str, person_image_path: str, garment_image_url: str):
+    """Process virtual try-on asynchronously"""
+    try:
+        tryon_jobs[job_id]["status"] = "processing"
+        
+        if not REPLICATE_API_TOKEN:
+            # Mock implementation for demo
+            logger.warning("Replicate API not configured - using mock try-on")
+            await asyncio.sleep(3)  # Simulate processing
+            tryon_jobs[job_id]["status"] = "completed"
+            tryon_jobs[job_id]["result_url"] = garment_image_url  # Return garment image as mock
+            tryon_jobs[job_id]["updated_at"] = datetime.now(timezone.utc)
+            return
+        
+        # Real IDM-VTON implementation
+        output = replicate.run(
+            "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
+            input={
+                "crop": False,
+                "seed": 42,
+                "steps": 30,
+                "category": "upper_body",  # or "lower_body", "dresses"
+                "force_dc": False,
+                "garm_img": garment_image_url,
+                "human_img": open(person_image_path, "rb"),
+                "garment_des": "traditional ethnic wear"
+            }
+        )
+        
+        # Save result
+        result_path = TRYON_DIR / f"result_{job_id}.png"
+        if isinstance(output, str):
+            # Download from URL
+            import requests
+            response = requests.get(output)
+            result_path.write_bytes(response.content)
+        else:
+            # Save directly
+            with open(result_path, "wb") as f:
+                f.write(output.read())
+        
+        tryon_jobs[job_id]["status"] = "completed"
+        tryon_jobs[job_id]["result_url"] = f"/api/tryon/result/{job_id}"
+        tryon_jobs[job_id]["updated_at"] = datetime.now(timezone.utc)
+        
+        logger.info(f"Try-on completed: {job_id}")
+        
+    except Exception as e:
+        logger.error(f"Try-on failed: {job_id} - {str(e)}")
+        tryon_jobs[job_id]["status"] = "failed"
+        tryon_jobs[job_id]["error"] = str(e)
+        tryon_jobs[job_id]["updated_at"] = datetime.now(timezone.utc)
+
+@api_router.post("/tryon/upload")
+async def upload_tryon_image(
+    file: UploadFile = File(...),
+    product_id: str = Query(...),
+    background_tasks: BackgroundTasks = None
+):
+    """Upload user image for virtual try-on"""
+    
+    # Validation
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(400, "Only image files are allowed")
+    
+    # Read and validate image
+    contents = await file.read()
+    
+    # Size limit: 10MB
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(400, "Image size must be less than 10MB")
+    
+    try:
+        # Validate image can be opened
+        image = Image.open(io.BytesIO(contents))
+        
+        # Convert to RGB if needed
+        if image.mode not in ('RGB', 'RGBA'):
+            image = image.convert('RGB')
+        
+        # Resize if too large (max 1024x1024 for faster processing)
+        max_size = 1024
+        if max(image.size) > max_size:
+            image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        
+    except Exception as e:
+        raise HTTPException(400, f"Invalid image file: {str(e)}")
+    
+    # Get product details
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, "Product not found")
+    
+    # Generate job ID
+    job_id = str(uuid.uuid4())
+    
+    # Save user image
+    person_image_path = TRYON_DIR / f"person_{job_id}.png"
+    image.save(person_image_path, "PNG")
+    
+    # Get garment image URL
+    garment_image_url = product.get("images", [""])[0]
+    
+    # Create job
+    tryon_jobs[job_id] = {
+        "id": job_id,
+        "status": "pending",
+        "product_id": product_id,
+        "result_url": None,
+        "error": None,
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc)
+    }
+    
+    # Start processing in background
+    if background_tasks:
+        background_tasks.add_task(
+            process_tryon_async,
+            job_id,
+            str(person_image_path),
+            garment_image_url
+        )
+    else:
+        # Process immediately (blocking)
+        await process_tryon_async(job_id, str(person_image_path), garment_image_url)
+    
+    # Schedule cleanup
+    if background_tasks:
+        background_tasks.add_task(cleanup_old_images)
+    
+    logger.info(f"Try-on job created: {job_id} for product {product_id}")
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "message": "Processing your virtual try-on..."
+    }
+
+@api_router.get("/tryon/status/{job_id}")
+async def get_tryon_status(job_id: str):
+    """Get status of virtual try-on job"""
+    
+    if job_id not in tryon_jobs:
+        raise HTTPException(404, "Try-on job not found")
+    
+    job = tryon_jobs[job_id]
+    
+    return {
+        "id": job["id"],
+        "status": job["status"],
+        "result_url": job.get("result_url"),
+        "error": job.get("error"),
+        "created_at": job["created_at"].isoformat(),
+        "updated_at": job["updated_at"].isoformat()
+    }
+
+@api_router.get("/tryon/result/{job_id}")
+async def get_tryon_result(job_id: str):
+    """Get result image of virtual try-on"""
+    
+    result_path = TRYON_DIR / f"result_{job_id}.png"
+    
+    if not result_path.exists():
+        raise HTTPException(404, "Result not found")
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        result_path,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=3600"}
+    )
+
+@api_router.delete("/tryon/{job_id}")
+async def delete_tryon(job_id: str):
+    """Delete try-on job and associated images"""
+    
+    # Remove from jobs
+    if job_id in tryon_jobs:
+        del tryon_jobs[job_id]
+    
+    # Remove images
+    person_path = TRYON_DIR / f"person_{job_id}.png"
+    result_path = TRYON_DIR / f"result_{job_id}.png"
+    
+    person_path.unlink(missing_ok=True)
+    result_path.unlink(missing_ok=True)
+    
+    logger.info(f"Try-on deleted: {job_id}")
+    
+    return {"message": "Try-on deleted successfully"}
+
