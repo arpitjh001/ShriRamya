@@ -43,21 +43,21 @@ wcapi = API(
 
 
 def wc_get(endpoint: str, params: dict | None = None):
-    resp = wcapi.get(endpoint, params=params)
     try:
+        resp = wcapi.get(endpoint, params=params)
         return resp.json()
     except Exception as e:
-        logger.error("WooCommerce request failed: %s %s %s", endpoint, getattr(resp, 'status_code', None), getattr(resp, 'text', ''))
-        raise HTTPException(status_code=502, detail=f"WooCommerce error contacting {endpoint}: status={getattr(resp, 'status_code', None)}")
+        logger.error("WooCommerce request failed: %s %s", endpoint, str(e))
+        raise HTTPException(status_code=502, detail=f"WooCommerce error contacting {endpoint}")
 
 
 def wc_post(endpoint: str, data: dict | None = None):
-    resp = wcapi.post(endpoint, data)
     try:
+        resp = wcapi.post(endpoint, data)
         return resp.json()
-    except Exception:
-        logger.error("WooCommerce POST failed: %s %s %s", endpoint, getattr(resp, 'status_code', None), getattr(resp, 'text', ''))
-        raise HTTPException(status_code=502, detail=f"WooCommerce error POSTing to {endpoint}: status={getattr(resp, 'status_code', None)}")
+    except Exception as e:
+        logger.error("WooCommerce POST failed: %s %s", endpoint, str(e))
+        raise HTTPException(status_code=502, detail=f"WooCommerce error POSTing to {endpoint}")
 
 # =====================
 # DATABASE
