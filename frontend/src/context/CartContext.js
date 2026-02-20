@@ -13,10 +13,15 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     try {
       const sessionId = getSessionId();
+      console.log("Fetching cart for session:", sessionId);
+      
       const response = await cartAPI.get(sessionId);
-      setCart(response.data);
+      console.log("Fetch cart response:", response);
+      
+      setCart(response.data || { items: [] });
     } catch (error) {
       console.error('Failed to fetch cart:', error);
+      setCart({ items: [] });
     } finally {
       setLoading(false);
     }
@@ -29,23 +34,27 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (productId, quantity = 1, variation = null) => {
     try {
       const sessionId = getSessionId();
+      console.log("Adding to cart:", { productId, quantity, variation, sessionId });
+      
       const response = await cartAPI.add({
         product_id: productId,
         quantity,
         variation,
-        session_id: sessionId,
-      });
+      }, sessionId);
+      
+      console.log("Add to cart response:", response);
       setCart(response.data);
       return response.data;
     } catch (error) {
-      console.error('Failed to add to cart:', error);
+      console.error('Failed to add to cart:', error?.response?.data || error.message);
       throw error;
     }
   };
 
   const removeFromCart = async (productId) => {
     try {
-      await cartAPI.remove(productId);
+      const sessionId = getSessionId();
+      await cartAPI.remove(productId, sessionId);
       await fetchCart();
     } catch (error) {
       console.error('Failed to remove from cart:', error);
@@ -55,7 +64,8 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = async () => {
     try {
-      await cartAPI.clear();
+      const sessionId = getSessionId();
+      await cartAPI.clear(sessionId);
       setCart({ items: [] });
     } catch (error) {
       console.error('Failed to clear cart:', error);
