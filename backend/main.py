@@ -425,7 +425,7 @@ async def get_cart(session_id: str):
     return cart
 
 @api_router.post("/cart")
-async def add_to_cart(data: CartItem, session_id: Optional[str] = None):
+async def add_to_cart(data: CartItem, session_id: Optional[str] = Query(None)):
     """
     Add item to cart
     """
@@ -466,7 +466,7 @@ async def add_to_cart(data: CartItem, session_id: Optional[str] = None):
             {"$set": {"items": cart["items"], "updated_at": cart["updated_at"]}}
         )
     
-    return await db.carts.find_one({"session_id": session_id}, {"_id": 0})
+    return convert_objectid(await db.carts.find_one({"session_id": session_id}, {"_id": 0}))
 
 @api_router.patch("/cart/item/{product_id}")
 async def update_cart_item_quantity(
