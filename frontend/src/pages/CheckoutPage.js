@@ -51,7 +51,7 @@ const CheckoutPage = () => {
 
   const calculateSubtotal = () => {
     return cart.items.reduce((total, item) => {
-      const product = cartProducts.find((p) => p.id === item.product_id);
+      const product = cartProducts.find((p) => String(p.id) === String(item.product_id));
       if (!product) return total;
       const price = product.sale_price || product.price;
       return total + price * item.quantity;
@@ -280,7 +280,7 @@ const CheckoutPage = () => {
               {/* Items */}
               <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
                 {cart.items.map((item) => {
-                  const product = cartProducts.find((p) => p.id === item.product_id);
+                  const product = cartProducts.find((p) => String(p.id) === String(item.product_id));
                   if (!product) return null;
                   const price = product.sale_price || product.price;
 

@@ -7,9 +7,10 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.getenv('MONGO_URL', 'mongodb://localhost:27017/')
+# Use docker service name when running inside docker, otherwise localhost
+mongo_url = os.getenv('MONGO_URL', 'mongodb://mongodb:27017/')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.getenv('DB_NAME', 'emergent')]
+db = client[os.getenv('DB_NAME', 'shriramya')]
 
 # Expanded product data with Home & Lifestyle + Regional Collections
 products_data = [
