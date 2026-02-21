@@ -281,33 +281,42 @@ function fileExportHasPortals({
     if (visitedPaths.has(nodePath.node)) return false;
     visitedPaths.add(nodePath.node);
 
+    // Guard: Ensure traverse function exists before calling
+    if (typeof nodePath.traverse !== 'function') {
+      return false;
+    }
+
     let hit = false;
-    nodePath.traverse({
-      JSXOpeningElement(op) {
-        if (hit) return;
-        const name = jsxNameOf(op.node, t);
-        if (isPortalishName(name, RADIX_ROOTS)) {
-          hit = true;
-          return;
-        }
-        if (/^[A-Z]/.test(name || "")) {
-          // capitalized child: may itself be portalish
-          const binding = op.scope.getBinding(name);
-          if (binding && binding.path) {
-            const childHas = subtreeHasPortals(binding.path);
-            if (childHas) {
-              hit = true;
-              return;
-            }
-          } else if (importMap.has(name)) {
-            const { absPath: childPath, importName } = importMap.get(name);
-            const childHas = fileExportHasPortals({
-              absPath: childPath,
-              exportName: importName,
-              t,
-              traverse,
-              parser,
-              RADIX_ROOTS,
+    try {
+      nodePath.traverse({
+        JSXOpeningElement(op) {
+          if (hit) return;
+          // Guard: Validate op before accessing properties
+          if (!op || !op.node || !op.scope) return;
+
+          const name = jsxNameOf(op.node, t);
+          if (isPortalishName(name, RADIX_ROOTS)) {
+            hit = true;
+            return;
+          }
+          if (/^[A-Z]/.test(name || "")) {
+            // capitalized child: may itself be portalish
+            const binding = op.scope.getBinding(name);
+            if (binding && binding.path) {
+              const childHas = subtreeHasPortals(binding.path);
+              if (childHas) {
+                hit = true;
+                return;
+              }
+            } else if (importMap.has(name)) {
+              const { absPath: childPath, importName } = importMap.get(name);
+              const childHas = fileExportHasPortals({
+                absPath: childPath,
+                exportName: importName,
+                t,
+                traverse,
+                parser,
+                RADIX_ROOTS,
               depth: depth + 1,
             });
             if (childHas) {
@@ -318,6 +327,10 @@ function fileExportHasPortals({
         }
       },
     });
+    } catch (e) {
+      // Traverse errors should not break the plugin
+      return false;
+    }
     return hit;
   }
 
@@ -343,27 +356,50 @@ function usageIsCompositePortal({
   parser,
   RADIX_ROOTS,
 }) {
+  // Guard: Check jsxPath and scope exist before proceeding
+  if (!jsxPath || !jsxPath.scope) {
+    return false;
+  }
+
   // Same-file binding?
   const binding = jsxPath.scope.getBinding(elementName);
   if (binding && binding.path) {
+    // Guard: Ensure binding.path is valid before calling traverse
+    if (typeof binding.path.traverse !== 'function') {
+      return false;
+    }
+
     // Analyze the definition directly
     let hit = false;
-    binding.path.traverse({
-      JSXOpeningElement(op) {
-        if (hit) return;
-        const name = jsxNameOf(op.node, t);
-        if (isPortalishName(name, RADIX_ROOTS)) {
-          hit = true;
-          return;
-        }
-        if (/^[A-Z]/.test(name || "")) {
-          const innerBinding = op.scope.getBinding(name);
-          if (innerBinding && innerBinding.path) {
-            innerBinding.path.traverse(this.visitors);
+    try {
+      binding.path.traverse({
+        JSXOpeningElement(op) {
+          if (hit) return;
+          // Guard: Validate op and op.node before processing
+          if (!op || !op.node || !op.scope) return;
+
+          const name = jsxNameOf(op.node, t);
+          if (isPortalishName(name, RADIX_ROOTS)) {
+            hit = true;
+            return;
           }
-        }
-      },
-    });
+          if (/^[A-Z]/.test(name || "")) {
+            const innerBinding = op.scope.getBinding(name);
+            // Guard: Check innerBinding and traverse function exist
+            if (innerBinding && innerBinding.path && typeof innerBinding.path.traverse === 'function' && this && typeof this.visitors === 'object') {
+              try {
+                innerBinding.path.traverse(this.visitors);
+              } catch (e) {
+                // Silently skip traversal errors to prevent cascading failures
+              }
+            }
+          }
+        },
+      });
+    } catch (e) {
+      // Traverse errors should not break the plugin
+      return false;
+    }
     if (hit) return true;
   }
 
@@ -797,20 +833,31 @@ const babelMetadataPlugin = ({ types: t }) => {
     const programPath = exprPath.findParent(p => p.isProgram());
     if (!programPath) return null;
 
+    // Guard: Ensure programPath has traverse method
+    if (typeof programPath.traverse !== 'function') {
+      return null;
+    }
+
     let tracedSource = null;
 
-    programPath.traverse({
-      JSXOpeningElement(jsxPath) {
-        if (tracedSource) return;
+    try {
+      programPath.traverse({
+        JSXOpeningElement(jsxPath) {
+          if (tracedSource) return;
 
-        const elementName = getJSXElementName(jsxPath.node);
-        if (elementName !== componentName) return;
+          // Guard: Validate jsxPath and its properties
+          if (!jsxPath || !jsxPath.node || !jsxPath.node.attributes) {
+            return;
+          }
 
-        // Look for the prop being passed
-        for (const attr of jsxPath.node.attributes || []) {
-          if (!t.isJSXAttribute(attr)) continue;
-          if (!t.isJSXIdentifier(attr.name) || attr.name.name !== propName) continue;
-          if (!t.isJSXExpressionContainer(attr.value)) continue;
+          const elementName = getJSXElementName(jsxPath.node);
+          if (elementName !== componentName) return;
+
+          // Look for the prop being passed
+          for (const attr of jsxPath.node.attributes || []) {
+            if (!t.isJSXAttribute(attr)) continue;
+            if (!t.isJSXIdentifier(attr.name) || attr.name.name !== propName) continue;
+            if (!t.isJSXExpressionContainer(attr.value)) continue;
 
           // Found matching prop - analyze the expression passed to it
           const attrs = jsxPath.get('attributes');
@@ -831,7 +878,11 @@ const babelMetadataPlugin = ({ types: t }) => {
           }
         }
       }
-    });
+      });
+    } catch (e) {
+      // Traverse errors should not break the plugin
+      return null;
+    }
 
     // If found in same file, return it
     if (tracedSource) return tracedSource;
@@ -917,6 +968,11 @@ const babelMetadataPlugin = ({ types: t }) => {
         ImportDeclaration(importPath) {
           if (result) return;
 
+          // Guard: Validate importPath structure
+          if (!importPath || !importPath.node || !importPath.node.source) {
+            return;
+          }
+
           const source = importPath.node.source.value;
           const resolvedPath = resolveImportPath(source, absPath);
           if (resolvedPath !== componentFile) return;
@@ -932,23 +988,44 @@ const babelMetadataPlugin = ({ types: t }) => {
           }
           if (!localName) return;
 
+          // Guard: Ensure parentPath chain is valid before traversing
+          if (!importPath.parentPath || !importPath.parentPath.parentPath) {
+            return;
+          }
+
+          // Guard: Verify traverse function exists before calling
+          if (typeof importPath.parentPath.parentPath.traverse !== 'function') {
+            return;
+          }
+
           // Search for usages of this component
-          importPath.parentPath.parentPath.traverse({
-            JSXOpeningElement(jsxPath) {
-              if (result) return;
+          try {
+            importPath.parentPath.parentPath.traverse({
+              JSXOpeningElement(jsxPath) {
+                if (result) return;
 
-              const elemName = getJSXElementName(jsxPath.node);
-              if (elemName !== localName) return;
+                // Guard: Validate JSX path before accessing
+                if (!jsxPath || !jsxPath.node || !jsxPath.node.attributes) {
+                  return;
+                }
 
-              // Find the prop
-              for (const attr of jsxPath.node.attributes || []) {
-                if (!t.isJSXAttribute(attr)) continue;
-                if (!t.isJSXIdentifier(attr.name) || attr.name.name !== propName) continue;
-                if (!t.isJSXExpressionContainer(attr.value)) continue;
+                const elemName = getJSXElementName(jsxPath.node);
+                if (elemName !== localName) return;
 
-                const attrPath = jsxPath.get('attributes').find(
-                  a => a.isJSXAttribute() && a.node.name?.name === propName
-                );
+                // Find the prop
+                for (const attr of jsxPath.node.attributes || []) {
+                  if (!t.isJSXAttribute(attr)) continue;
+                  if (!t.isJSXIdentifier(attr.name) || attr.name.name !== propName) continue;
+                  if (!t.isJSXExpressionContainer(attr.value)) continue;
+
+                  // Guard: Ensure get method exists on jsxPath
+                  if (typeof jsxPath.get !== 'function') {
+                    continue;
+                  }
+
+                  const attrPath = jsxPath.get('attributes').find(
+                    a => a.isJSXAttribute() && a.node.name?.name === propName
+                  );
 
                 if (attrPath) {
                   const valuePath = attrPath.get('value.expression');
@@ -1421,26 +1498,43 @@ const babelMetadataPlugin = ({ types: t }) => {
 
   function pathHasDynamicJSX(targetPath) {
     if (!targetPath || !targetPath.node) return false;
+    
+    // Guard: Ensure traverse function exists
+    if (typeof targetPath.traverse !== 'function') {
+      return false;
+    }
+
     let dynamic = false;
-    targetPath.traverse({
-      JSXExpressionContainer(p) {
-        if (dynamic) return;
-        if (!t.isJSXEmptyExpression(p.node.expression)) {
+    try {
+      targetPath.traverse({
+        JSXExpressionContainer(p) {
+          if (dynamic) return;
+          // Guard: Validate p before accessing
+          if (!p || !p.node) return;
+          if (!t.isJSXEmptyExpression(p.node.expression)) {
+            dynamic = true;
+            p.stop();
+          }
+        },
+        JSXSpreadAttribute(p) {
+          if (dynamic) return;
+          // Guard: Validate p before accessing
+          if (!p || !p.node) return;
           dynamic = true;
           p.stop();
-        }
-      },
-      JSXSpreadAttribute(p) {
-        if (dynamic) return;
-        dynamic = true;
-        p.stop();
-      },
-      JSXSpreadChild(p) {
-        if (dynamic) return;
-        dynamic = true;
-        p.stop();
-      },
-    });
+        },
+        JSXSpreadChild(p) {
+          if (dynamic) return;
+          // Guard: Validate p before accessing
+          if (!p || !p.node) return;
+          dynamic = true;
+          p.stop();
+        },
+      });
+    } catch (e) {
+      // Traverse errors - assume dynamic content for safety
+      return true;
+    }
     return dynamic;
   }
 
