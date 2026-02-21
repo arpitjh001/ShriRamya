@@ -199,6 +199,9 @@ function fileExportHasPortals({
   const importMap = new Map(); // localName -> { absPath, importName }
   traverse(ast, {
     ImportDeclaration(p) {
+      // Add null check for traverse safety
+      if (!p || !p.node || !p.node.source) return;
+      
       const src = p.node.source.value;
       const target = resolveImportPath(src, absPath);
       if (!target) return;

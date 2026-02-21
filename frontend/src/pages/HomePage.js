@@ -120,17 +120,20 @@ const HomePage = () => {
         </motion.div>
       </section>
 
-      {/* Categories Showcase */}
+      {/* Women Ethnic Wear Categories */}
       <section className="px-6 md:px-12 lg:px-24 py-16 md:py-24 bg-muted">
-        <h2 className="text-4xl md:text-5xl font-heading font-medium tracking-tight text-center mb-16">
-          Shop by Category
+        <h2 className="text-4xl md:text-5xl font-heading font-medium tracking-tight text-center mb-4">
+          Women Ethnic Wear
         </h2>
+        <p className="text-lg text-muted-foreground text-center mb-12">
+          Handcrafted elegance for every occasion
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { name: 'Sarees', image: 'https://images.unsplash.com/photo-1767955694884-d4bf352c23c2?w=600', category: 'Sarees' },
             { name: 'Lehengas', image: 'https://images.unsplash.com/photo-1737514996816-a034a795febe?w=600', category: 'Lehengas' },
-            { name: 'Suits', image: 'https://images.unsplash.com/photo-1622129216080-32d0c0f5efd7?w=600', category: 'Suits' },
+            { name: 'Suits', image: 'https://images.unsplash.com/photo-1622129216080-32d0c0f5efd7?w=600', category: 'Ladies Suits' },
             { name: 'Dupattas', image: 'https://images.unsplash.com/photo-1732381917488-39f31539cd4f?w=600', category: 'Dupattas' },
           ].map((cat, index) => (
             <motion.div
@@ -141,8 +144,54 @@ const HomePage = () => {
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
               <Link
-                to={`/products?category=${cat.category}`}
-                data-testid={`category-${cat.category.toLowerCase()}`}
+                to={`/products?subcategory=${encodeURIComponent(cat.category)}`}
+                data-testid={`category-${cat.name.toLowerCase()}`}
+                className="group block relative overflow-hidden rounded aspect-[3/4]"
+              >
+                <img
+                  src={cat.image}
+                  alt={cat.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h3 className="text-2xl font-heading font-medium text-white mb-2">{cat.name}</h3>
+                  <span className="text-white/80 text-sm flex items-center gap-2">
+                    Explore <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Home & Lifestyle Categories */}
+      <section className="px-6 md:px-12 lg:px-24 py-16 md:py-24">
+        <h2 className="text-4xl md:text-5xl font-heading font-medium tracking-tight text-center mb-4">
+          Home & Lifestyle
+        </h2>
+        <p className="text-lg text-muted-foreground text-center mb-12">
+          Transform your space with traditional craftsmanship
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { name: 'Bedsheets', image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600', category: 'Bedsheets' },
+            { name: 'Pillow Covers', image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600', category: 'Pillow Covers' },
+            { name: 'Cushion Covers', image: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=600', category: 'Cushion Covers' },
+            { name: 'Dohar', image: 'https://images.unsplash.com/photo-1592078615290-033ee584e267?w=600', category: 'Dohar' },
+          ].map((cat, index) => (
+            <motion.div
+              key={cat.name}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <Link
+                to={`/products?subcategory=${encodeURIComponent(cat.category)}`}
+                data-testid={`category-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
                 className="group block relative overflow-hidden rounded aspect-[3/4]"
               >
                 <img

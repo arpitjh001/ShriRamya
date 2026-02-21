@@ -157,7 +157,7 @@ const ProductDetailPage = () => {
           )}
 
           {/* Actions */}
-          <div className="flex gap-4 mb-8">
+          <div className="flex gap-4 mb-4">
             <Button
               data-testid="add-to-cart-button"
               size="lg"
@@ -172,6 +172,27 @@ const ProductDetailPage = () => {
               <Heart className="h-5 w-5" />
             </Button>
           </div>
+
+          {/* Virtual Try-On Button - Only for clothing items */}
+          {(product.category === 'Women Ethnic Wear' || product.subcategory?.includes('Saree') || product.subcategory?.includes('Lehenga')) && (
+            <Button
+              data-testid="try-on-button"
+              variant="secondary"
+              size="lg"
+              className="w-full mb-8"
+              onClick={() => setTryOnModalOpen(true)}
+            >
+              <Sparkles className="h-5 w-5 mr-2" />
+              Virtual Try-On
+            </Button>
+          )}
+
+          {/* Try-On Modal */}
+          <TryOnModal 
+            open={tryOnModalOpen} 
+            onOpenChange={setTryOnModalOpen} 
+            product={product} 
+          />
 
           {/* Features */}
           <div className="grid grid-cols-3 gap-4 py-8 border-y border-border mb-8">

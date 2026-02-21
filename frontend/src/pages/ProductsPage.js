@@ -57,15 +57,35 @@ const ProductsPage = () => {
     return price >= priceRange[0] && price <= priceRange[1];
   });
 
-  const categories = ["Sarees", "Lehengas", "Suits", "Dupattas"];
+  const mainCategories = [
+    { label: "Women Ethnic Wear", value: "Women Ethnic Wear" },
+    { label: "Home & Lifestyle", value: "Home & Lifestyle" },
+  ];
+
+  const ethnicSubcategories = [
+    { label: "Sarees", value: "Sarees" },
+    { label: "Lehengas", value: "Lehengas" },
+    { label: "Ladies Suits", value: "Ladies Suits" },
+    { label: "Dupattas", value: "Dupattas" },
+    { label: "Ready-to-Wear", value: "Ready-to-Wear Sarees" },
+  ];
+
+  const homeSubcategories = [
+    { label: "Bedsheets", value: "Bedsheets" },
+    { label: "Pillow Covers", value: "Pillow Covers" },
+    { label: "Cushion Covers", value: "Cushion Covers" },
+    { label: "Dohar", value: "Dohar" },
+  ];
+
+  const pageTitle = subcategory || category || "All Products";
 
   return (
-    <div className="px-6 md:px-12 lg:px-24 py-12">
+    <div className="px-6 md:px-12 lg:px-24 py-12" data-testid="products-page">
 
       {/* HEADER */}
       <div className="mb-12">
-        <h1 className="text-4xl font-medium">
-          {category || "All Products"}
+        <h1 className="text-4xl font-heading font-medium">
+          {pageTitle}
         </h1>
 
         {!loading && (
@@ -78,30 +98,70 @@ const ProductsPage = () => {
       <div className="flex gap-8">
 
         {/* FILTER SIDEBAR */}
-        <aside className={`${showFilters ? "block" : "hidden"} lg:block w-64`}>
+        <aside className={`${showFilters ? "block" : "hidden"} lg:block w-64 shrink-0`}>
 
           <div className="space-y-8">
 
-            {/* CATEGORY */}
+            {/* ALL PRODUCTS */}
             <div>
-              <h3 className="font-semibold mb-4">Category</h3>
-
               <Button
                 className="w-full justify-start"
-                variant={!category ? "default" : "ghost"}
+                variant={!category && !subcategory ? "default" : "ghost"}
                 onClick={() => setSearchParams({})}
+                data-testid="filter-all-products"
               >
                 All Products
               </Button>
+            </div>
 
-              {categories.map((cat) => (
+            {/* WOMEN ETHNIC WEAR */}
+            <div>
+              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Women Ethnic Wear</h3>
+
+              <Button
+                className="w-full justify-start"
+                variant={category === "Women Ethnic Wear" && !subcategory ? "default" : "ghost"}
+                onClick={() => setSearchParams({ category: "Women Ethnic Wear" })}
+                data-testid="filter-women-ethnic"
+              >
+                All Ethnic Wear
+              </Button>
+
+              {ethnicSubcategories.map((sub) => (
                 <Button
-                  key={cat}
-                  className="w-full justify-start mt-2"
-                  variant={category === cat ? "default" : "ghost"}
-                  onClick={() => setSearchParams({ category: cat })}
+                  key={sub.value}
+                  className="w-full justify-start mt-1 pl-6"
+                  variant={subcategory === sub.value ? "default" : "ghost"}
+                  onClick={() => setSearchParams({ subcategory: sub.value })}
+                  data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  {cat}
+                  {sub.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* HOME & LIFESTYLE */}
+            <div>
+              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Home & Lifestyle</h3>
+
+              <Button
+                className="w-full justify-start"
+                variant={category === "Home & Lifestyle" && !subcategory ? "default" : "ghost"}
+                onClick={() => setSearchParams({ category: "Home & Lifestyle" })}
+                data-testid="filter-home-lifestyle"
+              >
+                All Home & Lifestyle
+              </Button>
+
+              {homeSubcategories.map((sub) => (
+                <Button
+                  key={sub.value}
+                  className="w-full justify-start mt-1 pl-6"
+                  variant={subcategory === sub.value ? "default" : "ghost"}
+                  onClick={() => setSearchParams({ subcategory: sub.value })}
+                  data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  {sub.label}
                 </Button>
               ))}
             </div>
