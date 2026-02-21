@@ -173,6 +173,18 @@ export const cartAPI = {
     }
   },
 
+  updateQuantity: async (productId, quantity, sessionId) => {
+    try {
+      const res = await api.patch(`/cart/item/${productId}`, null, {
+        params: { quantity, session_id: sessionId }
+      });
+      return { data: res.data };
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
   remove: async (productId, sessionId) => {
     try {
       const res = await api.delete(`/cart/item/${productId}`, {
