@@ -77,6 +77,13 @@ const ProductsPage = () => {
     { label: "Dohar", value: "Dohar" },
   ];
 
+  // Determine which category section to show based on current filter
+  const isHomeLifestyle = category === "Home & Lifestyle" || 
+    homeSubcategories.some(sub => sub.value === subcategory);
+  const isWomenEthnic = category === "Women Ethnic Wear" || 
+    ethnicSubcategories.some(sub => sub.value === subcategory);
+  const showAllCategories = !category && !subcategory;
+
   const pageTitle = subcategory || category || "All Products";
 
   return (
@@ -114,57 +121,61 @@ const ProductsPage = () => {
               </Button>
             </div>
 
-            {/* WOMEN ETHNIC WEAR */}
-            <div>
-              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Women Ethnic Wear</h3>
+            {/* WOMEN ETHNIC WEAR - Show when viewing All Products, Women Ethnic Wear, or its subcategories */}
+            {(showAllCategories || isWomenEthnic) && (
+              <div>
+                <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Women Ethnic Wear</h3>
 
-              <Button
-                className="w-full justify-start"
-                variant={category === "Women Ethnic Wear" && !subcategory ? "default" : "ghost"}
-                onClick={() => setSearchParams({ category: "Women Ethnic Wear" })}
-                data-testid="filter-women-ethnic"
-              >
-                All Ethnic Wear
-              </Button>
-
-              {ethnicSubcategories.map((sub) => (
                 <Button
-                  key={sub.value}
-                  className="w-full justify-start mt-1 pl-6"
-                  variant={subcategory === sub.value ? "default" : "ghost"}
-                  onClick={() => setSearchParams({ subcategory: sub.value })}
-                  data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="w-full justify-start"
+                  variant={category === "Women Ethnic Wear" && !subcategory ? "default" : "ghost"}
+                  onClick={() => setSearchParams({ category: "Women Ethnic Wear" })}
+                  data-testid="filter-women-ethnic"
                 >
-                  {sub.label}
+                  All Ethnic Wear
                 </Button>
-              ))}
-            </div>
 
-            {/* HOME & LIFESTYLE */}
-            <div>
-              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Home & Lifestyle</h3>
+                {ethnicSubcategories.map((sub) => (
+                  <Button
+                    key={sub.value}
+                    className="w-full justify-start mt-1 pl-6"
+                    variant={subcategory === sub.value ? "default" : "ghost"}
+                    onClick={() => setSearchParams({ subcategory: sub.value })}
+                    data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    {sub.label}
+                  </Button>
+                ))}
+              </div>
+            )}
 
-              <Button
-                className="w-full justify-start"
-                variant={category === "Home & Lifestyle" && !subcategory ? "default" : "ghost"}
-                onClick={() => setSearchParams({ category: "Home & Lifestyle" })}
-                data-testid="filter-home-lifestyle"
-              >
-                All Home & Lifestyle
-              </Button>
+            {/* HOME & LIFESTYLE - Show when viewing All Products, Home & Lifestyle, or its subcategories */}
+            {(showAllCategories || isHomeLifestyle) && (
+              <div>
+                <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Home & Lifestyle</h3>
 
-              {homeSubcategories.map((sub) => (
                 <Button
-                  key={sub.value}
-                  className="w-full justify-start mt-1 pl-6"
-                  variant={subcategory === sub.value ? "default" : "ghost"}
-                  onClick={() => setSearchParams({ subcategory: sub.value })}
-                  data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="w-full justify-start"
+                  variant={category === "Home & Lifestyle" && !subcategory ? "default" : "ghost"}
+                  onClick={() => setSearchParams({ category: "Home & Lifestyle" })}
+                  data-testid="filter-home-lifestyle"
                 >
-                  {sub.label}
+                  All Home & Lifestyle
                 </Button>
-              ))}
-            </div>
+
+                {homeSubcategories.map((sub) => (
+                  <Button
+                    key={sub.value}
+                    className="w-full justify-start mt-1 pl-6"
+                    variant={subcategory === sub.value ? "default" : "ghost"}
+                    onClick={() => setSearchParams({ subcategory: sub.value })}
+                    data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    {sub.label}
+                  </Button>
+                ))}
+              </div>
+            )}
 
             {/* PRICE FILTER */}
             <div>
