@@ -78,6 +78,14 @@ export const authAPI = {
     } catch (err) {
       handleError(err);
     }
+  },
+
+  checkAdmin: async () => {
+    try {
+      return await api.get("/auth/check-admin");
+    } catch (err) {
+      throw err; // Let the caller handle auth errors
+    }
   }
 };
 

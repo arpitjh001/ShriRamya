@@ -21,6 +21,8 @@ import AboutPage from './pages/AboutPage';
 import TrackOrderPage from './pages/TrackOrderPage';
 import FabricCarePage from './pages/FabricCarePage';
 import ContactPage from './pages/ContactPage';
+import AdminWooCommercePage from './pages/AdminWooCommercePage';
+import AllProductsPage from './pages/AllProductsPage';
 import './App.css';
 
 function App() {
@@ -48,6 +50,8 @@ function App() {
                 <Route path="/track-order" element={<TrackOrderPage />} />
                 <Route path="/fabric-care" element={<FabricCarePage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/admin/woocommerce" element={<AdminWooCommercePage />} />
+                <Route path="/all-products" element={<AllProductsPage />} />
               </Routes>
             </main>
             <Footer />

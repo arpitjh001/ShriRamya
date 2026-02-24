@@ -1,0 +1,99 @@
+2026-02-24 19:22:02,006 - shriramya - INFO - WooCommerce API initialized
+2026-02-24 19:22:02,019 - shriramya - INFO - MongoDB connected: shriramya
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+2026-02-24 19:22:02,905 - shriramya - INFO - Application startup
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-02-24 19:22:45,106 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:56500 - "GET /api/health HTTP/1.1" 200 OK
+2026-02-24 19:22:45,207 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:22:45,208 - shriramya - INFO - Falling back to MongoDB for products
+INFO:     127.0.0.1:56504 - "GET /api/products HTTP/1.1" 200 OK
+/usr/local/lib/python3.11/site-packages/jwt/api_jwt.py:153: InsecureKeyLengthWarning: The HMAC key is 26 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  return self._jws.encode(
+2026-02-24 19:22:45,480 - shriramya - INFO - User logged in: admin-user@example.com (role: admin)
+INFO:     127.0.0.1:56512 - "POST /api/auth/login HTTP/1.1" 200 OK
+2026-02-24 19:22:45,498 - shriramya.woocommerce - INFO - WooCommerce API initialized
+/usr/local/lib/python3.11/site-packages/jwt/api_jwt.py:371: InsecureKeyLengthWarning: The HMAC key is 26 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+2026-02-24 19:22:45,601 - shriramya.woocommerce - ERROR - WC GET products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:56522 - "GET /api/wc/products HTTP/1.1" 200 OK
+2026-02-24 19:22:45,701 - shriramya.woocommerce - ERROR - WC GET products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:56530 - "GET /api/wc/categories HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35166 - "OPTIONS /api/cart?session_id=session_1771868732506_hkjbabm5s HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35180 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35166 - "GET /api/cart?session_id=session_1771868732506_hkjbabm5s HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35180 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35180 - "OPTIONS /api/auth/check-admin HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35166 - "GET /api/cart?session_id=session_1771868732506_hkjbabm5s HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35180 - "GET /api/auth/check-admin HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35180 - "OPTIONS /api/wc/products?per_page=50 HTTP/1.1" 200 OK
+2026-02-24 19:23:23,116 - shriramya.woocommerce - ERROR - WC GET products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     172.18.0.1:35180 - "GET /api/wc/products?per_page=50 HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35180 - "OPTIONS /api/wc/categories HTTP/1.1" 200 OK
+2026-02-24 19:23:23,221 - shriramya.woocommerce - ERROR - WC GET products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     172.18.0.1:35180 - "GET /api/wc/categories HTTP/1.1" 200 OK
+INFO:     172.18.0.1:54122 - "OPTIONS /api/wc/categories HTTP/1.1" 200 OK
+2026-02-24 19:24:06,605 - shriramya.woocommerce - ERROR - WC POST products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:24:06,606 - shriramya - ERROR - HTTP 500: Failed to create category
+INFO:     172.18.0.1:54122 - "POST /api/wc/categories HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.1:54128 - "OPTIONS /api/upload HTTP/1.1" 200 OK
+2026-02-24 19:24:15,927 - shriramya - INFO - Image uploaded: 2c65b734676640f58a2d4e7ad982522a.jpg (583571 bytes) by admin-user@example.com
+INFO:     172.18.0.1:54128 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     172.18.0.1:39532 - "GET /uploads/2c65b734676640f58a2d4e7ad982522a.jpg HTTP/1.1" 200 OK
+INFO:     172.18.0.1:54128 - "OPTIONS /api/wc/products HTTP/1.1" 200 OK
+2026-02-24 19:24:17,878 - shriramya.woocommerce - ERROR - WC POST products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:24:17,878 - shriramya - ERROR - HTTP 500: Failed to create product in WooCommerce
+INFO:     172.18.0.1:54128 - "POST /api/wc/products HTTP/1.1" 500 Internal Server Error
+2026-02-24 19:25:21,848 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:50428 - "GET /api/health HTTP/1.1" 200 OK
+2026-02-24 19:25:22,005 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:22,005 - shriramya - INFO - Falling back to MongoDB for products
+INFO:     127.0.0.1:50442 - "GET /api/products HTTP/1.1" 200 OK
+2026-02-24 19:25:22,385 - shriramya - INFO - User logged in: admin-user@example.com (role: admin)
+INFO:     127.0.0.1:50446 - "POST /api/auth/login HTTP/1.1" 200 OK
+2026-02-24 19:25:22,514 - shriramya.woocommerce - ERROR - WC GET products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:50460 - "GET /api/wc/products HTTP/1.1" 200 OK
+2026-02-24 19:25:22,635 - shriramya.woocommerce - ERROR - WC GET products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:50462 - "GET /api/wc/categories HTTP/1.1" 200 OK
+2026-02-24 19:25:22,752 - shriramya.woocommerce - ERROR - WC POST products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:22,752 - shriramya - ERROR - HTTP 500: Failed to create category
+INFO:     127.0.0.1:50474 - "POST /api/wc/categories HTTP/1.1" 500 Internal Server Error
+2026-02-24 19:25:22,863 - shriramya.woocommerce - ERROR - WC POST products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:22,864 - shriramya - ERROR - HTTP 500: Failed to create product in WooCommerce
+INFO:     127.0.0.1:50484 - "POST /api/wc/products HTTP/1.1" 500 Internal Server Error
+2026-02-24 19:25:35,836 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:35200 - "GET /api/health HTTP/1.1" 200 OK
+2026-02-24 19:25:35,976 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:35,976 - shriramya - INFO - Falling back to MongoDB for products
+INFO:     127.0.0.1:35210 - "GET /api/products HTTP/1.1" 200 OK
+2026-02-24 19:25:36,379 - shriramya - INFO - User logged in: admin-user@example.com (role: admin)
+INFO:     127.0.0.1:35224 - "POST /api/auth/login HTTP/1.1" 200 OK
+2026-02-24 19:25:36,642 - shriramya.woocommerce - ERROR - WC GET products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:35234 - "GET /api/wc/products HTTP/1.1" 200 OK
+2026-02-24 19:25:36,803 - shriramya.woocommerce - ERROR - WC GET products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:35248 - "GET /api/wc/categories HTTP/1.1" 200 OK
+2026-02-24 19:25:36,937 - shriramya.woocommerce - ERROR - WC POST products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:36,937 - shriramya - ERROR - HTTP 500: Failed to create category
+INFO:     127.0.0.1:35250 - "POST /api/wc/categories HTTP/1.1" 500 Internal Server Error
+2026-02-24 19:25:37,069 - shriramya.woocommerce - ERROR - WC POST products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:37,070 - shriramya - ERROR - HTTP 500: Failed to create product in WooCommerce
+INFO:     127.0.0.1:35252 - "POST /api/wc/products HTTP/1.1" 500 Internal Server Error
+2026-02-24 19:25:50,642 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:58818 - "GET /api/health HTTP/1.1" 200 OK
+2026-02-24 19:25:50,733 - shriramya - ERROR - WooCommerce error: 401 - {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:50,733 - shriramya - INFO - Falling back to MongoDB for products
+INFO:     127.0.0.1:58820 - "GET /api/products HTTP/1.1" 200 OK
+2026-02-24 19:25:51,042 - shriramya - INFO - User logged in: admin-user@example.com (role: admin)
+INFO:     127.0.0.1:58834 - "POST /api/auth/login HTTP/1.1" 200 OK
+2026-02-24 19:25:51,182 - shriramya.woocommerce - ERROR - WC GET products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:58846 - "GET /api/wc/products HTTP/1.1" 200 OK
+2026-02-24 19:25:51,339 - shriramya.woocommerce - ERROR - WC GET products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+INFO:     127.0.0.1:58848 - "GET /api/wc/categories HTTP/1.1" 200 OK
+2026-02-24 19:25:51,456 - shriramya.woocommerce - ERROR - WC POST products/categories: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:51,457 - shriramya - ERROR - HTTP 500: Failed to create category
+INFO:     127.0.0.1:58852 - "POST /api/wc/categories HTTP/1.1" 500 Internal Server Error
+2026-02-24 19:25:51,577 - shriramya.woocommerce - ERROR - WC POST products: 401 {"code":"woocommerce_rest_authentication_error","message":"Invalid signature - provided signature does not match.","data":{"status":401}}
+2026-02-24 19:25:51,577 - shriramya - ERROR - HTTP 500: Failed to create product in WooCommerce
+INFO:     127.0.0.1:58860 - "POST /api/wc/products HTTP/1.1" 500 Internal Server Error

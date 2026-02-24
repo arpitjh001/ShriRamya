@@ -1,0 +1,15 @@
+Starting API Verification Tool against http://localhost:8000/api
+--------------------------------------------------
+✅ GET /health -> 200 OK
+✅ GET /products -> 200 OK
+✅ POST /auth/login -> 200 OK
+✅ GET /wc/products -> 200 OK
+✅ GET /wc/categories -> 200 OK
+✅ POST /wc/categories -> 201 OK
+✅ POST /wc/products -> 201 OK
+Testing PUT update endpoint...
+✅ PUT /wc/products/17 -> 200 OK
+Testing DELETE product endpoint...
+✅ DELETE /wc/products/17 -> 200 OK
+--------------------------------------------------
+All APIs are working properly!

@@ -1,0 +1,13 @@
+Starting API Verification Tool against http://localhost:8000/api
+--------------------------------------------------
+✅ GET /health -> 200 OK
+✅ GET /products -> 200 OK
+✅ POST /auth/login -> 200 OK
+✅ GET /wc/products -> 200 OK
+✅ GET /wc/categories -> 200 OK
+❌ POST /wc/categories -> 500 ERROR
+   Response: {"detail":"Failed to create category","status_code":500}
+❌ POST /wc/products -> 500 ERROR
+   Response: {"detail":"Failed to create product in WooCommerce","status_code":500}
+--------------------------------------------------
+Some APIs are failing.

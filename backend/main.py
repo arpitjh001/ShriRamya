@@ -51,20 +51,52 @@ wc_enabled = all([
 ])
 
 if wc_enabled:
-    wcapi = API(
+    from requests.auth import HTTPBasicAuth
+    import requests
+    
+    class DirectWCAPI:
+        def __init__(self, url, consumer_key, consumer_secret, version="wc/v3", verify_ssl=False, timeout=30, **kwargs):
+            self.base_url = f"{url.rstrip('/')}/wp-json/{version}"
+            self.auth = HTTPBasicAuth(consumer_key, consumer_secret)
+            self.verify = verify_ssl
+            self.timeout = timeout
+
+        def _url(self, endpoint):
+            return f"{self.base_url}/{endpoint.lstrip('/')}"
+            
+        def get(self, endpoint, params=None):
+            return requests.get(self._url(endpoint), params=params, auth=self.auth, verify=self.verify, timeout=self.timeout)
+            
+        def post(self, endpoint, data=None):
+            return requests.post(self._url(endpoint), json=data, auth=self.auth, verify=self.verify, timeout=self.timeout)
+
+        def put(self, endpoint, data=None):
+            return requests.put(self._url(endpoint), json=data, auth=self.auth, verify=self.verify, timeout=self.timeout)
+
+        def delete(self, endpoint, params=None):
+            return requests.delete(self._url(endpoint), params=params, auth=self.auth, verify=self.verify, timeout=self.timeout)
+            
+    wcapi = DirectWCAPI(
         url=os.getenv("WOOCOMMERCE_URL"),
         consumer_key=os.getenv("WOOCOMMERCE_CONSUMER_KEY"),
         consumer_secret=os.getenv("WOOCOMMERCE_CONSUMER_SECRET"),
         version="wc/v3",
         timeout=30,
-        verify_ssl=os.getenv("WOOCOMMERCE_VERIFY_SSL", "True").lower() == "true"
+        verify_ssl=os.getenv("WOOCOMMERCE_VERIFY_SSL", "True").lower() == "true",
     )
-    logger.info("WooCommerce API initialized")
+    logger.info("WooCommerce API initialized via robust DirectWCAPI method")
 else:
     wcapi = None
     logger.warning("WooCommerce not configured - using MongoDB fallback")
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+from tenacity import retry_if_exception
+
+def is_retryable_exception(e):
+    if isinstance(e, HTTPException) and 400 <= e.status_code < 500:
+        return False
+    return True
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception(is_retryable_exception))
 def wc_get_with_retry(endpoint: str, params: dict | None = None):
     """WooCommerce GET with automatic retry"""
     if not wcapi:
@@ -95,7 +127,7 @@ def wc_get(endpoint: str, params: dict | None = None):
         logger.error(f"WooCommerce request failed: {endpoint} - {str(e)}")
         raise HTTPException(502, f"WooCommerce error: {str(e)}")
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception(is_retryable_exception))
 def wc_post_with_retry(endpoint: str, data: dict | None = None):
     """WooCommerce POST with automatic retry"""
     if not wcapi:
@@ -169,6 +201,7 @@ class User(BaseModel):
     email: EmailStr
     name: str
     phone: Optional[str] = None
+    role: str = Field(default="customer")  # 'admin' or 'customer'
     addresses: List[Dict[str, Any]] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -232,6 +265,29 @@ def create_access_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=30)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
+    """Dependency: requires authenticated admin user"""
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        user_doc = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+        if not user_doc:
+            raise HTTPException(status_code=401, detail="User not found")
+        if isinstance(user_doc.get('created_at'), str):
+            user_doc['created_at'] = datetime.fromisoformat(user_doc['created_at'])
+        user = User(**user_doc)
+        if user.role != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin auth error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[User]:
     try:
@@ -323,7 +379,7 @@ async def register(user_data: UserRegister):
     await db.users.insert_one(user_dict)
     logger.info(f"New user registered: {user.email}")
     
-    token = create_access_token({"sub": user.id})
+    token = create_access_token({"sub": user.id, "role": "customer"})
     return TokenResponse(access_token=token, user=user)
 
 @api_router.post("/auth/login", response_model=TokenResponse)
@@ -341,8 +397,8 @@ async def login(credentials: UserLogin):
         user_doc['created_at'] = datetime.fromisoformat(user_doc['created_at'])
     
     user = User(**user_doc)
-    token = create_access_token({"sub": user.id})
-    logger.info(f"User logged in: {user.email}")
+    token = create_access_token({"sub": user.id, "role": user.role})
+    logger.info(f"User logged in: {user.email} (role: {user.role})")
     return TokenResponse(access_token=token, user=user)
 
 @api_router.get("/auth/me", response_model=User)
@@ -351,6 +407,13 @@ async def get_me(current_user: User = Depends(get_current_user)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return current_user
+
+@api_router.get("/auth/check-admin")
+async def check_admin(current_user: User = Depends(get_current_user)):
+    """Check if current user has admin role"""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"is_admin": current_user.role == "admin", "role": current_user.role, "email": current_user.email}
 
 # =====================
 # PRODUCT ROUTES
@@ -645,8 +708,92 @@ async def health_check():
     
     return health_status
 
+# =====================
+# IMAGE UPLOAD
+# =====================
+
+from fastapi import UploadFile, File
+from fastapi.staticfiles import StaticFiles
+
+UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+@api_router.post("/upload")
+async def upload_image(
+    file: UploadFile = File(...),
+    admin_user: User = Depends(get_admin_user)
+):
+    """Upload a product image (admin only)"""
+    # Validate file extension
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
+    
+    # Read and validate size
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(400, f"File too large. Max size: {MAX_FILE_SIZE // (1024*1024)}MB")
+    
+    # Generate unique filename
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    file_path = UPLOAD_DIR / unique_name
+    
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(contents)
+    
+    # Return the public URL
+    image_url = f"/uploads/{unique_name}"
+    logger.info(f"Image uploaded: {unique_name} ({len(contents)} bytes) by {admin_user.email}")
+    
+    return {
+        "url": image_url,
+        "filename": unique_name,
+        "original_name": file.filename,
+        "size": len(contents),
+        "content_type": file.content_type
+    }
+
+@api_router.post("/upload/multiple")
+async def upload_multiple_images(
+    files: List[UploadFile] = File(...),
+    admin_user: User = Depends(get_admin_user)
+):
+    """Upload multiple product images (admin only)"""
+    results = []
+    for file in files[:10]:  # Max 10 files at once
+        ext = Path(file.filename).suffix.lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            continue
+        contents = await file.read()
+        if len(contents) > MAX_FILE_SIZE:
+            continue
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        file_path = UPLOAD_DIR / unique_name
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        results.append({
+            "url": f"/uploads/{unique_name}",
+            "filename": unique_name,
+            "original_name": file.filename,
+            "size": len(contents)
+        })
+    
+    logger.info(f"{len(results)} images uploaded by {admin_user.email}")
+    return {"images": results, "count": len(results)}
+
+# Include WooCommerce headless routes
+from wc_routes import wc_router
+api_router.include_router(wc_router)
+
 # Include router
 app.include_router(api_router)
+
+# Mount static uploads AFTER router so /api routes take priority
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 if __name__ == "__main__":
     import uvicorn

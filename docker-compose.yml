@@ -49,7 +49,12 @@ services:
     environment:
       MONGO_URL: mongodb://mongodb:27017/
       DB_NAME: shriramya
-      WOOCOMMERCE_URL: http://wordpress
+      WOOCOMMERCE_URL: http://wordpress:80
+      WOOCOMMERCE_CONSUMER_KEY: ck_1d948ab5af225784a4c0545e0e8fbc735b7440d1
+      WOOCOMMERCE_CONSUMER_SECRET: cs_903da4d006d7939f2e59caecc8068e178d61afc9
+      WOOCOMMERCE_VERIFY_SSL: "False"
+    volumes:
+      - upload_data:/app/uploads
 
   frontend:
     build: ./frontend
@@ -75,3 +80,4 @@ volumes:
   mysql_data:
   wordpress_data:
   mongo_data:
+  upload_data:
