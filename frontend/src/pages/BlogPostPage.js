@@ -6,13 +6,15 @@ import { ArrowLeft, Calendar, User, Share2, Tag, Pencil } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import DOMPurify from 'dompurify';
 
 const HTMLRenderer = ({ html, className }) => {
-    return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+    const cleanHtml = DOMPurify.sanitize(html);
+    return <div className={className} dangerouslySetInnerHTML={{ __html: cleanHtml }} />;
 };
 
 const BlogPostPage = () => {
-    const { id } = useParams();
+    const { slug } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
     const [post, setPost] = useState(null);
@@ -25,7 +27,7 @@ const BlogPostPage = () => {
 
     const fetchPost = async () => {
         try {
-            const response = await blogAPI.getPostById(id);
+            const response = await blogAPI.getPostBySlug(slug);
             if (response.data) {
                 setPost(response.data);
             } else {

@@ -7,6 +7,7 @@ import requests
 import os
 import logging
 from tenacity import retry, stop_after_attempt, wait_exponential
+from functools import lru_cache
 
 logger = logging.getLogger("shriramya")
 wp_router = APIRouter(prefix="/wp", tags=["WordPress Blog"])
@@ -133,6 +134,16 @@ async def get_single_post(post_id: int):
     """Get single full post by ID"""
     data, _, _ = fetch_wp_api(f"posts/{post_id}", {"_embed": "1"})
     return transform_post(data)
+
+@wp_router.get("/posts/slug/{slug}")
+async def get_post_by_slug(slug: str):
+    """Get single post by slug"""
+    # WP returns list when using slug filter
+    data, _, _ = fetch_wp_api("posts", {"slug": slug, "_embed": "1"})
+    if not data:
+        raise HTTPException(status_code=404, detail="Post not found")
+    # data is a list; take first
+    return transform_post(data[0])
 
 @wp_router.get("/categories")
 async def get_blog_categories():

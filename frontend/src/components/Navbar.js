@@ -72,11 +72,7 @@ const Navbar = () => {
               className="flex items-center justify-center"
             >
               <div className="bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-md border border-border transition-all duration-300 hover:shadow-lg">
-                <img
-                  src="/logo.png"
-                  alt="Shri Ramya"
-                  className="h-16 md:h-20 lg:h-24 w-auto object-contain"
-                />
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary-foreground">Shri Ramya</h1>
               </div>
             </Link>
 

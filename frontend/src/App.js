@@ -48,7 +48,7 @@ function App() {
                 <Route path="/luxury-collection" element={<LuxuryCollectionPage />} />
                 <Route path="/lookbook" element={<LookbookPage />} />
                 <Route path="/blog" element={<BlogPage />} />
-                <Route path="/blog/:id" element={<BlogPostPage />} />
+                <Route path="/blog/:slug" element={<BlogPostPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/track-order" element={<TrackOrderPage />} />
                 <Route path="/fabric-care" element={<FabricCarePage />} />
