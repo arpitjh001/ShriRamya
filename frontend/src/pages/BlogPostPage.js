@@ -16,7 +16,7 @@ const HTMLRenderer = ({ html, className }) => {
 const BlogPostPage = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, capabilities } = useAuth();
     const [post, setPost] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -137,8 +137,8 @@ const BlogPostPage = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {user?.role === 'admin' && (
-                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/blog/${id}/edit`)} className="text-muted-foreground hover:text-primary gap-2">
+                        {(capabilities.edit_posts || capabilities.edit_others_posts) && (
+                            <Button variant="outline" size="sm" onClick={() => navigate(`/admin/blog/${post.id}/edit`)} className="text-muted-foreground hover:text-primary gap-2">
                                 <Pencil className="h-4 w-4" />
                                 Edit
                             </Button>

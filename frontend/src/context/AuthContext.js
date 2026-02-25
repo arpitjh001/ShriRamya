@@ -6,12 +6,33 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [capabilities, setCapabilities] = useState({
+    edit_posts: false,
+    publish_posts: false,
+    edit_others_posts: false,
+    delete_posts: false
+  });
+
+  const fetchCapabilities = async () => {
+    try {
+      const { blogAPI } = await import('../lib/api');
+      const response = await blogAPI.getCapabilities();
+      if (response.data && response.data.capabilities) {
+        setCapabilities(response.data.capabilities);
+      }
+    } catch (error) {
+      console.error('Failed to fetch capabilities:', error);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       authAPI.getMe()
-        .then((res) => setUser(res.data))
+        .then((res) => {
+          setUser(res.data);
+          fetchCapabilities();
+        })
         .catch(() => {
           localStorage.removeItem('token');
         })
@@ -25,6 +46,7 @@ export const AuthProvider = ({ children }) => {
     const response = await authAPI.login({ email, password });
     localStorage.setItem('token', response.data.access_token);
     setUser(response.data.user);
+    await fetchCapabilities();
     return response.data;
   };
 
@@ -38,10 +60,16 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
+    setCapabilities({
+      edit_posts: false,
+      publish_posts: false,
+      edit_others_posts: false,
+      delete_posts: false
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, capabilities, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

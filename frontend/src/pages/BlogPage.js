@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { blogAPI } from '../lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, User, Search, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
+import { Calendar, User, Search, ChevronLeft, ChevronRight, Tag, Plus } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../context/AuthContext';
 
 const HTMLRenderer = ({ html, className }) => {
   return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
@@ -11,6 +12,7 @@ const HTMLRenderer = ({ html, className }) => {
 
 const BlogPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { capabilities } = useAuth();
 
   const [posts, setPosts] = useState([]);
   const [pagination, setPagination] = useState({ current_page: 1, total_pages: 1 });
@@ -124,6 +126,22 @@ const BlogPage = () => {
         >
           Explore the world of ethnic fashion, masterful craftsmanship, and inspiring styling tips.
         </motion.p>
+
+        {capabilities.edit_posts && (
+          <motion.div
+            className="mt-8 flex justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Button asChild className="rounded-full px-8 py-6 shadow-luxury-lg hover:shadow-luxury transition-all duration-300">
+              <Link to="/admin/blog/new" className="flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Create New Story
+              </Link>
+            </Button>
+          </motion.div>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-12">
@@ -290,8 +308,8 @@ const BlogPage = () => {
                   key={cat.id}
                   onClick={() => handleCategoryFilter(cat.id.toString())}
                   className={`flex justify-between items-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${currentCategory === cat.id.toString()
-                      ? 'bg-secondary/10 text-secondary'
-                      : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'
+                    ? 'bg-secondary/10 text-secondary'
+                    : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'
                     }`}
                 >
                   <span className="flex-1 text-left">{cat.name}</span>
@@ -308,7 +326,7 @@ const BlogPage = () => {
           </div>
         </aside>
       </div>
-    </div>
+    </div >
   );
 };
 

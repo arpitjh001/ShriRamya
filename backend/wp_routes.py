@@ -145,6 +145,46 @@ async def get_post_by_slug(slug: str):
     # data is a list; take first
     return transform_post(data[0])
 
+@wp_router.get("/capabilities")
+async def get_user_capabilities(user=Depends(require_admin)):
+    """Return user capabilities based on role"""
+    role = user.get("role", "customer")
+    return {
+        "role": role,
+        "capabilities": {
+            "edit_posts": role in ["admin", "editor", "author"],
+            "publish_posts": role in ["admin", "editor"],
+            "edit_others_posts": role in ["admin", "editor"],
+            "delete_posts": role == "admin"
+        }
+    }
+
+@wp_router.post("/posts")
+async def create_post(post: PostUpdate, admin=Depends(require_admin)):
+    """Create a new WordPress post"""
+    if admin.get("role") not in ["admin", "editor", "author"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create posts")
+        
+    if not WP_ADMIN_USER or not WP_APP_PASSWORD:
+        raise HTTPException(status_code=500, detail="WordPress credentials not configured")
+        
+    url = f"{WP_API_URL}/posts"
+    post_data = {k: v for k, v in post.model_dump().items() if v is not None}
+    
+    try:
+        response = requests.post(
+            url,
+            json=post_data,
+            auth=(WP_ADMIN_USER, WP_APP_PASSWORD),
+            timeout=10
+        )
+        if response.status_code >= 400:
+            raise HTTPException(status_code=response.status_code, detail=f"WP API Error: {response.text}")
+        return transform_post(response.json())
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to create WordPress post: {str(e)}")
+        raise HTTPException(status_code=502, detail="Failed to connect to WordPress")
+
 @wp_router.get("/categories")
 async def get_blog_categories():
     """Get list of active blog categories"""

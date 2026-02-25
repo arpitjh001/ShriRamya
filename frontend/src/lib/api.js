@@ -338,6 +338,15 @@ export const blogAPI = {
     }
   },
 
+  getCapabilities: async () => {
+    try {
+      return await api.get("/wp/capabilities");
+    } catch (err) {
+      handleError(err);
+      return { data: { capabilities: {} } };
+    }
+  },
+
   updatePost: async (postId, data) => {
     try {
       return await api.put(`/wp/posts/${postId}`, data);
