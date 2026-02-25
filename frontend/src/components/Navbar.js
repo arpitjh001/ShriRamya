@@ -66,8 +66,18 @@ const Navbar = () => {
             </Sheet>
 
             {/* Logo */}
-            <Link to="/" data-testid="logo" className="flex items-center gap-3">
-              <img src="/logo.png" alt="Shri Ramya" className="h-14" />
+            <Link
+              to="/"
+              data-testid="logo"
+              className="flex items-center justify-center"
+            >
+              <div className="bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl shadow-md border border-border transition-all duration-300 hover:shadow-lg">
+                <img
+                  src="/logo.png"
+                  alt="Shri Ramya"
+                  className="h-16 md:h-20 lg:h-24 w-auto object-contain"
+                />
+              </div>
             </Link>
 
             {/* Desktop Menu */}
