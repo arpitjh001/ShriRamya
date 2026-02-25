@@ -11,7 +11,7 @@ const Footer = () => {
           <div>
             <Link to="/">
               <img
-                src={`${process.env.PUBLIC_URL}/logo.svg`}
+                src={`${process.env.PUBLIC_URL}/logo.png`}
                 alt="Shri Ramya"
                 className="footer-logo mb-6"
               />

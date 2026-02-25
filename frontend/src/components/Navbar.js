@@ -88,7 +88,7 @@ const Navbar = () => {
               className="flex items-center justify-center"
             >
               <img
-                src={`${process.env.PUBLIC_URL}/logo.svg`}
+                src={`${process.env.PUBLIC_URL}/logo.png`}
                 alt="Shri Ramya"
                 className="site-logo"
               />
