@@ -12,7 +12,7 @@ import { authAPI } from '../lib/api';
 import { formatPrice } from '../lib/utils';
 import { toast } from 'sonner';
 
-const TABS = ['Products', 'Orders', 'Customers', 'Coupons'];
+const TABS = ['Products', 'Categories', 'Orders', 'Customers', 'Coupons'];
 
 const AdminWooCommercePage = () => {
     const { user, login } = useAuth();
@@ -40,15 +40,19 @@ const AdminWooCommercePage = () => {
 
     // Category management
     const [selectedCategories, setSelectedCategories] = useState([]);
+    const [sizeStock, setSizeStock] = useState([]); // [{size:'S', qty:0}]
+    const [colorStock, setColorStock] = useState([]); // [{color:'Red', qty:0}]
     const [newCategoryName, setNewCategoryName] = useState('');
     const [creatingCategory, setCreatingCategory] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
 
+    /* Size UI moved to proper location */
     // Product form
     const [productForm, setProductForm] = useState({
         name: '', description: '', regular_price: '', sale_price: '',
         stock_quantity: 0, sku: '', status: 'publish', images: [''],
         fabric: '', occasion: '', care_instructions: '',
+        size_stock: [], // will be synced with sizeStock state
     });
 
     // Coupon form
@@ -99,6 +103,7 @@ const AdminWooCommercePage = () => {
     useEffect(() => {
         if (adminCheck !== 'admin') return;
         if (activeTab === 'Products') loadProducts();
+        if (activeTab === 'Categories') loadCategories();
         if (activeTab === 'Orders') loadOrders();
         if (activeTab === 'Customers') loadCustomers();
         if (activeTab === 'Coupons') loadCoupons();
@@ -109,9 +114,16 @@ const AdminWooCommercePage = () => {
         try {
             const data = await wcProductsAPI.getAll({ per_page: 50 });
             setProducts(data.products || []);
+        } catch { toast.error('Failed to load products'); }
+        setLoading(false);
+    };
+
+    const loadCategories = async () => {
+        setLoading(true);
+        try {
             const catData = await wcCategoriesAPI.getAll();
             setCategories(catData.categories || []);
-        } catch { toast.error('Failed to load products'); }
+        } catch { toast.error('Failed to load categories'); }
         setLoading(false);
     };
 
@@ -147,13 +159,28 @@ const AdminWooCommercePage = () => {
         e.preventDefault();
         setLoading(true);
         try {
+            // Validation: Unique Colors
+            const colorNames = colorStock.map(c => c.color.trim().toLowerCase()).filter(Boolean);
+            if (new Set(colorNames).size !== colorNames.length) {
+                toast.error('Each color must be unique.');
+                setLoading(false);
+                return;
+            }
+
+            // Aggregate Total Stock
+            const totalSizeStock = sizeStock.reduce((sum, item) => sum + (parseInt(item.qty) || 0), 0);
+            const totalColorStock = colorStock.reduce((sum, item) => sum + (parseInt(item.qty) || 0), 0);
+            const aggregatedStock = totalSizeStock + totalColorStock;
+
             const data = {
                 ...productForm,
                 regular_price: parseFloat(productForm.regular_price),
                 sale_price: productForm.sale_price ? parseFloat(productForm.sale_price) : null,
-                stock_quantity: parseInt(productForm.stock_quantity),
+                stock_quantity: aggregatedStock || parseInt(productForm.stock_quantity) || 0,
                 images: productForm.images.filter(Boolean),
                 categories: selectedCategories.map(id => ({ id: parseInt(id) })),
+                size_stock: sizeStock,
+                color_stock: colorStock,
             };
             if (editProduct) {
                 await wcProductsAPI.update(editProduct.id, data);
@@ -182,6 +209,17 @@ const AdminWooCommercePage = () => {
     };
 
     const startEditProduct = (product) => {
+        // Load size stock from meta
+        const sizesMeta = product.meta_data?.find(m => m.key === '_sr_sizes');
+        if (sizesMeta && typeof sizesMeta.value === 'string') {
+            try { setSizeStock(JSON.parse(sizesMeta.value)); } catch { setSizeStock([]); }
+        } else { setSizeStock([]); }
+        // Load color stock from meta
+        const colorsMeta = product.meta_data?.find(m => m.key === '_sr_colors');
+        if (colorsMeta && typeof colorsMeta.value === 'string') {
+            try { setColorStock(JSON.parse(colorsMeta.value)); } catch { setColorStock([]); }
+        } else { setColorStock([]); }
+
         setEditProduct(product);
         setProductForm({
             name: product.name || '',
@@ -206,8 +244,11 @@ const AdminWooCommercePage = () => {
             name: '', description: '', regular_price: '', sale_price: '',
             stock_quantity: 0, sku: '', status: 'publish', images: [''],
             fabric: '', occasion: '', care_instructions: '',
+            size_stock: [],
         });
         setSelectedCategories([]);
+        setSizeStock([]);
+        setColorStock([]);
     };
 
     const toggleCategory = (catId) => {
@@ -226,8 +267,7 @@ const AdminWooCommercePage = () => {
                 toast.success(`Category "${newCategoryName}" created!`);
                 setNewCategoryName('');
                 // Refresh categories
-                const catData = await wcCategoriesAPI.getAll();
-                setCategories(catData.categories || []);
+                loadCategories();
                 // Auto-select the new category
                 if (result.id) setSelectedCategories(prev => [...prev, String(result.id)]);
             }
@@ -235,6 +275,17 @@ const AdminWooCommercePage = () => {
             toast.error(err?.response?.data?.detail || 'Failed to create category');
         }
         setCreatingCategory(false);
+    };
+
+    const handleDeleteCategory = async (id) => {
+        if (!window.confirm('Delete this category? This cannot be undone.')) return;
+        try {
+            await wcCategoriesAPI.delete(id);
+            toast.success('Category deleted');
+            loadCategories();
+        } catch (err) {
+            toast.error(err?.response?.data?.detail || 'Failed to delete category');
+        }
     };
 
     const handleImageUpload = async (file) => {
@@ -561,6 +612,78 @@ const AdminWooCommercePage = () => {
                                                 border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0',
                                             }} />
                                     </div>
+                                    {/* Size Stock UI */}
+                                    <div style={{ marginTop: 16 }}>
+                                        <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#e2e8f0' }}>Size Stock</h4>
+                                        {sizeStock.map((item, idx) => (
+                                            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                                                <select value={item.size} onChange={e => {
+                                                    const newArr = [...sizeStock];
+                                                    newArr[idx].size = e.target.value;
+                                                    setSizeStock(newArr);
+                                                }} style={{ padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }}>
+                                                    <option value="">Select size</option>
+                                                    <option value="S">S</option>
+                                                    <option value="M">M</option>
+                                                    <option value="L">L</option>
+                                                    <option value="XL">XL</option>
+                                                </select>
+                                                <input type="number" min="0" placeholder="Qty" value={item.qty}
+                                                    onChange={e => {
+                                                        const newArr = [...sizeStock];
+                                                        newArr[idx].qty = parseInt(e.target.value) || 0;
+                                                        setSizeStock(newArr);
+                                                    }}
+                                                    style={{ width: 80, padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
+                                                <button type="button" onClick={() => setSizeStock(sizeStock.filter((_, i) => i !== idx))}
+                                                    style={{ padding: '0.2rem 0.5rem', borderRadius: 4, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer' }}>✕</button>
+                                            </div>
+                                        ))}
+                                        <button type="button" onClick={() => setSizeStock([...sizeStock, { size: '', qty: 0 }])}
+                                            style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontWeight: 600 }}>
+                                            + Add Size
+                                        </button>
+                                    </div>
+                                    {/* Color Stock UI */}
+                                    <div style={{ marginTop: 16 }}>
+                                        <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#e2e8f0' }}>Color Stock</h4>
+                                        {colorStock.map((item, idx) => (
+                                            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                                                {/* Color Swatch */}
+                                                <div style={{
+                                                    width: 32, height: 32, borderRadius: 6,
+                                                    border: '1px solid rgba(148,163,184,0.3)',
+                                                    background: item.color || 'transparent',
+                                                    flexShrink: 0
+                                                }} />
+                                                <input type="text" placeholder="Color (e.g. Red, #ff0000)" value={item.color}
+                                                    onChange={e => {
+                                                        const newArr = [...colorStock];
+                                                        newArr[idx].color = e.target.value;
+                                                        setColorStock(newArr);
+                                                    }}
+                                                    style={{ flex: 1, padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
+                                                <input type="number" min="0" placeholder="Qty" value={item.qty}
+                                                    onChange={e => {
+                                                        const newArr = [...colorStock];
+                                                        newArr[idx].qty = parseInt(e.target.value) || 0;
+                                                        setColorStock(newArr);
+                                                    }}
+                                                    style={{ width: 80, padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
+                                                <button type="button" onClick={() => setColorStock(colorStock.filter((_, i) => i !== idx))}
+                                                    style={{ padding: '0.2rem 0.5rem', borderRadius: 4, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer' }}>✕</button>
+                                            </div>
+                                        ))}
+                                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
+                                            <button type="button" onClick={() => setColorStock([...colorStock, { color: '', qty: 0 }])}
+                                                style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff', fontWeight: 600 }}>
+                                                + Add Color
+                                            </button>
+                                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                                                Total Variation Stock: {sizeStock.reduce((s, i) => s + (parseInt(i.qty) || 0), 0) + colorStock.reduce((s, i) => s + (parseInt(i.qty) || 0), 0)}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <div style={{ marginTop: 16 }}>
                                         <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 8 }}>Product Images</label>
 
@@ -727,6 +850,36 @@ const AdminWooCommercePage = () => {
                                     No products found. {!loading && 'WooCommerce may not be configured yet.'}
                                 </p>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* ===== CATEGORIES TAB ===== */}
+                {activeTab === 'Categories' && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Categories ({categories.length})</h2>
+                        {/* Add Category */}
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                            <input
+                                value={newCategoryName}
+                                onChange={e => setNewCategoryName(e.target.value)}
+                                placeholder="New category name"
+                                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateCategory())}
+                                style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.85rem' }}
+                            />
+                            <button type="button" onClick={handleCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}
+                                style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', background: newCategoryName.trim() ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.1)', color: '#fff', fontWeight: 600, fontSize: '0.8rem', opacity: !newCategoryName.trim() ? 0.5 : 1 }}
+                            >{creatingCategory ? '...' : '+ Add'}</button>
+                        </div>
+                        {/* Category List */}
+                        <div style={{ border: '1px solid rgba(148,163,184,0.3)', borderRadius: 8, background: 'rgba(255,255,255,0.03)', maxHeight: 300, overflowY: 'auto' }}>
+                            {categories.length === 0 && <p style={{ padding: '0.75rem', color: '#64748b' }}>No categories found.</p>}
+                            {categories.map(cat => (
+                                <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(148,163,184,0.1)' }}>
+                                    <span style={{ color: '#e2e8f0' }}>{cat.name} ({cat.count || 0})</span>
+                                    <button onClick={() => handleDeleteCategory(cat.id)} style={{ padding: '0.2rem 0.5rem', borderRadius: 4, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer', fontSize: '0.75rem' }}>Delete</button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

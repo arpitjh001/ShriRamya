@@ -35,7 +35,7 @@ export const transformWooProduct = (product) => {
     stock_quantity: product.stock_quantity || 0,
 
     luxury_collection:
-      product.tags?.some((t) => t.name === "Luxury") || 
+      product.tags?.some((t) => t.name === "Luxury") ||
       product.luxury_collection === true,
 
     handmade:
@@ -43,14 +43,52 @@ export const transformWooProduct = (product) => {
       product.handmade === true,
 
     // Additional MongoDB fields
-    fabric: product.fabric || null,
-    craft_style: product.craft_style || null,
-    state_of_origin: product.state_of_origin || null,
-    occasion: product.occasion || null,
-    care_instructions: product.care_instructions || null,
+    fabric: product.fabric || product.meta_data?.find(m => m.key === '_sr_fabric')?.value || null,
+    craft_style: product.craft_style || product.meta_data?.find(m => m.key === '_sr_craft_style')?.value || null,
+    state_of_origin: product.state_of_origin || product.meta_data?.find(m => m.key === '_sr_state_of_origin')?.value || null,
+    occasion: product.occasion || product.meta_data?.find(m => m.key === '_sr_occasion')?.value || null,
+    care_instructions: product.care_instructions || product.meta_data?.find(m => m.key === '_sr_care_instructions')?.value || null,
     variations: product.variations || [],
     featured: product.featured || false,
     trending: product.trending || false,
+
+    // Custom Variations from multiple sources
+    size_stock: (() => {
+      // 1. WooCommerce Meta Data
+      const meta = product.meta_data?.find(m => m.key === '_sr_sizes');
+      if (meta && meta.value) {
+        try {
+          const val = typeof meta.value === 'string' ? JSON.parse(meta.value) : meta.value;
+          if (Array.isArray(val)) return val.filter(i => i.size);
+        } catch (e) { }
+      }
+      // 2. MongoDB Direct Field
+      if (Array.isArray(product.size_stock)) return product.size_stock.filter(i => i.size);
+      // 3. Fallback: Derive from variations array (MongoDB Seed Style)
+      if (Array.isArray(product.variations) && product.variations.length > 0 && typeof product.variations[0] === 'object') {
+        const sizes = [...new Set(product.variations.map(v => v.size))].filter(Boolean);
+        if (sizes.length > 0) return sizes.map(s => ({ size: s, qty: product.variations.filter(v => v.size === s).reduce((sum, v) => sum + (v.stock || v.qty || 0), 0) }));
+      }
+      return [];
+    })(),
+    color_stock: (() => {
+      // 1. WooCommerce Meta Data
+      const meta = product.meta_data?.find(m => m.key === '_sr_colors');
+      if (meta && meta.value) {
+        try {
+          const val = typeof meta.value === 'string' ? JSON.parse(meta.value) : meta.value;
+          if (Array.isArray(val)) return val.filter(i => i.color);
+        } catch (e) { }
+      }
+      // 2. MongoDB Direct Field
+      if (Array.isArray(product.color_stock)) return product.color_stock.filter(i => i.color);
+      // 3. Fallback: Derive from variations array (MongoDB Seed Style)
+      if (Array.isArray(product.variations) && product.variations.length > 0 && typeof product.variations[0] === 'object') {
+        const colors = [...new Set(product.variations.map(v => v.color))].filter(Boolean);
+        if (colors.length > 0) return colors.map(c => ({ color: c, qty: product.variations.filter(v => v.color === c).reduce((sum, v) => sum + (v.stock || v.qty || 0), 0) }));
+      }
+      return [];
+    })(),
   };
 };
 

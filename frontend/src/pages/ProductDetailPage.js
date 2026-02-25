@@ -20,6 +20,8 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariation, setSelectedVariation] = useState(null);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [tryOnModalOpen, setTryOnModalOpen] = useState(false);
 
   useEffect(() => {
@@ -45,9 +47,33 @@ const ProductDetailPage = () => {
     fetchProduct();
   }, [id]);
 
+  useEffect(() => {
+    if (product) {
+      console.log('--- Product Debug Info ---');
+      console.log('ID:', product.id);
+      console.log('Raw size_stock:', product.size_stock);
+      console.log('Raw color_stock:', product.color_stock);
+      console.log('Raw variations:', product.variations);
+    }
+  }, [product]);
+
   const handleAddToCart = async () => {
+    if ((product.size_stock?.length > 0 && !selectedSize) || (product.color_stock?.length > 0 && !selectedColor)) {
+      toast.error('Please select both size and color');
+      return;
+    }
     try {
-      await addToCart(product.id, 1, selectedVariation);
+      // Choose between custom variations (size/color) or legacy variations array
+      const hasCustomVariations = product.size_stock?.length > 0 || product.color_stock?.length > 0;
+      let variation = hasCustomVariations
+        ? { size: selectedSize, color: selectedColor }
+        : selectedVariation;
+
+      if (variation && !variation.size && !variation.color) {
+        variation = null;
+      }
+
+      await addToCart(product.id, 1, variation);
       toast.success('Added to cart!');
     } catch (error) {
       toast.error('Failed to add to cart');
@@ -96,7 +122,7 @@ const ProductDetailPage = () => {
               className="w-full h-full object-cover"
             />
           </motion.div>
-          
+
           {product.images.length > 1 && (
             <div className="grid grid-cols-4 gap-4">
               {product.images.map((img, index) => (
@@ -104,9 +130,8 @@ const ProductDetailPage = () => {
                   key={index}
                   data-testid={`product-image-${index}`}
                   onClick={() => setSelectedImage(index)}
-                  className={`aspect-square overflow-hidden rounded border-2 ${
-                    selectedImage === index ? 'border-primary' : 'border-transparent'
-                  }`}
+                  className={`aspect-square overflow-hidden rounded border-2 ${selectedImage === index ? 'border-primary' : 'border-transparent'
+                    }`}
                 >
                   <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
                 </button>
@@ -122,7 +147,7 @@ const ProductDetailPage = () => {
             {product.luxury_collection && <LuxuryBadge />}
           </div>
           <h1 className="text-4xl font-heading font-medium tracking-tight mb-4">{product.name}</h1>
-          
+
           <div className="flex items-center gap-3 mb-6">
             <span className="text-3xl font-medium">{formatPrice(displayPrice)}</span>
             {hasDiscount && (
@@ -137,15 +162,62 @@ const ProductDetailPage = () => {
 
           <p className="text-lg leading-relaxed text-muted-foreground mb-8">{product.description}</p>
 
-          {/* Variations */}
-          {product.variations?.length > 0 && (
+          {/* Custom Size Selection */}
+          {product.size_stock?.length > 0 ? (
+            <div className="mb-6">
+              <h3 className="font-body font-semibold mb-3">Select Size</h3>
+              <div className="flex flex-wrap gap-2">
+                {product.size_stock.map((item, index) => (
+                  <Button
+                    key={index}
+                    variant={selectedSize === item.size ? 'default' : 'outline'}
+                    onClick={() => setSelectedSize(item.size)}
+                    disabled={item.qty === 0}
+                    className={`min-w-[3rem] ${item.qty === 0 ? 'opacity-50 line-through' : ''}`}
+                  >
+                    {item.size}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            product.color_stock?.length > 0 && <div className="mb-2 text-sm text-muted-foreground">Standard size available</div>
+          )}
+
+          {/* Custom Color Selection */}
+          {product.color_stock?.length > 0 && (
             <div className="mb-8">
-              <h3 className="font-body font-semibold mb-4">Select Size & Color</h3>
+              <h3 className="font-body font-semibold mb-3">Select Color</h3>
+              <div className="flex flex-wrap gap-3">
+                {product.color_stock.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedColor(item.color)}
+                    disabled={item.qty === 0}
+                    title={item.color}
+                    className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${selectedColor === item.color ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+                      } ${item.qty === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'}`}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full border border-black/10"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    {item.qty === 0 && <div className="absolute w-10 h-[1px] bg-red-500 rotate-45" />}
+                  </button>
+                ))}
+              </div>
+              {selectedColor && <p className="text-sm mt-2 text-muted-foreground capitalize">Selected: {selectedColor}</p>}
+            </div>
+          )}
+
+          {/* Legacy Variations fallback */}
+          {(!product.size_stock?.length && !product.color_stock?.length && product.variations?.length > 0) && (
+            <div className="mb-8">
+              <h3 className="font-body font-semibold mb-4">Select Variation</h3>
               <div className="flex flex-wrap gap-2">
                 {product.variations.map((variation, index) => (
                   <Button
                     key={index}
-                    data-testid={`variation-${index}`}
                     variant={selectedVariation === variation ? 'default' : 'outline'}
                     onClick={() => setSelectedVariation(variation)}
                   >
@@ -188,10 +260,10 @@ const ProductDetailPage = () => {
           )}
 
           {/* Try-On Modal */}
-          <TryOnModal 
-            open={tryOnModalOpen} 
-            onOpenChange={setTryOnModalOpen} 
-            product={product} 
+          <TryOnModal
+            open={tryOnModalOpen}
+            onOpenChange={setTryOnModalOpen}
+            product={product}
           />
 
           {/* Features */}

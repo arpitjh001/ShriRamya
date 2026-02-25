@@ -17,6 +17,8 @@ import RegionalCollectionsPage from './pages/RegionalCollectionsPage';
 import LuxuryCollectionPage from './pages/LuxuryCollectionPage';
 import LookbookPage from './pages/LookbookPage';
 import BlogPage from './pages/BlogPage';
+import BlogPostPage from './pages/BlogPostPage';
+import AdminBlogEditPage from './pages/AdminBlogEditPage';
 import AboutPage from './pages/AboutPage';
 import TrackOrderPage from './pages/TrackOrderPage';
 import FabricCarePage from './pages/FabricCarePage';
@@ -46,11 +48,13 @@ function App() {
                 <Route path="/luxury-collection" element={<LuxuryCollectionPage />} />
                 <Route path="/lookbook" element={<LookbookPage />} />
                 <Route path="/blog" element={<BlogPage />} />
+                <Route path="/blog/:id" element={<BlogPostPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/track-order" element={<TrackOrderPage />} />
                 <Route path="/fabric-care" element={<FabricCarePage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/admin/woocommerce" element={<AdminWooCommercePage />} />
+                <Route path="/admin/blog/:id/edit" element={<AdminBlogEditPage />} />
                 <Route path="/all-products" element={<AllProductsPage />} />
               </Routes>
             </main>

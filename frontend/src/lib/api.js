@@ -181,10 +181,14 @@ export const cartAPI = {
     }
   },
 
-  updateQuantity: async (productId, quantity, sessionId) => {
+  updateQuantity: async (productId, quantity, sessionId, variation = null) => {
     try {
+      const params = { quantity, session_id: sessionId };
+      if (variation) {
+        params.variation = JSON.stringify(variation);
+      }
       const res = await api.patch(`/cart/item/${productId}`, null, {
-        params: { quantity, session_id: sessionId }
+        params
       });
       return { data: res.data };
     } catch (err) {
@@ -193,10 +197,14 @@ export const cartAPI = {
     }
   },
 
-  remove: async (productId, sessionId) => {
+  remove: async (productId, sessionId, variation = null) => {
     try {
+      const params = { session_id: sessionId };
+      if (variation) {
+        params.variation = JSON.stringify(variation);
+      }
       const res = await api.delete(`/cart/item/${productId}`, {
-        params: { session_id: sessionId }
+        params
       });
       return { data: res.data };
     } catch (err) {
@@ -303,21 +311,51 @@ export const ordersAPI = {
 ========================= */
 
 export const blogAPI = {
-  getAll: async (params) => {
+  getPosts: async (params) => {
     try {
-      return await api.get("/blog", { params });
+      return await api.get("/wp/posts", { params });
+    } catch (err) {
+      handleError(err);
+      return { data: { posts: [], pagination: {} } };
+    }
+  },
+
+  getPostById: async (postId) => {
+    try {
+      return await api.get(`/wp/posts/${postId}`);
+    } catch (err) {
+      handleError(err);
+      return { data: null };
+    }
+  },
+
+  getCategories: async () => {
+    try {
+      return await api.get("/wp/categories");
     } catch (err) {
       handleError(err);
       return { data: [] };
     }
   },
 
-  getBySlug: async (slug) => {
+  updatePost: async (postId, data) => {
     try {
-      return await api.get(`/blog/${slug}`);
+      return await api.put(`/wp/posts/${postId}`, data);
     } catch (err) {
       handleError(err);
-      return { data: null };
+      throw err;
+    }
+  },
+
+  uploadMedia: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      // Let axios automatically set the multipart/form-data boundary
+      return await api.post("/wp/media", formData);
+    } catch (err) {
+      handleError(err);
+      throw err;
     }
   }
 };

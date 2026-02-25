@@ -43,6 +43,8 @@ class WCProductCreate(BaseModel):
     state_of_origin: Optional[str] = None
     occasion: Optional[str] = None
     care_instructions: Optional[str] = None
+    size_stock: Optional[List[Any]] = None
+    color_stock: Optional[List[Any]] = None
 
 
 class WCProductUpdate(BaseModel):
@@ -57,6 +59,8 @@ class WCProductUpdate(BaseModel):
     categories: Optional[List[Any]] = None
     images: Optional[List[Any]] = None
     status: Optional[str] = None
+    size_stock: Optional[List[Any]] = None
+    color_stock: Optional[List[Any]] = None
 
 
 class WCCategoryCreate(BaseModel):

@@ -22,6 +22,7 @@ from woocommerce import API
 import mysql.connector
 from functools import wraps
 import time
+import json
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 # =====================
@@ -570,7 +571,8 @@ async def add_to_cart(data: CartItem, session_id: Optional[str] = Query(None)):
     else:
         existing_index = None
         for i, item in enumerate(cart["items"]):
-            if item["product_id"] == data.product_id:
+            # Compare both product_id AND variation
+            if item["product_id"] == data.product_id and item.get("variation") == data.variation:
                 existing_index = i
                 break
         
@@ -592,7 +594,8 @@ async def add_to_cart(data: CartItem, session_id: Optional[str] = Query(None)):
 async def update_cart_item_quantity(
     product_id: str,
     quantity: int = Query(..., ge=0, le=100),
-    session_id: Optional[str] = Query(None)
+    session_id: Optional[str] = Query(None),
+    variation: Optional[str] = Query(None)
 ):
     """Update cart item quantity with validation"""
     if not session_id:
@@ -605,11 +608,25 @@ async def update_cart_item_quantity(
     if not cart:
         raise HTTPException(404, "Cart not found")
     
+    variation_obj = None
+    if variation:
+        try:
+            variation_obj = json.loads(variation)
+        except:
+            variation_obj = None
+
     item_index = None
     for i, item in enumerate(cart["items"]):
         if item["product_id"] == product_id:
-            item_index = i
-            break
+            # If variation is provided, match it too
+            if variation_obj is not None:
+                if item.get("variation") == variation_obj:
+                    item_index = i
+                    break
+            else:
+                # If no variation provided, match the first one (fallback)
+                item_index = i
+                break
     
     if item_index is None:
         raise HTTPException(404, "Item not found in cart")
@@ -638,26 +655,49 @@ async def update_cart_item_quantity(
 @api_router.delete("/cart/item/{product_id}")
 async def remove_from_cart(
     product_id: str,
-    session_id: Optional[str] = Query(None)
+    session_id: Optional[str] = Query(None),
+    variation: Optional[str] = Query(None)
 ):
     """Remove item from cart"""
-    if not session_id:
-        raise HTTPException(400, "session_id is required")
-    
-    result = await db.carts.update_one(
+    variation_obj = None
+    if variation:
+        try:
+            variation_obj = json.loads(variation)
+        except:
+            variation_obj = None
+
+    cart = await db.carts.find_one({"session_id": session_id})
+    if not cart:
+        raise HTTPException(404, "Cart not found")
+
+    new_items = []
+    item_removed = False
+    for item in cart["items"]:
+        if item["product_id"] == product_id:
+            if variation_obj is not None:
+                if item.get("variation") == variation_obj:
+                    item_removed = True
+                    continue # Skip this item (remove it)
+            else:
+                item_removed = True
+                continue # Skip the first matching item
+        new_items.append(item)
+
+    if not item_removed:
+        raise HTTPException(404, "Item not found in cart")
+
+    await db.carts.update_one(
         {"session_id": session_id},
         {
-            "$pull": {"items": {"product_id": product_id}},
-            "$set": {"updated_at": datetime.now(timezone.utc)}
+            "$set": {
+                "items": new_items,
+                "updated_at": datetime.now(timezone.utc)
+            }
         }
     )
     
-    if result.modified_count == 0:
-        raise HTTPException(404, "Item not found in cart")
-    
-    logger.info(f"Item removed from cart: {product_id}")
-    return {"message": "Item removed from cart"}
-
+    logger.info(f"Item removed from cart: {product_id}, session: {session_id}")
+    return convert_objectid(await db.carts.find_one({"session_id": session_id}, {"_id": 0}))
 @api_router.delete("/cart")
 async def clear_cart(session_id: Optional[str] = Query(None)):
     """Clear entire cart"""
@@ -723,10 +763,11 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 @api_router.post("/upload")
 async def upload_image(
+    request: Request,
     file: UploadFile = File(...),
     admin_user: User = Depends(get_admin_user)
 ):
-    """Upload a product image (admin only)"""
+    """Upload a product image (admin only) and return an absolute URL."""
     # Validate file extension
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -745,8 +786,15 @@ async def upload_image(
     with open(file_path, "wb") as f:
         f.write(contents)
     
-    # Return the public URL
-    image_url = f"/uploads/{unique_name}"
+    # Construct public URL for the uploaded image
+    # Prefer an explicit PUBLIC_BASE_URL env var (e.g., http://localhost)
+    public_base = os.getenv('PUBLIC_BASE_URL')
+    if not public_base:
+        # Fallback: use request base URL but strip any port (Nginx serves on port 80)
+        from urllib.parse import urlparse
+        parsed = urlparse(str(request.base_url))
+        public_base = f"{parsed.scheme}://{parsed.hostname}"  # no port
+    image_url = f"{public_base}/uploads/{unique_name}"
     logger.info(f"Image uploaded: {unique_name} ({len(contents)} bytes) by {admin_user.email}")
     
     return {
@@ -788,6 +836,10 @@ async def upload_multiple_images(
 # Include WooCommerce headless routes
 from wc_routes import wc_router
 api_router.include_router(wc_router)
+
+# Include WordPress headless blog routes
+from wp_routes import wp_router
+api_router.include_router(wp_router)
 
 # Include router
 app.include_router(api_router)

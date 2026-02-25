@@ -165,7 +165,7 @@ const AllProductsPage = () => {
                 {/* Loading */}
                 {loading && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
-                        {[...Array(8)].map((_, i) => (
+                        {[...Array(3)].map((_, i) => (
                             <div key={i} style={{
                                 background: '#fff', borderRadius: 16, overflow: 'hidden',
                                 boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
@@ -206,7 +206,7 @@ const AllProductsPage = () => {
                                                     onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
                                                     onMouseLeave={e => e.target.style.transform = 'scale(1)'} />
                                             ) : (
-                                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '3rem' }}>📷</div>
+                                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '3rem' }}></div>
                                             )}
                                             {hasSale && discount > 0 && (
                                                 <span style={{
@@ -326,7 +326,7 @@ const AllProductsPage = () => {
                                             {imgUrl ? (
                                                 <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                     onError={e => { e.target.style.display = 'none'; }} />
-                                            ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>📷</div>}
+                                            ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}></div>}
                                         </div>
 
                                         {/* Name & Details */}

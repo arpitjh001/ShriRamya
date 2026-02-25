@@ -13,8 +13,8 @@ const CartPage = () => {
   const navigate = useNavigate();
   const [cartProducts, setCartProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updatingItems, setUpdatingItems] = useState(new Set());
-  const [removingItems, setRemovingItems] = useState(new Set());
+  const [updatingItems, setUpdatingItems] = useState(new Set()); // Uses composite key: productId-variationStr
+  const [removingItems, setRemovingItems] = useState(new Set()); // Uses composite key: productId-variationStr
 
   useEffect(() => {
     const loadCartProducts = async () => {
@@ -40,25 +40,27 @@ const CartPage = () => {
     loadCartProducts();
   }, [cart]);
 
-  const updateQuantity = async (productId, newQuantity) => {
+  const updateQuantity = async (productId, newQuantity, variation = null) => {
     const product = cartProducts.find((p) => p.id === productId);
-    
+    const variationStr = variation ? JSON.stringify(variation) : "";
+    const itemKey = `${productId}-${variationStr}`;
+
     // Validation
     if (newQuantity < 0) return;
-    
+
     if (newQuantity > (product?.stock_quantity || 100)) {
       toast.error(`Only ${product?.stock_quantity || 100} items available in stock`);
       return;
     }
 
     // Optimistic update
-    setUpdatingItems(prev => new Set(prev).add(productId));
+    setUpdatingItems(prev => new Set(prev).add(itemKey));
 
     try {
       const sessionId = getSessionId();
-      await cartAPI.updateQuantity(productId, newQuantity, sessionId);
+      await cartAPI.updateQuantity(productId, newQuantity, sessionId, variation);
       await fetchCart();
-      
+
       if (newQuantity === 0) {
         toast.success('Item removed from cart');
       }
@@ -70,32 +72,40 @@ const CartPage = () => {
     } finally {
       setUpdatingItems(prev => {
         const newSet = new Set(prev);
-        newSet.delete(productId);
+        newSet.delete(itemKey);
         return newSet;
       });
     }
   };
 
-  const handleIncrease = (productId) => {
-    const cartItem = cart.items.find(item => item.product_id === productId);
+  const handleIncrease = (productId, variation = null) => {
+    const cartItem = cart.items.find(item =>
+      item.product_id === productId &&
+      JSON.stringify(item.variation) === JSON.stringify(variation)
+    );
     if (cartItem) {
-      updateQuantity(productId, cartItem.quantity + 1);
+      updateQuantity(productId, cartItem.quantity + 1, variation);
     }
   };
 
-  const handleDecrease = (productId) => {
-    const cartItem = cart.items.find(item => item.product_id === productId);
+  const handleDecrease = (productId, variation = null) => {
+    const cartItem = cart.items.find(item =>
+      item.product_id === productId &&
+      JSON.stringify(item.variation) === JSON.stringify(variation)
+    );
     if (cartItem) {
-      updateQuantity(productId, cartItem.quantity - 1);
+      updateQuantity(productId, cartItem.quantity - 1, variation);
     }
   };
 
-  const handleRemove = async (productId) => {
-    setRemovingItems(prev => new Set(prev).add(productId));
-    
+  const handleRemove = async (productId, variation = null) => {
+    const variationStr = variation ? JSON.stringify(variation) : "";
+    const itemKey = `${productId}-${variationStr}`;
+    setRemovingItems(prev => new Set(prev).add(itemKey));
+
     try {
       const sessionId = getSessionId();
-      await cartAPI.remove(productId, sessionId);
+      await cartAPI.remove(productId, sessionId, variation);
       await fetchCart();
       toast.success('Item removed from cart');
     } catch (error) {
@@ -104,7 +114,7 @@ const CartPage = () => {
     } finally {
       setRemovingItems(prev => {
         const newSet = new Set(prev);
-        newSet.delete(productId);
+        newSet.delete(itemKey);
         return newSet;
       });
     }
@@ -167,22 +177,24 @@ const CartPage = () => {
                 if (!product) return null;
 
                 const price = product.sale_price || product.price;
-                const isUpdating = updatingItems.has(item.product_id);
-                const isRemoving = removingItems.has(item.product_id);
+                const variationStr = item.variation ? JSON.stringify(item.variation) : "";
+                const itemKey = `${item.product_id}-${variationStr}`;
+                const isUpdating = updatingItems.has(itemKey);
+                const isRemoving = removingItems.has(itemKey);
 
                 return (
                   <motion.div
-                    key={item.product_id}
+                    key={itemKey}
                     layout
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: isRemoving ? 0.5 : 1, y: 0 }}
                     exit={{ opacity: 0, x: -100, height: 0 }}
                     transition={{ duration: 0.3 }}
-                    data-testid={`cart-item-${item.product_id}`}
+                    data-testid={`cart-item-${itemKey}`}
                     className="flex gap-4 p-4 border border-border rounded bg-background hover:shadow-md transition-shadow"
                   >
-                    <Link 
-                      to={`/products/${product.id}`} 
+                    <Link
+                      to={`/products/${product.id}`}
                       className="w-24 h-24 flex-shrink-0 overflow-hidden rounded"
                     >
                       <img
@@ -206,7 +218,7 @@ const CartPage = () => {
                         </p>
                       )}
                       <p className="text-lg font-medium text-primary">{formatPrice(price)}</p>
-                      
+
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-3 mt-3">
                         <div className="flex items-center border border-border rounded">
@@ -215,37 +227,37 @@ const CartPage = () => {
                             variant="ghost"
                             size="sm"
                             className="h-9 w-9 p-0 hover:bg-muted"
-                            onClick={() => handleDecrease(item.product_id)}
+                            onClick={() => handleDecrease(item.product_id, item.variation)}
                             disabled={isUpdating || isRemoving || item.quantity <= 1}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
-                          
+
                           <div className="h-9 w-12 flex items-center justify-center border-x border-border">
                             {isUpdating ? (
                               <Loader2 className="h-4 w-4 animate-spin text-primary" />
                             ) : (
-                              <span 
-                                data-testid={`quantity-${item.product_id}`}
+                              <span
+                                data-testid={`quantity-${itemKey}`}
                                 className="font-medium"
                               >
                                 {item.quantity}
                               </span>
                             )}
                           </div>
-                          
+
                           <Button
-                            data-testid={`increase-quantity-${item.product_id}`}
+                            data-testid={`increase-quantity-${itemKey}`}
                             variant="ghost"
                             size="sm"
                             className="h-9 w-9 p-0 hover:bg-muted"
-                            onClick={() => handleIncrease(item.product_id)}
+                            onClick={() => handleIncrease(item.product_id, item.variation)}
                             disabled={isUpdating || isRemoving || item.quantity >= (product.stock_quantity || 100)}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
                         </div>
-                        
+
                         {product.stock_quantity && item.quantity >= product.stock_quantity && (
                           <span className="text-xs text-amber-600">Max stock reached</span>
                         )}
@@ -254,10 +266,10 @@ const CartPage = () => {
 
                     <div className="flex flex-col items-end justify-between">
                       <Button
-                        data-testid={`remove-item-${item.product_id}`}
+                        data-testid={`remove-item-${itemKey}`}
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRemove(item.product_id)}
+                        onClick={() => handleRemove(item.product_id, item.variation)}
                         disabled={isRemoving}
                         className="text-muted-foreground hover:text-destructive"
                       >
@@ -267,7 +279,7 @@ const CartPage = () => {
                           <Trash2 className="h-5 w-5" />
                         )}
                       </Button>
-                      
+
                       <div className="text-right">
                         <div className="text-lg font-medium">
                           {formatPrice(price * item.quantity)}
@@ -293,7 +305,7 @@ const CartPage = () => {
             className="border border-border rounded-lg p-6 sticky top-24 bg-background"
           >
             <h2 className="text-xl font-heading font-medium mb-6">Order Summary</h2>
-            
+
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -310,7 +322,7 @@ const CartPage = () => {
                 </span>
               </div>
               {subtotal < 999 && shipping > 0 && (
-                <motion.p 
+                <motion.p
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="text-sm text-muted-foreground bg-accent p-3 rounded"

@@ -67,7 +67,7 @@ const Navbar = () => {
 
             {/* Logo */}
             <Link to="/" data-testid="logo" className="flex items-center gap-3">
-              <img src="/logo.svg" alt="Shri Ramya" className="h-12" />
+              <img src="/logo.png" alt="Shri Ramya" className="h-14" />
             </Link>
 
             {/* Desktop Menu */}

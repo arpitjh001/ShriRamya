@@ -10,6 +10,7 @@ from woocommerce import API
 from requests.auth import HTTPBasicAuth
 from tenacity import retry, stop_after_attempt, wait_exponential
 from datetime import datetime, timezone
+import json
 
 logger = logging.getLogger("shriramya.woocommerce")
 
@@ -151,6 +152,12 @@ class WooCommerceService:
         for field in ["fabric", "craft_style", "state_of_origin", "occasion", "care_instructions"]:
             if data.get(field):
                 meta_data.append({"key": f"_sr_{field}", "value": data[field]})
+        # Size stock meta
+        if data.get("size_stock"):
+            meta_data.append({"key": "_sr_sizes", "value": json.dumps(data["size_stock"])})
+        # Color stock meta
+        if data.get("color_stock"):
+            meta_data.append({"key": "_sr_colors", "value": json.dumps(data["color_stock"])})
         if meta_data:
             product_data["meta_data"] = meta_data
 
@@ -178,6 +185,29 @@ class WooCommerceService:
             update_data["images"] = [{"src": img} if isinstance(img, str) else img for img in data["images"]]
         if "categories" in data:
             update_data["categories"] = [{"id": c} if isinstance(c, int) else c for c in data["categories"]]
+        # Handle metadata overwriting by fetching existing IDs if necessary
+        meta_to_update = []
+        if "size_stock" in data:
+            meta_to_update.append({"key": "_sr_sizes", "value": json.dumps(data["size_stock"])})
+        if "color_stock" in data:
+            meta_to_update.append({"key": "_sr_colors", "value": json.dumps(data["color_stock"])})
+        
+        # Meta values for other ethnic wear fields
+        for field in ["fabric", "craft_style", "state_of_origin", "occasion", "care_instructions"]:
+            if field in data:
+                meta_to_update.append({"key": f"_sr_{field}", "value": data[field]})
+        
+        if meta_to_update:
+            # Fetch existing to get meta IDs to OVERWRITE rather than duplicate
+            existing = self._get(f"products/{product_id}")
+            if existing and existing.get("meta_data"):
+                meta_map = {m["key"]: m["id"] for m in existing["meta_data"]}
+                for meta in meta_to_update:
+                    if meta["key"] in meta_map:
+                        meta["id"] = meta_map[meta["key"]]
+            if "meta_data" not in update_data:
+                update_data["meta_data"] = []
+            update_data["meta_data"].extend(meta_to_update)
 
         return self._put(f"products/{product_id}", update_data)
 

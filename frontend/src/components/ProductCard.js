@@ -14,7 +14,7 @@ const FALLBACK_IMAGE = "/placeholder-product.png";
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
   const { user } = useAuth();
-  
+
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -24,12 +24,12 @@ const ProductCard = ({ product }) => {
 
   const image = useMemo(() => {
     // Handle both formats: transformed (string array) and raw WooCommerce ({src} objects)
-    const imageUrl = 
+    const imageUrl =
       product?.images?.[0] ||  // Transformed format: array of strings
       product?.images?.[0]?.src ||  // Raw WooCommerce format: array of objects
       product?.image ||  // Fallback for single image field
       FALLBACK_IMAGE;
-    
+
     console.log("Product Image URL:", imageUrl, "Product:", product?.name);
     return imageUrl;
   }, [product]);
@@ -41,11 +41,11 @@ const ProductCard = ({ product }) => {
 
   const displayPrice = salePrice > 0 ? salePrice : price;
   const hasDiscount = salePrice > 0 && salePrice < price;
-  
 
-  const category = 
-    product?.categories?.[0]?.name || 
-    (Array.isArray(product?.category) ? product.category[0] : product?.category) || 
+
+  const category =
+    product?.categories?.[0]?.name ||
+    (Array.isArray(product?.category) ? product.category[0] : product?.category) ||
     "";
 
 
@@ -106,10 +106,10 @@ const ProductCard = ({ product }) => {
       <div className="relative overflow-hidden rounded aspect-[3/4] mb-4">
 
         <img
-          src={image}
+          src={image || ""}
           alt={product?.name || "Product"}
           className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
-          onError={(e) => (e.target.src = FALLBACK_IMAGE)}
+          onError={(e) => { e.target.style.display = 'none'; }}
         />
 
         {/* BADGES */}

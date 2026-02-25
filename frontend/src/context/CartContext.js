@@ -14,10 +14,10 @@ export const CartProvider = ({ children }) => {
     try {
       const sessionId = getSessionId();
       console.log("Fetching cart for session:", sessionId);
-      
+
       const response = await cartAPI.get(sessionId);
       console.log("Fetch cart response:", response);
-      
+
       setCart(response.data || { items: [] });
     } catch (error) {
       console.error('Failed to fetch cart:', error);
@@ -35,13 +35,13 @@ export const CartProvider = ({ children }) => {
     try {
       const sessionId = getSessionId();
       console.log("Adding to cart:", { productId, quantity, variation, sessionId });
-      
+
       const response = await cartAPI.add({
         product_id: productId,
         quantity,
         variation,
       }, sessionId);
-      
+
       console.log("Add to cart response:", response);
       setCart(response.data);
       return response.data;
@@ -51,11 +51,23 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const removeFromCart = async (productId) => {
+  const updateQuantity = async (productId, quantity, variation = null) => {
     try {
       const sessionId = getSessionId();
-      await cartAPI.remove(productId, sessionId);
-      await fetchCart();
+      const response = await cartAPI.updateQuantity(productId, quantity, sessionId, variation);
+      setCart(response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      throw error;
+    }
+  };
+
+  const removeFromCart = async (productId, variation = null) => {
+    try {
+      const sessionId = getSessionId();
+      const response = await cartAPI.remove(productId, sessionId, variation);
+      setCart(response.data);
     } catch (error) {
       console.error('Failed to remove from cart:', error);
       throw error;
@@ -76,7 +88,7 @@ export const CartProvider = ({ children }) => {
   const cartCount = cart.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   return (
-    <CartContext.Provider value={{ cart, loading, addToCart, removeFromCart, clearCart, fetchCart, cartCount }}>
+    <CartContext.Provider value={{ cart, loading, addToCart, removeFromCart, updateQuantity, clearCart, fetchCart, cartCount }}>
       {children}
     </CartContext.Provider>
   );
