@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Heart, User, Menu, X, Search } from 'lucide-react';
+import { ShoppingCart, Heart, User, Menu, X, Search, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { Button } from './ui/button';
@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import AuthDialog from './AuthDialog';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, capabilities, logout } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -26,8 +26,24 @@ const Navbar = () => {
     <>
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         {/* Top Bar */}
-        <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-body">
-          Free Shipping on Orders Above ₹999 | Authentic Handcrafted Collection
+        <div className="bg-primary text-primary-foreground py-2 text-xs md:text-sm font-body px-6 md:px-12 lg:px-24 flex items-center justify-between">
+          <div className="flex-1 text-center">
+            Free Shipping on Orders Above ₹999 | Authentic Handcrafted Collection
+          </div>
+          {(user?.role === 'admin' || capabilities?.edit_posts) && (
+            <div className="flex items-center ml-4">
+              <a
+                href="/wp/wp-admin/admin.php?page=wc-admin"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-md border border-white/10 transition-all text-[10px] md:text-xs font-medium"
+              >
+                <ExternalLink className="h-3 w-3" />
+                <span className="hidden sm:inline">WP Admin</span>
+                <span className="sm:hidden">WP</span>
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Main Navbar */}
