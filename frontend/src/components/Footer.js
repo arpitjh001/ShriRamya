@@ -9,7 +9,13 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
           <div>
-            <h3 className="text-2xl font-heading font-medium text-primary mb-4">Shri Ramya</h3>
+            <Link to="/">
+              <img
+                src={`${process.env.PUBLIC_URL}/logo.png`}
+                alt="Shri Ramya"
+                className="footer-logo mb-6"
+              />
+            </Link>
             <p className="text-muted-foreground mb-4 leading-relaxed">
               Authentic handcrafted ethnic wear celebrating the rich heritage of Rajasthan and India.
             </p>
