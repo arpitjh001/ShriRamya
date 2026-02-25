@@ -18,6 +18,7 @@ import LuxuryCollectionPage from './pages/LuxuryCollectionPage';
 import LookbookPage from './pages/LookbookPage';
 import BlogPage from './pages/BlogPage';
 import BlogPostPage from './pages/BlogPostPage';
+import BlogCreatePage from './pages/BlogCreatePage';
 import AdminBlogEditPage from './pages/AdminBlogEditPage';
 import AboutPage from './pages/AboutPage';
 import TrackOrderPage from './pages/TrackOrderPage';
@@ -49,6 +50,7 @@ function App() {
                 <Route path="/lookbook" element={<LookbookPage />} />
                 <Route path="/blog" element={<BlogPage />} />
                 <Route path="/blog/:slug" element={<BlogPostPage />} />
+                <Route path="/admin/blog/new" element={<BlogCreatePage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/track-order" element={<TrackOrderPage />} />
                 <Route path="/fabric-care" element={<FabricCarePage />} />

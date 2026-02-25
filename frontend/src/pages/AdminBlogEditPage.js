@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 const AdminBlogEditPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, capabilities } = useAuth();
     const fileInputRef = useRef(null);
 
     const [loading, setLoading] = useState(true);
@@ -27,10 +27,10 @@ const AdminBlogEditPage = () => {
     const [featuredImageUrl, setFeaturedImageUrl] = useState('');
 
     useEffect(() => {
-        // Admin check
-        if (!user || user.role !== 'admin') {
-            toast.error('Admin access required');
-            navigate('/');
+        // RBAC check
+        if (!capabilities.edit_posts && !capabilities.edit_others_posts) {
+            toast.error('Insufficient permissions to edit stories');
+            navigate('/blog');
             return;
         }
 
@@ -83,11 +83,12 @@ const AdminBlogEditPage = () => {
 
     const handleCategoryChange = (catId) => {
         setPostData(prev => {
-            const isSelected = prev.categories.includes(catId);
+            const currentCats = Array.isArray(prev.categories) ? prev.categories : [];
+            const isSelected = currentCats.includes(catId);
             if (isSelected) {
-                return { ...prev, categories: prev.categories.filter(id => id !== catId) };
+                return { ...prev, categories: currentCats.filter(id => id !== catId) };
             } else {
-                return { ...prev, categories: [...prev.categories, catId] };
+                return { ...prev, categories: [...currentCats, catId] };
             }
         });
     };
@@ -126,9 +127,14 @@ const AdminBlogEditPage = () => {
         setSaving(true);
 
         try {
-            await blogAPI.updatePost(id, postData);
+            const response = await blogAPI.updatePost(id, postData);
             toast.success('Post updated successfully!');
-            navigate(`/blog/${id}`);
+            // After update, redirect to the blog list or the updated post slug
+            if (response.data && response.data.slug) {
+                navigate(`/blog/${response.data.slug}`);
+            } else {
+                navigate('/blog');
+            }
         } catch (error) {
             console.error('Update failed:', error);
             toast.error('Failed to update post');
@@ -252,9 +258,13 @@ const AdminBlogEditPage = () => {
                                 <label className="block text-sm font-medium mb-4">Categories</label>
                                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                                     {categories.map(cat => (
-                                        <label key={cat.id} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded cursor-pointer transition-colors">
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${postData.categories.includes(cat.id) ? 'bg-primary border-primary' : 'bg-background border-border'}`}>
-                                                {postData.categories.includes(cat.id) && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
+                                        <label
+                                            key={cat.id}
+                                            className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded cursor-pointer transition-colors"
+                                            onClick={() => handleCategoryChange(cat.id)}
+                                        >
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${postData.categories?.includes(cat.id) ? 'bg-primary border-primary' : 'bg-background border-border'}`}>
+                                                {postData.categories?.includes(cat.id) && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
                                             </div>
                                             <span className="text-sm">{cat.name}</span>
                                         </label>

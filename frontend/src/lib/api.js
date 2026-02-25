@@ -360,8 +360,16 @@ export const blogAPI = {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      // Let axios automatically set the multipart/form-data boundary
       return await api.post("/wp/media", formData);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  createPost: async (data) => {
+    try {
+      return await api.post("/wp/posts", data);
     } catch (err) {
       handleError(err);
       throw err;

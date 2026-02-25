@@ -36,11 +36,16 @@ export const CartProvider = ({ children }) => {
       const sessionId = getSessionId();
       console.log("Adding to cart:", { productId, quantity, variation, sessionId });
 
-      const response = await cartAPI.add({
-        product_id: productId,
+      const payload = {
+        product_id: Number(productId),
         quantity,
-        variation,
-      }, sessionId);
+      };
+
+      if (variation && Object.keys(variation).length) {
+        payload.variation = variation;
+      }
+
+      const response = await cartAPI.add(payload, sessionId);
 
       console.log("Add to cart response:", response);
       setCart(response.data);

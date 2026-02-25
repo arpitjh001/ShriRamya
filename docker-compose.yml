@@ -22,13 +22,17 @@ services:
     restart: always
     depends_on:
       - mysql
+    volumes:
+      - wordpress_data:/var/www/html
     environment:
       WORDPRESS_DB_HOST: mysql:3306
       WORDPRESS_DB_USER: wpuser
       WORDPRESS_DB_PASSWORD: wppassword
       WORDPRESS_DB_NAME: shriramya
-    volumes:
-      - wordpress_data:/var/www/html
+      WORDPRESS_CONFIG_EXTRA: |
+        @ini_set( 'upload_max_filesize', '64M' );
+        @ini_set( 'post_max_size', '64M' );
+        @ini_set( 'memory_limit', '256M' );
 
   mongodb:
     image: mongo:6
