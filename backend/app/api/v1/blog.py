@@ -31,3 +31,15 @@ async def update_post(post_id: int, post_in: BlogPostUpdate, admin: dict = Depen
 async def delete_post(post_id: int, admin: dict = Depends(get_current_admin)):
     result = await blog_service.delete_post(post_id)
     return success_response(data=result, message="Blog post deleted successfully")
+
+@router.get("/capabilities")
+async def get_capabilities(current_user: dict = Depends(get_current_admin)):
+    # If they are an admin, they have all capabilities
+    return success_response(data={
+        "capabilities": {
+            "edit_posts": True,
+            "publish_posts": True,
+            "edit_others_posts": True,
+            "delete_posts": True
+        }
+    })

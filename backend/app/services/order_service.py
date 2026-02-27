@@ -14,7 +14,7 @@ class OrderService:
             "line_items": items,
             "meta_data": [{"key": "_customer_user_id", "value": user_id}]
         }
-        wc_order = wc_client.create_order(wc_order_data)
+        wc_order = await wc_client.create_order(wc_order_data)
         if "error" in wc_order:
             raise AppException(message=f"WooCommerce Order Creation Failed: {wc_order.get('detail')}")
 
@@ -62,7 +62,7 @@ class OrderService:
             raise AppException(message="Order Not Found")
 
         # 3. Mark WooCommerce order as paid
-        wc_client.update_order(order["wc_order_id"], {"status": "processing", "set_paid": True})
+        await wc_client.update_order(order["wc_order_id"], {"status": "processing", "set_paid": True})
 
         # 4. Update internal order status
         await db_client.db.orders.update_one(
@@ -81,24 +81,24 @@ class OrderService:
         params = {}
         if user_id:
             params["customer"] = int(user_id)
-        res = wc_client.get_orders(params)
+        res = await wc_client.get_orders(params)
         if isinstance(res, dict) and res.get("error"):
             return []
         return res
 
     async def get_order_by_id(self, order_id: int, user_id: Optional[str] = None) -> Dict:
-        order = self._handle_response(wc_client.get_order(order_id))
+        order = self._handle_response(await wc_client.get_order(order_id))
         if user_id and str(order.get("customer_id")) != str(user_id):
             raise AppException(message="Not authorized to view this order")
         return order
 
     async def create_wc_order(self, data: Dict) -> Dict:
-        return self._handle_response(wc_client.create_order(data))
+        return self._handle_response(await wc_client.create_order(data))
     
     async def update_wc_order(self, order_id: int, data: Dict) -> Dict:
-        return self._handle_response(wc_client.update_order(order_id, data))
+        return self._handle_response(await wc_client.update_order(order_id, data))
 
     async def delete_wc_order(self, order_id: int) -> Dict:
-        return self._handle_response(wc_client.delete_order(order_id))
+        return self._handle_response(await wc_client.delete_order(order_id))
 
 order_service = OrderService()

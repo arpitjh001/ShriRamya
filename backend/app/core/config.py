@@ -20,14 +20,22 @@ class Settings(BaseSettings):
     MONGO_URL: str = "mongodb://mongodb:27017/"
     DB_NAME: str = "shriramya"
     
+    # MySQL (for direct checks or alternate storage)
+    MYSQL_HOST: str = "mysql"
+    MYSQL_PORT: int = 3306
+    MYSQL_USER: str = "wpuser"
+    MYSQL_PASSWORD: str = "wppassword"
+    MYSQL_DATABASE: str = "shriramya"
+
     # WooCommerce
-    WOOCOMMERCE_URL: str = ""
+    WOOCOMMERCE_URL: str = "http://wordpress"
     WOOCOMMERCE_CONSUMER_KEY: str = ""
     WOOCOMMERCE_CONSUMER_SECRET: str = ""
     WOOCOMMERCE_VERIFY_SSL: bool = False
+    WOOCOMMERCE_TIMEOUT: int = 60
     
-    # WordPress Admin (for media/blog)
-    WP_ADMIN_USER: str = ""
+    # WordPress Admin
+    WP_ADMIN_USER: str = "admin"
     WP_APP_PASSWORD: str = ""
     
     # Razorpay
@@ -38,6 +46,6 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "*"
 
-
+    model_config = SettingsConfigDict(env_file="backend/.env", extra="ignore")
 
 settings = Settings()

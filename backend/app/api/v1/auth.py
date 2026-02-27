@@ -19,3 +19,8 @@ async def login(login_data: UserLogin):
 @router.get("/me", response_model=APIResponse[UserResponse])
 async def get_me(current_user: dict = Depends(get_current_user)):
     return success_response(data=current_user)
+
+@router.get("/check-admin")
+async def check_admin(current_user: dict = Depends(get_current_user)):
+    is_admin = current_user.get("role") == "admin"
+    return success_response(data={"is_admin": is_admin})

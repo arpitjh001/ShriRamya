@@ -302,7 +302,7 @@ const AdminWooCommercePage = () => {
             const formData = new FormData();
             formData.append('file', file);
             const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api/upload`, {
+            const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8002'}/api/v1/upload`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData,
@@ -692,7 +692,7 @@ const AdminWooCommercePage = () => {
                                             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
                                                 {productForm.images.filter(Boolean).map((img, idx) => (
                                                     <div key={idx} style={{ position: 'relative', width: 90, height: 90 }}>
-                                                        <img src={img.startsWith('/') ? `${window.location.origin.replace(':3000', ':8000')}${img}` : img}
+                                                        <img src={img.startsWith('/') ? `${window.location.origin.replace(':3002', ':8002').replace(':3000', ':8002')}${img}` : img}
                                                             alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 10, border: '1px solid rgba(148,163,184,0.3)' }}
                                                             onError={e => { e.target.style.display = 'none'; }} />
                                                         <button type="button" onClick={() => {

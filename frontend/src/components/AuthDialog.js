@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,7 +11,8 @@ const AuthDialog = ({ open, onOpenChange }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
-  
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,8 +26,13 @@ const AuthDialog = ({ open, onOpenChange }) => {
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
+        const data = await login(formData.email, formData.password);
         toast.success('Welcome back!');
+
+        // Redirect based on role
+        if (data.user?.role === 'admin') {
+          navigate('/admin/woocommerce');
+        }
       } else {
         await register(formData);
         toast.success('Account created successfully!');

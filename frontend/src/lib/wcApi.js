@@ -5,7 +5,7 @@
 
 import api from './api';
 
-const WC_BASE = '/wc';
+const WC_BASE = '';
 
 /* =========================
    PRODUCTS
@@ -14,8 +14,8 @@ const WC_BASE = '/wc';
 export const wcProductsAPI = {
   getAll: async (params = {}) => {
     try {
-      const res = await api.get(`${WC_BASE}/products`, { params });
-      return res.data;
+      const res = await api.get(`/products`, { params });
+      return { products: Array.isArray(res.data) ? res.data : [] };
     } catch (err) {
       console.error('WC Products fetch error:', err);
       return { products: [], page: 1, per_page: 20 };
@@ -24,7 +24,7 @@ export const wcProductsAPI = {
 
   getById: async (id) => {
     try {
-      const res = await api.get(`${WC_BASE}/products/${id}`);
+      const res = await api.get(`/products/${id}`);
       return res.data;
     } catch (err) {
       console.error('WC Product fetch error:', err);
@@ -33,17 +33,17 @@ export const wcProductsAPI = {
   },
 
   create: async (data) => {
-    const res = await api.post(`${WC_BASE}/products`, data);
+    const res = await api.post(`/products`, data);
     return res.data;
   },
 
   update: async (id, data) => {
-    const res = await api.put(`${WC_BASE}/products/${id}`, data);
+    const res = await api.put(`/products/${id}`, data);
     return res.data;
   },
 
   delete: async (id) => {
-    const res = await api.delete(`${WC_BASE}/products/${id}`);
+    const res = await api.delete(`/products/${id}`);
     return res.data;
   },
 };
@@ -55,8 +55,8 @@ export const wcProductsAPI = {
 export const wcCategoriesAPI = {
   getAll: async () => {
     try {
-      const res = await api.get(`${WC_BASE}/categories`);
-      return res.data;
+      const res = await api.get(`/products/categories`);
+      return { categories: Array.isArray(res.data) ? res.data : [] };
     } catch (err) {
       console.error('WC Categories fetch error:', err);
       return { categories: [] };
@@ -64,12 +64,12 @@ export const wcCategoriesAPI = {
   },
 
   create: async (data) => {
-    const res = await api.post(`${WC_BASE}/categories`, data);
+    const res = await api.post(`/products/categories`, data);
     return res.data;
   },
 
   delete: async (id) => {
-    const res = await api.delete(`${WC_BASE}/categories/${id}`);
+    const res = await api.delete(`/products/categories/${id}`);
     return res.data;
   },
 };
@@ -81,8 +81,8 @@ export const wcCategoriesAPI = {
 export const wcOrdersAPI = {
   getAll: async (params = {}) => {
     try {
-      const res = await api.get(`${WC_BASE}/orders`, { params });
-      return res.data;
+      const res = await api.get(`/orders`, { params });
+      return { orders: Array.isArray(res.data) ? res.data : [] };
     } catch (err) {
       console.error('WC Orders fetch error:', err);
       return { orders: [], page: 1 };
@@ -91,7 +91,7 @@ export const wcOrdersAPI = {
 
   getById: async (id) => {
     try {
-      const res = await api.get(`${WC_BASE}/orders/${id}`);
+      const res = await api.get(`/orders/${id}`);
       return res.data;
     } catch (err) {
       console.error('WC Order fetch error:', err);
@@ -100,24 +100,24 @@ export const wcOrdersAPI = {
   },
 
   create: async (data) => {
-    const res = await api.post(`${WC_BASE}/orders`, data);
+    const res = await api.post(`/orders`, data);
     return res.data;
   },
 
   updateStatus: async (id, status) => {
-    const res = await api.patch(`${WC_BASE}/orders/${id}/status`, { status });
+    const res = await api.patch(`/orders/${id}/status`, { status });
     return res.data;
   },
 
   markPaid: async (id, transactionId) => {
-    const res = await api.post(`${WC_BASE}/orders/${id}/paid`, {
+    const res = await api.post(`/orders/${id}/paid`, {
       transaction_id: transactionId,
     });
     return res.data;
   },
 
   addNote: async (id, note) => {
-    const res = await api.post(`${WC_BASE}/orders/${id}/notes`, null, {
+    const res = await api.post(`/orders/${id}/notes`, null, {
       params: { note },
     });
     return res.data;
@@ -131,8 +131,8 @@ export const wcOrdersAPI = {
 export const wcCustomersAPI = {
   getAll: async (params = {}) => {
     try {
-      const res = await api.get(`${WC_BASE}/customers`, { params });
-      return res.data;
+      const res = await api.get(`/customers`, { params });
+      return { customers: Array.isArray(res.data) ? res.data : [] };
     } catch (err) {
       console.error('WC Customers fetch error:', err);
       return { customers: [], page: 1 };
@@ -141,7 +141,7 @@ export const wcCustomersAPI = {
 
   getById: async (id) => {
     try {
-      const res = await api.get(`${WC_BASE}/customers/${id}`);
+      const res = await api.get(`/customers/${id}`);
       return res.data;
     } catch (err) {
       console.error('WC Customer fetch error:', err);
@@ -150,18 +150,18 @@ export const wcCustomersAPI = {
   },
 
   create: async (data) => {
-    const res = await api.post(`${WC_BASE}/customers`, data);
+    const res = await api.post(`/customers`, data);
     return res.data;
   },
 
   update: async (id, data) => {
-    const res = await api.put(`${WC_BASE}/customers/${id}`, data);
+    const res = await api.put(`/customers/${id}`, data);
     return res.data;
   },
 
   lookupByEmail: async (email) => {
     try {
-      const res = await api.get(`${WC_BASE}/customers/lookup/${email}`);
+      const res = await api.get(`/customers/lookup/${email}`);
       return res.data;
     } catch (err) {
       return null;
@@ -176,8 +176,8 @@ export const wcCustomersAPI = {
 export const wcCouponsAPI = {
   getAll: async () => {
     try {
-      const res = await api.get(`${WC_BASE}/coupons`);
-      return res.data;
+      const res = await api.get(`/coupons`);
+      return { coupons: Array.isArray(res.data) ? res.data : [] };
     } catch (err) {
       console.error('WC Coupons fetch error:', err);
       return { coupons: [] };
@@ -185,13 +185,13 @@ export const wcCouponsAPI = {
   },
 
   create: async (data) => {
-    const res = await api.post(`${WC_BASE}/coupons`, data);
+    const res = await api.post(`/coupons`, data);
     return res.data;
   },
 
   validate: async (code) => {
     try {
-      const res = await api.get(`${WC_BASE}/coupons/validate/${code}`);
+      const res = await api.get(`/coupons/validate/${code}`);
       return res.data;
     } catch (err) {
       return { valid: false, reason: 'Validation failed' };
@@ -206,7 +206,7 @@ export const wcCouponsAPI = {
 export const wcReportsAPI = {
   getSales: async (period = 'month') => {
     try {
-      const res = await api.get(`${WC_BASE}/reports/sales`, { params: { period } });
+      const res = await api.get(`/reports/sales`, { params: { period } });
       return res.data;
     } catch (err) {
       console.error('WC Sales report error:', err);
@@ -216,7 +216,7 @@ export const wcReportsAPI = {
 
   getTopSellers: async (period = 'month') => {
     try {
-      const res = await api.get(`${WC_BASE}/reports/top-sellers`, { params: { period } });
+      const res = await api.get(`/reports/top-sellers`, { params: { period } });
       return res.data;
     } catch (err) {
       console.error('WC Top sellers error:', err);

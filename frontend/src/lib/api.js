@@ -148,7 +148,7 @@ export const productsAPI = {
   /* ---- Categories ---- */
   getCategories: async () => {
     try {
-      return await api.get("/categories");
+      return await api.get("/products/categories");
     } catch (err) {
       handleError(err);
       return { data: [] };
@@ -333,7 +333,7 @@ export const ordersAPI = {
 export const blogAPI = {
   getPosts: async (params) => {
     try {
-      return await api.get("/wp/posts", { params });
+      return await api.get("/blog/posts", { params });
     } catch (err) {
       handleError(err);
       return { data: { posts: [], pagination: {} } };
@@ -342,7 +342,7 @@ export const blogAPI = {
 
   getPostById: async (postId) => {
     try {
-      return await api.get(`/wp/posts/${postId}`);
+      return await api.get(`/blog/posts/${postId}`);
     } catch (err) {
       handleError(err);
       return { data: null };
@@ -351,7 +351,7 @@ export const blogAPI = {
 
   getCategories: async () => {
     try {
-      return await api.get("/wp/categories");
+      return await api.get("/blog/categories");
     } catch (err) {
       handleError(err);
       return { data: [] };
@@ -360,7 +360,7 @@ export const blogAPI = {
 
   getCapabilities: async () => {
     try {
-      return await api.get("/wp/capabilities");
+      return await api.get("/blog/capabilities");
     } catch (err) {
       handleError(err);
       return { data: { capabilities: {} } };
