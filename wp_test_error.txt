@@ -1,0 +1,254 @@
+﻿
+
+IsMutuallyAuthenti : F
+                     a
+                     l
+                     s
+                     e
+Cookies            : {
+                     }
+Headers            : {
+                     X
+                     -
+                     R
+                     o
+                     b
+                     o
+                     t
+                     s
+                     -
+                     T
+                     a
+                     g
+                     ,
+                      
+                     L
+                     i
+                     n
+                     k
+                     ,
+                      
+                     X
+                     -
+                     C
+                     o
+                     n
+                     t
+                     e
+                     n
+                     t
+                     -
+                     T
+                     y
+                     p
+                     e
+                     -
+                     O
+                     p
+                     t
+                     i
+                     o
+                     n
+                     s
+                     ,
+                      
+                     A
+                     c
+                     c
+                     e
+                     s
+                     s
+                     -
+                     C
+                     o
+                     n
+                     t
+                     r
+                     o
+                     l
+                     -
+                     E
+                     x
+                     p
+                     o
+                     s
+                     e
+                     -
+                     H
+                     e
+                     a
+                     d
+                     e
+                     r
+                     s
+                     .
+                     .
+                     .
+                     }
+SupportsHeaders    : T
+                     r
+                     u
+                     e
+ContentLength      : 9
+                     6
+ContentEncoding    : 
+ContentType        : a
+                     p
+                     p
+                     l
+                     i
+                     c
+                     a
+                     t
+                     i
+                     o
+                     n
+                     /
+                     j
+                     s
+                     o
+                     n
+                     ;
+                      
+                     c
+                     h
+                     a
+                     r
+                     s
+                     e
+                     t
+                     =
+                     U
+                     T
+                     F
+                     -
+                     8
+CharacterSet       : U
+                     T
+                     F
+                     -
+                     8
+Server             : A
+                     p
+                     a
+                     c
+                     h
+                     e
+                     /
+                     2
+                     .
+                     4
+                     .
+                     6
+                     6
+                      
+                     (
+                     D
+                     e
+                     b
+                     i
+                     a
+                     n
+                     )
+LastModified       : 2
+                     /
+                     2
+                     7
+                     /
+                     2
+                     0
+                     2
+                     6
+                      
+                     8
+                     :
+                     5
+                     8
+                     :
+                     1
+                     8
+                      
+                     A
+                     M
+StatusCode         : U
+                     n
+                     a
+                     u
+                     t
+                     h
+                     o
+                     r
+                     i
+                     z
+                     e
+                     d
+StatusDescription  : U
+                     n
+                     a
+                     u
+                     t
+                     h
+                     o
+                     r
+                     i
+                     z
+                     e
+                     d
+ProtocolVersion    : 1
+                     .
+                     1
+ResponseUri        : h
+                     t
+                     t
+                     p
+                     :
+                     /
+                     /
+                     l
+                     o
+                     c
+                     a
+                     l
+                     h
+                     o
+                     s
+                     t
+                     :
+                     8
+                     0
+                     8
+                     1
+                     /
+                     w
+                     p
+                     -
+                     j
+                     s
+                     o
+                     n
+                     /
+                     w
+                     p
+                     /
+                     v
+                     2
+                     /
+                     u
+                     s
+                     e
+                     r
+                     s
+                     /
+                     m
+                     e
+Method             : G
+                     E
+                     T
+IsFromCache        : F
+                     a
+                     l
+                     s
+                     e
+
+
+

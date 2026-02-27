@@ -11,7 +11,7 @@ if (!BACKEND_URL) {
   throw new Error("REACT_APP_BACKEND_URL is not defined");
 }
 
-const API = `${BACKEND_URL}/api`;
+const API = `${BACKEND_URL}/api/v1`;
 
 /* =========================
    Axios Instance
@@ -24,6 +24,26 @@ const api = axios.create({
   },
   timeout: 15000
 });
+
+/* =========================
+   Response Interceptor
+========================= */
+
+api.interceptors.response.use(
+  (response) => {
+    // If the response follows our standard format { success, message, data }
+    // we extract the data directly for easier consumption.
+    if (response.data && response.data.hasOwnProperty('success')) {
+      if (response.data.success) {
+        return { ...response, data: response.data.data };
+      } else {
+        return Promise.reject(new Error(response.data.message || 'API Error'));
+      }
+    }
+    return response;
+  },
+  (error) => Promise.reject(error)
+);
 
 /* =========================
    Request Interceptor

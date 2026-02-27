@@ -23,16 +23,14 @@ services:
     depends_on:
       - mysql
     volumes:
-      - wordpress_data:/var/www/html
+      - ./wordpress:/var/www/html
+      - ./uploads:/var/www/html/wp-content/uploads
+      - ./wordpress_conf/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     environment:
       WORDPRESS_DB_HOST: mysql:3306
       WORDPRESS_DB_USER: wpuser
       WORDPRESS_DB_PASSWORD: wppassword
       WORDPRESS_DB_NAME: shriramya
-      WORDPRESS_CONFIG_EXTRA: |
-        @ini_set( 'upload_max_filesize', '64M' );
-        @ini_set( 'post_max_size', '64M' );
-        @ini_set( 'memory_limit', '256M' );
 
   mongodb:
     image: mongo:6
@@ -50,6 +48,7 @@ services:
     depends_on:
       - mongodb
       - mysql
+      - wordpress
     environment:
       MONGO_URL: mongodb://mongodb:27017/
       DB_NAME: shriramya
@@ -82,6 +81,5 @@ services:
 
 volumes:
   mysql_data:
-  wordpress_data:
   mongo_data:
   upload_data:
