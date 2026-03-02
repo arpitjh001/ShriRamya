@@ -25,6 +25,24 @@ class ProductService {
     throw new Error(error.response?.data?.message || defaultMessage || error.message);
   }
 
+  _transformImages(images) {
+    if (!images || !Array.isArray(images)) return [];
+    return images.map((img) => {
+      let src = typeof img === 'string' ? img : (img.src || '');
+      if (!src) return null;
+
+      // Robust Internal Docker Transformation
+      // Convert browser-accessible localhost:8080 to container-accessible backend:8000
+      if (src.includes('localhost:8080/uploads/')) {
+        src = src.replace('localhost:8080/uploads/', 'backend:8000/uploads/');
+      } else if (src.includes('127.0.0.1:8080/uploads/')) {
+        src = src.replace('127.0.0.1:8080/uploads/', 'backend:8000/uploads/');
+      }
+
+      return { src };
+    }).filter(Boolean);
+  }
+
   /**
    * ---------- GET APIs ----------
    */
@@ -85,88 +103,122 @@ class ProductService {
       const {
         name,
         description,
+        regular_price,
+        sale_price,
+        stock_quantity,
+        sku,
+        status,
+        images,
+        categoryId,
+        categories,
+        fabric,
+        occasion,
+        care_instructions,
+        size_stock,
+        color_stock,
+        // legacy
         price,
         stock,
-        categoryId,
-        colors,
-        sizes,
+        colors: legacyColors,
+        sizes: legacySizes,
       } = productData;
 
       if (!name) throw new Error('Product name is required');
-      if (!price || price <= 0) throw new Error('Price must be positive');
-      if (!categoryId) throw new Error('categoryId is required');
-      if (!Array.isArray(colors) || colors.length === 0)
-        throw new Error('At least one color is required');
-      if (!Array.isArray(sizes) || sizes.length === 0)
-        throw new Error('At least one size is required');
 
-      // Normalize and transform image URLs for internal Docker access
-      let wcImages = [];
-      if (productData.images && Array.isArray(productData.images)) {
-        wcImages = productData.images.map((img) => {
-          let src = typeof img === 'string' ? img : img.src;
-          // transform http://localhost:8080/uploads/ -> http://backend:8000/uploads/
-          if (src && src.includes('localhost:8080/uploads/')) {
-            src = src.replace('localhost:8080/uploads/', 'backend:8000/uploads/');
-          }
-          return { src };
-        });
+      const finalPrice = regular_price || price;
+      if (!finalPrice) throw new Error('Price is required');
+
+      // 1. Prepare Attributes
+      const finalColors = color_stock ? color_stock.map(c => c.color) : (legacyColors || []);
+      const finalSizes = size_stock ? size_stock.map(s => s.size) : (legacySizes || []);
+
+      const attributes = [];
+      if (finalColors.length > 0) {
+        attributes.push({ name: 'Color', options: finalColors, visible: true, variation: true });
+      }
+      if (finalSizes.length > 0) {
+        attributes.push({ name: 'Size', options: finalSizes, visible: true, variation: true });
       }
 
+      // 2. Prepare Meta Data
+      const metaData = [];
+      if (fabric) metaData.push({ key: '_fabric', value: fabric });
+      if (occasion) metaData.push({ key: '_occasion', value: occasion });
+      if (care_instructions) metaData.push({ key: '_care_instructions', value: care_instructions });
+      if (size_stock) metaData.push({ key: '_sr_sizes', value: JSON.stringify(size_stock) });
+      if (color_stock) metaData.push({ key: '_sr_colors', value: JSON.stringify(color_stock) });
+
+      // 3. Prepare Payload
       const productPayload = {
         name,
-        description,
-        type: 'variable',
-        categories: [{ id: categoryId }],
-        images: wcImages,
-        attributes: [
-          {
-            name: 'Color',
-            options: colors,
-            visible: true,
-            variation: true,
-          },
-          {
-            name: 'Size',
-            options: sizes,
-            visible: true,
-            variation: true,
-          },
-        ],
+        description: description || '',
+        type: (attributes.length > 0) ? 'variable' : 'simple',
+        status: status || 'publish',
+        sku: sku || '',
+        regular_price: String(finalPrice),
+        sale_price: sale_price ? String(sale_price) : '',
+        categories: categories && categories.length > 0 ? categories : (categoryId ? [{ id: categoryId }] : []),
+        images: this._transformImages(images),
+        attributes,
+        meta_data: metaData,
       };
 
       const productResponse = await wcClient.post('/products', productPayload);
       const createdProduct = productResponse.data;
 
-      const variations = [];
+      // 4. Create Variations if variable
+      if (productPayload.type === 'variable') {
+        const variations = [];
 
-      for (const color of colors) {
-        for (const size of sizes) {
-          variations.push({
-            regular_price: String(price),
-            manage_stock: true,
-            stock_quantity: stock || 10,
-            attributes: [
-              { name: 'Color', option: color },
-              { name: 'Size', option: size },
-            ],
-          });
+        // Use combinations
+        if (finalColors.length > 0 && finalSizes.length > 0) {
+          for (const color of finalColors) {
+            for (const size of finalSizes) {
+              const matchedSize = size_stock?.find(s => s.size === size);
+              const matchedColor = color_stock?.find(c => c.color === color);
+
+              variations.push({
+                regular_price: String(finalPrice),
+                manage_stock: true,
+                stock_quantity: (matchedSize?.qty || 0) + (matchedColor?.qty || 0) || (stock_quantity || stock || 0),
+                attributes: [
+                  { name: 'Color', option: color },
+                  { name: 'Size', option: size },
+                ],
+              });
+            }
+          }
+        } else if (finalColors.length > 0) {
+          for (const color of finalColors) {
+            const matched = color_stock?.find(c => c.color === color);
+            variations.push({
+              regular_price: String(finalPrice),
+              manage_stock: true,
+              stock_quantity: matched?.qty || stock_quantity || stock || 0,
+              attributes: [{ name: 'Color', option: color }],
+            });
+          }
+        } else if (finalSizes.length > 0) {
+          for (const size of finalSizes) {
+            const matched = size_stock?.find(s => s.size === size);
+            variations.push({
+              regular_price: String(finalPrice),
+              manage_stock: true,
+              stock_quantity: matched?.qty || stock_quantity || stock || 0,
+              attributes: [{ name: 'Size', option: size }],
+            });
+          }
+        }
+
+        if (variations.length > 0) {
+          await Promise.all(
+            variations.map((v) => wcClient.post(`/products/${createdProduct.id}/variations`, v))
+          );
         }
       }
 
-      await Promise.all(
-        variations.map((variation) =>
-          wcClient.post(`/products/${createdProduct.id}/variations`, variation)
-        )
-      );
-
       this.cache.flushAll();
-
-      return {
-        success: true,
-        message: 'Product created successfully',
-        productId: createdProduct.id,
-      };
+      return createdProduct;
     } catch (error) {
       this._handleError(error, 'Failed to create product');
     }
@@ -196,6 +248,8 @@ class ProductService {
         fabric,
         occasion,
         care_instructions,
+        size_stock,
+        color_stock,
       } = updateData;
 
       // 1️⃣ Prepare Parent Product Payload
@@ -208,16 +262,8 @@ class ProductService {
       if (categories !== undefined) updatePayload.categories = categories;
       else if (categoryId) updatePayload.categories = [{ id: categoryId }];
 
-      if (images && Array.isArray(images)) {
-        updatePayload.images = images.map((img) => {
-          let src = typeof img === 'string' ? img : img.src;
-          // transform http://localhost:8080/uploads/ -> http://backend:8000/uploads/
-          // so the wordpress container can reach it internally
-          if (src && src.includes('localhost:8080/uploads/')) {
-            src = src.replace('localhost:8080/uploads/', 'backend:8000/uploads/');
-          }
-          return { src };
-        });
+      if (images) {
+        updatePayload.images = this._transformImages(images);
       }
 
       // Handle Meta Data for Custom Fields
@@ -225,6 +271,8 @@ class ProductService {
       if (fabric !== undefined) metaData.push({ key: '_fabric', value: fabric });
       if (occasion !== undefined) metaData.push({ key: '_occasion', value: occasion });
       if (care_instructions !== undefined) metaData.push({ key: '_care_instructions', value: care_instructions });
+      if (size_stock) metaData.push({ key: '_sr_sizes', value: JSON.stringify(size_stock) });
+      if (color_stock) metaData.push({ key: '_sr_colors', value: JSON.stringify(color_stock) });
 
       if (metaData.length > 0) {
         updatePayload.meta_data = metaData;
@@ -236,7 +284,6 @@ class ProductService {
       }
 
       // 2️⃣ Update Variations (Price / Stock)
-      // Logic: If user sends regular_price/stock_quantity OR price/stock, we update all variations
       const newPrice = regular_price || price;
       const newStock = stock_quantity !== undefined ? stock_quantity : stock;
 
@@ -264,7 +311,6 @@ class ProductService {
       }
 
       this.cache.flushAll();
-
       return {
         success: true,
         message: 'Product updated successfully',
