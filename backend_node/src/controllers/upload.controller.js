@@ -13,11 +13,14 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 const uploadFile = async (req, res, next) => {
     try {
         if (!req.file) {
+            console.error('Upload failed: No file provided');
             throw new ApiError(httpStatus.BAD_REQUEST, 'Please upload a file');
         }
 
         const file = req.file;
-        const baseUrl = config.publicBaseUrl || 'http://localhost:8000';
+        console.log(`File uploaded: ${file.filename} (${file.size} bytes)`);
+
+        const baseUrl = config.publicBaseUrl || 'http://localhost:8080';
         const fileUrl = `${baseUrl.replace(/\/$/, '')}/uploads/${file.filename}`;
 
         res.status(httpStatus.CREATED).send({
@@ -27,6 +30,7 @@ const uploadFile = async (req, res, next) => {
             filename: file.filename,
         });
     } catch (error) {
+        console.error('Upload Error:', error);
         next(error);
     }
 };

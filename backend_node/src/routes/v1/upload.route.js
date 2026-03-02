@@ -7,9 +7,11 @@ const uploadController = require('../../controllers/upload.controller');
 const ApiError = require('../../utils/ApiError');
 const httpStatus = require('http-status');
 
+const uploadDir = path.join(process.cwd(), 'uploads');
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
@@ -30,7 +32,7 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: fileFilter,
 });
 
