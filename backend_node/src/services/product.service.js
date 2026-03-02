@@ -100,11 +100,25 @@ class ProductService {
       if (!Array.isArray(sizes) || sizes.length === 0)
         throw new Error('At least one size is required');
 
+      // Normalize and transform image URLs for internal Docker access
+      let wcImages = [];
+      if (productData.images && Array.isArray(productData.images)) {
+        wcImages = productData.images.map((img) => {
+          let src = typeof img === 'string' ? img : img.src;
+          // transform http://localhost:8080/uploads/ -> http://backend:8000/uploads/
+          if (src && src.includes('localhost:8080/uploads/')) {
+            src = src.replace('localhost:8080/uploads/', 'backend:8000/uploads/');
+          }
+          return { src };
+        });
+      }
+
       const productPayload = {
         name,
         description,
         type: 'variable',
         categories: [{ id: categoryId }],
+        images: wcImages,
         attributes: [
           {
             name: 'Color',
@@ -195,9 +209,15 @@ class ProductService {
       else if (categoryId) updatePayload.categories = [{ id: categoryId }];
 
       if (images && Array.isArray(images)) {
-        updatePayload.images = images.map((img) =>
-          typeof img === 'string' ? { src: img } : img
-        );
+        updatePayload.images = images.map((img) => {
+          let src = typeof img === 'string' ? img : img.src;
+          // transform http://localhost:8080/uploads/ -> http://backend:8000/uploads/
+          // so the wordpress container can reach it internally
+          if (src && src.includes('localhost:8080/uploads/')) {
+            src = src.replace('localhost:8080/uploads/', 'backend:8000/uploads/');
+          }
+          return { src };
+        });
       }
 
       // Handle Meta Data for Custom Fields
