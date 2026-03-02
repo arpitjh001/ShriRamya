@@ -12,7 +12,7 @@ const wcClient = axios.create({
     'User-Agent': 'ShriRamya-Node/2.0.0',
     'X-Forwarded-Proto': 'https'
   },
-  timeout: 60000
+  timeout: 15000
 });
 
 // Add response interceptor for debugging axios errors

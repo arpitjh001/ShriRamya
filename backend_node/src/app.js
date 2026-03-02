@@ -24,7 +24,9 @@ if (config.env !== 'test') {
 /**
  * Security Headers
  */
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 /**
  * Rate Limiting (Basic protection)

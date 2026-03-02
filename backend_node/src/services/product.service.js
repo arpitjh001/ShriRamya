@@ -128,9 +128,21 @@ class ProductService {
       const finalPrice = regular_price || price;
       if (!finalPrice) throw new Error('Price is required');
 
-      // 1. Prepare Attributes
-      const finalColors = color_stock ? color_stock.map(c => c.color) : (legacyColors || []);
-      const finalSizes = size_stock ? size_stock.map(s => s.size) : (legacySizes || []);
+      // 1. Data Scrubbing & Validation
+      // Sale price must be less than regular price
+      let validatedSalePrice = sale_price;
+      if (sale_price && parseFloat(sale_price) >= parseFloat(finalPrice)) {
+        console.warn(`Sale price (${sale_price}) must be lower than Regular price (${finalPrice}). Ignoring sale price.`);
+        validatedSalePrice = '';
+      }
+
+      // Filter out empty sizes/colors
+      const filteredSizeStock = (size_stock || []).filter(s => s.size && s.size.trim() !== '');
+      const filteredColorStock = (color_stock || []).filter(c => c.color && c.color.trim() !== '');
+
+      // Prepare Attributes
+      const finalColors = filteredColorStock.length > 0 ? filteredColorStock.map(c => c.color) : (legacyColors || []).filter(v => v);
+      const finalSizes = filteredSizeStock.length > 0 ? filteredSizeStock.map(s => s.size) : (legacySizes || []).filter(v => v);
 
       const attributes = [];
       if (finalColors.length > 0) {
@@ -145,8 +157,8 @@ class ProductService {
       if (fabric) metaData.push({ key: '_fabric', value: fabric });
       if (occasion) metaData.push({ key: '_occasion', value: occasion });
       if (care_instructions) metaData.push({ key: '_care_instructions', value: care_instructions });
-      if (size_stock) metaData.push({ key: '_sr_sizes', value: JSON.stringify(size_stock) });
-      if (color_stock) metaData.push({ key: '_sr_colors', value: JSON.stringify(color_stock) });
+      if (filteredSizeStock.length > 0) metaData.push({ key: '_sr_sizes', value: JSON.stringify(filteredSizeStock) });
+      if (filteredColorStock.length > 0) metaData.push({ key: '_sr_colors', value: JSON.stringify(filteredColorStock) });
 
       // 3. Prepare Payload
       const productPayload = {
@@ -156,13 +168,14 @@ class ProductService {
         status: status || 'publish',
         sku: sku || '',
         regular_price: String(finalPrice),
-        sale_price: sale_price ? String(sale_price) : '',
+        sale_price: validatedSalePrice ? String(validatedSalePrice) : '',
         categories: categories && categories.length > 0 ? categories : (categoryId ? [{ id: categoryId }] : []),
         images: this._transformImages(images),
         attributes,
         meta_data: metaData,
       };
 
+      console.log('Sending payload to WooCommerce:', JSON.stringify(productPayload, null, 2));
       const productResponse = await wcClient.post('/products', productPayload);
       const createdProduct = productResponse.data;
 
@@ -174,8 +187,8 @@ class ProductService {
         if (finalColors.length > 0 && finalSizes.length > 0) {
           for (const color of finalColors) {
             for (const size of finalSizes) {
-              const matchedSize = size_stock?.find(s => s.size === size);
-              const matchedColor = color_stock?.find(c => c.color === color);
+              const matchedSize = filteredSizeStock?.find(s => s.size === size);
+              const matchedColor = filteredColorStock?.find(c => c.color === color);
 
               variations.push({
                 regular_price: String(finalPrice),
@@ -190,7 +203,7 @@ class ProductService {
           }
         } else if (finalColors.length > 0) {
           for (const color of finalColors) {
-            const matched = color_stock?.find(c => c.color === color);
+            const matched = filteredColorStock?.find(c => c.color === color);
             variations.push({
               regular_price: String(finalPrice),
               manage_stock: true,
@@ -200,7 +213,7 @@ class ProductService {
           }
         } else if (finalSizes.length > 0) {
           for (const size of finalSizes) {
-            const matched = size_stock?.find(s => s.size === size);
+            const matched = filteredSizeStock?.find(s => s.size === size);
             variations.push({
               regular_price: String(finalPrice),
               manage_stock: true,
@@ -211,9 +224,12 @@ class ProductService {
         }
 
         if (variations.length > 0) {
-          await Promise.all(
-            variations.map((v) => wcClient.post(`/products/${createdProduct.id}/variations`, v))
-          );
+          console.log(`Processing ${variations.length} variations sequentially for product ID ${createdProduct.id}...`);
+          for (let i = 0; i < variations.length; i++) {
+            console.log(`Creating variation ${i + 1}/${variations.length}...`);
+            await wcClient.post(`/products/${createdProduct.id}/variations`, variations[i]);
+          }
+          console.log('All variations created.');
         }
       }
 

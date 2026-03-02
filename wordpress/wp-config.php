@@ -119,6 +119,8 @@ define( 'WP_DEBUG_DISPLAY', false );
 
 
 /* Add any custom values between this line and the "stop editing" line. */
+define( 'WP_HTTP_BLOCK_EXTERNAL', true );
+define( 'WP_ACCESSIBLE_HOSTS', 'backend,localhost,127.0.0.1,nginx' );
 
 // If we're behind a proxy server and using HTTPS, we need to alert WordPress of that fact
 // see also https://wordpress.org/support/article/administration-over-ssl/#using-a-reverse-proxy
