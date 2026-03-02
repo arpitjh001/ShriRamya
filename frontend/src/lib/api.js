@@ -5,10 +5,13 @@ import { transformWooProducts, transformWooProduct } from "./productTransformer"
    Environment Validation
 ========================= */
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+let BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 
-if (!BACKEND_URL) {
-  throw new Error("REACT_APP_BACKEND_URL is not defined");
+// Inside the Docker container network, BACKEND_URL might be defined as backend:8000
+// The browser cannot resolve this hostname directly, so we map it to relative URL
+// which the NGINX reverses proxies to the container correctly.
+if (BACKEND_URL && BACKEND_URL.includes("backend:8000")) {
+  BACKEND_URL = "";
 }
 
 const API = `${BACKEND_URL}/api/v1`;
@@ -22,7 +25,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json"
   },
-  timeout: 15000
+  timeout: 30000
 });
 
 /* =========================

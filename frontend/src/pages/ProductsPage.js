@@ -7,87 +7,114 @@ import { Slider } from "../components/ui/slider";
 import { Filter } from "lucide-react";
 import { formatPrice } from "../lib/utils";
 
+const MAX_PRICE = 100000;
+
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [priceRange, setPriceRange] = useState([0, 50000]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [priceRange, setPriceRange] = useState([0, MAX_PRICE]);
   const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState(null);
+
+  // Pagination & Infinite Scroll State
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const observer = React.useRef();
+
+  const lastProductElementRef = useCallback((node) => {
+    if (loading || loadingMore) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prevPage => prevPage + 1);
+      }
+    });
+
+    if (node) observer.current.observe(node);
+  }, [loading, loadingMore, hasMore]);
 
   const category = searchParams.get("category");
   const subcategory = searchParams.get("subcategory");
 
-  // -------------------------
+  // =========================
   // FETCH PRODUCTS
-  // -------------------------
+  // =========================
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (currentPage = 1, isReset = false) => {
     try {
-      setLoading(true);
+      if (isReset) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
 
-      const params = {};
-      if (category) params.category = category;
-      if (subcategory) params.subcategory = subcategory;
+      const params = {
+        page: currentPage,
+        per_page: 12  // Changed from 50 to 12 as requested
+      };
+
+      if (subcategory) {
+        params.category = subcategory;
+      } else if (category) {
+        params.category = category;
+      }
 
       const response = await productsAPI.getAll(params);
+      const apiData = response?.data?.data || response?.data || [];
+      const newProducts = Array.isArray(apiData) ? apiData : [];
 
-      setProducts(Array.isArray(response.data) ? response.data : []);
+      if (isReset) {
+        setProducts(newProducts);
+      } else {
+        setProducts(prev => [...prev, ...newProducts]);
+      }
+
+      // Stop infinite loading if less than requested chunk was returned
+      setHasMore(newProducts.length === 12);
 
     } catch (err) {
-      console.error(err);
-      setError("Unable to load products");
+      console.error("Product fetch failed:", err);
+      setError("Unable to load products. Please try again.");
+      if (isReset) setProducts([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [category, subcategory]);
 
+  // Handle URL change (category switch)
   useEffect(() => {
-    fetchProducts();
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchProducts(1, true);
   }, [fetchProducts]);
 
-  // -------------------------
-  // PRICE FILTER
-  // -------------------------
+  // Handle Pagination triggered by IntersectionObserver
+  useEffect(() => {
+    if (page > 1) {
+      fetchProducts(page, false);
+    }
+  }, [page, fetchProducts]);
+
+  // =========================
+  // PRICE FILTER (Frontend Only)
+  // =========================
 
   const filteredProducts = products.filter((p) => {
     const price = Number(p.sale_price || p.price || 0);
     return price >= priceRange[0] && price <= priceRange[1];
   });
 
-  const mainCategories = [
-    { label: "Women Ethnic Wear", value: "Women Ethnic Wear" },
-    { label: "Home & Lifestyle", value: "Home & Lifestyle" },
-  ];
-
-  const ethnicSubcategories = [
-    { label: "Sarees", value: "Sarees" },
-    { label: "Lehengas", value: "Lehengas" },
-    { label: "Ladies Suits", value: "Ladies Suits" },
-    { label: "Dupattas", value: "Dupattas" },
-    { label: "Ready-to-Wear", value: "Ready-to-Wear Sarees" },
-  ];
-
-  const homeSubcategories = [
-    { label: "Bedsheets", value: "Bedsheets" },
-    { label: "Pillow Covers", value: "Pillow Covers" },
-    { label: "Cushion Covers", value: "Cushion Covers" },
-    { label: "Dohar", value: "Dohar" },
-  ];
-
-  // Determine which category section to show based on current filter
-  const isHomeLifestyle = category === "Home & Lifestyle" || 
-    homeSubcategories.some(sub => sub.value === subcategory);
-  const isWomenEthnic = category === "Women Ethnic Wear" || 
-    ethnicSubcategories.some(sub => sub.value === subcategory);
-  const showAllCategories = !category && !subcategory;
-
   const pageTitle = subcategory || category || "All Products";
 
   return (
-    <div className="px-6 md:px-12 lg:px-24 py-12" data-testid="products-page">
+    <div className="px-6 md:px-12 lg:px-24 py-12">
 
       {/* HEADER */}
       <div className="mb-12">
@@ -104,78 +131,20 @@ const ProductsPage = () => {
 
       <div className="flex gap-8">
 
-        {/* FILTER SIDEBAR */}
+        {/* SIDEBAR */}
         <aside className={`${showFilters ? "block" : "hidden"} lg:block w-64 shrink-0`}>
 
           <div className="space-y-8">
 
-            {/* ALL PRODUCTS */}
             <div>
               <Button
                 className="w-full justify-start"
                 variant={!category && !subcategory ? "default" : "ghost"}
                 onClick={() => setSearchParams({})}
-                data-testid="filter-all-products"
               >
                 All Products
               </Button>
             </div>
-
-            {/* WOMEN ETHNIC WEAR - Show when viewing All Products, Women Ethnic Wear, or its subcategories */}
-            {(showAllCategories || isWomenEthnic) && (
-              <div>
-                <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Women Ethnic Wear</h3>
-
-                <Button
-                  className="w-full justify-start"
-                  variant={category === "Women Ethnic Wear" && !subcategory ? "default" : "ghost"}
-                  onClick={() => setSearchParams({ category: "Women Ethnic Wear" })}
-                  data-testid="filter-women-ethnic"
-                >
-                  All Ethnic Wear
-                </Button>
-
-                {ethnicSubcategories.map((sub) => (
-                  <Button
-                    key={sub.value}
-                    className="w-full justify-start mt-1 pl-6"
-                    variant={subcategory === sub.value ? "default" : "ghost"}
-                    onClick={() => setSearchParams({ subcategory: sub.value })}
-                    data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    {sub.label}
-                  </Button>
-                ))}
-              </div>
-            )}
-
-            {/* HOME & LIFESTYLE - Show when viewing All Products, Home & Lifestyle, or its subcategories */}
-            {(showAllCategories || isHomeLifestyle) && (
-              <div>
-                <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Home & Lifestyle</h3>
-
-                <Button
-                  className="w-full justify-start"
-                  variant={category === "Home & Lifestyle" && !subcategory ? "default" : "ghost"}
-                  onClick={() => setSearchParams({ category: "Home & Lifestyle" })}
-                  data-testid="filter-home-lifestyle"
-                >
-                  All Home & Lifestyle
-                </Button>
-
-                {homeSubcategories.map((sub) => (
-                  <Button
-                    key={sub.value}
-                    className="w-full justify-start mt-1 pl-6"
-                    variant={subcategory === sub.value ? "default" : "ghost"}
-                    onClick={() => setSearchParams({ subcategory: sub.value })}
-                    data-testid={`filter-${sub.value.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    {sub.label}
-                  </Button>
-                ))}
-              </div>
-            )}
 
             {/* PRICE FILTER */}
             <div>
@@ -183,7 +152,7 @@ const ProductsPage = () => {
 
               <Slider
                 min={0}
-                max={50000}
+                max={MAX_PRICE}
                 step={1000}
                 value={priceRange}
                 onValueChange={setPriceRange}
@@ -198,9 +167,10 @@ const ProductsPage = () => {
           </div>
         </aside>
 
-        {/* PRODUCTS GRID */}
+        {/* PRODUCTS */}
         <div className="flex-1">
 
+          {/* MOBILE FILTER BUTTON */}
           <div className="lg:hidden mb-6">
             <Button
               variant="outline"
@@ -233,8 +203,22 @@ const ProductsPage = () => {
           {/* PRODUCTS */}
           {!loading && !error && filteredProducts.length > 0 && (
             <div className="grid md:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {filteredProducts.map((product, index) => {
+                const isLastElement = filteredProducts.length === index + 1;
+                return (
+                  <div key={product.id || index} ref={isLastElement ? lastProductElementRef : null}>
+                    <ProductCard product={product} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* LOADING MORE STATE */}
+          {loadingMore && (
+            <div className="grid md:grid-cols-3 gap-6 mt-6">
+              {[...Array(3)].map((_, i) => (
+                <div key={`loading-more-${i}`} className="h-[400px] bg-muted animate-pulse rounded" />
               ))}
             </div>
           )}

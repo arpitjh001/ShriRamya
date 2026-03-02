@@ -17,8 +17,6 @@ services:
 
   wordpress:
     image: wordpress:latest
-    ports:
-      - "8082:80"
     restart: always
     depends_on:
       - mysql
@@ -37,18 +35,17 @@ services:
     restart: always
     volumes:
       - mongo_data:/data/db
+    ports:
+      - "27017:27017"
 
   backend:
-    build: ./backend
+    build: ./backend_node
     restart: always
     env_file:
-      - backend/.env
-    ports:
-      - "8002:8000"
+      - ./backend_node/.env
     depends_on:
       - mongodb
       - mysql
-      - wordpress
     environment:
       MONGO_URL: mongodb://mongodb:27017/
       DB_NAME: shriramya
@@ -59,12 +56,10 @@ services:
     build:
       context: ./frontend
       args:
-        - REACT_APP_BACKEND_URL=http://localhost:8002
+        REACT_APP_BACKEND_URL: http://backend:8000
     restart: always
-    ports:
-      - "3002:80"
-    env_file:
-      - backend/.env
+    depends_on:
+      - backend
 
   nginx:
     image: nginx:latest

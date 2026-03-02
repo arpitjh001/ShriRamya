@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -u
 
-BASE_URL="${1:-http://localhost:8000/api}"
+BASE_URL="${1:-http://localhost:8000/api/v1}"
 
 declare -a ENDPOINTS=(
   "/health"
   "/products"
-  "/categories"
-  "/blog"
+  "/products/categories"
+  "/blog/posts"
 )
 
 printf "API connectivity check against %s\n" "$BASE_URL"

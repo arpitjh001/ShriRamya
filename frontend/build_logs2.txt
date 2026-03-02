@@ -1,0 +1,72 @@
+﻿
+> frontend@0.1.0 build
+> craco build
+
+npm : node:internal/modules/c
+js/loader:1455
+At line:1 char:1
++ npm run build 2>&1 | 
+Out-File -Encoding utf8 
+build_logs2.txt
++ ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (node:in  
+  ternal/modules/cjs/loade   
+ r:1455:String) [], Remot    
+eException
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+  const err = new 
+Error(message);
+              ^
+
+Error: Cannot find module 
+'react-scripts\config\env.js'
+Require stack:
+- C:\Users\Lenovo\shriramya\S
+hriRamya\frontend\node_module
+s\@craco\craco\lib\cra.js
+- C:\Users\Lenovo\shriramya\S
+hriRamya\frontend\node_module
+s\@craco\craco\scripts\build.
+js
+    at 
+Module._resolveFilename (node
+:internal/modules/cjs/loader:
+1455:15)
+    at require.resolve (node:
+internal/modules/helpers:163:
+19)
+    at 
+resolveConfigFilePathInner (C
+:\Users\Lenovo\shriramya\Shri
+Ramya\frontend\node_modules\@
+craco\craco\lib\cra.js:22:20)
+    at resolveConfigFilePath 
+(C:\Users\Lenovo\shriramya\Sh
+riRamya\frontend\node_modules
+\@craco\craco\lib\cra.js:13:1
+7)
+    at getCraPaths (C:\Users\
+Lenovo\shriramya\ShriRamya\fr
+ontend\node_modules\@craco\cr
+aco\lib\cra.js:45:37)
+    at C:\Users\Lenovo\shrira
+mya\ShriRamya\frontend\node_m
+odules\@craco\craco\scripts\b
+uild.js:21:21 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\Lenovo\\shrir
+amya\\ShriRamya\\frontend\\no
+de_modules\\@craco\\craco\\li
+b\\cra.js',
+    'C:\\Users\\Lenovo\\shrir
+amya\\ShriRamya\\frontend\\no
+de_modules\\@craco\\craco\\sc
+ripts\\build.js'
+  ]
+}
+
+Node.js v25.6.1

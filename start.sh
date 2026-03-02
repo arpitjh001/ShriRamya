@@ -37,15 +37,15 @@ if ! command_exists docker-compose; then
 fi
 
 # 3. Check for .env file
-if [ ! -f "backend/.env" ]; then
-    echo -e "${YELLOW}⚠️ Warning: backend/.env not found.${NC}"
-    if [ -f "backend/.env.example" ]; then
-        echo "Creating backend/.env from .env.example..."
-        cp backend/.env.example backend/.env
-        echo -e "${GREEN}✅ Created backend/.env. Please review it if you have specific configurations.${NC}"
+if [ ! -f "backend_node/.env" ]; then
+    echo -e "${YELLOW}⚠️ Warning: backend_node/.env not found.${NC}"
+    if [ -f "backend_node/.env.example" ]; then
+        echo "Creating backend_node/.env from .env.example..."
+        cp backend_node/.env.example backend_node/.env
+        echo -e "${GREEN}✅ Created backend_node/.env. Please review it if you have specific configurations.${NC}"
     else
-        echo -e "${RED}❌ Error: backend/.env.example not found.${NC}"
-        echo "Please create a backend/.env file manually before starting."
+        echo -e "${RED}❌ Error: backend_node/.env.example not found.${NC}"
+        echo "Please create a backend_node/.env file manually before starting."
         exit 1
     fi
 fi
@@ -57,10 +57,9 @@ $DOCKER_COMPOSE up --build -d
 if [ $? -eq 0 ]; then
     echo -e "\n${GREEN}✅ Application started successfully!${NC}"
     echo -e "------------------------------------------------"
-    echo -e "${BLUE}Main Entry (Nginx):${NC} http://localhost"
-    echo -e "${BLUE}Frontend:${NC}           http://localhost (via Nginx) or http://localhost:3000"
-    echo -e "${BLUE}Backend API:${NC}        http://localhost/api or http://localhost:8000"
-    echo -e "${BLUE}WordPress Admin:${NC}    http://localhost/wp/wp-admin"
+    echo -e "${BLUE}Main Entry (Nginx):${NC} http://localhost:8080"
+    echo -e "${BLUE}Backend API:${NC}        http://localhost:8000/api/v1"
+    echo -e "${BLUE}WordPress Admin:${NC}    http://localhost:8080/wp/wp-admin"
     echo -e "------------------------------------------------"
     echo -e "To view logs, run: ${YELLOW}docker-compose logs -f${NC}"
     echo -e "To stop the app, run: ${YELLOW}docker-compose down${NC}"

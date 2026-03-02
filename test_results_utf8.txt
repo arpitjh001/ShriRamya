@@ -1,9 +1,0 @@
-﻿Starting API Verification Tool against http://localhost:8000/api
---------------------------------------------------
-Γ¥î GET /health -> ReadTimeout: HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=5)
-Γ¥î GET /products -> ReadTimeout: HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=5)
-Γ£à POST /auth/login -> 200 OK
-Γ£à GET /wc/products -> 200 OK
-Γ£à GET /wc/categories -> 200 OK
---------------------------------------------------
-Some APIs are failing.

@@ -1,0 +1,87 @@
+﻿
+> frontend@0.1.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 2 modules transformed.
+npm : [31mΓ£ù[39m Build 
+failed in 88ms
+At line:1 char:1
++ npm run build 2>&1 | 
+Out-File -Encoding utf8 
+build_result3.txt
++ ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: ([31mΓ£  
+  ù[39m Build failed in 8   
+ 8ms:String) [], RemoteEx    
+ception
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+[31merror during build:
+[31m[vite]: Rollup failed 
+to resolve import 
+"@/index.css" from "C:/Users/
+Lenovo/shriramya/ShriRamya/fr
+ontend/src/index.js".
+This is most likely 
+unintended because it can 
+break your application at 
+runtime.
+If you do want to 
+externalize this module 
+explicitly add it to
+`build.rollupOptions.external
+`[31m
+    at viteLog (file:///C:/Us
+ers/Lenovo/shriramya/ShriRamy
+a/frontend/node_modules/vite/
+dist/node/chunks/config.js:33
+635:57)
+    at file:///C:/Users/Lenov
+o/shriramya/ShriRamya/fronten
+d/node_modules/vite/dist/node
+/chunks/config.js:33669:73
+    at onwarn (file:///C:/Use
+rs/Lenovo/shriramya/ShriRamya
+/frontend/node_modules/@vitej
+s/plugin-react/dist/index.js:
+76:7)
+    at file:///C:/Users/Lenov
+o/shriramya/ShriRamya/fronten
+d/node_modules/vite/dist/node
+/chunks/config.js:33669:28
+    at onRollupLog (file:///C
+:/Users/Lenovo/shriramya/Shri
+Ramya/frontend/node_modules/v
+ite/dist/node/chunks/config.j
+s:33664:63)
+    at onLog (file:///C:/User
+s/Lenovo/shriramya/ShriRamya/
+frontend/node_modules/vite/di
+st/node/chunks/config.js:3346
+7:4)
+    at file:///C:/Users/Lenov
+o/shriramya/ShriRamya/fronten
+d/node_modules/rollup/dist/es
+/shared/node-entry.js:20981:3
+2
+    at Object.logger [as 
+onLog] (file:///C:/Users/Leno
+vo/shriramya/ShriRamya/fronte
+nd/node_modules/rollup/dist/e
+s/shared/node-entry.js:22968:
+9)
+    at ModuleLoader.handleInv
+alidResolvedId (file:///C:/Us
+ers/Lenovo/shriramya/ShriRamy
+a/frontend/node_modules/rollu
+p/dist/es/shared/node-entry.j
+s:21712:26)
+    at file:///C:/Users/Lenov
+o/shriramya/ShriRamya/fronten
+d/node_modules/rollup/dist/es
+/shared/node-entry.js:21670:2
+6[39m
