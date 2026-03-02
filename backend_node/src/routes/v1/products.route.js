@@ -9,7 +9,16 @@ const router = express.Router();
 router.get('/', validate(productValidation.getProducts), productController.getProducts);
 router.get('/categories', productController.getCategories);
 router.get('/:product_id', validate(productValidation.getProduct), productController.getProduct);
-router.post('/', auth(['admin']), validate(productValidation.createProduct), productController.createProduct);
-router.post('/categories', auth(['admin']), validate(productValidation.createCategory), productController.createCategory);
-
+router.post(
+    '/',
+    auth(['admin']),
+    validate(productValidation.createProduct),
+    productController.createProduct
+);
+router.post(
+    '/categories',
+    auth(['admin']),
+    validate(productValidation.createCategory),
+    productController.createCategory
+);
 module.exports = router;

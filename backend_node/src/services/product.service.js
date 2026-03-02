@@ -4,15 +4,20 @@ const wcClient = require('../integrations/woocommerce');
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 }); // Cache for 5 minutes
 
 const getAllProducts = async (params) => {
-  const cacheKey = `products_${JSON.stringify(params)}`;
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
+  try {
+    const cacheKey = `products_${JSON.stringify(params)}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
 
-  const response = await wcClient.get('/products', { params });
-  const data = response.data;
+    const response = await wcClient.get('/products', { params });
 
-  cache.set(cacheKey, data);
-  return data;
+    cache.set(cacheKey, response.data);
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || 'Failed to fetch products'
+    );
+  }
 };
 
 const getProductById = async (id) => {
@@ -40,22 +45,46 @@ const getCategories = async (params) => {
 };
 
 const createProduct = async (productData) => {
-  // Map our cleaner input to WooCommerce REST API format
+  if (!productData.price || productData.price <= 0) {
+    throw new Error('Price must be positive');
+  }
+
+  if (!productData.color) {
+    throw new Error('Color is required');
+  }
+
+  if (!productData.size) {
+    throw new Error('Size is required');
+  }
+
   const wcPayload = {
     name: productData.name,
     description: productData.description,
-    regular_price: productData.price.toString(),
+    regular_price: String(productData.price),
     type: 'simple',
     categories: [{ name: productData.category }],
     manage_stock: true,
     stock_quantity: productData.stock,
     attributes: [
-      { name: 'Color', options: [productData.color], visible: true, variation: true },
-      { name: 'Size', options: [productData.size], visible: true, variation: true },
-    ]
+      {
+        name: 'Color',
+        options: [productData.color],
+        visible: true,
+        variation: true,
+      },
+      {
+        name: 'Size',
+        options: [productData.size],
+        visible: true,
+        variation: true,
+      },
+    ],
   };
 
   const response = await wcClient.post('/products', wcPayload);
+
+  cache.flushAll(); // clear product cache after creation
+
   return response.data;
 };
 

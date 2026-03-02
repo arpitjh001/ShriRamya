@@ -3,57 +3,100 @@ const express = require('express');
 const helmet = require('helmet');
 const compression = require('compression');
 const cors = require('cors');
-const httpStatus = require('http-status');
-const config = require('./config/config');
 const morgan = require('morgan');
-const { connectMongo, connectMySQL } = require('./config/db');
+const rateLimit = require('express-rate-limit');
+const httpStatus = require('http-status');
+
+const config = require('./config/config');
 const routes = require('./routes/v1');
 const { errorConverter, errorHandler } = require('./middlewares/error');
 const ApiError = require('./utils/ApiError');
 
 const app = express();
 
+/**
+ * Logging
+ */
 if (config.env !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Security HTTP headers
+/**
+ * Security Headers
+ */
 app.use(helmet());
 
-// body parser
-app.use(express.json());
+/**
+ * Rate Limiting (Basic protection)
+ */
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // limit each IP
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.',
+  },
+});
+app.use(limiter);
+
+/**
+ * Body Parsing
+ */
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// gzip compression
+/**
+ * Compression
+ */
 app.use(compression());
 
-// cors
-app.use(cors());
+/**
+ * CORS Configuration
+ */
+app.use(
+  cors({
+    origin: config.frontendUrl || '*',
+    credentials: true,
+  })
+);
 app.options('*', cors());
 
-// serve static uploads
+/**
+ * Static Files
+ */
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// health check
+/**
+ * Health Check Endpoint
+ */
 app.get('/api/v1/health', (req, res) => {
-  res.status(httpStatus.OK).send({
+  res.status(httpStatus.OK).json({
+    success: true,
     status: 'ok',
     timestamp: new Date().toISOString(),
   });
 });
 
-// v1 api routes
+/**
+ * API Routes
+ */
 app.use('/api/v1', routes);
 
-// 404 handler
+/**
+ * 404 Handler
+ */
 app.use((req, res, next) => {
-  next(new ApiError(httpStatus.NOT_FOUND, 'Not found'));
+  next(new ApiError(httpStatus.NOT_FOUND, 'Endpoint not found'));
 });
 
-// convert error to ApiError
+/**
+ * Convert error to ApiError (if needed)
+ */
 app.use(errorConverter);
 
-// error handler
+/**
+ * Global Error Handler
+ */
 app.use(errorHandler);
 
 module.exports = app;

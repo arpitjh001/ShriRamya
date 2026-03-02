@@ -6,25 +6,47 @@ const User = require('../models/user.model');
 
 const auth = (roles = []) => async (req, res, next) => {
   try {
-    const token = req.headers.authorization ? req.headers.authorization.split(' ')[1] : null;
+    let token;
+
+    // Check Authorization header
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer ')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
     if (!token) {
-      throw new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate');
+      return next(new ApiError(httpStatus.UNAUTHORIZED, 'Authentication token missing'));
     }
 
+    // Verify token
     const payload = jwt.verify(token, config.jwt.secret);
+
+    // Fetch user
     const user = await User.findById(payload.sub);
+
     if (!user) {
-      throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
+      return next(new ApiError(httpStatus.UNAUTHORIZED, 'User not found'));
     }
 
+    // Role check
     if (roles.length && !roles.includes(user.role)) {
-      throw new ApiError(httpStatus.FORBIDDEN, 'Forbidden');
+      return next(new ApiError(httpStatus.FORBIDDEN, 'Access denied'));
     }
 
     req.user = user;
     next();
   } catch (error) {
-    next(new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate'));
+    if (error.name === 'TokenExpiredError') {
+      return next(new ApiError(httpStatus.UNAUTHORIZED, 'Token expired'));
+    }
+
+    if (error.name === 'JsonWebTokenError') {
+      return next(new ApiError(httpStatus.UNAUTHORIZED, 'Invalid token'));
+    }
+
+    return next(error);
   }
 };
 
