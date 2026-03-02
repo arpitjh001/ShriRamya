@@ -187,19 +187,24 @@ class ProductService {
       // 1️⃣ Prepare Parent Product Payload
       const updatePayload = {};
 
-      if (name) updatePayload.name = name;
-      if (description) updatePayload.description = description;
-      if (sku) updatePayload.sku = sku;
-      if (status) updatePayload.status = status;
-      if (categories) updatePayload.categories = categories;
+      if (name !== undefined) updatePayload.name = name;
+      if (description !== undefined) updatePayload.description = description;
+      if (sku !== undefined) updatePayload.sku = sku;
+      if (status !== undefined) updatePayload.status = status;
+      if (categories !== undefined) updatePayload.categories = categories;
       else if (categoryId) updatePayload.categories = [{ id: categoryId }];
-      if (images) updatePayload.images = images;
+
+      if (images && Array.isArray(images)) {
+        updatePayload.images = images.map((img) =>
+          typeof img === 'string' ? { src: img } : img
+        );
+      }
 
       // Handle Meta Data for Custom Fields
       const metaData = [];
-      if (fabric) metaData.push({ key: '_fabric', value: fabric });
-      if (occasion) metaData.push({ key: '_occasion', value: occasion });
-      if (care_instructions) metaData.push({ key: '_care_instructions', value: care_instructions });
+      if (fabric !== undefined) metaData.push({ key: '_fabric', value: fabric });
+      if (occasion !== undefined) metaData.push({ key: '_occasion', value: occasion });
+      if (care_instructions !== undefined) metaData.push({ key: '_care_instructions', value: care_instructions });
 
       if (metaData.length > 0) {
         updatePayload.meta_data = metaData;
