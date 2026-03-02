@@ -50,9 +50,13 @@ module.exports = {
   },
   woocommerce: {
     url: envVars.WOOCOMMERCE_URL,
+    user: envVars.WOOCOMMERCE_CONSUMER_KEY,
+    password: envVars.WOOCOMMERCE_CONSUMER_SECRET,
+    verifySsl: envVars.WOOCOMMERCE_VERIFY_SSL === 'True'
+  },
+  wordpress: {
     user: envVars.WP_ADMIN_USER,
     password: envVars.WP_APP_PASSWORD,
-    verifySsl: envVars.WOOCOMMERCE_VERIFY_SSL === 'True'
   },
   cors: envVars.CORS_ORIGINS,
   publicBaseUrl: envVars.PUBLIC_BASE_URL,
