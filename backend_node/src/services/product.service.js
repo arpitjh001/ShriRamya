@@ -26,7 +26,7 @@ class ProductService {
   }
 
   /**
-   * ---------- Product APIs ----------
+   * ---------- GET APIs ----------
    */
 
   async getAllProducts(params = {}) {
@@ -77,8 +77,9 @@ class ProductService {
   }
 
   /**
-   * Create Variable Product with Color + Size Variations
+   * ---------- CREATE ----------
    */
+
   async createProduct(productData) {
     try {
       const {
@@ -91,7 +92,6 @@ class ProductService {
         sizes,
       } = productData;
 
-      // ---------- Validation ----------
       if (!name) throw new Error('Product name is required');
       if (!price || price <= 0) throw new Error('Price must be positive');
       if (!categoryId) throw new Error('categoryId is required');
@@ -100,7 +100,6 @@ class ProductService {
       if (!Array.isArray(sizes) || sizes.length === 0)
         throw new Error('At least one size is required');
 
-      // ---------- Step 1: Create Variable Product ----------
       const productPayload = {
         name,
         description,
@@ -125,7 +124,6 @@ class ProductService {
       const productResponse = await wcClient.post('/products', productPayload);
       const createdProduct = productResponse.data;
 
-      // ---------- Step 2: Create Variations ----------
       const variations = [];
 
       for (const color of colors) {
@@ -160,6 +158,90 @@ class ProductService {
     }
   }
 
+  /**
+   * ---------- UPDATE (PUT) ----------
+   */
+
+  async updateProduct(productId, updateData) {
+    try {
+      if (!productId) throw new Error('Product ID is required');
+
+      const {
+        name,
+        description,
+        price,
+        stock,
+        categoryId,
+      } = updateData;
+
+      // 1️⃣ Update Parent Product
+      const updatePayload = {};
+
+      if (name) updatePayload.name = name;
+      if (description) updatePayload.description = description;
+      if (categoryId) updatePayload.categories = [{ id: categoryId }];
+
+      if (Object.keys(updatePayload).length > 0) {
+        await wcClient.put(`/products/${productId}`, updatePayload);
+      }
+
+      // 2️⃣ Update Variations (Price / Stock)
+      if (price || stock !== undefined) {
+        const variationResponse = await wcClient.get(
+          `/products/${productId}/variations`
+        );
+
+        const variations = variationResponse.data;
+
+        await Promise.all(
+          variations.map((variation) =>
+            wcClient.put(
+              `/products/${productId}/variations/${variation.id}`,
+              {
+                regular_price: price
+                  ? String(price)
+                  : variation.regular_price,
+                stock_quantity:
+                  stock !== undefined
+                    ? stock
+                    : variation.stock_quantity,
+              }
+            )
+          )
+        );
+      }
+
+      this.cache.flushAll();
+
+      return {
+        success: true,
+        message: 'Product updated successfully',
+      };
+    } catch (error) {
+      this._handleError(error, 'Failed to update product');
+    }
+  }
+
+  /**
+   * ---------- DELETE ----------
+   */
+
+  async deleteProduct(id) {
+    try {
+      if (!id) throw new Error('Product ID is required');
+
+      const response = await wcClient.delete(`/products/${id}`, {
+        params: { force: true },
+      });
+
+      this.cache.flushAll();
+
+      return response.data;
+    } catch (error) {
+      this._handleError(error, 'Failed to delete product');
+    }
+  }
+
   async createCategory(categoryData) {
     try {
       if (!categoryData?.name) {
@@ -176,25 +258,6 @@ class ProductService {
       return response.data;
     } catch (error) {
       this._handleError(error, 'Failed to create category');
-    }
-  }
-
-  /**
-   * Optional: Delete Product
-   */
-  async deleteProduct(id) {
-    try {
-      if (!id) throw new Error('Product ID is required');
-
-      const response = await wcClient.delete(`/products/${id}`, {
-        params: { force: true },
-      });
-
-      this.cache.flushAll();
-
-      return response.data;
-    } catch (error) {
-      this._handleError(error, 'Failed to delete product');
     }
   }
 }

@@ -26,6 +26,19 @@ const createProduct = {
   }),
 };
 
+const updateProduct = {
+  params: Joi.object().keys({
+    product_id: Joi.number().required(),
+  }),
+  body: Joi.object().keys({
+    name: Joi.string().optional(),
+    description: Joi.string().optional(),
+    price: Joi.number().positive().optional(),
+    stock: Joi.number().min(0).optional(),
+    categoryId: Joi.number().optional(),
+  }).min(1), // at least one field must be sent
+};
+
 const createCategory = {
   body: Joi.object().keys({
     name: Joi.string().required(),
@@ -43,4 +56,5 @@ module.exports = {
   getProduct,
   createProduct,
   createCategory,
+  updateProduct,
 };

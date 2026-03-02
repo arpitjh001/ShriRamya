@@ -32,7 +32,12 @@ const getProduct = async (req, res, next) => {
 const createProduct = async (req, res, next) => {
   try {
     const product = await productService.createProduct(req.body);
-    return successResponse(res, product, 'Product created successfully', httpStatus.CREATED);
+    return successResponse(
+      res,
+      product,
+      'Product created successfully',
+      httpStatus.CREATED
+    );
   } catch (error) {
     next(error);
   }
@@ -41,7 +46,31 @@ const createProduct = async (req, res, next) => {
 const createCategory = async (req, res, next) => {
   try {
     const category = await productService.createCategory(req.body);
-    return successResponse(res, category, 'Category created successfully', httpStatus.CREATED);
+    return successResponse(
+      res,
+      category,
+      'Category created successfully',
+      httpStatus.CREATED
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+const updateProduct = async (req, res, next) => {
+  try {
+    const updated = await productService.updateProduct(
+      req.params.product_id,
+      req.body
+    );
+
+    return successResponse(
+      res,
+      updated,
+      'Product updated successfully',
+      httpStatus.OK
+    );
   } catch (error) {
     next(error);
   }
@@ -53,4 +82,5 @@ module.exports = {
   getProduct,
   createProduct,
   createCategory,
+  updateProduct,
 };
