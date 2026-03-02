@@ -22,7 +22,13 @@ class ProductService {
   }
 
   _handleError(error, defaultMessage) {
-    throw new Error(error.response?.data?.message || defaultMessage || error.message);
+    const apiMessage = error.response?.data?.message;
+    const errorMessage = apiMessage || error.message || defaultMessage;
+    console.error(`[ProductService] ${defaultMessage}:`, errorMessage);
+    if (error.response?.data) {
+      console.error('[ProductService] API Error Details:', JSON.stringify(error.response.data, null, 2));
+    }
+    throw new Error(errorMessage);
   }
 
   _transformImages(images) {
@@ -311,18 +317,18 @@ class ProductService {
         const variations = variationResponse.data;
 
         if (Array.isArray(variations)) {
-          await Promise.all(
-            variations.map((variation) =>
-              wcClient.put(
-                `/products/${productId}/variations/${variation.id}`,
-                {
-                  regular_price: newPrice ? String(newPrice) : variation.regular_price,
-                  stock_quantity: newStock !== undefined ? newStock : variation.stock_quantity,
-                  manage_stock: true,
-                }
-              )
-            )
-          );
+          console.log(`Updating ${variations.length} variations sequentially for product ${productId}...`);
+          for (const variation of variations) {
+            await wcClient.put(
+              `/products/${productId}/variations/${variation.id}`,
+              {
+                regular_price: newPrice ? String(newPrice) : variation.regular_price,
+                stock_quantity: newStock !== undefined ? newStock : variation.stock_quantity,
+                manage_stock: true,
+              }
+            );
+          }
+          console.log('Variations updated.');
         }
       }
 
