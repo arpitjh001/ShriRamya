@@ -170,45 +170,72 @@ class ProductService {
         name,
         description,
         price,
+        regular_price,
+        sale_price,
         stock,
+        stock_quantity,
+        sku,
+        status,
         categoryId,
+        categories,
+        images,
+        fabric,
+        occasion,
+        care_instructions,
       } = updateData;
 
-      // 1️⃣ Update Parent Product
+      // 1️⃣ Prepare Parent Product Payload
       const updatePayload = {};
 
       if (name) updatePayload.name = name;
       if (description) updatePayload.description = description;
-      if (categoryId) updatePayload.categories = [{ id: categoryId }];
+      if (sku) updatePayload.sku = sku;
+      if (status) updatePayload.status = status;
+      if (categories) updatePayload.categories = categories;
+      else if (categoryId) updatePayload.categories = [{ id: categoryId }];
+      if (images) updatePayload.images = images;
 
+      // Handle Meta Data for Custom Fields
+      const metaData = [];
+      if (fabric) metaData.push({ key: '_fabric', value: fabric });
+      if (occasion) metaData.push({ key: '_occasion', value: occasion });
+      if (care_instructions) metaData.push({ key: '_care_instructions', value: care_instructions });
+
+      if (metaData.length > 0) {
+        updatePayload.meta_data = metaData;
+      }
+
+      // Update Parent if needed
       if (Object.keys(updatePayload).length > 0) {
         await wcClient.put(`/products/${productId}`, updatePayload);
       }
 
       // 2️⃣ Update Variations (Price / Stock)
-      if (price || stock !== undefined) {
+      // Logic: If user sends regular_price/stock_quantity OR price/stock, we update all variations
+      const newPrice = regular_price || price;
+      const newStock = stock_quantity !== undefined ? stock_quantity : stock;
+
+      if (newPrice || newStock !== undefined) {
         const variationResponse = await wcClient.get(
           `/products/${productId}/variations`
         );
 
         const variations = variationResponse.data;
 
-        await Promise.all(
-          variations.map((variation) =>
-            wcClient.put(
-              `/products/${productId}/variations/${variation.id}`,
-              {
-                regular_price: price
-                  ? String(price)
-                  : variation.regular_price,
-                stock_quantity:
-                  stock !== undefined
-                    ? stock
-                    : variation.stock_quantity,
-              }
+        if (Array.isArray(variations)) {
+          await Promise.all(
+            variations.map((variation) =>
+              wcClient.put(
+                `/products/${productId}/variations/${variation.id}`,
+                {
+                  regular_price: newPrice ? String(newPrice) : variation.regular_price,
+                  stock_quantity: newStock !== undefined ? newStock : variation.stock_quantity,
+                  manage_stock: true,
+                }
+              )
             )
-          )
-        );
+          );
+        }
       }
 
       this.cache.flushAll();

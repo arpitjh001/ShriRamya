@@ -34,9 +34,22 @@ const updateProduct = {
     name: Joi.string().optional(),
     description: Joi.string().optional(),
     price: Joi.number().positive().optional(),
+    regular_price: Joi.string().optional(),
+    sale_price: Joi.string().optional(),
     stock: Joi.number().min(0).optional(),
+    stock_quantity: Joi.number().min(0).optional(),
+    sku: Joi.string().optional(),
+    status: Joi.string().valid('publish', 'draft', 'pending', 'private').optional(),
     categoryId: Joi.number().optional(),
-  }).min(1), // at least one field must be sent
+    categories: Joi.array().items(Joi.object({ id: Joi.number() })).optional(),
+    images: Joi.array().items(Joi.object()).optional(),
+    // Custom Attributes/Meta
+    fabric: Joi.string().optional(),
+    occasion: Joi.string().optional(),
+    care_instructions: Joi.string().optional(),
+    size_stock: Joi.array().optional(),
+    color_stock: Joi.array().optional(),
+  }).min(1),
 };
 
 const createCategory = {
