@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { productsAPI, ordersAPI } from '../lib/api';
+import { productsAPI, ordersAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { formatPrice } from '../lib/utils';
+import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 
 const CheckoutPage = () => {

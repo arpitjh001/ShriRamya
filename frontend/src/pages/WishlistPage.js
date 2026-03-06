@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { wishlistAPI, productsAPI } from '../lib/api';
+import { wishlistAPI, productsAPI } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { Button } from '../components/ui/button';

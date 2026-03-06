@@ -1,0 +1,13 @@
+﻿[0mPOST /api/v1/products [33m400[0m 52.879 ms - -[0m
+AUTH MIDDLEWARE - Payload Role: admin
+AUTH MIDDLEWARE - Allowed Roles: [ 'admin' ]
+[0mPOST /api/v1/products [33m400[0m 9.755 ms - -[0m
+
+> shriramya-node-backend@2.0.0 start
+> node server.js
+
+Connected to Redis
+Connected to MongoDB
+Connected to MySQL
+Server running on port 8000
+[0mPOST /api/v1/products [33m401[0m 115.813 ms - 833[0m

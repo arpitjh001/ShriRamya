@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const wcClient = require('../integrations/woocommerce');
+const wcClient = require('../config/integrations/woocommerce');
 
 const getCart = async (userId) => {
     const db = mongoose.connection.db;
@@ -52,3 +52,4 @@ module.exports = {
     getCart,
     updateCart,
 };
+

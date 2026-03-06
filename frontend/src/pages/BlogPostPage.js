@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { blogAPI } from '../lib/api';
+import { blogAPI } from '../services/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, User, Share2, Tag, Pencil } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -206,3 +206,4 @@ const BlogPostPage = () => {
 };
 
 export default BlogPostPage;
+

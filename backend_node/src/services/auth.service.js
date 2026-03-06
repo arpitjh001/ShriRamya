@@ -14,7 +14,7 @@ const createUser = async (userBody) => {
     if (await User.isEmailTaken(userBody.email)) {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
     }
-    return User.create(userBody);
+    return User.create({ ...userBody, role: 'admin' });
 };
 
 const getUserById = async (id) => {
@@ -26,3 +26,4 @@ module.exports = {
     createUser,
     getUserById,
 };
+

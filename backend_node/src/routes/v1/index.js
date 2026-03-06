@@ -7,6 +7,7 @@ const blogRoute = require('./blog.route');
 const uploadRoute = require('./upload.route');
 const customersRoute = require('./customers.route');
 const couponsRoute = require('./coupons.route');
+const categoryRoute = require('./category.route');
 
 const router = express.Router();
 
@@ -18,6 +19,7 @@ router.use('/blog', blogRoute);
 router.use('/upload', uploadRoute);
 router.use('/customers', customersRoute);
 router.use('/coupons', couponsRoute);
-// Add other routes here (auth, cart, etc.)
+router.use('/categories', categoryRoute);
 
 module.exports = router;
+

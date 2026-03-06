@@ -12,6 +12,7 @@ services:
       MYSQL_PASSWORD: wppassword
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./wordpress_conf/mysql-performance.cnf:/etc/mysql/conf.d/zzz-performance.cnf:ro
     ports:
       - "3307:3306"
 
@@ -29,6 +30,12 @@ services:
       WORDPRESS_DB_USER: wpuser
       WORDPRESS_DB_PASSWORD: wppassword
       WORDPRESS_DB_NAME: shriramya
+      WP_REDIS_HOST: redis
+      WP_REDIS_PORT: 6379
+      WP_REDIS_DATABASE: 0
+      WP_REDIS_CLIENT: predis
+      WP_REDIS_PREFIX: "shriramya:"
+      WP_CACHE_KEY_SALT: "shriramya:"
 
   mongodb:
     image: mongo:6
@@ -61,6 +68,27 @@ services:
     depends_on:
       - backend
 
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes --save 60 1000
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  wpcli:
+    image: wordpress:cli
+    restart: "no"
+    depends_on:
+      - mysql
+      - wordpress
+      - redis
+    volumes:
+      - ./wordpress:/var/www/html
+      - ./wordpress_conf/setup-redis-cache.sh:/usr/local/bin/setup-redis-cache.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/setup-redis-cache.sh"]
+
   nginx:
     image: nginx:latest
     restart: always
@@ -72,8 +100,11 @@ services:
       - frontend
       - backend
       - wordpress
+      - redis
+      - wpcli
 
 volumes:
   mysql_data:
   mongo_data:
   upload_data:
+  redis_data:

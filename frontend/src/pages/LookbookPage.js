@@ -8,37 +8,37 @@ const LookbookPage = () => {
   const lookbookImages = [
     {
       id: 1,
-      image: 'https://images.unsplash.com/photo-1622129216080-32d0c0f5efd7?w=800',
+      image: 'https://images.unsplash.com/photo-1771654104630-e3aeb6c15793?auto=format&fit=crop&w=2400&q=80',
       title: 'Royal Heritage',
       description: 'Traditional elegance meets contemporary grace',
     },
     {
       id: 2,
-      image: 'https://images.unsplash.com/photo-1595841953288-12d1cefc7fc5?w=800',
+      image: 'https://images.unsplash.com/photo-1756483509164-e9e652cb51bb?auto=format&fit=crop&w=2400&q=80',
       title: 'Festive Glamour',
       description: 'Celebrate in style with handcrafted splendor',
     },
     {
       id: 3,
-      image: 'https://images.unsplash.com/photo-1638964327749-53436bcccdca?w=800',
+      image: 'https://images.unsplash.com/photo-1756483510889-dd6c3d9e0a17?auto=format&fit=crop&w=2400&q=80',
       title: 'Bridal Majesty',
       description: 'Your dream wedding ensemble awaits',
     },
     {
       id: 4,
-      image: 'https://images.unsplash.com/photo-1737514996816-a034a795febe?w=800',
+      image: 'https://images.unsplash.com/photo-1756483529841-a7e392fd7db1?auto=format&fit=crop&w=2400&q=80',
       title: 'Regal Collection',
       description: 'Timeless pieces for special moments',
     },
     {
       id: 5,
-      image: 'https://images.unsplash.com/photo-1767955694884-d4bf352c23c2?w=800',
+      image: 'https://images.unsplash.com/photo-1756483492198-8ca91227489b?auto=format&fit=crop&w=2400&q=80',
       title: 'Silk Symphony',
       description: 'Pure silk sarees in vibrant hues',
     },
     {
       id: 6,
-      image: 'https://images.unsplash.com/photo-1757598077205-69a927f0240f?w=800',
+      image: 'https://images.unsplash.com/photo-1756483510818-060b42c7cecc?auto=format&fit=crop&w=2400&q=80',
       title: 'Golden Hour',
       description: 'Luxurious lehengas with intricate work',
     },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { productsAPI } from '../lib/api';
-import { formatPrice } from '../lib/utils';
+import { productsAPI } from '../services/api';
+import { formatPrice } from '../utils';
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8002';
 
@@ -408,3 +408,4 @@ const AllProductsPage = () => {
 };
 
 export default AllProductsPage;
+

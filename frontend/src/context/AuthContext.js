@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../lib/api';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchCapabilities = async () => {
     try {
-      const { blogAPI } = await import('../lib/api');
+      const { blogAPI } = await import('../services/api');
       const response = await blogAPI.getCapabilities();
       if (response.data && response.data.capabilities) {
         setCapabilities(response.data.capabilities);

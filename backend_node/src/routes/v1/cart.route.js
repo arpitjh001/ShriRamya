@@ -10,3 +10,4 @@ router.put('/', auth(), cartController.updateCart);
 router.delete('/', auth(), cartController.clearCart);
 
 module.exports = router;
+

@@ -3,12 +3,12 @@ const app = require('../src/app');
 const mongoose = require('mongoose');
 const config = require('../src/config/config');
 const User = require('../src/models/user.model');
-const wcClient = require('../src/integrations/woocommerce');
-const wpClient = require('../src/integrations/wordpress');
+const wcClient = require('../src/config/integrations/woocommerce');
+const wpClient = require('../src/config/integrations/wordpress');
 
 // Mock integrations
-jest.mock('../src/integrations/woocommerce');
-jest.mock('../src/integrations/wordpress');
+jest.mock('../src/config/integrations/woocommerce');
+jest.mock('../src/config/integrations/wordpress');
 
 describe('API Endpoints Automation Tests', () => {
     let adminToken;

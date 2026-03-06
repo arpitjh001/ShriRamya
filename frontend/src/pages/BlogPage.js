@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { blogAPI } from '../lib/api';
+import { blogAPI } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, User, Search, ChevronLeft, ChevronRight, Tag, Plus } from 'lucide-react';
 import { Button } from '../components/ui/button';

@@ -12,3 +12,4 @@ router.delete('/posts/:post_id', auth(['admin']), blogController.deletePost);
 router.get('/capabilities', auth(['admin']), blogController.getCapabilities);
 
 module.exports = router;
+

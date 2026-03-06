@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { productsAPI } from '../lib/api';
+import { productsAPI } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import { motion } from 'framer-motion';
 import { Sparkles, Award, Users } from 'lucide-react';

@@ -12,6 +12,9 @@ const routes = require('./routes/v1');
 const { errorConverter, errorHandler } = require('./middlewares/error');
 const ApiError = require('./utils/ApiError');
 
+const cookieParser = require('cookie-parser');
+const { authLimiter } = require('./middlewares/rateLimit.middleware');
+
 const app = express();
 
 /**
@@ -28,24 +31,15 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-/**
- * Rate Limiting (Basic protection)
- */
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP
-  message: {
-    success: false,
-    message: 'Too many requests, please try again later.',
-  },
-});
-app.use(limiter);
-
-/**
- * Body Parsing
- */
+// Body Parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+/**
+ * Auth Rate Limiting
+ */
+app.use('/api/v1/auth', authLimiter);
 
 /**
  * Compression

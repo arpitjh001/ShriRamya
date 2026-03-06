@@ -32,7 +32,7 @@ const AboutPage = () => {
       <section className="relative h-[60vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1651132164857-b61aa4cf7472?w=1920"
+            src="https://images.unsplash.com/photo-1756483509164-e9e652cb51bb?auto=format&fit=crop&w=2400&q=80"
             alt="Shri Ramya Heritage"
             className="w-full h-full object-cover"
           />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { blogAPI } from '../lib/api';
+import { blogAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { Loader2, ArrowLeft, Image as ImageIcon, Save, Check } from 'lucide-react';
@@ -297,3 +297,4 @@ const AdminBlogEditPage = () => {
 };
 
 export default AdminBlogEditPage;
+

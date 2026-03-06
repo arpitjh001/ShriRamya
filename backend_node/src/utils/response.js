@@ -6,3 +6,4 @@ const successResponse = (res, data = null, message = "Success", statusCode = 200
     });
 };
 module.exports = { successResponse };
+

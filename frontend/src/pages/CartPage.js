@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { productsAPI, cartAPI } from '../lib/api';
+import { productsAPI, cartAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Trash2, Plus, Minus, ShoppingBag, Loader2 } from 'lucide-react';
-import { formatPrice, getSessionId } from '../lib/utils';
+import { formatPrice, getSessionId } from '../utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -361,3 +361,4 @@ const CartPage = () => {
 };
 
 export default CartPage;
+

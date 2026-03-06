@@ -1,5 +1,5 @@
 const NodeCache = require('node-cache');
-const wpClient = require('../integrations/wordpress');
+const wpClient = require('../config/integrations/wordpress');
 
 const cache = new NodeCache({ stdTTL: 600, checkperiod: 60 }); // Cache for 10 minutes
 
@@ -52,3 +52,4 @@ module.exports = {
     updatePost,
     deletePost,
 };
+

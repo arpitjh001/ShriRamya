@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { productsAPI } from '../lib/api';
+import { productsAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles } from 'lucide-react';
-import { formatPrice } from '../lib/utils';
+import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
 import CraftStorySection from '../components/CraftStorySection';
@@ -33,9 +33,12 @@ const ProductDetailPage = () => {
           productsAPI.getRecommendations(id),
         ]);
         setProduct(productRes.data);
-        setRecommendations(recsRes.data);
-        if (productRes.data.variations?.length > 0) {
-          setSelectedVariation(productRes.data.variations[0]);
+        setRecommendations(recsRes.data || []);
+
+        // Use variants/variations safely
+        const variantsData = productRes.data?.variants || productRes.data?.variations || [];
+        if (variantsData.length > 0) {
+          setSelectedVariation(variantsData[0]);
         }
       } catch (error) {
         console.error('Failed to fetch product:', error);
@@ -103,8 +106,30 @@ const ProductDetailPage = () => {
     );
   }
 
-  const displayPrice = product.sale_price || product.price;
-  const hasDiscount = product.sale_price && product.sale_price < product.price;
+  const variantPrices = Array.isArray(product.variants)
+    ? product.variants
+      .map((variant) => Number(variant?.price || 0))
+      .filter((value) => Number.isFinite(value) && value > 0)
+    : [];
+
+  const variantDiscountedPrices = Array.isArray(product.variants)
+    ? product.variants
+      .map((variant) => {
+        const regular = Number(variant?.price || 0);
+        const effective = Number(variant?.effectivePrice ?? variant?.discountPrice ?? 0);
+        return Number.isFinite(regular) && Number.isFinite(effective) && effective > 0 && effective < regular
+          ? effective
+          : null;
+      })
+      .filter(Boolean)
+    : [];
+
+  const regularPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : Number(product.price || 0);
+  const salePrice = variantDiscountedPrices.length > 0
+    ? Math.min(...variantDiscountedPrices)
+    : Number(product.sale_price || 0);
+  const hasDiscount = salePrice > 0 && salePrice < regularPrice;
+  const displayPrice = hasDiscount ? salePrice : regularPrice;
 
   return (
     <div data-testid="product-detail-page" className="px-6 md:px-12 lg:px-24 py-12">
@@ -152,9 +177,9 @@ const ProductDetailPage = () => {
             <span className="text-3xl font-medium">{formatPrice(displayPrice)}</span>
             {hasDiscount && (
               <>
-                <span className="text-xl text-muted-foreground line-through">{formatPrice(product.price)}</span>
+                <span className="text-xl text-muted-foreground line-through">{formatPrice(regularPrice)}</span>
                 <span className="bg-primary text-primary-foreground px-2 py-1 text-sm rounded">
-                  {Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
+                  {Math.round(((regularPrice - salePrice) / regularPrice) * 100)}% OFF
                 </span>
               </>
             )}

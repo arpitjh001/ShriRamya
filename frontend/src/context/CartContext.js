@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { cartAPI } from '../lib/api';
-import { getSessionId } from '../lib/utils';
+import { cartAPI } from '../services/api';
+import { getSessionId } from '../utils';
 import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);

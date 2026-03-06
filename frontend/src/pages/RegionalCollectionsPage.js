@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { productsAPI } from '../lib/api';
+import { productsAPI } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import RegionalCollectionCard from '../components/RegionalCollectionCard';
 import { motion } from 'framer-motion';
@@ -14,25 +14,25 @@ const RegionalCollectionsPage = () => {
   const regions = [
     {
       name: 'Rajasthan',
-      image: 'https://images.unsplash.com/photo-1732381917488-39f31539cd4f?w=800',
+      image: 'https://images.unsplash.com/photo-1756483509177-bbabd67a3234?auto=format&fit=crop&w=2400&q=80',
       description: 'Bandhej, Leheriya, and Block Prints',
       count: 0,
     },
     {
       name: 'Uttar Pradesh',
-      image: 'https://images.unsplash.com/photo-1767955694884-d4bf352c23c2?w=800',
+      image: 'https://images.unsplash.com/photo-1756483492198-8ca91227489b?auto=format&fit=crop&w=2400&q=80',
       description: 'Banarasi Silk and Chikankari',
       count: 0,
     },
     {
       name: 'Tamil Nadu',
-      image: 'https://images.unsplash.com/photo-1638964327749-53436bcccdca?w=800',
+      image: 'https://images.unsplash.com/photo-1756483510830-878773b5a59d?auto=format&fit=crop&w=2400&q=80',
       description: 'Kanjeevaram Silk',
       count: 0,
     },
     {
       name: 'Punjab',
-      image: 'https://images.unsplash.com/photo-1595841953288-12d1cefc7fc5?w=800',
+      image: 'https://images.unsplash.com/photo-1756483527592-0b715e5bd08c?auto=format&fit=crop&w=2400&q=80',
       description: 'Phulkari Embroidery',
       count: 0,
     },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { blogAPI } from '../lib/api';
+import { blogAPI } from '../services/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Save, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -187,3 +187,4 @@ const BlogCreatePage = () => {
 };
 
 export default BlogCreatePage;
+

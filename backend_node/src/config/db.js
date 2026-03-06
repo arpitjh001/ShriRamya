@@ -33,3 +33,4 @@ const connectMySQL = async () => {
 };
 
 module.exports = { connectMongo, mysqlPool, connectMySQL };
+

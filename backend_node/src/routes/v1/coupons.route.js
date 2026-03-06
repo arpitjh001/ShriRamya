@@ -11,3 +11,4 @@ router.put('/:coupon_id', auth(['admin']), couponController.updateCoupon);
 router.delete('/:coupon_id', auth(['admin']), couponController.deleteCoupon);
 
 module.exports = router;
+

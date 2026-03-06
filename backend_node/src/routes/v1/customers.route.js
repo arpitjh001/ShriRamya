@@ -11,3 +11,4 @@ router.put('/:customer_id', auth(['admin']), customerController.updateCustomer);
 router.delete('/:customer_id', auth(['admin']), customerController.deleteCustomer);
 
 module.exports = router;
+

@@ -41,3 +41,4 @@ const router = express.Router();
 router.post('/', auth(['admin']), upload.single('file'), uploadController.uploadFile);
 
 module.exports = router;
+

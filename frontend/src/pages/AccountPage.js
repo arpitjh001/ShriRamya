@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ordersAPI } from '../lib/api';
+import { ordersAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Package, User as UserIcon, MapPin, LogOut } from 'lucide-react';
-import { formatPrice } from '../lib/utils';
+import { formatPrice } from '../utils';
 import { format } from 'date-fns';
 
 const AccountPage = () => {

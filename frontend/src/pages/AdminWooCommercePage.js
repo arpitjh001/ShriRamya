@@ -7,9 +7,9 @@ import {
     wcOrdersAPI,
     wcCustomersAPI,
     wcCouponsAPI,
-} from '../lib/wcApi';
-import { authAPI } from '../lib/api';
-import { formatPrice } from '../lib/utils';
+} from '../services/wcApi.service';
+import { authAPI } from '../services/api';
+import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 
 const TABS = ['Products', 'Categories', 'Orders', 'Customers', 'Coupons'];
@@ -40,19 +40,22 @@ const AdminWooCommercePage = () => {
 
     // Category management
     const [selectedCategories, setSelectedCategories] = useState([]);
-    const [sizeStock, setSizeStock] = useState([]); // [{size:'S', qty:0}]
-    const [colorStock, setColorStock] = useState([]); // [{color:'Red', qty:0}]
     const [newCategoryName, setNewCategoryName] = useState('');
     const [creatingCategory, setCreatingCategory] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [uploadingVariantIndex, setUploadingVariantIndex] = useState(null);
 
     /* Size UI moved to proper location */
     // Product form
     const [productForm, setProductForm] = useState({
-        name: '', description: '', regular_price: '', sale_price: '',
-        stock_quantity: 0, sku: '', status: 'publish', images: [''],
+        name: '', description: '', basePrice: '',
+        sku: '', status: 'published', images: [''],
         fabric: '', occasion: '', care_instructions: '',
-        size_stock: [], // will be synced with sizeStock state
+        attributes: [
+            { name: "Color", values: [] },
+            { name: "Size", values: [] }
+        ],
+        variants: [] // Array of explicit variants
     });
 
     // Coupon form
@@ -154,35 +157,172 @@ const AdminWooCommercePage = () => {
         setLoading(false);
     };
 
+    const getProductThumbnail = (product) => {
+        if (!product) return '';
+
+        const fromImages = Array.isArray(product.images) && product.images.length > 0
+            ? product.images[0]
+            : null;
+        const firstImage = typeof fromImages === 'string' ? fromImages : fromImages?.src;
+        if (firstImage) return firstImage;
+
+        if (typeof product.image === 'string' && product.image.trim()) {
+            return product.image;
+        }
+
+        const variantImage = Array.isArray(product.variants)
+            ? product.variants.find(v => typeof v?.image === 'string' && v.image.trim())?.image
+            : null;
+
+        return variantImage || '';
+    };
+
+    const addVariantRow = () => {
+        setProductForm((prev) => ({
+            ...prev,
+            variants: [
+                ...prev.variants,
+                {
+                    sku: '',
+                    price: '',
+                    discountPrice: '',
+                    discountStart: '',
+                    discountEnd: '',
+                    stock: 0,
+                    image: '',
+                    attributes: { Color: '', Size: '' }
+                }
+            ]
+        }));
+    };
+
+    const deleteVariantRow = (index) => {
+        setProductForm((prev) => ({
+            ...prev,
+            variants: prev.variants.filter((_, idx) => idx !== index)
+        }));
+    };
+
+    const updateVariantField = (index, field, value) => {
+        setProductForm((prev) => ({
+            ...prev,
+            variants: prev.variants.map((variant, idx) =>
+                idx === index ? { ...variant, [field]: value } : variant
+            )
+        }));
+    };
+
+    const updateVariantAttributeField = (index, key, value) => {
+        setProductForm((prev) => ({
+            ...prev,
+            variants: prev.variants.map((variant, idx) =>
+                idx === index
+                    ? { ...variant, attributes: { ...(variant.attributes || {}), [key]: value } }
+                    : variant
+            )
+        }));
+    };
+
     // --- Product CRUD ---
     const handleProductSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            // Validation: Unique Colors
-            const colorNames = colorStock.map(c => c.color.trim().toLowerCase()).filter(Boolean);
-            if (new Set(colorNames).size !== colorNames.length) {
-                toast.error('Each color must be unique.');
+            if (!productForm.name?.trim() || productForm.basePrice === '') {
+                toast.error('Name and Base Price are required.');
+                setLoading(false);
+                return;
+            }
+            // Validation: Unique Variants
+            const variantHash = productForm.variants.map(v =>
+                Object.entries(v.attributes).sort().map(e => `${e[0]}:${e[1]}`).join('|')
+            );
+            if (new Set(variantHash).size !== variantHash.length) {
+                toast.error('Each variant combination must be unique.');
+                setLoading(false);
+                return;
+            }
+            // Validation: Unique SKUs
+            const skuList = productForm.variants.map(v => v.sku?.trim().toLowerCase()).filter(Boolean);
+            if (new Set(skuList).size !== skuList.length) {
+                toast.error('Each variant SKU must be unique.');
+                setLoading(false);
+                return;
+            }
+            if (productForm.variants.some(v => !v.sku || !String(v.sku).trim())) {
+                toast.error('SKU is required for each variant.');
+                setLoading(false);
+                return;
+            }
+            if (productForm.variants.some(v => v.price === '' || v.price === null || Number.isNaN(Number(v.price)))) {
+                toast.error('Price is required for each variant.');
+                setLoading(false);
+                return;
+            }
+            if (productForm.variants.some(v => Number(v.price) < 0)) {
+                toast.error('Price cannot be negative.');
+                setLoading(false);
+                return;
+            }
+            if (productForm.variants.some(v => v.stock === '' || v.stock === null || Number.isNaN(Number(v.stock)))) {
+                toast.error('Stock is required for each variant.');
+                setLoading(false);
+                return;
+            }
+            if (productForm.variants.some(v => Number(v.stock) < 0)) {
+                toast.error('Stock cannot be negative.');
+                setLoading(false);
+                return;
+            }
+            if (productForm.variants.some(v => v.discountPrice !== '' && v.discountPrice != null && Number(v.discountPrice) >= Number(v.price))) {
+                toast.error('Variant discount price must be lower than price.');
+                setLoading(false);
+                return;
+            }
+            if (productForm.variants.some(v => v.discountStart && v.discountEnd && new Date(v.discountEnd) <= new Date(v.discountStart))) {
+                toast.error('Variant discount end must be after discount start.');
                 setLoading(false);
                 return;
             }
 
-            // Aggregate Total Stock
-            const totalSizeStock = sizeStock.reduce((sum, item) => sum + (parseInt(item.qty) || 0), 0);
-            const totalColorStock = colorStock.reduce((sum, item) => sum + (parseInt(item.qty) || 0), 0);
-            const aggregatedStock = totalSizeStock + totalColorStock;
+            // Extract distinct values for the attributes definition
+            let colorValues = new Set();
+            let sizeValues = new Set();
+            for (const v of productForm.variants) {
+                const color = v.attributes?.Color ? String(v.attributes.Color).trim() : '';
+                const size = v.attributes?.Size ? String(v.attributes.Size).trim() : '';
+                if (color) colorValues.add(color);
+                if (size) sizeValues.add(size);
+            }
 
             const data = {
-                ...productForm,
-                regular_price: parseFloat(productForm.regular_price),
-                sale_price: productForm.sale_price ? parseFloat(productForm.sale_price) : null,
-                stock_quantity: aggregatedStock || parseInt(productForm.stock_quantity) || 0,
-                images: productForm.images.filter(Boolean),
-                categories: selectedCategories.map(id => ({ id: parseInt(id) })),
-                size_stock: sizeStock,
-                color_stock: colorStock,
+                name: productForm.name?.trim(),
+                sku: productForm.sku?.trim() || null,
+                description: productForm.description,
+                fabric: productForm.fabric?.trim() || null,
+                occasion: productForm.occasion?.trim() || null,
+                basePrice: parseFloat(productForm.basePrice) || 0,
+                status: productForm.status,
+                attributes: [
+                    { name: "Color", values: Array.from(colorValues) },
+                    { name: "Size", values: Array.from(sizeValues) }
+                ].filter(attr => attr.values.length > 0),
+                variants: productForm.variants.map(v => ({
+                    id: v.id || null,
+                    sku: v.sku.trim(),
+                    price: parseFloat(v.price) || 0,
+                    discountPrice: v.discountPrice === '' || v.discountPrice == null ? null : (parseFloat(v.discountPrice) || null),
+                    discountStart: v.discountStart || null,
+                    discountEnd: v.discountEnd || null,
+                    stock: parseInt(v.stock) || 0,
+                    attributes: v.attributes,
+                    image: v.image || productForm.images[0] || null
+                })),
+                categories: selectedCategories.length > 0 ? selectedCategories[0] : null
             };
+
             if (editProduct) {
+                // Backend now handles the full variants array natively (Update / Insert / Delete)
                 await wcProductsAPI.update(editProduct.id, data);
                 toast.success('Product updated!');
             } else {
@@ -194,7 +334,7 @@ const AdminWooCommercePage = () => {
             resetProductForm();
             loadProducts();
         } catch (err) {
-            toast.error(err?.response?.data?.detail || 'Failed to save product');
+            toast.error(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to save product');
         }
         setLoading(false);
     };
@@ -209,30 +349,37 @@ const AdminWooCommercePage = () => {
     };
 
     const startEditProduct = (product) => {
-        // Load size stock from meta
-        const sizesMeta = product.meta_data?.find(m => m.key === '_sr_sizes');
-        if (sizesMeta && typeof sizesMeta.value === 'string') {
-            try { setSizeStock(JSON.parse(sizesMeta.value)); } catch { setSizeStock([]); }
-        } else { setSizeStock([]); }
-        // Load color stock from meta
-        const colorsMeta = product.meta_data?.find(m => m.key === '_sr_colors');
-        if (colorsMeta && typeof colorsMeta.value === 'string') {
-            try { setColorStock(JSON.parse(colorsMeta.value)); } catch { setColorStock([]); }
-        } else { setColorStock([]); }
+        const toDatetimeLocal = (value) => {
+            if (!value) return '';
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) return '';
+            return parsed.toISOString().slice(0, 16);
+        };
 
         setEditProduct(product);
         setProductForm({
             name: product.name || '',
             description: product.description || '',
-            regular_price: product.regular_price || product.price || '',
-            sale_price: product.sale_price || '',
-            stock_quantity: product.stock_quantity || 0,
+            basePrice: product.basePrice || product.price || product.regular_price || 0,
             sku: product.sku || '',
-            status: product.status || 'publish',
+            status: product.status === 'publish' ? 'published' : (product.status || 'published'),
             images: product.images?.map(i => typeof i === 'string' ? i : i.src) || [''],
-            fabric: '', occasion: '', care_instructions: '',
+            fabric: product.fabric || '',
+            occasion: product.occasion || '',
+            care_instructions: product.care_instructions || '',
+            variants: product.variants?.map(v => ({
+                id: v.id,
+                sku: v.sku || '',
+                price: v.price || v.regular_price || 0,
+                discountPrice: v.discountPrice ?? v.discount_price ?? '',
+                discountStart: toDatetimeLocal(v.discountStart ?? v.discount_start),
+                discountEnd: toDatetimeLocal(v.discountEnd ?? v.discount_end),
+                stock: v.stock_quantity ?? v.stock ?? 0,
+                attributes: v.attributes || {},
+                image: v.image || ''
+            })) || []
         });
-        // Pre-select existing product categories
+
         setSelectedCategories(
             (product.categories || []).map(c => String(c.id))
         );
@@ -241,14 +388,13 @@ const AdminWooCommercePage = () => {
 
     const resetProductForm = () => {
         setProductForm({
-            name: '', description: '', regular_price: '', sale_price: '',
-            stock_quantity: 0, sku: '', status: 'publish', images: [''],
+            name: '', description: '', basePrice: '',
+            sku: '', status: 'published', images: [''],
             fabric: '', occasion: '', care_instructions: '',
-            size_stock: [],
+            attributes: [],
+            variants: []
         });
         setSelectedCategories([]);
-        setSizeStock([]);
-        setColorStock([]);
     };
 
     const toggleCategory = (catId) => {
@@ -288,30 +434,35 @@ const AdminWooCommercePage = () => {
         }
     };
 
-    const handleImageUpload = async (file) => {
+    const uploadImageToServer = async (file) => {
         if (!file || !file.type.startsWith('image/')) {
-            toast.error('Please select an image file');
-            return;
+            throw new Error('Please select an image file');
         }
         if (file.size > 10 * 1024 * 1024) {
-            toast.error('Image must be smaller than 10MB');
-            return;
+            throw new Error('Image must be smaller than 10MB');
         }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8002'}/api/v1/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData,
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Upload failed');
+        }
+
+        return await res.json();
+    };
+
+    const handleImageUpload = async (file) => {
         setUploadingImage(true);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8002'}/api/v1/upload`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData,
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || 'Upload failed');
-            }
-            const data = await res.json();
+            const data = await uploadImageToServer(file);
             const current = productForm.images.filter(Boolean);
             setProductForm(prev => ({ ...prev, images: [...current, data.url] }));
             toast.success(`Image "${file.name}" uploaded!`);
@@ -319,6 +470,18 @@ const AdminWooCommercePage = () => {
             toast.error(err.message || 'Image upload failed');
         }
         setUploadingImage(false);
+    };
+
+    const handleVariantImageUpload = async (file, variantIndex) => {
+        setUploadingVariantIndex(variantIndex);
+        try {
+            const data = await uploadImageToServer(file);
+            updateVariantField(variantIndex, 'image', data.url);
+            toast.success(`Variant image "${file.name}" uploaded!`);
+        } catch (err) {
+            toast.error(err.message || 'Variant image upload failed');
+        }
+        setUploadingVariantIndex(null);
     };
 
     // --- Order Status ---
@@ -388,13 +551,9 @@ const AdminWooCommercePage = () => {
                     borderRadius: 20, padding: '3rem', width: 400, textAlign: 'center',
                 }}>
                     <div style={{ fontSize: '3rem', marginBottom: 16 }}>🔐</div>
-                    <h1 style={{
-                        fontSize: '1.5rem', fontWeight: 700, marginBottom: 8,
-                        background: 'linear-gradient(135deg, #f093fb, #f5576c)',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    }}>Admin Access Required</h1>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: 0, background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Product Management</h1>
                     <p style={{ color: '#94a3b8', marginBottom: '2rem', fontSize: '0.9rem' }}>
-                        Please log in with an admin account to access the WooCommerce Dashboard.
+                        Please log in with an admin account to access the Product Dashboard.
                     </p>
                     <form onSubmit={handleAdminLogin}>
                         <div style={{ marginBottom: 16 }}>
@@ -480,7 +639,7 @@ const AdminWooCommercePage = () => {
                             fontSize: '2rem', fontWeight: 700,
                             background: 'linear-gradient(135deg, #f093fb, #f5576c)',
                             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                        }}>WooCommerce Dashboard</h1>
+                        }}>Product Dashboard</h1>
                         <p style={{ color: '#94a3b8', marginTop: 4 }}>Manage products, orders, customers & coupons</p>
                     </div>
                     {loading && <div style={{
@@ -526,9 +685,7 @@ const AdminWooCommercePage = () => {
                                         {[
                                             ['name', 'Product Name', 'text', true],
                                             ['sku', 'SKU', 'text', false],
-                                            ['regular_price', 'Price (₹)', 'number', true],
-                                            ['sale_price', 'Sale Price (₹)', 'number', false],
-                                            ['stock_quantity', 'Stock Qty', 'number', true],
+                                            ['basePrice', 'Base Price (₹)', 'number', true],
                                             ['fabric', 'Fabric', 'text', false],
                                             ['occasion', 'Occasion', 'text', false],
                                         ].map(([key, label, type, required]) => (
@@ -550,9 +707,9 @@ const AdminWooCommercePage = () => {
                                                     width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8,
                                                     border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.1)', color: '#e2e8f0',
                                                 }}>
-                                                <option value="publish">Published</option>
+                                                <option value="published">Published</option>
                                                 <option value="draft">Draft</option>
-                                                <option value="private">Private</option>
+                                                <option value="archived">Archived</option>
                                             </select>
                                         </div>
                                         {/* Category Selector */}
@@ -612,77 +769,137 @@ const AdminWooCommercePage = () => {
                                                 border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0',
                                             }} />
                                     </div>
-                                    {/* Size Stock UI */}
+                                    {/* Explicit Variants UI */}
                                     <div style={{ marginTop: 16 }}>
-                                        <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#e2e8f0' }}>Size Stock</h4>
-                                        {sizeStock.map((item, idx) => (
-                                            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                                                <select value={item.size} onChange={e => {
-                                                    const newArr = [...sizeStock];
-                                                    newArr[idx].size = e.target.value;
-                                                    setSizeStock(newArr);
-                                                }} style={{ padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }}>
-                                                    <option value="">Select size</option>
-                                                    <option value="S">S</option>
-                                                    <option value="M">M</option>
-                                                    <option value="L">L</option>
-                                                    <option value="XL">XL</option>
-                                                </select>
-                                                <input type="number" min="0" placeholder="Qty" value={item.qty}
-                                                    onChange={e => {
-                                                        const newArr = [...sizeStock];
-                                                        newArr[idx].qty = parseInt(e.target.value) || 0;
-                                                        setSizeStock(newArr);
-                                                    }}
-                                                    style={{ width: 80, padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
-                                                <button type="button" onClick={() => setSizeStock(sizeStock.filter((_, i) => i !== idx))}
-                                                    style={{ padding: '0.2rem 0.5rem', borderRadius: 4, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer' }}>✕</button>
-                                            </div>
-                                        ))}
-                                        <button type="button" onClick={() => setSizeStock([...sizeStock, { size: '', qty: 0 }])}
-                                            style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontWeight: 600 }}>
-                                            + Add Size
-                                        </button>
-                                    </div>
-                                    {/* Color Stock UI */}
-                                    <div style={{ marginTop: 16 }}>
-                                        <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#e2e8f0' }}>Color Stock</h4>
-                                        {colorStock.map((item, idx) => (
-                                            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                                                {/* Color Swatch */}
-                                                <div style={{
-                                                    width: 32, height: 32, borderRadius: 6,
-                                                    border: '1px solid rgba(148,163,184,0.3)',
-                                                    background: item.color || 'transparent',
-                                                    flexShrink: 0
-                                                }} />
-                                                <input type="text" placeholder="Color (e.g. Red, #ff0000)" value={item.color}
-                                                    onChange={e => {
-                                                        const newArr = [...colorStock];
-                                                        newArr[idx].color = e.target.value;
-                                                        setColorStock(newArr);
-                                                    }}
-                                                    style={{ flex: 1, padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
-                                                <input type="number" min="0" placeholder="Qty" value={item.qty}
-                                                    onChange={e => {
-                                                        const newArr = [...colorStock];
-                                                        newArr[idx].qty = parseInt(e.target.value) || 0;
-                                                        setColorStock(newArr);
-                                                    }}
-                                                    style={{ width: 80, padding: '0.4rem', borderRadius: 4, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
-                                                <button type="button" onClick={() => setColorStock(colorStock.filter((_, i) => i !== idx))}
-                                                    style={{ padding: '0.2rem 0.5rem', borderRadius: 4, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer' }}>✕</button>
-                                            </div>
-                                        ))}
-                                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
-                                            <button type="button" onClick={() => setColorStock([...colorStock, { color: '', qty: 0 }])}
-                                                style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff', fontWeight: 600 }}>
-                                                + Add Color
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <h4 style={{ fontSize: '1rem', color: '#e2e8f0' }}>Variants ({productForm.variants.length})</h4>
+                                            <button type="button" onClick={addVariantRow}
+                                                style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontWeight: 600 }}>
+                                                + Add Variant
                                             </button>
-                                            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                                                Total Variation Stock: {sizeStock.reduce((s, i) => s + (parseInt(i.qty) || 0), 0) + colorStock.reduce((s, i) => s + (parseInt(i.qty) || 0), 0)}
-                                            </span>
                                         </div>
+                                        <div style={{
+                                            border: '1px solid rgba(148,163,184,0.25)',
+                                            borderRadius: 10,
+                                            overflowX: 'auto',
+                                            background: 'rgba(255,255,255,0.02)'
+                                        }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
+                                                <thead>
+                                                    <tr style={{ borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
+                                                        {['SKU', 'Color', 'Size', 'Price', 'Discount', 'Stock', 'Image URL', 'Actions'].map((header) => (
+                                                            <th key={header} style={{ padding: '0.65rem', textAlign: 'left', fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
+                                                                {header}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {productForm.variants.map((variant, idx) => (
+                                                        <tr key={idx} style={{ borderBottom: '1px solid rgba(148,163,184,0.12)' }}>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="SKU"
+                                                                    value={variant.sku || ''}
+                                                                    onChange={e => updateVariantField(idx, 'sku', e.target.value)}
+                                                                    style={{ width: '100%', minWidth: 120, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Color"
+                                                                    value={variant.attributes?.Color || ''}
+                                                                    onChange={e => updateVariantAttributeField(idx, 'Color', e.target.value)}
+                                                                    style={{ width: '100%', minWidth: 100, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Size"
+                                                                    value={variant.attributes?.Size || ''}
+                                                                    onChange={e => updateVariantAttributeField(idx, 'Size', e.target.value)}
+                                                                    style={{ width: '100%', minWidth: 80, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    placeholder="Price"
+                                                                    value={variant.price}
+                                                                    onChange={e => updateVariantField(idx, 'price', e.target.value)}
+                                                                    style={{ width: '100%', minWidth: 100, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    placeholder="Discount"
+                                                                    value={variant.discountPrice ?? ''}
+                                                                    onChange={e => updateVariantField(idx, 'discountPrice', e.target.value)}
+                                                                    style={{ width: '100%', minWidth: 100, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    placeholder="Stock"
+                                                                    value={variant.stock}
+                                                                    onChange={e => updateVariantField(idx, 'stock', e.target.value)}
+                                                                    style={{ width: '100%', minWidth: 90, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
+                                                                />
+                                                            </td>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <div style={{ display: 'flex', gap: 6, minWidth: 300 }}>
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Image URL"
+                                                                        value={variant.image || ''}
+                                                                        onChange={e => updateVariantField(idx, 'image', e.target.value)}
+                                                                        style={{ flex: 1, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
+                                                                    />
+                                                                    <input
+                                                                        id={`variant-image-input-${idx}`}
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        style={{ display: 'none' }}
+                                                                        onChange={async (e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file) await handleVariantImageUpload(file, idx);
+                                                                            e.target.value = '';
+                                                                        }}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => document.getElementById(`variant-image-input-${idx}`)?.click()}
+                                                                        style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid rgba(99,102,241,0.5)', background: 'transparent', color: '#a5b4fc', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                                                                    >
+                                                                        {uploadingVariantIndex === idx ? 'Uploading...' : 'Upload'}
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ padding: '0.5rem' }}>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => deleteVariantRow(idx)}
+                                                                    style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.5)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontSize: '0.78rem' }}
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {productForm.variants.length === 0 && (
+                                            <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0' }}>No variants added yet. Click "+ Add Variant" to create one.</p>
+                                        )}
                                     </div>
                                     <div style={{ marginTop: 16 }}>
                                         <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 8 }}>Product Images</label>
@@ -792,8 +1009,13 @@ const AdminWooCommercePage = () => {
                                             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                             <td style={{ padding: '0.75rem' }}>
-                                                {p.images?.[0]?.src ? (
-                                                    <img src={p.images[0].src} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
+                                                {getProductThumbnail(p) ? (
+                                                    <img
+                                                        src={getProductThumbnail(p)}
+                                                        alt={p.name || 'Product thumbnail'}
+                                                        style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(148,163,184,0.25)' }}
+                                                        onError={e => { e.currentTarget.style.display = 'none'; }}
+                                                    />
                                                 ) : <div style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.1)' }} />}
                                             </td>
                                             <td style={{ padding: '0.75rem', fontWeight: 500 }}>{p.name}</td>
@@ -811,22 +1033,22 @@ const AdminWooCommercePage = () => {
                                             </td>
                                             <td style={{ padding: '0.75rem' }}>
                                                 {p.sale_price ? (
-                                                    <><span style={{ textDecoration: 'line-through', color: '#64748b', marginRight: 8 }}>₹{p.regular_price}</span>
+                                                    <><span style={{ textDecoration: 'line-through', color: '#64748b', marginRight: 8 }}>₹{p.basePrice ?? p.regular_price}</span>
                                                         <span style={{ color: '#f59e0b' }}>₹{p.sale_price}</span></>
-                                                ) : <span>₹{p.regular_price || p.price}</span>}
+                                                ) : <span>₹{p.basePrice ?? p.regular_price ?? p.price ?? 0}</span>}
                                             </td>
                                             <td style={{ padding: '0.75rem' }}>
                                                 <span style={{
                                                     padding: '2px 8px', borderRadius: 12, fontSize: '0.8rem',
-                                                    background: p.stock_quantity > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                                                    color: p.stock_quantity > 0 ? '#10b981' : '#ef4444',
-                                                }}>{p.stock_quantity ?? 'N/A'}</span>
+                                                    background: (p.variants?.reduce((s, v) => s + (v.stock ?? 0), 0) > 0 || p.stock_quantity > 0) ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                                                    color: (p.variants?.reduce((s, v) => s + (v.stock ?? 0), 0) > 0 || p.stock_quantity > 0) ? '#10b981' : '#ef4444',
+                                                }}>{p.variants ? p.variants.reduce((s, v) => s + (v.stock ?? 0), 0) : (p.stock_quantity ?? 'N/A')}</span>
                                             </td>
                                             <td style={{ padding: '0.75rem' }}>
                                                 <span style={{
                                                     padding: '2px 8px', borderRadius: 12, fontSize: '0.8rem',
-                                                    background: p.status === 'publish' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-                                                    color: p.status === 'publish' ? '#10b981' : '#f59e0b',
+                                                    background: p.status === 'published' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                                                    color: p.status === 'published' ? '#10b981' : '#f59e0b',
                                                 }}>{p.status}</span>
                                             </td>
                                             <td style={{ padding: '0.75rem' }}>
@@ -847,7 +1069,7 @@ const AdminWooCommercePage = () => {
                             </table>
                             {products.length === 0 && !loading && (
                                 <p style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                                    No products found. {!loading && 'WooCommerce may not be configured yet.'}
+                                    No products found. {!loading && 'Click "+ Add Product" to create one.'}
                                 </p>
                             )}
                         </div>
@@ -1050,3 +1272,5 @@ const AdminWooCommercePage = () => {
 };
 
 export default AdminWooCommercePage;
+
+

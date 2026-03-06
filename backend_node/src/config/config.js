@@ -14,11 +14,18 @@ const envVarsSchema = Joi.object()
     MYSQL_DATABASE: Joi.string().required(),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
     WOOCOMMERCE_URL: Joi.string().required(),
+    WOOCOMMERCE_CONSUMER_KEY: Joi.string().required(),
+    WOOCOMMERCE_CONSUMER_SECRET: Joi.string().required(),
     WP_ADMIN_USER: Joi.string().required(),
     WP_APP_PASSWORD: Joi.string().required(),
     WOOCOMMERCE_VERIFY_SSL: Joi.string().default('False'),
     CORS_ORIGINS: Joi.string().default('*'),
     PUBLIC_BASE_URL: Joi.string().default('http://localhost:8000'),
+    REDIS_URL: Joi.string().required().description('Redis URL'),
+    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(15),
+    JWT_REFRESH_EXPIRATION_DAYS: Joi.number().default(7),
+    COOKIE_SECURE: Joi.string().default('false'),
+    WC_WEBHOOK_SECRET: Joi.string().required(),
     RAZORPAY_KEY_ID: Joi.string().allow('', null),
     RAZORPAY_KEY_SECRET: Joi.string().allow('', null)
   })
@@ -45,8 +52,11 @@ module.exports = {
   },
   jwt: {
     secret: envVars.JWT_SECRET,
-    accessExpirationMinutes: 30,
-    refreshExpirationDays: 30,
+    accessExpirationMinutes: envVars.JWT_ACCESS_EXPIRATION_MINUTES,
+    refreshExpirationDays: envVars.JWT_REFRESH_EXPIRATION_DAYS,
+  },
+  cookie: {
+    secure: envVars.COOKIE_SECURE === 'true',
   },
   woocommerce: {
     url: envVars.WOOCOMMERCE_URL,
@@ -60,8 +70,13 @@ module.exports = {
   },
   cors: envVars.CORS_ORIGINS,
   publicBaseUrl: envVars.PUBLIC_BASE_URL,
+  redis: {
+    url: envVars.REDIS_URL,
+  },
+  webhookSecret: envVars.WC_WEBHOOK_SECRET,
   razorpay: {
     keyId: envVars.RAZORPAY_KEY_ID,
     keySecret: envVars.RAZORPAY_KEY_SECRET
   }
 };
+

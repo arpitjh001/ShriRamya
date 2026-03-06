@@ -1,7 +1,7 @@
 const httpStatus = require('http-status');
 const mongoose = require('mongoose');
-const wcClient = require('../integrations/woocommerce');
-const { razorpay, verifySignature } = require('../integrations/razorpay');
+const wcClient = require('../config/integrations/woocommerce');
+const { razorpay, verifySignature } = require('../config/integrations/razorpay');
 const ApiError = require('../utils/ApiError');
 
 const getAllOrders = async (params = {}) => {
@@ -122,3 +122,4 @@ module.exports = {
     createPaymentIntent,
     completeOrder
 };
+

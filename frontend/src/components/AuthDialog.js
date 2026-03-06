@@ -50,7 +50,7 @@ const AuthDialog = ({ open, onOpenChange }) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-heading">
+          <DialogTitle className="text-2xl font-heading text-primary">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </DialogTitle>
         </DialogHeader>
@@ -66,7 +66,7 @@ const AuthDialog = ({ open, onOpenChange }) => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  className="mt-1"
+                  className="mt-1 border-accent/30 bg-background/80"
                 />
               </div>
               <div>
@@ -76,7 +76,7 @@ const AuthDialog = ({ open, onOpenChange }) => {
                   data-testid="auth-phone-input"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="mt-1"
+                  className="mt-1 border-accent/30 bg-background/80"
                 />
               </div>
             </>
@@ -91,7 +91,7 @@ const AuthDialog = ({ open, onOpenChange }) => {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
-              className="mt-1"
+              className="mt-1 border-accent/30 bg-background/80"
             />
           </div>
 
@@ -104,14 +104,14 @@ const AuthDialog = ({ open, onOpenChange }) => {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
-              className="mt-1"
+              className="mt-1 border-accent/30 bg-background/80"
             />
           </div>
 
           <Button
             data-testid="auth-submit-button"
             type="submit"
-            className="w-full"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/95"
             disabled={loading}
           >
             {loading ? 'Please wait...' : isLogin ? 'Login' : 'Register'}

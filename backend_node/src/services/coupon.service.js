@@ -1,4 +1,4 @@
-const wcClient = require('../integrations/woocommerce');
+const wcClient = require('../config/integrations/woocommerce');
 
 const getAllCoupons = async (params = {}) => {
     const response = await wcClient.get('/coupons', { params });
@@ -34,3 +34,4 @@ module.exports = {
     updateCoupon,
     deleteCoupon,
 };
+
