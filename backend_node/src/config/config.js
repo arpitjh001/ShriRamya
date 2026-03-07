@@ -27,7 +27,15 @@ const envVarsSchema = Joi.object()
     COOKIE_SECURE: Joi.string().default('false'),
     WC_WEBHOOK_SECRET: Joi.string().required(),
     RAZORPAY_KEY_ID: Joi.string().allow('', null),
-    RAZORPAY_KEY_SECRET: Joi.string().allow('', null)
+    RAZORPAY_KEY_SECRET: Joi.string().allow('', null),
+    CDN_BASE_URL: Joi.string().allow('', null).description('CDN base URL for images'),
+    SMTP_HOST: Joi.string().allow('', null),
+    SMTP_PORT: Joi.number().allow('', null),
+    SMTP_USER: Joi.string().allow('', null),
+    SMTP_PASS: Joi.string().allow('', null),
+    SMS_PROVIDER: Joi.string().allow('', null).default('twilio'),
+    SMS_API_KEY: Joi.string().allow('', null),
+    SMS_SENDER_ID: Joi.string().allow('', null)
   })
   .unknown();
 
@@ -77,6 +85,18 @@ module.exports = {
   razorpay: {
     keyId: envVars.RAZORPAY_KEY_ID,
     keySecret: envVars.RAZORPAY_KEY_SECRET
+  },
+  cdnBaseUrl: envVars.CDN_BASE_URL,
+  smtp: {
+    host: envVars.SMTP_HOST,
+    port: envVars.SMTP_PORT,
+    user: envVars.SMTP_USER,
+    pass: envVars.SMTP_PASS
+  },
+  sms: {
+    provider: envVars.SMS_PROVIDER,
+    apiKey: envVars.SMS_API_KEY,
+    senderId: envVars.SMS_SENDER_ID
   }
 };
 

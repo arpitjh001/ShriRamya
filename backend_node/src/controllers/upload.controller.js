@@ -1,41 +1,106 @@
-const path = require('path');
-const uuid = require('uuid');
-const fs = require('fs');
+/**
+ * Upload Controller (Enhanced)
+ * Handles image uploads with optimization
+ */
+
+const imageService = require('../services/images/imageOptimization.service');
+const { successResponse } = require('../utils/response');
 const httpStatus = require('http-status');
-const config = require('../config/config');
-const ApiError = require('../utils/ApiError');
 
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
-const uploadFile = async (req, res, next) => {
-    try {
-        if (!req.file) {
-            console.error('Upload failed: No file provided');
-            throw new ApiError(httpStatus.BAD_REQUEST, 'Please upload a file');
-        }
-
-        const file = req.file;
-        console.log(`File uploaded: ${file.filename} (${file.size} bytes)`);
-
-        const baseUrl = config.publicBaseUrl || 'http://localhost:8080';
-        const fileUrl = `${baseUrl.replace(/\/$/, '')}/uploads/${file.filename}`;
-
-        res.status(httpStatus.CREATED).send({
-            success: true,
-            message: 'File uploaded successfully',
-            url: fileUrl,
-            filename: file.filename,
-        });
-    } catch (error) {
-        console.error('Upload Error:', error);
-        next(error);
+/**
+ * Upload single image with optimization
+ * POST /api/v1/upload/image
+ */
+const uploadImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      const error = new Error('No file uploaded');
+      error.statusCode = httpStatus.BAD_REQUEST;
+      throw error;
     }
+
+    const category = req.body.category || 'products';
+    const result = await imageService.processImage(req.file, category);
+
+    return successResponse(res, result, 'Image uploaded and optimized successfully', httpStatus.CREATED);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Upload multiple images
+ * POST /api/v1/upload/images
+ */
+const uploadMultipleImages = async (req, res, next) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      const error = new Error('No files uploaded');
+      error.statusCode = httpStatus.BAD_REQUEST;
+      throw error;
+    }
+
+    const category = req.body.category || 'products';
+    const results = await imageService.processMultipleImages(req.files, category);
+
+    return successResponse(res, results, 'Images uploaded and optimized successfully', httpStatus.CREATED);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete image
+ * DELETE /api/v1/upload/image/:imageUrl
+ */
+const deleteImage = async (req, res, next) => {
+  try {
+    const { imageUrl } = req.params;
+    await imageService.deleteImage(imageUrl);
+    return successResponse(res, { deleted: true }, 'Image deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get CDN URL for image
+ * GET /api/v1/upload/cdn-url/:filename
+ */
+const getCdnUrl = async (req, res, next) => {
+  try {
+    const { filename } = req.params;
+    const { size = 'medium' } = req.query;
+    
+    const cdnUrl = imageService.getCdnUrl(filename, size);
+    return successResponse(res, { url: cdnUrl, size });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Generate placeholder image
+ * POST /api/v1/upload/placeholder
+ */
+const generatePlaceholder = async (req, res, next) => {
+  try {
+    const { width = 800, height = 800, text } = req.query;
+    const result = await imageService.generatePlaceholder(
+      parseInt(width),
+      parseInt(height),
+      text
+    );
+    return successResponse(res, result);
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
-    uploadFile,
+  uploadImage,
+  uploadMultipleImages,
+  deleteImage,
+  getCdnUrl,
+  generatePlaceholder
 };
-

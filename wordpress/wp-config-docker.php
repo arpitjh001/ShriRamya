@@ -116,6 +116,17 @@ $table_prefix = getenv_docker('WORDPRESS_TABLE_PREFIX', 'wp_');
 define( 'WP_DEBUG', !!getenv_docker('WORDPRESS_DEBUG', '') );
 
 /* Add any custom values between this line and the "stop editing" line. */
+define('WP_CACHE', true);
+define('WP_CACHE_KEY_SALT', getenv_docker('WP_CACHE_KEY_SALT', 'shriramya:'));
+define('WP_REDIS_HOST', getenv_docker('WP_REDIS_HOST', 'redis'));
+define('WP_REDIS_PORT', (int) getenv_docker('WP_REDIS_PORT', '6379'));
+define('WP_REDIS_DATABASE', (int) getenv_docker('WP_REDIS_DATABASE', '0'));
+define('WP_REDIS_PASSWORD', getenv_docker('WP_REDIS_PASSWORD', ''));
+define('WP_REDIS_CLIENT', getenv_docker('WP_REDIS_CLIENT', 'predis'));
+define('WP_REDIS_PREFIX', getenv_docker('WP_REDIS_PREFIX', getenv_docker('WP_CACHE_KEY_SALT', 'shriramya:')));
+define('WP_REDIS_TIMEOUT', 1);
+define('WP_REDIS_READ_TIMEOUT', 1);
+define('WP_REDIS_MAXTTL', 86400);
 
 // If we're behind a proxy server and using HTTPS, we need to alert WordPress of that fact
 // see also https://wordpress.org/support/article/administration-over-ssl/#using-a-reverse-proxy

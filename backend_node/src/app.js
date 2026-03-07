@@ -74,6 +74,24 @@ app.get('/api/v1/health', (req, res) => {
 });
 
 /**
+ * API Documentation (Swagger)
+ */
+if (config.env === 'development' || config.env === 'test') {
+  try {
+    const { swaggerSpec, swaggerDocs, swaggerUi } = require('./config/swagger');
+    
+    app.get('/api/docs.json', (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(swaggerSpec);
+    });
+    
+    app.use('/api/docs', swaggerUi.serve, swaggerDocs);
+  } catch (error) {
+    console.log('[Swagger] Documentation not available:', error.message);
+  }
+}
+
+/**
  * API Routes
  */
 app.use('/api/v1', routes);

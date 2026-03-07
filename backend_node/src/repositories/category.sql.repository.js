@@ -69,6 +69,33 @@ class CategorySqlRepository {
         const [result] = await mysqlPool.query('DELETE FROM categories WHERE id = ?', [id]);
         return result.affectedRows > 0;
     }
+
+    async getProductsByCategoryId(categoryId, limit = 100) {
+        const [rows] = await mysqlPool.query(
+            `SELECT p.*
+             FROM products p
+             INNER JOIN product_categories pc ON pc.product_id = p.id
+             WHERE pc.category_id = ?
+             ORDER BY p.created_at DESC
+             LIMIT ?`,
+            [categoryId, limit]
+        );
+        return rows;
+    }
+
+    async getProductsByCategorySlug(slug, limit = 100) {
+        const [rows] = await mysqlPool.query(
+            `SELECT p.*
+             FROM products p
+             INNER JOIN product_categories pc ON pc.product_id = p.id
+             INNER JOIN categories c ON c.id = pc.category_id
+             WHERE c.slug = ?
+             ORDER BY p.created_at DESC
+             LIMIT ?`,
+            [slug, limit]
+        );
+        return rows;
+    }
 }
 
 module.exports = new CategorySqlRepository();

@@ -1,0 +1,119 @@
+version: '3.8'
+
+# Simplified Docker Compose for Local Development
+# Use this for testing Phase 9 features locally
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: shriramya-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_USER: shriramya
+      MYSQL_PASSWORD: shriramya123
+      MYSQL_DATABASE: shriramya_ecommerce
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+    networks:
+      - shriramya-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: shriramya-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - shriramya-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB
+  mongo:
+    image: mongo:7
+    container_name: shriramya-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    ports:
+      - "27017:27017"
+    networks:
+      - shriramya-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shriramya-backend
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - MONGO_URL=mongodb://admin:admin123@mongo:27017
+      - DB_NAME=shriramya
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=shriramya
+      - MYSQL_PASSWORD=shriramya123
+      - MYSQL_DATABASE=shriramya_ecommerce
+      - JWT_SECRET=dev-secret-key-change-in-production-12345
+      - REDIS_URL=redis://redis:6379
+      - WOOCOMMERCE_URL=http://woocommerce
+      - WOOCOMMERCE_CONSUMER_KEY=ck_dev_key
+      - WOOCOMMERCE_CONSUMER_SECRET=cs_dev_secret
+      - WP_ADMIN_USER=admin
+      - WP_APP_PASSWORD=dev-password
+      - WC_WEBHOOK_SECRET=dev-webhook-secret
+      - RAZORPAY_KEY_ID=rzp_test_dev_key
+      - RAZORPAY_KEY_SECRET=dev_secret
+      - CDN_BASE_URL=http://localhost:8000
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - COOKIE_SECURE=false
+    volumes:
+      - ./uploads:/app/uploads
+      - ./src:/app/src
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    networks:
+      - shriramya-network
+    restart: unless-stopped
+
+networks:
+  shriramya-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  mongo_data:
+  mongo_config:

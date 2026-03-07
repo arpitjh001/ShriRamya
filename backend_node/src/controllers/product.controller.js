@@ -64,6 +64,43 @@ const deleteVariant = async (req, res, next) => {
   }
 };
 
+// Product-category mapping methods
+const assignCategoriesToProduct = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const { categoryIds } = req.body;
+    
+    if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+      return res.status(400).send({ message: 'categoryIds must be a non-empty array' });
+    }
+    
+    const result = await productService.assignCategoriesToProduct(product_id, categoryIds);
+    return successResponse(res, result, 'Categories assigned to product successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getProductCategories = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const categories = await productService.getProductCategories(product_id);
+    return successResponse(res, categories);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const removeCategoryFromProduct = async (req, res, next) => {
+  try {
+    const { product_id, category_id } = req.params;
+    const result = await productService.removeCategoryFromProduct(product_id, category_id);
+    return successResponse(res, result, 'Category removed from product successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateProduct = async (req, res, next) => {
   try {
     const updated = await productService.updateProduct(req.params.product_id, req.body);
@@ -91,4 +128,7 @@ module.exports = {
   addVariant,
   updateVariant,
   deleteVariant,
+  assignCategoriesToProduct,
+  getProductCategories,
+  removeCategoryFromProduct,
 };

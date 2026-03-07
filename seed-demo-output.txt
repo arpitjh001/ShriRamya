@@ -1,0 +1,99 @@
+﻿ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ       ShriRamya ΓÇö DEMO Seeding Script            Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+Connected to Redis
+Γ£ô Connected to MongoDB
+Γ£ô Attributes: Size(1), Color(2)
+
+≡ƒôé Creating category hierarchy...
+
+  ≡ƒôü Women Ethnic Wear (ID: 28)
+    ΓööΓöÇ Sarees (ID: 22)
+    ΓööΓöÇ Lehengas (ID: 24)
+    ΓööΓöÇ Kurtis (ID: 23)
+    ΓööΓöÇ Dupattas (ID: 25)
+    ΓööΓöÇ Salwar Suits (ID: 29)
+    ΓööΓöÇ Gowns (ID: 30)
+  ≡ƒôü Home & Lifestyle (ID: 31)
+    ΓööΓöÇ Bedsheets (ID: 32)
+    ΓööΓöÇ Pillow Covers (ID: 33)
+    ΓööΓöÇ Cushion Covers (ID: 34)
+    ΓööΓöÇ Dohar (ID: 35)
+
+  ≡ƒôü New Arrivals (ID: 26)
+  ≡ƒôü Sale (ID: 27)
+
+Γ£ô 12 categories ready
+
+≡ƒôª Seeding products with images...
+
+  ≡ƒÅ╖∩╕Å  SAREES (variable):
+    Γ£ô Banarasi Silk Saree ΓÇö Crimson Gold (ID: 162, 9 variations, 2 images)
+    Γ£ô Chanderi Cotton Saree ΓÇö Ivory (ID: 172, 9 variations, 2 images)
+    Γ£ô Bandhani Saree ΓÇö Rajasthani Heritage (ID: 182, 9 variations, 2 images)
+
+  ≡ƒÅ╖∩╕Å  LEHENGAS (variable):
+    Γ£ô Bridal Lehenga ΓÇö Royal Maroon (ID: 192, 9 variations, 2 images)
+    Γ£ô Party Wear Lehenga ΓÇö Teal Sequin (ID: 202, 9 variations, 2 images)
+
+  ≡ƒÅ╖∩╕Å  KURTIS (variable):
+    Γ£ô Cotton Kurti ΓÇö Summer Bloom (ID: 212, 9 variations, 2 images)
+    Γ£ô Silk Kurti ΓÇö Festive Gold (ID: 222, 9 variations, 2 images)
+    Γ£ô Anarkali Kurti ΓÇö Midnight Blue (ID: 232, 9 variations, 1 images)
+
+  ≡ƒÅ╖∩╕Å  DUPATTAS (simple):
+    Γ£ô Silk Dupatta ΓÇö Gold Border (ID: 242, 2 images)
+    Γ£ô Bandhej Dupatta ΓÇö Multicolor (ID: 243, 2 images)
+
+  ≡ƒÅ╖∩╕Å  SALWAR-SUITS (variable):
+    Γ£ô Anarkali Suit ΓÇö Emerald Green (ID: 244, 9 variations, 2 images)
+    Γ£ô Palazzo Suit ΓÇö Rose Pink (ID: 254, 9 variations, 2 images)
+
+  ≡ƒÅ╖∩╕Å  GOWNS (variable):
+    Γ£ô Designer Gown ΓÇö Champagne Dream (ID: 264, 9 variations, 2 images)
+    Γ£ô Indo-Western Gown ΓÇö Royal Purple (ID: 274, 9 variations, 2 images)
+
+  ≡ƒÅ╖∩╕Å  BEDSHEETS (simple):
+    Γ£ô Jaipuri Cotton Bedsheet ΓÇö Floral Print (ID: 284, 2 images)
+    Γ£ô Rajasthani Silk Bedsheet ΓÇö Royal Paisley (ID: 285, 2 images)
+
+  ≡ƒÅ╖∩╕Å  PILLOW-COVERS (simple):
+    Γ£ô Embroidered Pillow Cover Set ΓÇö Ivory Gold (ID: 286, 2 images)
+    Γ£ô Block Print Pillow Cover Set ΓÇö Indigo (ID: 287, 2 images)
+
+  ≡ƒÅ╖∩╕Å  CUSHION-COVERS (simple):
+    Γ£ô Mirror Work Cushion Cover ΓÇö Multicolor (ID: 288, 2 images)
+    Γ£ô Velvet Cushion Cover ΓÇö Deep Maroon (ID: 289, 2 images)
+
+  ≡ƒÅ╖∩╕Å  DOHAR (simple):
+    Γ£ô Jaipuri Dohar ΓÇö Block Print Floral (ID: 290, 2 images)
+    Γ£ô Cotton Dohar ΓÇö Geometric Pattern (ID: 291, 2 images)
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ               DEMO SEEDING COMPLETE              Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+  Categories:    12
+  Simple Prods:  10
+  Variable Prods: 12
+  Variations:    108
+  Images:        43
+
+  Category Map: {
+  "women-ethnic-wear": 28,
+  "sarees": 22,
+  "lehengas": 24,
+  "kurtis": 23,
+  "dupattas": 25,
+  "salwar-suits": 29,
+  "gowns": 30,
+  "home-lifestyle": 31,
+  "bedsheets": 32,
+  "pillow-covers": 33,
+  "cushion-covers": 34,
+  "dohar": 35,
+  "new-arrivals": 26,
+  "sale": 27
+}
+
+Γ£à Demo seeding complete!

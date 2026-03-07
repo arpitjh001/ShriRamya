@@ -1,0 +1,131 @@
+{
+  "seed": 1772721334,
+  "email": "phase5.admin.1772721334@example.com",
+  "register": {
+    "ok": true,
+    "status": 201,
+    "ms": 126.85
+  },
+  "login": {
+    "ok": true,
+    "status": 200,
+    "ms": 43.88
+  },
+  "uploadCount": 5,
+  "uploadedUrls": [
+    "http://localhost:8080/uploads/8b387401-aebc-4da4-b903-576fea66bc4d.png",
+    "http://localhost:8080/uploads/5b74394f-377e-4954-bf5d-59686a136ee1.png",
+    "http://localhost:8080/uploads/a99513d3-d994-46fa-9796-ccc93203ed09.png",
+    "http://localhost:8080/uploads/b4265d2b-322e-4c8c-9923-5730ac02622a.png",
+    "http://localhost:8080/uploads/fa192815-c2c3-4a90-99c8-164fff2ff4ef.png"
+  ],
+  "createdProductIds": [
+    18,
+    19,
+    20,
+    21,
+    22
+  ],
+  "apiChecks": {
+    "POST /auth/login": {
+      "ok": true,
+      "status": 200,
+      "ms": 43.88
+    },
+    "POST /products": {
+      "ok": true,
+      "createdCount": 5,
+      "avgMs": 64.63,
+      "maxMs": 102.2
+    },
+    "GET /products": {
+      "ok": true,
+      "status": 200,
+      "ms": 27.08
+    },
+    "GET /products/:id": {
+      "ok": true,
+      "status": 200,
+      "ms": 11.44
+    },
+    "PUT /products/:id": {
+      "ok": true,
+      "status": 200,
+      "ms": 24.73
+    },
+    "DELETE /products/:id": {
+      "ok": true,
+      "status": 200,
+      "ms": 16.54
+    },
+    "POST /products/:product_id/variants": {
+      "ok": true,
+      "status": 201,
+      "ms": 20.67
+    },
+    "PUT /products/:product_id/variants/:variant_id": {
+      "ok": true,
+      "status": 200,
+      "ms": 26.27
+    },
+    "DELETE /products/:product_id/variants/:variant_id": {
+      "ok": true,
+      "status": 200,
+      "ms": 17.29
+    },
+    "POST /upload": {
+      "ok": true
+    },
+    "Unauthorized create/update": {
+      "createStatus": 401,
+      "updateStatus": 401
+    }
+  },
+  "schemaValidation": {
+    "discountPriceLtPrice": {
+      "status": 400,
+      "ok": true
+    },
+    "discountEndAfterStart": {
+      "status": 400,
+      "ok": true
+    }
+  },
+  "discountVerification": [
+    {
+      "sku": "P5-1772721334-0-1",
+      "price": 4449,
+      "discountPrice": null,
+      "discountStart": "2026-03-04T14:35:35.000Z",
+      "discountEnd": "2026-03-20T14:35:35.000Z",
+      "effectivePrice": 4449
+    },
+    {
+      "sku": "P5-1772721334-0-0",
+      "price": 4299,
+      "discountPrice": 3899,
+      "discountStart": "2026-03-04T14:35:35.000Z",
+      "discountEnd": "2026-03-20T14:35:35.000Z",
+      "effectivePrice": 3899
+    },
+    {
+      "sku": "P5-1772721334-0-2",
+      "price": 4599,
+      "discountPrice": 4199,
+      "discountStart": null,
+      "discountEnd": null,
+      "effectivePrice": 4199
+    }
+  ],
+  "performanceTargets": {
+    "createProductTargetMs": 300,
+    "fetchProductTargetMs": 100,
+    "createProductAvgMs": 64.63,
+    "createProductMaxMs": 102.2,
+    "getProductsMs": 27.08,
+    "getProductByIdMs": 11.44,
+    "createTargetMet": true,
+    "getProductsTargetMet": true,
+    "getProductByIdTargetMet": true
+  }
+}

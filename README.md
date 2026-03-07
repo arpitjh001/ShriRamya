@@ -28,6 +28,16 @@ Welcome to the **Shri Ramya** project. This repository has been fully migrated f
    - **Frontend**: [http://localhost:8080](http://localhost:8080)
    - **Backend API**: [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
    - **WordPress Admin**: [http://localhost:8080/wp/wp-admin](http://localhost:8080/wp/wp-admin)
+   - **Anthropic Proxy**: [http://localhost:8081](http://localhost:8081) (Dashboard for linking accounts)
+
+## 🤖 AI Development (Claude Code Proxy)
+This project integrates the **Antigravity Claude Proxy**, enabling you to use **Claude Code CLI** or other Anthropic-compatible tools with Google Antigravity / Gemini models.
+
+### Setup
+1. Start the services with `docker-compose up -d`.
+2. Visit [http://localhost:8081](http://localhost:8081).
+3. Go to the **Accounts** tab and link your Google Account.
+4. Configure your CLI (e.g. `claude-code`) to use `http://localhost:8081` as the `ANTHROPIC_BASE_URL`.
 
 ## 📡 API Endpoints (v1)
 

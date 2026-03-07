@@ -8,11 +8,19 @@ import {
     wcCustomersAPI,
     wcCouponsAPI,
 } from '../services/wcApi.service';
-import { authAPI } from '../services/api';
+import { authAPI, productsAPI, analyticsAPI, warehouseAPI, couponsAPI } from '../services/api';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 
-const TABS = ['Products', 'Categories', 'Orders', 'Customers', 'Coupons'];
+// Import Phase 9 admin components
+import AdminProductsPage from './AdminProductsPage';
+import AdminInventoryPage from './AdminInventoryPage';
+import AdminCouponsPage from './AdminCouponsPage';
+import AdminOrdersPage from './AdminOrdersPage';
+import AdminAnalyticsPage from './AdminAnalyticsPage';
+
+// Updated TABS with Phase 9 features (removed WooCommerce tab)
+const TABS = ['Native Products', 'Inventory', 'Coupons', 'Orders', 'Analytics'];
 
 const AdminWooCommercePage = () => {
     const { user, login } = useAuth();
@@ -1266,6 +1274,21 @@ const AdminWooCommercePage = () => {
                         {coupons.length === 0 && !loading && <p style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No coupons found.</p>}
                     </div>
                 )}
+
+                {/* ===== NATIVE PRODUCTS TAB (Phase 9) ===== */}
+                {activeTab === 'Native Products' && <AdminProductsPage />}
+
+                {/* ===== INVENTORY TAB (Phase 9) ===== */}
+                {activeTab === 'Inventory' && <AdminInventoryPage />}
+
+                {/* ===== COUPONS TAB (Phase 9) ===== */}
+                {activeTab === 'Coupons' && <AdminCouponsPage />}
+
+                {/* ===== ORDERS TAB (Phase 9) ===== */}
+                {activeTab === 'Orders' && <AdminOrdersPage />}
+
+                {/* ===== ANALYTICS TAB (Phase 9) ===== */}
+                {activeTab === 'Analytics' && <AdminAnalyticsPage />}
             </div>
         </div>
     );

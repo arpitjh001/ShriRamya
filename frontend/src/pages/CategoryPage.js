@@ -17,7 +17,7 @@ const CategoryPage = () => {
             setLoading(true);
             try {
                 // Fetch category details
-                const catRes = await api.get(`/api/v1/categories/slug/${slug}`);
+                const catRes = await api.get(`/categories/slug/${slug}`);
                 setCategory(catRes.data);
 
                 // Fetch products for this category using the consolidated productsAPI

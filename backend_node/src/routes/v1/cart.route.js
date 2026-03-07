@@ -1,13 +1,35 @@
 const express = require('express');
+const validate = require('../../middlewares/validate');
+const cartValidation = require('../../validations/cart.validation');
 const cartController = require('../../controllers/cart.controller');
 const auth = require('../../middlewares/auth');
+const { apiLimiter } = require('../../middlewares/rateLimit.middleware');
 
 const router = express.Router();
 
-router.get('/', auth(), cartController.getCart);
-router.post('/', auth(), cartController.updateCart);
-router.put('/', auth(), cartController.updateCart);
-router.delete('/', auth(), cartController.clearCart);
+router.use(apiLimiter);
+
+/**
+ * Cart Routes
+ * Support both authenticated users and guest sessions
+ */
+
+// Get current cart (auto-creates if doesn't exist)
+router.get('/', cartController.getCart);
+
+// Add item to cart
+router.post('/add', validate(cartValidation.addToCart), cartController.addToCart);
+
+// Update item quantity
+router.put('/item/:id', validate(cartValidation.updateCartItem), cartController.updateCartItem);
+
+// Remove item from cart
+router.delete('/item/:id', validate(cartValidation.removeCartItem), cartController.removeCartItem);
+
+// Clear entire cart
+router.delete('/', validate(cartValidation.clearCart), cartController.clearCart);
+
+// Get cart by ID (admin/internal use)
+router.get('/:id', validate(cartValidation.getCartById), cartController.getCartById);
 
 module.exports = router;
-

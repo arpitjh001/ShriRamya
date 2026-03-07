@@ -1,7 +1,7 @@
 {
   "name": "shriramya-node-backend",
   "version": "2.0.0",
-  "description": "Node.js Express backend for ShriRamya",
+  "description": "Production-grade Node.js Express backend for ShriRamya Ecommerce Platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,11 +10,18 @@
     "setup:wc-attributes": "node scripts/setup-wc-attributes.js",
     "perf:create-product": "node scripts/perf-test-create-batch.js",
     "perf:wc-breakdown": "node scripts/benchmark-wc-create-breakdown.js",
-    "test:api-full": "node scripts/test-apis-create-ui-products.js"
+    "test:api-full": "node scripts/test-apis-create-ui-products.js",
+    "migrate": "node scripts/run-migrations.js",
+    "migrate:rollback": "node -e \"require('./src/utils/dbMigration').rollbackMigration()\"",
+    "queue:process": "node -e \"const q = require('./src/services/queue/jobQueue.service'); q.setupQueueListeners(); console.log('Queue processor started');\"",
+    "docker:build": "docker build -f Dockerfile.production -t shriramya-backend:latest .",
+    "docker:up": "docker-compose -f docker-compose.production.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.production.yml down"
   },
   "dependencies": {
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
+    "bull": "^4.12.0",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -31,12 +38,21 @@
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.5",
     "node-cache": "^5.1.2",
+    "nodemailer": "^6.9.8",
     "razorpay": "^2.9.2",
+    "sharp": "^0.33.2",
+    "stripe": "^14.10.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "jest": "^30.2.0",
     "nodemon": "^3.0.2",
     "supertest": "^7.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

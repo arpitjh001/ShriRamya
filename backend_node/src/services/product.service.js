@@ -67,13 +67,32 @@ class ProductService {
     };
   }
 
-  async _ensureDefaultCategory(productData) {
+  async _ensureDefaultCategory(productData, isUpdate = false) {
+    const hasCategories = Object.prototype.hasOwnProperty.call(productData, 'categories');
+    const hasCategoryId = Object.prototype.hasOwnProperty.call(productData, 'categoryId');
+
+    // Normalize categories to array if it's a single value
+    if (hasCategories && productData.categories && !Array.isArray(productData.categories)) {
+      productData.categories = [productData.categories];
+    }
+
+    // If it's an update and no category info is provided (keys missing), don't force Uncategorized
+    if (isUpdate && !hasCategories && !hasCategoryId) {
+      return;
+    }
+
+    // Ensure at least one category exists (Uncategorized) if currently empty
     if ((!productData.categories || productData.categories.length === 0) && !productData.categoryId) {
       let uncategorized = await categoryService.getCategoryBySlug('uncategorized');
       if (!uncategorized) {
         uncategorized = await categoryService.createCategory({ name: 'Uncategorized', slug: 'uncategorized' });
       }
       productData.categories = [uncategorized.id];
+    }
+
+    // Ensure categoryId is set for the 'products' table base column if categories array exists
+    if (!productData.categoryId && productData.categories && productData.categories.length > 0) {
+      productData.categoryId = productData.categories[0];
     }
   }
 
@@ -196,7 +215,7 @@ class ProductService {
   async updateProduct(id, updateData) {
     try {
       console.log(`[ProductService] Updating native product: ${id}`);
-      await this._ensureDefaultCategory(updateData);
+      await this._ensureDefaultCategory(updateData, true);
 
       const product = await mysqlProductRepository.getProduct(id);
       if (!product) {
@@ -239,6 +258,61 @@ class ProductService {
       results.push(await this.addVariant(productId, variant));
     }
     return results;
+  }
+
+  /**
+   * Assign categories to a product
+   */
+  async assignCategoriesToProduct(productId, categoryIds) {
+    try {
+      // Validate that all categories exist
+      for (const categoryId of categoryIds) {
+        const category = await categoryService.getCategoryById(categoryId);
+        if (!category) {
+          const error = new Error(`Category with ID ${categoryId} not found`);
+          error.statusCode = 404;
+          throw error;
+        }
+      }
+
+      // Assign categories to product
+      const result = await mysqlProductRepository.assignCategoriesToProduct(productId, categoryIds);
+      return { productId: Number(productId), categoryIds: categoryIds.map(Number), assigned: true };
+    } catch (error) {
+      console.error('[ProductService] assignCategoriesToProduct failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get categories assigned to a product
+   */
+  async getProductCategories(productId) {
+    try {
+      const categories = await mysqlProductRepository.getProductCategories(productId);
+      return categories;
+    } catch (error) {
+      console.error('[ProductService] getProductCategories failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a category from a product
+   */
+  async removeCategoryFromProduct(productId, categoryId) {
+    try {
+      const result = await mysqlProductRepository.removeCategoryFromProduct(productId, categoryId);
+      if (!result) {
+        const error = new Error('Category not assigned to product');
+        error.statusCode = 404;
+        throw error;
+      }
+      return { productId: Number(productId), categoryId: Number(categoryId), removed: true };
+    } catch (error) {
+      console.error('[ProductService] removeCategoryFromProduct failed:', error.message);
+      throw error;
+    }
   }
 }
 

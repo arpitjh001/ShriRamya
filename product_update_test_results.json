@@ -1,0 +1,147 @@
+{
+  "seed": 1772732603,
+  "email": "product.update.1772732603@example.com",
+  "productId": 25,
+  "register": {
+    "ok": true,
+    "status": 201,
+    "ms": 112.96
+  },
+  "login": {
+    "ok": true,
+    "status": 200,
+    "ms": 40.93
+  },
+  "uploadedImages": [
+    "http://localhost:8080/uploads/dd269fbe-a676-4d68-ab6b-7de8fb2579b8.png",
+    "http://localhost:8080/uploads/4729c8de-025c-4627-9d48-bf4f333cda74.png"
+  ],
+  "apiResults": {
+    "POST /products": {
+      "ok": true,
+      "status": 201,
+      "ms": 56.69
+    },
+    "GET /products": {
+      "ok": true,
+      "status": 200,
+      "ms": 33.12
+    },
+    "GET /products/:id (before)": {
+      "ok": true,
+      "status": 200,
+      "ms": 13.51
+    },
+    "PUT /products/:id": {
+      "ok": true,
+      "status": 200,
+      "ms": 27.12
+    },
+    "POST /products/:product_id/variants": {
+      "ok": true,
+      "status": 201,
+      "ms": 28.78
+    },
+    "PUT /products/:product_id/variants/:variant_id": {
+      "ok": true,
+      "status": 200,
+      "ms": 19.04
+    },
+    "GET /products/:id (after)": {
+      "ok": true,
+      "status": 200,
+      "ms": 10.88
+    },
+    "DELETE /products/:id": {
+      "ok": true,
+      "status": 200,
+      "ms": 20.42
+    }
+  },
+  "updatePersistenceFromApi": {
+    "sku": "SILK-SAREE-UPDATED-1772732603",
+    "fabric": "Pure Silk",
+    "occasion": "Festive",
+    "firstVariantSku": "SR-GREEN-L-1772732603"
+  },
+  "mysqlVerificationRaw": "id\tsku\tfabric\toccasion\n25\tSILK-SAREE-UPDATED-1772732603\tPure Silk\tFestive\nid\tsku\tprice\n88\tSR-RED-S-UPDATED-1772732603\t1999.00\n89\tSR-RED-M-1772732603\t2099.00\n90\tSR-BLUE-S-1772732603\t2199.00\n91\tSR-BLUE-M-1772732603\t2299.00\n92\tSR-GREEN-L-1772732603\t2399.00\n",
+  "samplePayloads": {
+    "createPayload": {
+      "name": "Silk Saree 1772732603",
+      "sku": "SILK-SAREE-1772732603",
+      "description": "Silk saree variant regression test",
+      "fabric": "Silk",
+      "occasion": "Wedding",
+      "basePrice": 1999,
+      "status": "published",
+      "attributes": [
+        {
+          "name": "Color",
+          "values": [
+            "Red",
+            "Blue"
+          ]
+        },
+        {
+          "name": "Size",
+          "values": [
+            "S",
+            "M"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "sku": "SR-RED-S-1772732603",
+          "price": 1999,
+          "discountPrice": 1499,
+          "stock": 20,
+          "attributes": {
+            "Color": "Red",
+            "Size": "S"
+          },
+          "image": "http://localhost:8080/uploads/dd269fbe-a676-4d68-ab6b-7de8fb2579b8.png"
+        },
+        {
+          "sku": "SR-RED-M-1772732603",
+          "price": 2099,
+          "discountPrice": 1599,
+          "stock": 18,
+          "attributes": {
+            "Color": "Red",
+            "Size": "M"
+          },
+          "image": "http://localhost:8080/uploads/dd269fbe-a676-4d68-ab6b-7de8fb2579b8.png"
+        },
+        {
+          "sku": "SR-BLUE-S-1772732603",
+          "price": 2199,
+          "discountPrice": 1699,
+          "stock": 16,
+          "attributes": {
+            "Color": "Blue",
+            "Size": "S"
+          },
+          "image": "http://localhost:8080/uploads/4729c8de-025c-4627-9d48-bf4f333cda74.png"
+        },
+        {
+          "sku": "SR-BLUE-M-1772732603",
+          "price": 2299,
+          "discountPrice": 1799,
+          "stock": 14,
+          "attributes": {
+            "Color": "Blue",
+            "Size": "M"
+          },
+          "image": "http://localhost:8080/uploads/4729c8de-025c-4627-9d48-bf4f333cda74.png"
+        }
+      ]
+    },
+    "updatePayload": {
+      "sku": "SILK-SAREE-UPDATED-1772732603",
+      "fabric": "Pure Silk",
+      "occasion": "Festive",
+      "basePrice": 2499
+    }
+  }
+}

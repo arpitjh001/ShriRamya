@@ -184,9 +184,11 @@ export const productsAPI = {
 export const cartAPI = {
   get: async (sessionId) => {
     try {
-      const res = await api.get("/cart", {
-        params: { session_id: sessionId }
-      });
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
+      }
+      const res = await api.get("/cart", config);
       return { data: res.data };
     } catch (err) {
       handleError(err);
@@ -196,9 +198,11 @@ export const cartAPI = {
 
   add: async (data, sessionId) => {
     try {
-      const res = await api.post("/cart", data, {
-        params: { session_id: sessionId }
-      });
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
+      }
+      const res = await api.post("/cart/add", data, config);
       return { data: res.data };
     } catch (err) {
       handleError(err);
@@ -206,15 +210,13 @@ export const cartAPI = {
     }
   },
 
-  updateQuantity: async (productId, quantity, sessionId, variation = null) => {
+  updateQuantity: async (cartItemId, quantity, sessionId) => {
     try {
-      const params = { quantity, session_id: sessionId };
-      if (variation) {
-        params.variation = JSON.stringify(variation);
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
       }
-      const res = await api.patch(`/cart/item/${productId}`, null, {
-        params
-      });
+      const res = await api.put(`/cart/item/${cartItemId}`, { quantity }, config);
       return { data: res.data };
     } catch (err) {
       handleError(err);
@@ -222,15 +224,13 @@ export const cartAPI = {
     }
   },
 
-  remove: async (productId, sessionId, variation = null) => {
+  remove: async (cartItemId, sessionId) => {
     try {
-      const params = { session_id: sessionId };
-      if (variation) {
-        params.variation = JSON.stringify(variation);
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
       }
-      const res = await api.delete(`/cart/item/${productId}`, {
-        params
-      });
+      const res = await api.delete(`/cart/item/${cartItemId}`, config);
       return { data: res.data };
     } catch (err) {
       handleError(err);
@@ -240,15 +240,17 @@ export const cartAPI = {
 
   clear: async (sessionId) => {
     try {
-      const res = await api.delete("/cart", {
-        params: { session_id: sessionId }
-      });
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
+      }
+      const res = await api.delete("/cart", config);
       return { data: res.data };
     } catch (err) {
       handleError(err);
       throw err;
     }
-  }
+  },
 };
 
 /* =========================
@@ -398,6 +400,266 @@ export const blogAPI = {
     } catch (err) {
       handleError(err);
       throw err;
+    }
+  }
+};
+
+/* =========================
+   ADMIN - COUPONS APIs
+========================= */
+
+export const couponsAPI = {
+  getAll: async (params = {}) => {
+    try {
+      return await api.get("/coupons", { params });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getById: async (id) => {
+    try {
+      return await api.get(`/coupons/${id}`);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  create: async (data) => {
+    try {
+      return await api.post("/coupons", data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  update: async (id, data) => {
+    try {
+      return await api.put(`/coupons/${id}`, data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      return await api.delete(`/coupons/${id}`);
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
+/* =========================
+   ADMIN - WAREHOUSE APIs
+========================= */
+
+export const warehouseAPI = {
+  getAll: async () => {
+    try {
+      return await api.get("/admin/warehouses");
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getLowStockAlerts: async (params = {}) => {
+    try {
+      return await api.get("/admin/inventory/low-stock", { params });
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
+/* =========================
+   ADMIN - ANALYTICS APIs
+========================= */
+
+export const analyticsAPI = {
+  getOverview: async () => {
+    try {
+      return await api.get("/admin/analytics/overview");
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getSales: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/sales", { params });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getProducts: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/products", { params });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getRevenue: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/revenue", { params });
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
+/* =========================
+   UPLOAD APIs
+========================= */
+
+export const uploadAPI = {
+  uploadImage: async (formData) => {
+    try {
+      return await api.post("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  uploadImages: async (formData) => {
+    try {
+      return await api.post("/upload/images", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
+/* =========================
+   SEARCH APIs
+========================= */
+
+export const searchAPI = {
+  search: async (params = {}) => {
+    try {
+      return await api.get("/search", { params });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getSuggestions: async (query, limit = 10) => {
+    try {
+      return await api.get("/search/suggestions", { params: { q: query, limit } });
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
+/* =========================
+   REVIEWS APIs
+========================= */
+
+export const reviewsAPI = {
+  getProductReviews: async (productId, params = {}) => {
+    try {
+      return await api.get(`/products/${productId}/reviews`, { params });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  createReview: async (productId, data) => {
+    try {
+      return await api.post(`/products/${productId}/reviews`, data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getUserReviews: async (userId, params = {}) => {
+    try {
+      return await api.get(`/users/${userId}/reviews`, { params });
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
+/* =========================
+   RECOMMENDATIONS APIs
+========================= */
+
+export const recommendationsAPI = {
+  getProductRecommendations: async (productId, params = {}) => {
+    try {
+      return await api.get(`/recommendations/${productId}`, { params });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getPersonalized: async (params = {}) => {
+    try {
+      return await api.get("/recommendations/personal", { params });
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
+/* =========================
+   CATEGORIES APIs
+========================= */
+
+export const categoriesAPI = {
+  getAll: async () => {
+    try {
+      return await api.get("/categories");
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getById: async (id) => {
+    try {
+      return await api.get(`/categories/${id}`);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getBySlug: async (slug) => {
+    try {
+      return await api.get(`/categories/slug/${slug}`);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  create: async (data) => {
+    try {
+      return await api.post("/categories", data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  update: async (id, data) => {
+    try {
+      return await api.put(`/categories/${id}`, data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      return await api.delete(`/categories/${id}`);
+    } catch (err) {
+      handleError(err);
     }
   }
 };

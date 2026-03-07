@@ -26,6 +26,13 @@ import AdminWooCommercePage from '../pages/AdminWooCommercePage';
 import AllProductsPage from '../pages/AllProductsPage';
 import CategoryPage from '../pages/CategoryPage';
 
+// NEW Phase 10 Admin Pages
+import AdminProductsPage from '../pages/AdminProductsPage';
+import AdminInventoryPage from '../pages/AdminInventoryPage';
+import AdminCouponsPage from '../pages/AdminCouponsPage';
+import AdminOrdersPage from '../pages/AdminOrdersPage';
+import AdminAnalyticsPage from '../pages/AdminAnalyticsPage';
+
 const AppRoutes = () => {
     return (
         <Routes>

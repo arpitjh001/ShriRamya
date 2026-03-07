@@ -8,16 +8,23 @@ const CartContext = createContext(null);
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState({ items: [] });
   const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState(null);
   const { user } = useAuth();
 
   const fetchCart = async () => {
     try {
-      const sessionId = getSessionId();
-      console.log("Fetching cart for session:", sessionId);
+      const storedSessionId = getSessionId();
+      console.log("Fetching cart for session:", storedSessionId);
 
-      const response = await cartAPI.get(sessionId);
+      const response = await cartAPI.get(storedSessionId);
       console.log("Fetch cart response:", response);
 
+      // Save session ID from response for guest carts
+      if (response.data?.sessionId && !storedSessionId) {
+        setSessionId(response.data.sessionId);
+        localStorage.setItem('cart_session_id', response.data.sessionId);
+      }
+      
       setCart(response.data || { items: [] });
     } catch (error) {
       console.error('Failed to fetch cart:', error);
@@ -31,23 +38,26 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, [user]);
 
-  const addToCart = async (productId, quantity = 1, variation = null) => {
+  const addToCart = async (variantId, quantity = 1) => {
     try {
-      const sessionId = getSessionId();
-      console.log("Adding to cart:", { productId, quantity, variation, sessionId });
+      const storedSessionId = getSessionId() || sessionId;
+      console.log("Adding to cart:", { variantId, quantity, sessionId: storedSessionId });
 
       const payload = {
-        product_id: Number(productId),
+        variantId: Number(variantId),
         quantity,
       };
 
-      if (variation && Object.keys(variation).length) {
-        payload.variation = variation;
-      }
-
-      const response = await cartAPI.add(payload, sessionId);
+      const response = await cartAPI.add(payload, storedSessionId);
 
       console.log("Add to cart response:", response);
+      
+      // Save session ID if returned
+      if (response.data?.sessionId && !storedSessionId) {
+        setSessionId(response.data.sessionId);
+        localStorage.setItem('cart_session_id', response.data.sessionId);
+      }
+      
       setCart(response.data);
       return response.data;
     } catch (error) {
@@ -56,10 +66,10 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const updateQuantity = async (productId, quantity, variation = null) => {
+  const updateQuantity = async (cartItemId, quantity) => {
     try {
-      const sessionId = getSessionId();
-      const response = await cartAPI.updateQuantity(productId, quantity, sessionId, variation);
+      const storedSessionId = getSessionId() || sessionId;
+      const response = await cartAPI.updateQuantity(cartItemId, quantity, storedSessionId);
       setCart(response.data);
       return response.data;
     } catch (error) {
@@ -68,10 +78,10 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const removeFromCart = async (productId, variation = null) => {
+  const removeFromCart = async (cartItemId) => {
     try {
-      const sessionId = getSessionId();
-      const response = await cartAPI.remove(productId, sessionId, variation);
+      const storedSessionId = getSessionId() || sessionId;
+      const response = await cartAPI.remove(cartItemId, storedSessionId);
       setCart(response.data);
     } catch (error) {
       console.error('Failed to remove from cart:', error);
@@ -81,8 +91,8 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = async () => {
     try {
-      const sessionId = getSessionId();
-      await cartAPI.clear(sessionId);
+      const storedSessionId = getSessionId() || sessionId;
+      await cartAPI.clear(storedSessionId);
       setCart({ items: [] });
     } catch (error) {
       console.error('Failed to clear cart:', error);
@@ -93,7 +103,7 @@ export const CartProvider = ({ children }) => {
   const cartCount = cart.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   return (
-    <CartContext.Provider value={{ cart, loading, addToCart, removeFromCart, updateQuantity, clearCart, fetchCart, cartCount }}>
+    <CartContext.Provider value={{ cart, loading, addToCart, removeFromCart, updateQuantity, clearCart, fetchCart, cartCount, sessionId }}>
       {children}
     </CartContext.Provider>
   );

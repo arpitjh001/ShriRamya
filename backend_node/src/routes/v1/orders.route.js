@@ -1,20 +1,106 @@
+/**
+ * Order Routes (Enhanced)
+ * Complete order management routes
+ */
+
 const express = require('express');
 const orderController = require('../../controllers/order.controller');
+const shipmentController = require('../../controllers/shipment.controller');
+const refundController = require('../../controllers/refund.controller');
+const webhookController = require('../../controllers/webhook.controller');
 const auth = require('../../middlewares/auth');
 
 const router = express.Router();
 
-router.get('/', auth(['admin']), orderController.getOrders);
-router.get('/:order_id', auth(['admin']), orderController.getOrder);
+// ==========================================
+// Customer Order Routes
+// ==========================================
 
-// Order creation and payment
-router.post('/', auth(), orderController.createOrder); // Basic creation (no payment)
-router.post('/create-intent', auth(), orderController.createPaymentIntent); // Razorpay creation
-router.post('/complete', auth(), orderController.completeOrder); // Razorpay callback completion
+// Create order
+router.post('/', auth(), orderController.createOrder);
 
-// Admin-only operations
-router.put('/:order_id', auth(['admin']), orderController.updateOrder);
-router.delete('/:order_id', auth(['admin']), orderController.deleteOrder);
+// Get customer's orders
+router.get('/my', auth(), orderController.getCustomerOrders);
+
+// Get order details
+router.get('/:id', auth(), orderController.getOrder);
+
+// Cancel order
+router.post('/my/:id/cancel', auth(), orderController.cancelOrder);
+
+// Get order tracking
+router.get('/:id/tracking', auth(), shipmentController.getOrderTracking);
+
+// Get order shipments
+router.get('/:id/shipments', auth(), shipmentController.getOrderShipments);
+
+// Request refund
+router.post('/:id/refunds', auth(), refundController.createRefund);
+
+// Get order refunds
+router.get('/:id/refunds', auth(), refundController.getOrderRefunds);
+
+// ==========================================
+// Admin Order Routes
+// ==========================================
+
+// Get all orders
+router.get('/admin/all', auth(['admin']), orderController.getAllOrders);
+
+// Update order status
+router.patch('/admin/:id/status', auth(['admin']), orderController.updateOrderStatus);
+
+// Create shipment
+router.post('/admin/:id/shipments', auth(['admin']), shipmentController.createShipment);
+
+// Get all shipments
+router.get('/admin/shipments', auth(['admin']), shipmentController.getAllShipments);
+
+// Get ready to ship
+router.get('/admin/shipments/ready-to-ship', auth(['admin']), shipmentController.getReadyToShip);
+
+// Get pending shipments
+router.get('/admin/shipments/pending', auth(['admin']), shipmentController.getPendingShipments);
+
+// Update shipment tracking
+router.patch('/admin/shipments/:id/tracking', auth(['admin']), shipmentController.updateTracking);
+
+// Mark shipment as shipped
+router.post('/admin/shipments/:id/ship', auth(['admin']), shipmentController.markAsShipped);
+
+// Mark shipment as delivered
+router.post('/admin/shipments/:id/deliver', auth(['admin']), shipmentController.markAsDelivered);
+
+// Delete shipment
+router.delete('/admin/shipments/:id', auth(['admin']), shipmentController.deleteShipment);
+
+// Approve refund
+router.post('/admin/refunds/:id/approve', auth(['admin']), refundController.approveRefund);
+
+// Process refund
+router.post('/admin/refunds/:id/process', auth(['admin']), refundController.processRefund);
+
+// Reject refund
+router.post('/admin/refunds/:id/reject', auth(['admin']), refundController.rejectRefund);
+
+// Get refund details
+router.get('/admin/refunds/:id', auth(['admin']), refundController.getRefund);
+
+// ==========================================
+// Analytics Routes
+// ==========================================
+
+// Get order analytics
+router.get('/admin/analytics/orders', auth(['admin']), orderController.getOrderAnalytics);
+
+// ==========================================
+// Webhook Routes (Public - signature verified in controller)
+// ==========================================
+
+// Razorpay webhook
+router.post('/webhooks/payment/razorpay', webhookController.handleRazorpayWebhook);
+
+// Stripe webhook
+router.post('/webhooks/payment/stripe', webhookController.handleStripeWebhook);
 
 module.exports = router;
-

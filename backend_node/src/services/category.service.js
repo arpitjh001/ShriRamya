@@ -95,6 +95,14 @@ class CategoryService {
         categoryCache.del(this.CACHE_KEY);
         return deleted;
     }
+
+    async getProductsByCategoryId(categoryId, limit = 100) {
+        return categoryRepository.getProductsByCategoryId(categoryId, limit);
+    }
+
+    async getProductsByCategorySlug(slug, limit = 100) {
+        return categoryRepository.getProductsByCategorySlug(slug, limit);
+    }
 }
 
 module.exports = new CategoryService();

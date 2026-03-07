@@ -501,7 +501,7 @@ class ProductSqlRepository {
         const [products] = await mysqlPool.query('SELECT * FROM products WHERE id = ?', [id]);
         if (products.length === 0) return null;
 
-        const product = products[0];
+        const product = { ...products[0] };
 
         // Fetch Attributes
         const [attributes] = await mysqlPool.query(
@@ -577,8 +577,10 @@ class ProductSqlRepository {
 
         const [totalRows] = await mysqlPool.query(`SELECT COUNT(p.id) as count FROM products p ${joins} WHERE ${whereClause}`, params);
 
-        // Hydrate variants for each product
-        for (const product of rows) {
+        const products = [];
+        for (const row of rows) {
+            const product = { ...row };
+
             const [variants] = await mysqlPool.query(
                 `SELECT v.*, i.stock_level, i.low_stock_threshold
                  FROM product_variants v
@@ -596,11 +598,11 @@ class ProductSqlRepository {
                 [product.id]
             );
             product.categories = categories;
-
+            products.push(product);
         }
 
         return {
-            products: rows,
+            products,
             total: totalRows[0].count,
             page: options.page,
             perPage: options.perPage
@@ -624,6 +626,53 @@ class ProductSqlRepository {
         const [result] = await mysqlPool.query(
             'UPDATE variant_inventory SET stock_level = ? WHERE variant_id = ?',
             [newLevel, variantId]
+        );
+        return result.affectedRows > 0;
+    }
+
+    /**
+     * Get categories assigned to a product
+     */
+    async getProductCategories(productId) {
+        const [rows] = await mysqlPool.query(
+            `SELECT c.* FROM categories c
+             INNER JOIN product_categories pc ON c.id = pc.category_id
+             WHERE pc.product_id = ?`,
+            [productId]
+        );
+        return rows;
+    }
+
+    /**
+     * Assign categories to a product
+     */
+    async assignCategoriesToProduct(productId, categoryIds) {
+        const connection = await mysqlPool.getConnection();
+        try {
+            await connection.beginTransaction();
+            for (const catId of categoryIds) {
+                await connection.query(
+                    'INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)',
+                    [productId, catId]
+                );
+            }
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    /**
+     * Remove a category from a product
+     */
+    async removeCategoryFromProduct(productId, categoryId) {
+        const [result] = await mysqlPool.query(
+            'DELETE FROM product_categories WHERE product_id = ? AND category_id = ?',
+            [productId, categoryId]
         );
         return result.affectedRows > 0;
     }

@@ -68,6 +68,17 @@ const deleteCategory = async (req, res, next) => {
     }
 };
 
+const getProductsByCategory = async (req, res, next) => {
+    try {
+        const { categoryId } = req.params;
+        const limit = parseInt(req.query.limit, 10) || 100;
+        const products = await categoryService.getProductsByCategoryId(categoryId, limit);
+        return successResponse(res, products);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createCategory,
     getCategoryById,
@@ -75,4 +86,5 @@ module.exports = {
     getAllCategories,
     updateCategory,
     deleteCategory,
+    getProductsByCategory,
 };

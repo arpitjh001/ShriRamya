@@ -1,0 +1,94 @@
+﻿ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ         ShriRamya ΓÇö Data Seeding Script          Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+≡ƒôé Creating categories...
+  Γ£ô Sarees (ID: 22) ΓÇö already exists
+  Γ£ô Kurtis (ID: 23) ΓÇö already exists
+  Γ£ô Lehengas (ID: 24) ΓÇö already exists
+  Γ£ô Dupattas (ID: 25) ΓÇö already exists
+  Γ£ô New Arrivals (ID: 26) ΓÇö already exists
+  Γ£ô Sale (ID: 27) ΓÇö already exists
+
+Category Map: {
+  "sarees": 22,
+  "kurtis": 23,
+  "lehengas": 24,
+  "dupattas": 25,
+  "new-arrivals": 26,
+  "sale": 27
+}
+
+≡ƒÅ╖∩╕Å  Resolving attributes...
+  Size Attribute ID: 1
+  Color Attribute ID: 2
+
+≡ƒôª Creating simple products...
+  Γ£ô Silk Dupatta ΓÇö Gold Border (ID: 101)
+  Γ£ô Cotton Kurti ΓÇö Summer Collection (ID: 102)
+  Γ£ô Chiffon Dupatta ΓÇö Pastel Pink (ID: 103)
+
+≡ƒº╡ Creating variable products with 9 variations each...
+  Γ£ô Parent: Banarasi Silk Saree ΓÇö Royal Collection (ID: 104)
+    Γ£ô Variations: 9/9 created
+  Γ£ô Parent: Designer Lehenga ΓÇö Bridal Collection (ID: 114)
+    Γ£ô Variations: 9/9 created
+  Γ£ô Parent: Printed Kurti ΓÇö Festive Range (ID: 124)
+    Γ£ô Variations: 9/9 created
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ              SEEDING COMPLETE                    Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+Categories: 6
+Simple Products: 3
+Variable Products: 3
+Total Variations: 27
+
+Simple Products: [
+  {
+    "id": 101,
+    "name": "Silk Dupatta ΓÇö Gold Border",
+    "sku": "dup-gold-001-v3"
+  },
+  {
+    "id": 102,
+    "name": "Cotton Kurti ΓÇö Summer Collection",
+    "sku": "kur-sum-001-v3"
+  },
+  {
+    "id": 103,
+    "name": "Chiffon Dupatta ΓÇö Pastel Pink",
+    "sku": "dup-pink-001-v3"
+  }
+]
+Variable Products: [
+  {
+    "id": 104,
+    "name": "Banarasi Silk Saree ΓÇö Royal Collection",
+    "sku": "sre-bana-001-v3",
+    "variations": 9
+  },
+  {
+    "id": 114,
+    "name": "Designer Lehenga ΓÇö Bridal Collection",
+    "sku": "leh-bri-001-v3",
+    "variations": 9
+  },
+  {
+    "id": 124,
+    "name": "Printed Kurti ΓÇö Festive Range",
+    "sku": "kur-fes-001-v3",
+    "variations": 9
+  }
+]
+Category Map: {
+  "sarees": 22,
+  "kurtis": 23,
+  "lehengas": 24,
+  "dupattas": 25,
+  "new-arrivals": 26,
+  "sale": 27
+}
+
+Γ£à Done.

@@ -38,7 +38,8 @@ const upload = multer({
 
 const router = express.Router();
 
-router.post('/', auth(['admin']), upload.single('file'), uploadController.uploadFile);
+router.post('/image', auth(['admin']), upload.single('file'), uploadController.uploadImage);
+router.post('/images', auth(['admin']), upload.array('files', 10), uploadController.uploadMultipleImages);
 
 module.exports = router;
 

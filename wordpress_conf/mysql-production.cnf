@@ -1,0 +1,45 @@
+[mysqld]
+# ===============================================
+# MySQL 8 Tuning for Production VPS (4GB RAM)
+# Optimized for WooCommerce write-heavy workload
+# ===============================================
+
+# --- InnoDB Engine ---
+# 60-70% of available RAM; 4GB VPS = ~2.5G for MySQL container
+innodb_buffer_pool_size = 1G
+innodb_buffer_pool_instances = 1
+
+# Larger log files reduce disk flushes during batch variation writes
+innodb_log_file_size = 256M
+innodb_log_buffer_size = 64M
+
+# PRODUCTION: Must be 1 for ACID compliance (data safety > speed)
+# Value 2 risks up to 1 second of data loss on crash
+innodb_flush_log_at_trx_commit = 1
+
+innodb_flush_method = O_DIRECT
+innodb_file_per_table = 1
+innodb_io_capacity = 1000
+innodb_io_capacity_max = 2000
+innodb_read_io_threads = 4
+innodb_write_io_threads = 4
+
+# --- Memory ---
+tmp_table_size = 64M
+max_heap_table_size = 64M
+
+# --- Connections ---
+# WordPress uses few persistent connections; 50 is sufficient
+max_connections = 50
+thread_cache_size = 16
+table_open_cache = 2048
+open_files_limit = 65535
+
+# --- DNS ---
+skip-name-resolve
+
+# --- Logging ---
+slow_query_log = 1
+long_query_time = 1
+
+# MySQL 8 has no query cache; no query_cache_* variables needed.

@@ -22,6 +22,8 @@ const getProducts = {
     page: Joi.number().integer().min(1).default(1),
     per_page: Joi.number().integer().min(1).max(100).default(20),
     status: Joi.string().valid('draft', 'published', 'archived'),
+    category: Joi.string(),
+    category_id: Joi.number().integer(),
   }),
 };
 
@@ -40,7 +42,11 @@ const createProduct = {
     occasion: Joi.string().allow('', null).optional(),
     basePrice: Joi.number().min(0).optional(),
     categoryId: Joi.number().integer().allow(null).optional(),
-    categories: Joi.alternatives().try(Joi.string(), Joi.number()).allow(null).optional(),
+    categories: Joi.alternatives().try(
+      Joi.string(),
+      Joi.number(),
+      Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.number()))
+    ).allow(null).optional(),
     status: Joi.string().valid('draft', 'published', 'archived').default('published'),
     attributes: Joi.array().items(Joi.object({
       name: Joi.string().required(),
@@ -71,7 +77,11 @@ const updateProduct = {
     occasion: Joi.string().allow('', null).optional(),
     basePrice: Joi.number().min(0).optional(),
     categoryId: Joi.number().integer().allow(null).optional(),
-    categories: Joi.alternatives().try(Joi.string(), Joi.number()).allow(null).optional(),
+    categories: Joi.alternatives().try(
+      Joi.string(),
+      Joi.number(),
+      Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.number()))
+    ).allow(null).optional(),
     status: Joi.string().valid('draft', 'published', 'archived').optional(),
     attributes: Joi.array().items(Joi.object({
       name: Joi.string().required(),

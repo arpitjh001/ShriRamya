@@ -1,0 +1,242 @@
+{
+  "results": [
+    {
+      "scope": "system",
+      "method": "GET",
+      "endpoint": "/health",
+      "status": 200,
+      "ok": true,
+      "details": ""
+    },
+    {
+      "scope": "auth",
+      "method": "POST",
+      "endpoint": "/auth/login",
+      "status": 200,
+      "ok": true,
+      "details": "Logged in successfully"
+    },
+    {
+      "scope": "auth",
+      "method": "GET",
+      "endpoint": "/auth/me",
+      "status": 200,
+      "ok": true,
+      "details": "Success"
+    },
+    {
+      "scope": "auth",
+      "method": "GET",
+      "endpoint": "/auth/check-admin",
+      "status": 200,
+      "ok": true,
+      "details": "Success"
+    },
+    {
+      "scope": "auth",
+      "method": "POST",
+      "endpoint": "/auth/refresh",
+      "status": 200,
+      "ok": true,
+      "details": "Tokens refreshed successfully"
+    },
+    {
+      "scope": "products",
+      "method": "GET",
+      "endpoint": "/products/categories",
+      "status": 200,
+      "ok": true,
+      "details": "Success"
+    },
+    {
+      "scope": "products",
+      "method": "POST",
+      "endpoint": "/products/categories",
+      "status": 201,
+      "ok": true,
+      "details": "Category created successfully"
+    },
+    {
+      "scope": "products",
+      "method": "GET",
+      "endpoint": "/products/categories/49",
+      "status": 200,
+      "ok": true,
+      "details": "Success"
+    },
+    {
+      "scope": "products",
+      "method": "PUT",
+      "endpoint": "/products/categories/49",
+      "status": 200,
+      "ok": true,
+      "details": "Category updated successfully"
+    },
+    {
+      "scope": "products",
+      "method": "DELETE",
+      "endpoint": "/products/categories/49",
+      "status": 0,
+      "ok": false,
+      "details": "timeout of 60000ms exceeded"
+    },
+    {
+      "scope": "upload",
+      "method": "POST",
+      "endpoint": "/upload",
+      "status": 502,
+      "ok": false,
+      "details": "C:\\Users\\Lenovo\\shriramya\\ShriRamya\\uploads\\banarasi_red.png"
+    },
+    {
+      "scope": "upload",
+      "method": "POST",
+      "endpoint": "/upload",
+      "status": 401,
+      "ok": false,
+      "details": "C:\\Users\\Lenovo\\shriramya\\ShriRamya\\uploads\\designer_pink.png"
+    },
+    {
+      "scope": "upload",
+      "method": "POST",
+      "endpoint": "/upload",
+      "status": 401,
+      "ok": false,
+      "details": "C:\\Users\\Lenovo\\shriramya\\ShriRamya\\uploads\\kanjivaram_blue.png"
+    },
+    {
+      "scope": "products",
+      "method": "GET",
+      "endpoint": "/products",
+      "status": 200,
+      "ok": true,
+      "details": "Success"
+    },
+    {
+      "scope": "products",
+      "method": "POST",
+      "endpoint": "/products",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "products",
+      "method": "POST",
+      "endpoint": "/products",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "products",
+      "method": "POST",
+      "endpoint": "/products",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "cart",
+      "method": "GET",
+      "endpoint": "/cart",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "cart",
+      "method": "PUT",
+      "endpoint": "/cart",
+      "status": 0,
+      "ok": false,
+      "details": "Skipped cart write due to no created products"
+    },
+    {
+      "scope": "orders",
+      "method": "GET",
+      "endpoint": "/orders",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "customers",
+      "method": "GET",
+      "endpoint": "/customers",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "customers",
+      "method": "POST",
+      "endpoint": "/customers",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "coupons",
+      "method": "GET",
+      "endpoint": "/coupons",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "coupons",
+      "method": "POST",
+      "endpoint": "/coupons",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "blog",
+      "method": "GET",
+      "endpoint": "/blog/posts",
+      "status": 500,
+      "ok": false,
+      "details": "timeout of 30000ms exceeded"
+    },
+    {
+      "scope": "blog",
+      "method": "GET",
+      "endpoint": "/blog/capabilities",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "blog",
+      "method": "POST",
+      "endpoint": "/blog/posts",
+      "status": 401,
+      "ok": false,
+      "details": "Token expired"
+    },
+    {
+      "scope": "webhooks",
+      "method": "POST",
+      "endpoint": "/webhooks/woocommerce",
+      "status": 200,
+      "ok": true,
+      "details": ""
+    }
+  ],
+  "created": {
+    "imageUrls": [],
+    "productIds": [],
+    "categoryId": 36,
+    "tempCategoryId": 49,
+    "customerId": null,
+    "couponId": null,
+    "orderId": null,
+    "blogPostId": null
+  },
+  "summary": {
+    "passed": 11,
+    "failed": 17
+  }
+}

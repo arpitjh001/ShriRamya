@@ -94,7 +94,7 @@ const HomePage = () => {
       try {
         const [featured, trending] = await Promise.all([
           productsAPI.getAll({ featured: true, limit: 4 }),
-          productsAPI.getAll({ trending: true, limit: 4 }),
+          productsAPI.getAll({ category: 'most-desired', limit: 4 }),
         ]);
         setFeaturedProducts(featured.data);
         setTrendingProducts(trending.data);

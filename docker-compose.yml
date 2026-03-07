@@ -87,7 +87,7 @@ services:
     volumes:
       - ./wordpress:/var/www/html
       - ./wordpress_conf/setup-redis-cache.sh:/usr/local/bin/setup-redis-cache.sh:ro
-    entrypoint: ["/bin/sh", "/usr/local/bin/setup-redis-cache.sh"]
+    entrypoint: [ "/bin/sh", "/usr/local/bin/setup-redis-cache.sh" ]
 
   nginx:
     image: nginx:latest
@@ -102,9 +102,19 @@ services:
       - wordpress
       - redis
       - wpcli
+      - ai-proxy
+
+  ai-proxy:
+    build: ./ai-proxy
+    restart: always
+    ports:
+      - "8081:8080"
+    volumes:
+      - ai_proxy_data:/root/.claude
 
 volumes:
   mysql_data:
   mongo_data:
   upload_data:
   redis_data:
+  ai_proxy_data:
