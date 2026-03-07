@@ -73,30 +73,36 @@ const AdminProductsPage = () => {
     try {
       const response = await productsAPI.getAll({ per_page: 100 });
       const productsData = response.products || response.data || [];
-      
+
       console.log('Raw API Response:', productsData[0]); // Debug log
-      
+
       // Map API response to frontend format
       const mappedProducts = productsData.map(product => {
         // Handle both base_price (string) and basePrice formats
         const priceValue = product.basePrice || product.base_price || 0;
         const price = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
-        
+
         // Get SKU from product or first variant
         const sku = product.sku || (product.variants && product.variants.length > 0 ? product.variants[0].sku : 'N/A');
-        
+
         // Calculate total stock from all variants
         const stock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
-        
+
+        // Get category names
+        const categoryNames = product.categories 
+          ? product.categories.map(cat => cat.name).join(', ')
+          : (product.category || 'Uncategorized');
+
         return {
           ...product,
           basePrice: price || 0,
           sku: sku,
           stock: stock,
+          category: categoryNames,
           variants: product.variants || []
         };
       });
-      
+
       console.log('Mapped Products:', mappedProducts[0]); // Debug log
       setProducts(mappedProducts);
     } catch (error) {
@@ -141,7 +147,7 @@ const AdminProductsPage = () => {
     setProductForm({
       name: product.name || '',
       description: product.description || '',
-      basePrice: product.basePrice || '',
+      basePrice: product.basePrice || product.base_price || '',
       status: product.status || 'draft',
       categoryId: product.categoryId || product.category_id || '',
       categories: product.categories || [],
@@ -163,14 +169,36 @@ const AdminProductsPage = () => {
       return;
     }
 
+    if (!productForm.basePrice || parseFloat(productForm.basePrice) <= 0) {
+      toast.error('Valid base price is required');
+      return;
+    }
+
     try {
       const payload = {
-        ...productForm,
+        name: productForm.name,
+        description: productForm.description,
         basePrice: parseFloat(productForm.basePrice) || 0,
-        categories: productForm.categories.length > 0 
-          ? productForm.categories 
-          : productForm.categoryId ? [productForm.categoryId] : []
+        status: productForm.status,
+        fabric: productForm.fabric,
+        occasion: productForm.occasion,
+        brand: productForm.brand,
+        categoryId: productForm.categoryId || productForm.categories[0] || null,
+        categories: productForm.categories.length > 0
+          ? productForm.categories
+          : productForm.categoryId ? [productForm.categoryId] : [],
+        variants: productForm.variants.map(v => ({
+          sku: v.sku,
+          price: parseFloat(v.price) || 0,
+          discountPrice: v.discountPrice ? parseFloat(v.discountPrice) : null,
+          stock: parseInt(v.stock) || 0,
+          attributes: v.attributes || {},
+          image: v.image || null,
+          lowStockThreshold: v.lowStockThreshold || 5
+        }))
       };
+
+      console.log('Saving product with payload:', payload);
 
       if (isCreating) {
         await productsAPI.create(payload);
@@ -283,17 +311,17 @@ const AdminProductsPage = () => {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', padding: '24px' }}>
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div style={{ background: 'transparent', borderBottom: '1px solid rgba(148, 163, 184, 0.2)' }}>
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-2xl font-bold text-white">
                   {activeTab === 'categories' ? 'Categories' : 'Products'}
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {activeTab === 'categories' 
-                    ? 'Manage product categories and their slugs' 
+                <p className="text-sm text-gray-300 mt-1">
+                  {activeTab === 'categories'
+                    ? 'Manage product categories and their slugs'
                     : 'Manage your product catalog'}
                 </p>
               </div>
@@ -302,6 +330,7 @@ const AdminProductsPage = () => {
                   variant={activeTab === 'list' || activeTab === 'form' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveTab('list')}
+                  style={{ background: activeTab === 'list' || activeTab === 'form' ? '#6366f1' : 'transparent', borderColor: 'rgba(148, 163, 184, 0.3)' }}
                 >
                   <Package className="w-4 h-4 mr-2" />
                   Products
@@ -310,6 +339,7 @@ const AdminProductsPage = () => {
                   variant={activeTab === 'categories' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveTab('categories')}
+                  style={{ background: activeTab === 'categories' ? '#6366f1' : 'transparent', borderColor: 'rgba(148, 163, 184, 0.3)' }}
                 >
                   <FolderPlus className="w-4 h-4 mr-2" />
                   Categories
@@ -317,7 +347,7 @@ const AdminProductsPage = () => {
               </div>
             </div>
             {activeTab !== 'categories' && (
-              <Button onClick={handleCreateProduct} className="gap-2">
+              <Button onClick={handleCreateProduct} className="gap-2" style={{ background: '#6366f1' }}>
                 <Plus className="w-4 h-4" />
                 Add Product
               </Button>
@@ -331,12 +361,12 @@ const AdminProductsPage = () => {
         {activeTab === 'categories' ? (
           <CategoriesPage />
         ) : activeTab === 'list' ? (
-          <Card>
+          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>All Products</CardTitle>
-                  <CardDescription>
+                  <CardTitle style={{ color: '#ffffff' }}>All Products</CardTitle>
+                  <CardDescription style={{ color: '#94a3b8' }}>
                     {filteredProducts.length} products found
                   </CardDescription>
                 </div>
@@ -348,6 +378,7 @@ const AdminProductsPage = () => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 w-64"
+                      style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0', borderColor: 'rgba(148, 163, 184, 0.3)' }}
                     />
                   </div>
                 </div>
@@ -434,12 +465,12 @@ const AdminProductsPage = () => {
         ) : (
           <div className="space-y-6">
             {/* Product Form */}
-            <Card>
+            <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>{isCreating ? 'Create Product' : 'Edit Product'}</CardTitle>
-                    <CardDescription>
+                    <CardTitle style={{ color: '#ffffff' }}>{isCreating ? 'Create Product' : 'Edit Product'}</CardTitle>
+                    <CardDescription style={{ color: '#94a3b8' }}>
                       Fill in the product details below
                     </CardDescription>
                   </div>
@@ -448,11 +479,11 @@ const AdminProductsPage = () => {
                       setIsCreating(false);
                       setIsEditing(false);
                       setActiveTab('list');
-                    }}>
+                    }} style={{ background: 'transparent', borderColor: 'rgba(148, 163, 184, 0.3)', color: '#e2e8f0' }}>
                       <X className="w-4 h-4 mr-2" />
                       Cancel
                     </Button>
-                    <Button onClick={handleSaveProduct} className="gap-2">
+                    <Button onClick={handleSaveProduct} className="gap-2" style={{ background: '#6366f1', color: '#ffffff' }}>
                       <Save className="w-4 h-4" />
                       Save Product
                     </Button>
@@ -461,8 +492,8 @@ const AdminProductsPage = () => {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="basic" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-4" style={{ background: 'rgba(255, 255, 255, 0.05)' }}>
+                    <TabsTrigger value="basic" style={{ color: '#e2e8f0' }}>Basic Info</TabsTrigger>
                     <TabsTrigger value="variants">Variants</TabsTrigger>
                     <TabsTrigger value="media">Media</TabsTrigger>
                     <TabsTrigger value="organization">Organization</TabsTrigger>

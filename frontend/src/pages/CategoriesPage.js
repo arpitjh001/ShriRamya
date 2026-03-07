@@ -33,10 +33,13 @@ const CategoriesPage = () => {
     setLoading(true);
     try {
       const response = await categoriesAPI.getAll();
-      setCategories(response.categories || response.data || []);
+      // Handle both array and object responses
+      const categoriesData = Array.isArray(response) ? response : (response.categories || []);
+      setCategories(categoriesData);
     } catch (error) {
       console.error('Failed to load categories:', error);
       toast.error('Failed to load categories');
+      setCategories([]);
     } finally {
       setLoading(false);
     }

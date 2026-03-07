@@ -163,16 +163,22 @@ const AdminInventoryPage = () => {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', padding: '24px' }}>
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div style={{ background: 'transparent', borderBottom: '1px solid rgba(148, 163, 184, 0.2)' }}>
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <h1 className="text-2xl font-bold text-white">Inventory</h1>
+              <p className="text-sm text-gray-300 mt-1">
                 Manage stock levels and warehouse allocation
               </p>
             </div>
-            <Button onClick={loadInventory} variant="outline" size="sm" className="gap-2">
+            <Button 
+              onClick={loadInventory} 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              style={{ background: 'transparent', borderColor: 'rgba(148, 163, 184, 0.3)', color: '#e2e8f0' }}
+            >
               <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
@@ -184,55 +190,55 @@ const AdminInventoryPage = () => {
       <div className="p-6 space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium" style={{ color: '#e2e8f0' }}>Total Products</CardTitle>
+              <Package className="h-4 w-4" style={{ color: '#94a3b8' }} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProducts}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold" style={{ color: '#ffffff' }}>{stats.totalProducts}</div>
+              <p className="text-xs" style={{ color: '#94a3b8' }}>
                 Across all warehouses
               </p>
             </CardContent>
           </Card>
-          
-          <Card>
+
+          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <CardTitle className="text-sm font-medium" style={{ color: '#e2e8f0' }}>Low Stock</CardTitle>
+              <AlertTriangle className="h-4 w-4" style={{ color: '#f59e0b' }} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-500">{stats.lowStock}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold" style={{ color: '#f59e0b' }}>{stats.lowStock}</div>
+              <p className="text-xs" style={{ color: '#94a3b8' }}>
                 Items below threshold
               </p>
             </CardContent>
           </Card>
-          
-          <Card>
+
+          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <CardTitle className="text-sm font-medium" style={{ color: '#e2e8f0' }}>Out of Stock</CardTitle>
+              <AlertTriangle className="h-4 w-4" style={{ color: '#ef4444' }} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-500">{stats.outOfStock}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold" style={{ color: '#ef4444' }}>{stats.outOfStock}</div>
+              <p className="text-xs" style={{ color: '#94a3b8' }}>
                 Need immediate attention
               </p>
             </CardContent>
           </Card>
-          
-          <Card>
+
+          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-500" />
+              <CardTitle className="text-sm font-medium" style={{ color: '#e2e8f0' }}>Total Value</CardTitle>
+              <TrendingUp className="h-4 w-4" style={{ color: '#10b981' }} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-500">
+              <div className="text-2xl font-bold" style={{ color: '#10b981' }}>
                 ₹{stats.totalValue.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs" style={{ color: '#94a3b8' }}>
                 Based on current stock
               </p>
             </CardContent>
@@ -241,20 +247,20 @@ const AdminInventoryPage = () => {
 
         {/* Stock Alerts */}
         {stockAlerts.length > 0 && (
-          <Card className="border-red-200 dark:border-red-900">
+          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <CardTitle className="flex items-center gap-2" style={{ color: '#ef4444' }}>
                 <AlertTriangle className="w-5 h-5" />
                 Low Stock Alerts
               </CardTitle>
-              <CardDescription>
+              <CardDescription style={{ color: '#94a3b8' }}>
                 {stockAlerts.length} items need immediate restocking
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {stockAlerts.slice(0, 6).map((alert, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-3" style={{ background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px' }}>
                     <div>
                       <p className="font-medium text-sm">{alert.productName}</p>
                       <p className="text-xs text-muted-foreground">SKU: {alert.sku}</p>
@@ -268,27 +274,28 @@ const AdminInventoryPage = () => {
         )}
 
         {/* Inventory Table */}
-        <Card>
+        <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Stock Levels</CardTitle>
-                <CardDescription>
+                <CardTitle style={{ color: '#ffffff' }}>Stock Levels</CardTitle>
+                <CardDescription style={{ color: '#94a3b8' }}>
                   Manage inventory across all products
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: '#94a3b8' }} />
                   <Input
                     placeholder="Search products..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 w-64"
+                    style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0', borderColor: 'rgba(148, 163, 184, 0.3)' }}
                   />
                 </div>
                 <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className="w-48" style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0', borderColor: 'rgba(148, 163, 184, 0.3)' }}>
                     <SelectValue placeholder="All Warehouses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -306,17 +313,17 @@ const AdminInventoryPage = () => {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#6366f1' }}></div>
               </div>
             ) : (
-              <div className="rounded-md border">
+              <div className="rounded-md border" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Warehouse</TableHead>
-                      <TableHead>Stock</TableHead>
+                    <TableRow style={{ borderBottomColor: 'rgba(148, 163, 184, 0.2)' }}>
+                      <TableHead style={{ color: '#e2e8f0' }}>Product</TableHead>
+                      <TableHead style={{ color: '#e2e8f0' }}>SKU</TableHead>
+                      <TableHead style={{ color: '#e2e8f0' }}>Warehouse</TableHead>
+                      <TableHead style={{ color: '#e2e8f0' }}>Stock</TableHead>
                       <TableHead>Reserved</TableHead>
                       <TableHead>Available</TableHead>
                       <TableHead>Status</TableHead>

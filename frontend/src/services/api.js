@@ -617,49 +617,62 @@ export const recommendationsAPI = {
 export const categoriesAPI = {
   getAll: async () => {
     try {
-      return await api.get("/categories");
+      const response = await api.get("/categories");
+      // Handle different response structures
+      return response.data.data || response.data;
     } catch (err) {
       handleError(err);
+      return { categories: [] };
     }
   },
 
   getById: async (id) => {
     try {
-      return await api.get(`/categories/${id}`);
+      const response = await api.get(`/categories/${id}`);
+      return response.data.data || response.data;
     } catch (err) {
       handleError(err);
+      return null;
     }
   },
 
   getBySlug: async (slug) => {
     try {
-      return await api.get(`/categories/slug/${slug}`);
+      const response = await api.get(`/categories/slug/${slug}`);
+      return response.data.data || response.data;
     } catch (err) {
       handleError(err);
+      return null;
     }
   },
 
   create: async (data) => {
     try {
-      return await api.post("/categories", data);
+      const response = await api.post("/categories", data);
+      return response.data.data || response.data;
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
   update: async (id, data) => {
     try {
-      return await api.put(`/categories/${id}`, data);
+      const response = await api.put(`/categories/${id}`, data);
+      return response.data.data || response.data;
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
   delete: async (id) => {
     try {
-      return await api.delete(`/categories/${id}`);
+      const response = await api.delete(`/categories/${id}`);
+      return response.data.data || response.data;
     } catch (err) {
       handleError(err);
+      throw err;
     }
   }
 };
