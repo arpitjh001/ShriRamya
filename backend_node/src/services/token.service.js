@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const config = require('../config/config');
 const redis = require('../config/integrations/redis');
 const { v4: uuidv4 } = require('uuid');
+const { UserRoleService } = require('../models/rbac.model');
 
 /**
  * Hash a token before storing in Redis
@@ -13,13 +14,33 @@ const hashToken = (token) => {
 
 /**
  * Generate Access Token (Stateless)
+ * Updated to include tenant_id and roles array for multi-tenant RBAC
  */
-const generateAccessToken = (userId, role, deviceId) => {
+const generateAccessToken = async (userId, role, deviceId, tenantId = 1) => {
     const jti = uuidv4();
     const expires = Math.floor(Date.now() / 1000) + config.jwt.accessExpirationMinutes * 60;
+    
+    // Fetch all roles for this user in the tenant
+    let roles = [];
+    let permissions = [];
+    try {
+        roles = await UserRoleService.getRoleNamesForUser(userId, tenantId);
+        permissions = await UserRoleService.getPermissionNamesForUser(userId, tenantId);
+    } catch (error) {
+        console.error('[TokenService] Error fetching user roles:', error.message);
+        // Fallback to legacy role if RBAC not set up
+        if (role) {
+            roles = [role];
+        }
+    }
+
     const payload = {
         sub: userId,
-        role: role,
+        user_id: userId,
+        tenant_id: tenantId,
+        roles: roles,
+        permissions: permissions,
+        role: roles[0] || role, // Legacy support - primary role
         deviceId: deviceId,
         jti: jti,
         iat: Math.floor(Date.now() / 1000),
@@ -86,12 +107,14 @@ const refreshAuthTokens = async (oldRefreshToken, deviceId) => {
     }
 
     // Generate new pair
-    // (In a real app, you'd fetch the user's role from DB here)
     const User = require('../models/user.model');
     const user = await User.findById(userId);
     if (!user) throw new Error('User not found');
 
-    const newAccessToken = generateAccessToken(user.id, user.role, deviceId);
+    // Get tenant_id from user or default to 1
+    const tenantId = user.tenantId || user.tenant_id || 1;
+    
+    const newAccessToken = await generateAccessToken(user.id, user.role, deviceId, tenantId);
     const newRefreshToken = await generateRefreshToken(user.id, deviceId);
 
     // Return new tokens (client needs to encode the RT again)

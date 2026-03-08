@@ -1,6 +1,26 @@
 const httpStatus = require('http-status');
 const productService = require('../services/product.service');
 const { successResponse } = require('../utils/response');
+const redis = require('../config/integrations/redis');
+
+// Cache TTL for product list - 60 seconds
+const PRODUCTS_CACHE_TTL = 60;
+const PRODUCTS_CACHE_KEY = 'api:products:list';
+
+/**
+ * Generate cache key based on query params
+ */
+const getCacheKey = (prefix, params) => {
+  const queryString = JSON.stringify(params);
+  return `${prefix}:${Buffer.from(queryString).toString('base64').substring(0, 32)}`;
+};
+
+/**
+ * Get tenant ID from request (set by ensureTenantIsolation middleware)
+ */
+const getTenantId = (req) => {
+  return req.tenantId || req.user?.tenantId || 1;
+};
 
 /**
  * ---------- PRODUCTS ----------
@@ -8,7 +28,37 @@ const { successResponse } = require('../utils/response');
 
 const getProducts = async (req, res, next) => {
   try {
-    const data = await productService.getProducts(req.query);
+    const tenantId = getTenantId(req);
+    // Generate cache key based on query params and tenant
+    const cacheKey = `${getCacheKey(PRODUCTS_CACHE_KEY, req.query)}:${tenantId}`;
+    
+    // Try to get from Redis cache first
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          console.log(`[ProductController] Cache hit for products: ${cacheKey}`);
+          return res.json({ success: true, data: parsed });
+        }
+      } catch (cacheErr) {
+        console.error('[ProductController] Redis cache read error:', cacheErr.message);
+      }
+    }
+    
+    // Cache miss - fetch from database
+    console.log(`[ProductController] Cache miss for products: ${cacheKey} (tenant: ${tenantId})`);
+    const data = await productService.getProducts(req.query, tenantId);
+    
+    // Store in Redis cache with TTL
+    if (redis) {
+      try {
+        await redis.setex(cacheKey, PRODUCTS_CACHE_TTL, JSON.stringify(data));
+      } catch (cacheErr) {
+        console.error('[ProductController] Redis cache write error:', cacheErr.message);
+      }
+    }
+    
     return successResponse(res, data);
   } catch (error) {
     next(error);
@@ -17,16 +67,37 @@ const getProducts = async (req, res, next) => {
 
 const getProduct = async (req, res, next) => {
   try {
-    const product = await productService.getProductById(req.params.product_id);
+    const tenantId = getTenantId(req);
+    const product = await productService.getProductById(req.params.product_id, tenantId);
     return successResponse(res, product);
   } catch (error) {
     next(error);
   }
 };
 
+/**
+ * Clear product list cache
+ */
+const clearProductsCache = async () => {
+  if (redis) {
+    try {
+      // Delete all keys matching the pattern
+      const keys = await redis.keys(`${PRODUCTS_CACHE_KEY}:*`);
+      if (keys.length > 0) {
+        await redis.del(...keys);
+        console.log(`[ProductController] Cleared ${keys.length} product cache entries`);
+      }
+    } catch (err) {
+      console.error('[ProductController] Cache clear error:', err.message);
+    }
+  }
+};
+
 const createProduct = async (req, res, next) => {
   try {
-    const product = await productService.createProduct(req.body);
+    const tenantId = getTenantId(req);
+    const product = await productService.createProduct(req.body, tenantId);
+    await clearProductsCache(); // Invalidate cache
     return successResponse(res, product, 'Product created successfully', httpStatus.CREATED);
   } catch (error) {
     next(error);
@@ -103,7 +174,9 @@ const removeCategoryFromProduct = async (req, res, next) => {
 
 const updateProduct = async (req, res, next) => {
   try {
-    const updated = await productService.updateProduct(req.params.product_id, req.body);
+    const tenantId = getTenantId(req);
+    const updated = await productService.updateProduct(req.params.product_id, req.body, tenantId);
+    await clearProductsCache(); // Invalidate cache
     return successResponse(res, updated, 'Product updated successfully');
   } catch (error) {
     next(error);
@@ -112,7 +185,9 @@ const updateProduct = async (req, res, next) => {
 
 const deleteProduct = async (req, res, next) => {
   try {
-    const deleted = await productService.deleteProduct(req.params.product_id);
+    const tenantId = getTenantId(req);
+    const deleted = await productService.deleteProduct(req.params.product_id, tenantId);
+    await clearProductsCache(); // Invalidate cache
     return successResponse(res, deleted, 'Product deleted successfully');
   } catch (error) {
     next(error);

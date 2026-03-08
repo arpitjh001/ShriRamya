@@ -65,14 +65,14 @@ class ProductSqlRepository {
     /**
      * Create a new product with optional attributes
      */
-    async createProduct(data) {
+    async createProduct(data, tenantId = 1) {
         const connection = await mysqlPool.getConnection();
         try {
             await connection.beginTransaction();
 
             const [result] = await connection.query(
-                `INSERT INTO products (name, sku, description, fabric, occasion, base_price, category_id, status) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO products (name, sku, description, fabric, occasion, base_price, category_id, status, tenant_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     data.name,
                     data.sku ? String(data.sku).trim() : null,
@@ -81,7 +81,8 @@ class ProductSqlRepository {
                     data.occasion ? String(data.occasion).trim() : null,
                     data.basePrice || 0,
                     data.categoryId || null,
-                    data.status || 'published'
+                    data.status || 'published',
+                    tenantId
                 ]
             );
             const productId = result.insertId;
@@ -497,8 +498,8 @@ class ProductSqlRepository {
     /**
      * Fetch a complete product with attributes and variants
      */
-    async getProduct(id) {
-        const [products] = await mysqlPool.query('SELECT * FROM products WHERE id = ?', [id]);
+    async getProduct(id, tenantId = 1) {
+        const [products] = await mysqlPool.query('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [id, tenantId]);
         if (products.length === 0) return null;
 
         const product = { ...products[0] };
@@ -543,13 +544,15 @@ class ProductSqlRepository {
 
     /**
      * List products with pagination and basic filtering
+     * Uses batch queries to avoid N+1 problem
+     * ENFORCES TENANT ISOLATION - all queries filtered by tenant_id
      */
-    async listProducts(filter = {}, options = {}) {
+    async listProducts(filter = {}, options = {}, tenantId = 1) {
         const skip = (options.page - 1) * options.perPage;
         const limit = options.perPage;
 
-        let whereClause = '1=1';
-        const params = [];
+        let whereClause = '1=1 AND p.tenant_id = ?';
+        const params = [tenantId];
         let joins = '';
 
         if (filter.status) {
@@ -575,31 +578,68 @@ class ProductSqlRepository {
             [...params, limit, skip]
         );
 
-        const [totalRows] = await mysqlPool.query(`SELECT COUNT(p.id) as count FROM products p ${joins} WHERE ${whereClause}`, params);
+        const [totalRows] = await mysqlPool.query(`SELECT COUNT(DISTINCT p.id) as count FROM products p ${joins} WHERE ${whereClause}`, params);
 
-        const products = [];
-        for (const row of rows) {
-            const product = { ...row };
-
-            const [variants] = await mysqlPool.query(
-                `SELECT v.*, i.stock_level, i.low_stock_threshold
-                 FROM product_variants v
-                 LEFT JOIN variant_inventory i ON v.id = i.variant_id
-                 WHERE v.product_id = ?`,
-                [product.id]
-            );
-            product.variants = variants.map((v) => this.mapVariantRow(v));
-
-            const [categories] = await mysqlPool.query(
-                `SELECT c.id, c.name, c.slug, c.image
-                 FROM categories c
-                 INNER JOIN product_categories pc ON c.id = pc.category_id
-                 WHERE pc.product_id = ?`,
-                [product.id]
-            );
-            product.categories = categories;
-            products.push(product);
+        if (rows.length === 0) {
+            return {
+                products: [],
+                total: totalRows[0].count,
+                page: options.page,
+                perPage: options.perPage
+            };
         }
+
+        // Batch load variants for all products using IN clause (fixes N+1)
+        const productIds = rows.map(r => r.id);
+        const [variantsRows] = await mysqlPool.query(
+            `SELECT v.*, i.stock_level, i.low_stock_threshold
+             FROM product_variants v
+             LEFT JOIN variant_inventory i ON v.id = i.variant_id
+             WHERE v.product_id IN (?)
+             ORDER BY v.product_id`,
+            [productIds]
+        );
+
+        // Batch load categories for all products using IN clause (fixes N+1)
+        const [categoriesRows] = await mysqlPool.query(
+            `SELECT c.id, c.name, c.slug, c.image, pc.product_id
+             FROM categories c
+             INNER JOIN product_categories pc ON c.id = pc.category_id
+             WHERE pc.product_id IN (?)
+             ORDER BY pc.product_id`,
+            [productIds]
+        );
+
+        // Group variants by product_id
+        const variantsByProduct = new Map();
+        variantsRows.forEach((v) => {
+            if (!variantsByProduct.has(v.product_id)) {
+                variantsByProduct.set(v.product_id, []);
+            }
+            variantsByProduct.get(v.product_id).push(this.mapVariantRow(v));
+        });
+
+        // Group categories by product_id
+        const categoriesByProduct = new Map();
+        categoriesRows.forEach((c) => {
+            if (!categoriesByProduct.has(c.product_id)) {
+                categoriesByProduct.set(c.product_id, []);
+            }
+            categoriesByProduct.get(c.product_id).push({
+                id: c.id,
+                name: c.name,
+                slug: c.slug,
+                image: c.image
+            });
+        });
+
+        // Assemble products with their variants and categories
+        const products = rows.map((row) => {
+            const product = { ...row };
+            product.variants = variantsByProduct.get(row.id) || [];
+            product.categories = categoriesByProduct.get(row.id) || [];
+            return product;
+        });
 
         return {
             products,
@@ -612,8 +652,8 @@ class ProductSqlRepository {
     /**
      * Delete a product (cascade will handle variants and attributes)
      */
-    async deleteProduct(id) {
-        const [result] = await mysqlPool.query('DELETE FROM products WHERE id = ?', [id]);
+    async deleteProduct(id, tenantId = 1) {
+        const [result] = await mysqlPool.query('DELETE FROM products WHERE id = ? AND tenant_id = ?', [id, tenantId]);
         return result.affectedRows > 0;
     }
 

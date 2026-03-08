@@ -6,6 +6,18 @@
 const httpStatus = require('http-status');
 const refundService = require('../services/refund.service');
 const { successResponse } = require('../utils/response');
+const ApiError = require('../utils/ApiError');
+
+/**
+ * Validate ID parameter
+ */
+const validateId = (id, paramName = 'ID') => {
+    const parsed = parseInt(id);
+    if (isNaN(parsed) || parsed <= 0) {
+        throw new ApiError(httpStatus.BAD_REQUEST, `Invalid ${paramName} ID`);
+    }
+    return parsed;
+};
 
 /**
  * Create refund request
@@ -18,7 +30,7 @@ const createRefund = async (req, res, next) => {
 
         const result = await refundService.createRefund(
             {
-                orderId: parseInt(orderId),
+                orderId: validateId(orderId, 'Order'),
                 amount,
                 reason,
                 items
@@ -41,7 +53,8 @@ const createRefund = async (req, res, next) => {
  */
 const getRefund = async (req, res, next) => {
     try {
-        const refund = await refundService.getRefund(parseInt(req.params.id));
+        const refundId = validateId(req.params.id, 'Refund');
+        const refund = await refundService.getRefund(refundId);
         return successResponse(res, refund);
     } catch (error) {
         next(error);
@@ -54,7 +67,8 @@ const getRefund = async (req, res, next) => {
  */
 const getOrderRefunds = async (req, res, next) => {
     try {
-        const refunds = await refundService.getOrderRefunds(parseInt(req.params.orderId));
+        const orderId = validateId(req.params.orderId, 'Order');
+        const refunds = await refundService.getOrderRefunds(orderId);
         return successResponse(res, refunds);
     } catch (error) {
         next(error);

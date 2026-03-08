@@ -8,9 +8,10 @@ import { transformWooProducts, transformWooProduct } from "../utils/productTrans
 let BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 
 // Inside the Docker container network, BACKEND_URL might be defined as backend:8000
-// The browser cannot resolve this hostname directly, so we map it to relative URL
-// which the NGINX reverses proxies to the container correctly.
-if (BACKEND_URL && BACKEND_URL.includes("backend:8000")) {
+// or localhost:8000 if built with defaults. The browser cannot resolve these
+// directly in many cases, so we map them to relative URLs which NGINX reverse 
+// proxies to the container correctly.
+if (BACKEND_URL && (BACKEND_URL.includes("backend:8000") || BACKEND_URL.includes("localhost:8000"))) {
   BACKEND_URL = "";
 }
 
@@ -340,16 +341,25 @@ export const ordersAPI = {
 export const blogAPI = {
   getPosts: async (params) => {
     try {
-      return await api.get("/blog/posts", { params });
+      return await api.get("/blogs", { params });
     } catch (err) {
       handleError(err);
       return { data: { posts: [], pagination: {} } };
     }
   },
 
+  getPostBySlug: async (slug) => {
+    try {
+      return await api.get(`/blogs/slug/${slug}`);
+    } catch (err) {
+      handleError(err);
+      return { data: null };
+    }
+  },
+
   getPostById: async (postId) => {
     try {
-      return await api.get(`/blog/posts/${postId}`);
+      return await api.get(`/blogs/${postId}`);
     } catch (err) {
       handleError(err);
       return { data: null };
@@ -358,45 +368,97 @@ export const blogAPI = {
 
   getCategories: async () => {
     try {
-      return await api.get("/blog/categories");
+      return await api.get("/blogs/categories");
     } catch (err) {
       handleError(err);
       return { data: [] };
     }
   },
 
+  getTags: async () => {
+    try {
+      return await api.get("/blogs/tags");
+    } catch (err) {
+      handleError(err);
+      return { data: [] };
+    }
+  },
+
+  getRelatedPosts: async (postId) => {
+    try {
+      return await api.get(`/blogs/${postId}/related`);
+    } catch (err) {
+      handleError(err);
+      return { data: [] };
+    }
+  },
+
+  getComments: async (postId) => {
+    try {
+      return await api.get(`/blogs/${postId}/comments`);
+    } catch (err) {
+      handleError(err);
+      return { data: [] };
+    }
+  },
+
+  addComment: async (postId, comment) => {
+    try {
+      return await api.post(`/blogs/${postId}/comment`, { comment });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  getAnalytics: async () => {
+    try {
+      return await api.get("/blogs/admin/analytics");
+    } catch (err) {
+      handleError(err);
+      return { data: null };
+    }
+  },
+
   getCapabilities: async () => {
     try {
-      return await api.get("/blog/capabilities");
+      return await api.get("/blogs/capabilities");
     } catch (err) {
       handleError(err);
       return { data: { capabilities: {} } };
     }
   },
 
-  updatePost: async (postId, data) => {
-    try {
-      return await api.put(`/wp/posts/${postId}`, data);
-    } catch (err) {
-      handleError(err);
-      throw err;
-    }
-  },
-
-  uploadMedia: async (file) => {
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      return await api.post("/wp/media", formData);
-    } catch (err) {
-      handleError(err);
-      throw err;
-    }
-  },
-
   createPost: async (data) => {
     try {
-      return await api.post("/wp/posts", data);
+      return await api.post("/blogs", data);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  updatePost: async (postId, data) => {
+    try {
+      return await api.put(`/blogs/${postId}`, data);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  publishPost: async (postId) => {
+    try {
+      return await api.post(`/blogs/${postId}/publish`);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  archivePost: async (postId) => {
+    try {
+      return await api.post(`/blogs/${postId}/archive`);
     } catch (err) {
       handleError(err);
       throw err;

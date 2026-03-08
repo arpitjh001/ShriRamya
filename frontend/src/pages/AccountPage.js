@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Package, User as UserIcon, MapPin, LogOut } from 'lucide-react';
 import { formatPrice } from '../utils';
-import { format } from 'date-fns';
+import dayjs from 'dayjs';
 
 const AccountPage = () => {
   const { user, logout } = useAuth();
@@ -91,7 +91,7 @@ const AccountPage = () => {
                     <div>
                       <p className="font-medium text-lg">Order #{order.order_number}</p>
                       <p className="text-sm text-muted-foreground">
-                        Placed on {format(new Date(order.created_at), 'MMM dd, yyyy')}
+                        Placed on {dayjs(order.created_at).format('MMM DD, YYYY')}
                       </p>
                     </div>
                     <div className="text-right">

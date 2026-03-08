@@ -3,7 +3,7 @@ const productsRoute = require('./products.route');
 const authRoute = require('./auth.route');
 const ordersRoute = require('./orders.route');
 const cartRoute = require('./cart.route');
-const blogRoute = require('./blog.route');
+const blogsRoute = require('./blogs.route'); // Native multi-tenant blogs
 const uploadRoute = require('./upload.route');
 const customersRoute = require('./customers.route');
 const couponsRoute = require('./coupons.route');
@@ -15,6 +15,8 @@ const analyticsRoute = require('./analytics.route');
 const warehouseRoute = require('./warehouse.route');
 const notificationRoute = require('./notification.route');
 const fraudRoute = require('./fraud.route');
+const tenantsRoute = require('./tenants.route');
+const usersRoute = require('./users.route'); // User management
 
 const router = express.Router();
 
@@ -22,7 +24,7 @@ router.use('/products', productsRoute);
 router.use('/auth', authRoute);
 router.use('/orders', ordersRoute);
 router.use('/cart', cartRoute);
-router.use('/blog', blogRoute);
+router.use('/blogs', blogsRoute); // Native multi-tenant blogs
 router.use('/upload', uploadRoute);
 router.use('/customers', customersRoute);
 router.use('/coupons', couponsRoute);
@@ -34,6 +36,8 @@ router.use('/admin/analytics', analyticsRoute);
 router.use('/admin/warehouses', warehouseRoute);
 router.use('/notifications', notificationRoute);
 router.use('/admin/fraud', fraudRoute);
+router.use('/tenants', tenantsRoute);
+router.use('/users', usersRoute); // User management routes
 
 module.exports = router;
 

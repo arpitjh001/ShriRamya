@@ -1,9 +1,9 @@
 const categoryRepository = require('../repositories/category.sql.repository');
-const NodeCache = require('node-cache');
+const redis = require('../config/integrations/redis');
 const crypto = require('crypto');
 
-// Cache categories for 24 hours
-const categoryCache = new NodeCache({ stdTTL: 86400, checkperiod: 120 });
+// Cache categories for 24 hours using Redis
+const CACHE_TTL = 86400; // 24 hours in seconds
 
 class CategoryService {
     constructor() {
@@ -29,7 +29,7 @@ class CategoryService {
         }
 
         const id = await categoryRepository.createCategory(data);
-        categoryCache.del(this.CACHE_KEY); // clear cache
+        await this.clearCache(); // clear cache
         return { id, ...data };
     }
 
@@ -42,10 +42,18 @@ class CategoryService {
     }
 
     async getAllCategories() {
-        let cached = categoryCache.get(this.CACHE_KEY);
-        if (cached) {
-            return cached;
+        // Try Redis cache first
+        if (redis) {
+            try {
+                const cached = await redis.get(this.CACHE_KEY);
+                if (cached) {
+                    return JSON.parse(cached);
+                }
+            } catch (err) {
+                console.error('Redis cache error:', err.message);
+            }
         }
+
         const categories = await categoryRepository.getAllCategories();
         // Build tree
         const map = new Map();
@@ -67,7 +75,15 @@ class CategoryService {
             }
         });
 
-        categoryCache.set(this.CACHE_KEY, rootCategories);
+        // Cache in Redis
+        if (redis) {
+            try {
+                await redis.setex(this.CACHE_KEY, CACHE_TTL, JSON.stringify(rootCategories));
+            } catch (err) {
+                console.error('Redis cache error:', err.message);
+            }
+        }
+
         return rootCategories;
     }
 
@@ -86,14 +102,24 @@ class CategoryService {
         }
 
         const updated = await categoryRepository.updateCategory(id, data);
-        categoryCache.del(this.CACHE_KEY);
+        await this.clearCache();
         return updated;
     }
 
     async deleteCategory(id) {
         const deleted = await categoryRepository.deleteCategory(id);
-        categoryCache.del(this.CACHE_KEY);
+        await this.clearCache();
         return deleted;
+    }
+
+    async clearCache() {
+        if (redis) {
+            try {
+                await redis.del(this.CACHE_KEY);
+            } catch (err) {
+                console.error('Redis cache error:', err.message);
+            }
+        }
     }
 
     async getProductsByCategoryId(categoryId, limit = 100) {

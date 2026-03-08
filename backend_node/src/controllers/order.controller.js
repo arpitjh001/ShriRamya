@@ -11,6 +11,18 @@ const shipmentService = require('../services/shipment.service');
 const refundService = require('../services/refund.service');
 const { successResponse } = require('../utils/response');
 const { ORDER_STATUS } = require('../services/orderStateMachine.service');
+const ApiError = require('../utils/ApiError');
+
+/**
+ * Validate ID parameter
+ */
+const validateId = (id, paramName = 'ID') => {
+    const parsed = parseInt(id);
+    if (isNaN(parsed) || parsed <= 0) {
+        throw new ApiError(httpStatus.BAD_REQUEST, `Invalid ${paramName} ID`);
+    }
+    return parsed;
+};
 
 /**
  * Generate unique order number
@@ -48,9 +60,9 @@ const createOrder = async (req, res, next) => {
 
         const userId = req.user.id;
 
-        // Get user details
+        // Get user details from mysql_users (MongoDB user mapping)
         const [userRows] = await connection.query(
-            'SELECT * FROM users WHERE id = ?',
+            'SELECT * FROM mysql_users WHERE id = ?',
             [userId]
         );
         const user = userRows[0];
@@ -276,7 +288,7 @@ const getCustomerOrders = async (req, res, next) => {
  */
 const getOrder = async (req, res, next) => {
     try {
-        const orderId = parseInt(req.params.id);
+        const orderId = validateId(req.params.id, 'Order');
         const order = await getFullOrder(orderId);
 
         // Check authorization
@@ -298,7 +310,7 @@ const getOrder = async (req, res, next) => {
  */
 const cancelOrder = async (req, res, next) => {
     try {
-        const orderId = parseInt(req.params.id);
+        const orderId = validateId(req.params.id, 'Order');
         const { reason } = req.body;
         const userId = req.user.id;
 
@@ -414,7 +426,7 @@ const getAllOrders = async (req, res, next) => {
  */
 const updateOrderStatus = async (req, res, next) => {
     try {
-        const orderId = parseInt(req.params.id);
+        const orderId = validateId(req.params.id, 'Order');
         const { status, paymentStatus, fulfillmentStatus, reason } = req.body;
         const userId = req.user.id;
 

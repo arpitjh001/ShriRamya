@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Package, Search, CheckCircle, Truck, Box } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import dayjs from 'dayjs';
 
 const TrackOrderPage = () => {
   const [orderNumber, setOrderNumber] = useState('');
@@ -87,7 +87,7 @@ const TrackOrderPage = () => {
                 Order #{orderData.order_number}
               </h2>
               <p className="text-muted-foreground">
-                Placed on {format(new Date(orderData.created_at), 'MMM dd, yyyy')}
+                Placed on {dayjs(orderData.created_at).format('MMM DD, YYYY')}
               </p>
             </div>
 

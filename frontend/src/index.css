@@ -198,6 +198,122 @@
     @apply h-[58px] md:h-[68px] w-auto object-contain;
     filter: drop-shadow(0 4px 12px rgba(31, 31, 31, 0.2));
   }
+
+  /* =========================================
+     PREMIUM SIDEBAR ANIMATIONS
+     Luxury e-commerce mobile menu transitions
+     ========================================= */
+
+  /* Sidebar backdrop overlay with fade and blur */
+  .sidebar-overlay {
+    @apply fixed inset-0 z-50;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 400ms ease-out, visibility 400ms ease-out;
+  }
+
+  .sidebar-overlay.open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Sidebar drawer with smooth slide-in */
+  .sidebar-drawer {
+    @apply fixed left-0 top-0 h-full w-[320px] sm:w-3/4 sm:max-w-sm z-[51];
+    background: linear-gradient(180deg, #1f1f1f 0%, #2d2d2d 100%);
+    transform: translateX(-100%);
+    transition: transform 500ms cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+  }
+
+  .sidebar-drawer.open {
+    transform: translateX(0);
+  }
+
+  /* Premium link hover effect with accent indicator */
+  .sidebar-link {
+    @apply relative block overflow-hidden rounded-lg px-4 py-4;
+    @apply font-heading text-lg tracking-wide;
+    @apply text-ivory/85;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .sidebar-link::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-1 bg-accent;
+    @apply opacity-0;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .sidebar-link::after {
+    content: "";
+    @apply absolute inset-0;
+    @apply bg-accent/10;
+    @apply translate-x-[-100%];
+    @apply transition-transform duration-300 ease-out;
+  }
+
+  .sidebar-link:hover {
+    @apply text-accent;
+    padding-left: 1.25rem;
+  }
+
+  .sidebar-link:hover::before {
+    @apply opacity-100;
+  }
+
+  .sidebar-link:hover::after {
+    @apply translate-x-0;
+  }
+
+  /* Subcategory link style */
+  .sidebar-sublink {
+    @apply relative block py-3 pl-4;
+    @apply font-heading text-base tracking-wide;
+    @apply text-ivory/65;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .sidebar-sublink::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-0.5 bg-accent/50;
+    @apply opacity-0;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .sidebar-sublink:hover {
+    @apply text-accent;
+    padding-left: 0.75rem;
+  }
+
+  .sidebar-sublink:hover::before {
+    @apply w-1 opacity-100;
+  }
+
+  /* Logo hover animation */
+  .sidebar-logo {
+    @apply transition-transform duration-500 ease-out;
+  }
+
+  .sidebar-logo:hover {
+    transform: scale(1.05);
+  }
+
+  /* Close button animation */
+  .sidebar-close {
+    @apply absolute right-4 top-4 rounded-full;
+    @apply border border-accent/30 bg-charcoal/80 p-2;
+    @apply text-ivory/70 backdrop-blur-md;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .sidebar-close:hover {
+    @apply border-accent bg-charcoal text-accent;
+    transform: rotate(90deg);
+  }
 }
 
 ::selection {

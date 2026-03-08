@@ -50,10 +50,7 @@ router.get('/admin/all', auth(['admin']), orderController.getAllOrders);
 // Update order status
 router.patch('/admin/:id/status', auth(['admin']), orderController.updateOrderStatus);
 
-// Create shipment
-router.post('/admin/:id/shipments', auth(['admin']), shipmentController.createShipment);
-
-// Get all shipments
+// Get all shipments (MUST be before /admin/:id/shipments to avoid route conflict)
 router.get('/admin/shipments', auth(['admin']), shipmentController.getAllShipments);
 
 // Get ready to ship
@@ -61,6 +58,9 @@ router.get('/admin/shipments/ready-to-ship', auth(['admin']), shipmentController
 
 // Get pending shipments
 router.get('/admin/shipments/pending', auth(['admin']), shipmentController.getPendingShipments);
+
+// Create shipment
+router.post('/admin/:id/shipments', auth(['admin']), shipmentController.createShipment);
 
 // Update shipment tracking
 router.patch('/admin/shipments/:id/tracking', auth(['admin']), shipmentController.updateTracking);

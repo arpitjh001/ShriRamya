@@ -1,0 +1,1631 @@
+{
+  "info": {
+    "_postman_id": "shriramya-ecommerce-api-v1",
+    "name": "ShriRamya Ecommerce API - Multi-Tenant RBAC",
+    "description": "Complete API collection for ShriRamya Ecommerce Platform with Multi-Tenant RBAC support.\n\n## Base URL\n`http://localhost:8080/api/v1`\n\n## Authentication\nInclude JWT token in Authorization header:\n```\nAuthorization: Bearer <your_jwt_token>\n```\n\n## Roles\n- **Admin**: Full system access\n- **Editor**: Can create/edit products and blogs\n- **Customer**: Browse, cart, and order management\n\n## Available Roles & Permissions\n- Admin: All permissions\n- Editor: create_product, update_product, create_blog, update_blog, view_dashboard\n- Customer: view_products, add_to_cart, place_order, view_own_orders",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 - Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the API is running and healthy"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1 - Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('authToken', jsonData.data.access_token);",
+                  "    pm.environment.set('userId', jsonData.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser-{{timestamp}}@example.com\",\n  \"password\": \"TestPass123!\",\n  \"tenantId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user account"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('authToken', jsonData.data.access_token);",
+                  "    pm.environment.set('userId', jsonData.data.user.id);",
+                  "    pm.environment.set('userEmail', jsonData.data.user.email);",
+                  "    console.log('Logged in as:', jsonData.data.user.email);",
+                  "    console.log('Roles:', jsonData.data.user.roles || jsonData.data.user.role);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\",\n  \"tenantId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with email and password to get JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout and blacklist current token"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current authenticated user info"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/check-admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "check-admin"]
+            },
+            "description": "Check if current user is admin"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2 - Tenant Management",
+      "item": [
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My New Store {{timestamp}}\",\n  \"domain\": \"store{{timestamp}}.example.com\",\n  \"ownerEmail\": \"owner{{timestamp}}@example.com\",\n  \"ownerName\": \"Store Owner\",\n  \"ownerPassword\": \"SecurePass123!\",\n  \"settings\": {\n    \"currency\": \"INR\",\n    \"timezone\": \"Asia/Kolkata\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants"]
+            },
+            "description": "Create a new tenant (store) with owner user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Tenants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants"]
+            },
+            "description": "Get all tenants (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current Tenant",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "current"]
+            },
+            "description": "Get current tenant info"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tenant Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "settings"]
+            },
+            "description": "Get tenant settings"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Tenant Setting",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": {\n    \"name\": \"Updated Store Name\",\n    \"currency\": \"USD\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tenants/settings/store_info",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "settings", "store_info"]
+            },
+            "description": "Update a specific tenant setting"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tenant Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "roles"]
+            },
+            "description": "Get all roles for current tenant"
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/my-roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "my-roles"]
+            },
+            "description": "Get current user's roles in tenant"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3 - User Management (Admin)",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Get all users with their roles (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            },
+            "description": "Get user by MongoDB ID (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Sync User Mapping",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mongoUserId\": \"{{userId}}\",\n  \"tenantId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/sync",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "sync"]
+            },
+            "description": "Create/update mysql_users mapping for MongoDB user"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Role to User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleId\": 1,\n  \"tenantId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "roles"]
+            },
+            "description": "Assign a role to user (roleId: 1=Admin, 2=Editor, 3=Customer)"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Multiple Roles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleIds\": [1, 2],\n  \"tenantId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/roles/multiple",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "roles", "multiple"]
+            },
+            "description": "Assign multiple roles to user"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Role from User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/roles/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "roles", "1"]
+            },
+            "description": "Remove a specific role from user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "roles"]
+            },
+            "description": "Get all available roles with permissions"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "permissions"]
+            },
+            "description": "Get all available permissions"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Custom Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Moderator {{timestamp}}\",\n  \"description\": \"Can moderate content\",\n  \"permissionIds\": [1, 2, 3]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "roles"]
+            },
+            "description": "Create a custom role with specific permissions"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Custom Role",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/roles/4",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "roles", "4"]
+            },
+            "description": "Delete a custom role (system roles cannot be deleted)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4 - Products",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?page=1&per_page=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all products (tenant-isolated)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}"]
+            },
+            "description": "Get single product details"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Product {{timestamp}}\",\n  \"sku\": \"SKU-{{timestamp}}\",\n  \"basePrice\": 999,\n  \"description\": \"Product description\",\n  \"fabric\": \"Cotton\",\n  \"occasion\": \"Wedding\",\n  \"status\": \"published\",\n  \"variants\": [\n    {\n      \"sku\": \"SKU-VARIANT-1\",\n      \"price\": 999,\n      \"stock\": 10,\n      \"attributes\": {\n        \"size\": \"M\",\n        \"color\": \"Red\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            },
+            "description": "Create new product (Admin, Editor only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Product Name\",\n  \"basePrice\": 1299,\n  \"status\": \"published\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}"]
+            },
+            "description": "Update product (Admin, Editor only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}"]
+            },
+            "description": "Delete product (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Variant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"SKU-VARIANT-{{timestamp}}\",\n  \"price\": 1299,\n  \"stock\": 15,\n  \"attributes\": {\n    \"size\": \"L\",\n    \"color\": \"Blue\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}", "variants"]
+            },
+            "description": "Add variant to product (Admin, Editor only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Variant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1499,\n  \"stock\": 20,\n  \"discountPrice\": 1299,\n  \"discountStart\": \"2026-03-01T00:00:00Z\",\n  \"discountEnd\": \"2026-03-31T23:59:59Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}", "variants", "{{variantId}}"]
+            },
+            "description": "Update product variant (Admin, Editor only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Variant",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/variants/{{variantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}", "variants", "{{variantId}}"]
+            },
+            "description": "Delete variant (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}", "categories"]
+            },
+            "description": "Get categories assigned to product"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Categories to Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryIds\": [1, 2, 3]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}", "categories"]
+            },
+            "description": "Assign categories to product (Admin, Editor only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Category from Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/{{productId}}/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}", "categories", "{{categoryId}}"]
+            },
+            "description": "Remove category from product (Admin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5 - Categories",
+      "item": [
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            },
+            "description": "Get all categories"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "{{categoryId}}"]
+            },
+            "description": "Get single category"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Category\",\n  \"slug\": \"new-category-{{timestamp}}\",\n  \"description\": \"Category description\",\n  \"image\": \"category-image.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            },
+            "description": "Create new category (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Category Name\",\n  \"description\": \"Updated description\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "{{categoryId}}"]
+            },
+            "description": "Update category (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "{{categoryId}}"]
+            },
+            "description": "Delete category (Admin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6 - Blogs (Native Multi-Tenant)",
+      "item": [
+        {
+          "name": "List Blogs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/blogs?page=1&perPage=10&status=published",
+              "host": ["{{baseUrl}}"],
+              "path": ["blogs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "perPage",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "published"
+                }
+              ]
+            },
+            "description": "Get all blog posts (tenant-isolated)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Blog by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/blogs/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["blogs", "{{blogId}}"]
+            },
+            "description": "Get single blog post"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Blog by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/blogs/slug/{{blogSlug}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["blogs", "slug", "{{blogSlug}}"]
+            },
+            "description": "Get blog post by slug"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Blog",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Blog Post {{timestamp}}\",\n  \"slug\": \"new-blog-post-{{timestamp}}\",\n  \"content\": \"Blog content goes here...\",\n  \"excerpt\": \"Short excerpt\",\n  \"status\": \"published\",\n  \"metaTitle\": \"SEO Title\",\n  \"metaDescription\": \"SEO description\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/blogs",
+              "host": ["{{baseUrl}}"],
+              "path": ["blogs"]
+            },
+            "description": "Create new blog post (Admin, Editor only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Blog",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Blog Title\",\n  \"content\": \"Updated content\",\n  \"status\": \"published\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/blogs/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["blogs", "{{blogId}}"]
+            },
+            "description": "Update blog post (Admin, Editor only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Blog",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/blogs/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["blogs", "{{blogId}}"]
+            },
+            "description": "Delete blog post (Admin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7 - Orders",
+      "item": [
+        {
+          "name": "List Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders?page=1&perPage=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "perPage",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all orders (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            },
+            "description": "Get single order details"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"variantId\": 1,\n      \"quantity\": 2,\n      \"price\": 999\n    }\n  ],\n  \"shippingAddress\": {\n    \"name\": \"John Doe\",\n    \"address\": \"123 Main St\",\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"pincode\": \"400001\",\n    \"phone\": \"+919876543210\"\n  },\n  \"paymentMethod\": \"cod\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            },
+            "description": "Create new order"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"processing\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            },
+            "description": "Update order status (Admin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8 - Cart",
+      "item": [
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            },
+            "description": "Get current user's cart"
+          },
+          "response": []
+        },
+        {
+          "name": "Add to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"variantId\": 1,\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "add"]
+            },
+            "description": "Add item to cart"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Cart Item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/update/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "update", "{{itemId}}"]
+            },
+            "description": "Update cart item quantity"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove from Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart/remove/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "remove", "{{itemId}}"]
+            },
+            "description": "Remove item from cart"
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart/clear",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "clear"]
+            },
+            "description": "Clear entire cart"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9 - Search",
+      "item": [
+        {
+          "name": "Search Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/search?q=saree&page=1&perPage=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "saree"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "perPage",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Search products"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10 - Reviews",
+      "item": [
+        {
+          "name": "Get Product Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews?productId={{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}"
+                }
+              ]
+            },
+            "description": "Get reviews for product"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"rating\": 5,\n  \"reviewText\": \"Excellent product!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Create product review"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11 - Coupons",
+      "item": [
+        {
+          "name": "List Coupons",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/coupons",
+              "host": ["{{baseUrl}}"],
+              "path": ["coupons"]
+            },
+            "description": "Get all coupons (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Coupon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SAVE20-{{timestamp}}\",\n  \"type\": \"percentage\",\n  \"value\": 20,\n  \"minCartValue\": 1000,\n  \"maxDiscount\": 500,\n  \"usageLimit\": 100,\n  \"startsAt\": \"2026-03-01T00:00:00Z\",\n  \"expiresAt\": \"2026-03-31T23:59:59Z\",\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/coupons",
+              "host": ["{{baseUrl}}"],
+              "path": ["coupons"]
+            },
+            "description": "Create coupon (Admin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12 - Upload",
+      "item": [
+        {
+          "name": "Upload Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["upload"]
+            },
+            "description": "Upload image file"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "13 - Analytics (Admin)",
+      "item": [
+        {
+          "name": "Get Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "analytics", "dashboard"]
+            },
+            "description": "Get dashboard analytics (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sales Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/sales?startDate=2026-03-01&endDate=2026-03-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "analytics", "sales"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2026-03-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-03-31"
+                }
+              ]
+            },
+            "description": "Get sales analytics (Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "analytics", "products"]
+            },
+            "description": "Get product performance analytics (Admin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Variables & Scripts",
+      "item": [
+        {
+          "name": "Set Timestamp Variable",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('timestamp', new Date().getTime());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Run this first to set timestamp variable for unique names"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "variantId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "blogId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "blogSlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "timestamp",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

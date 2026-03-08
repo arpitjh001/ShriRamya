@@ -16,15 +16,19 @@ const AdminBlogEditPage = () => {
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
 
-    const [categories, setCategories] = useState([]);
     const [postData, setPostData] = useState({
         title: '',
         content: '',
         excerpt: '',
-        status: 'publish',
-        categories: []
+        status: 'draft',
+        categories: [],
+        tags: [],
+        seo_title: '',
+        seo_description: '',
+        reading_time: 0,
+        featuredImage: ''
     });
-    const [featuredImageUrl, setFeaturedImageUrl] = useState('');
+    const [tagsInput, setTagsInput] = useState('');
 
     useEffect(() => {
         // RBAC check
@@ -48,23 +52,19 @@ const AdminBlogEditPage = () => {
                 if (postRes.data) {
                     const p = postRes.data;
 
-                    // Try to match category names to IDs to pre-select checkboxes
-                    const selectedCategoryIds = [];
-                    if (p.categories && catRes.data) {
-                        p.categories.forEach(catName => {
-                            const matchedCat = catRes.data.find(c => c.name === catName);
-                            if (matchedCat) selectedCategoryIds.push(matchedCat.id);
-                        });
-                    }
-
                     setPostData({
                         title: p.title || '',
                         content: p.content || '',
                         excerpt: p.excerpt || '',
-                        status: 'publish', // wp REST API default
-                        categories: selectedCategoryIds
+                        status: p.status || 'draft',
+                        categories: p.categories || [],
+                        tags: p.tags || [],
+                        seo_title: p.seo_title || '',
+                        seo_description: p.seo_description || '',
+                        reading_time: p.reading_time || 0,
+                        featuredImage: p.featured_image || ''
                     });
-                    setFeaturedImageUrl(p.image || '');
+                    setTagsInput(p.tags ? p.tags.join(', ') : '');
                 }
             } catch (error) {
                 console.error('Failed to load post data:', error);
@@ -126,18 +126,18 @@ const AdminBlogEditPage = () => {
         e.preventDefault();
         setSaving(true);
 
+        const finalData = {
+            ...postData,
+            tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean)
+        };
+
         try {
-            const response = await blogAPI.updatePost(id, postData);
-            toast.success('Post updated successfully!');
-            // After update, redirect to the blog list or the updated post slug
-            if (response.data && response.data.slug) {
-                navigate(`/blog/${response.data.slug}`);
-            } else {
-                navigate('/blog');
-            }
+            await blogAPI.updatePost(id, finalData);
+            toast.success('Journal entry updated successfully!');
+            navigate('/admin/blogs');
         } catch (error) {
             console.error('Update failed:', error);
-            toast.error('Failed to update post');
+            toast.error('Failed to update journal entry');
         } finally {
             setSaving(false);
         }
@@ -201,13 +201,47 @@ const AdminBlogEditPage = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2">Excerpt (Summary)</label>
+                                <label className="block text-sm font-medium mb-2">Excerpt (Journal Summary)</label>
                                 <textarea
                                     name="excerpt"
                                     value={postData.excerpt}
                                     onChange={handleInputChange}
                                     className="w-full px-4 py-3 bg-background border border-border rounded-lg resize-y h-24"
                                     placeholder="Brief summary used in cards..."
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-border">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-primary">SEO Title</label>
+                                    <input
+                                        type="text"
+                                        name="seo_title"
+                                        value={postData.seo_title}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2 bg-background border border-border rounded-lg"
+                                        placeholder="Title for search engines"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-primary">Reading Time (min)</label>
+                                    <input
+                                        type="number"
+                                        name="reading_time"
+                                        value={postData.reading_time}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2 bg-background border border-border rounded-lg"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-primary">SEO Description</label>
+                                <textarea
+                                    name="seo_description"
+                                    value={postData.seo_description}
+                                    onChange={handleInputChange}
+                                    className="w-full px-4 py-2 bg-background border border-border rounded-lg h-24"
+                                    placeholder="Meta description for SEO"
                                 />
                             </div>
                         </div>
@@ -273,18 +307,31 @@ const AdminBlogEditPage = () => {
                                 </div>
                             </div>
 
+                            {/* Tags Widget */}
+                            <div className="p-4 border border-border rounded-lg bg-background">
+                                <label className="block text-sm font-medium mb-3">Tags (Comma separated)</label>
+                                <input
+                                    type="text"
+                                    value={tagsInput}
+                                    onChange={(e) => setTagsInput(e.target.value)}
+                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm"
+                                    placeholder="silk, saree, weaving..."
+                                />
+                            </div>
+
                             {/* Publish Setting Node */}
                             <div className="p-4 border border-border rounded-lg bg-background">
-                                <label className="block text-sm font-medium mb-3">Status</label>
+                                <label className="block text-sm font-medium mb-3">Workflow Status</label>
                                 <select
                                     name="status"
                                     value={postData.status}
                                     onChange={handleInputChange}
                                     className="w-full px-3 py-2 bg-background border border-border rounded text-sm"
                                 >
-                                    <option value="publish">Published</option>
                                     <option value="draft">Draft</option>
-                                    <option value="pending">Pending Review</option>
+                                    <option value="review">Under Review</option>
+                                    <option value="published">Published</option>
+                                    <option value="archived">Archived</option>
                                 </select>
                             </div>
 

@@ -6,6 +6,18 @@
 const httpStatus = require('http-status');
 const shipmentService = require('../services/shipment.service');
 const { successResponse } = require('../utils/response');
+const ApiError = require('../utils/ApiError');
+
+/**
+ * Validate ID parameter
+ */
+const validateId = (id, paramName = 'ID') => {
+    const parsed = parseInt(id);
+    if (isNaN(parsed) || parsed <= 0) {
+        throw new ApiError(httpStatus.BAD_REQUEST, `Invalid ${paramName} ID`);
+    }
+    return parsed;
+};
 
 /**
  * Create shipment
@@ -18,7 +30,7 @@ const createShipment = async (req, res, next) => {
 
         const shipment = await shipmentService.createShipment(
             {
-                orderId: parseInt(orderId),
+                orderId: validateId(orderId, 'Order'),
                 carrier,
                 trackingNumber,
                 trackingUrl,
@@ -44,7 +56,8 @@ const createShipment = async (req, res, next) => {
  */
 const getShipment = async (req, res, next) => {
     try {
-        const shipment = await shipmentService.getShipment(parseInt(req.params.id));
+        const shipmentId = validateId(req.params.id, 'Shipment');
+        const shipment = await shipmentService.getShipment(shipmentId);
         return successResponse(res, shipment);
     } catch (error) {
         next(error);
@@ -57,7 +70,8 @@ const getShipment = async (req, res, next) => {
  */
 const getOrderShipments = async (req, res, next) => {
     try {
-        const shipments = await shipmentService.getOrderShipments(parseInt(req.params.orderId));
+        const orderId = validateId(req.params.orderId, 'Order');
+        const shipments = await shipmentService.getOrderShipments(orderId);
         return successResponse(res, shipments);
     } catch (error) {
         next(error);
@@ -70,10 +84,11 @@ const getOrderShipments = async (req, res, next) => {
  */
 const updateTracking = async (req, res, next) => {
     try {
+        const shipmentId = validateId(req.params.id, 'Shipment');
         const { carrier, trackingNumber, trackingUrl } = req.body;
-        
+
         const shipment = await shipmentService.updateTracking(
-            parseInt(req.params.id),
+            shipmentId,
             { carrier, trackingNumber, trackingUrl },
             { userId: req.user.id, userType: 'admin' }
         );
@@ -90,8 +105,9 @@ const updateTracking = async (req, res, next) => {
  */
 const markAsShipped = async (req, res, next) => {
     try {
+        const shipmentId = validateId(req.params.id, 'Shipment');
         const shipment = await shipmentService.markAsShipped(
-            parseInt(req.params.id),
+            shipmentId,
             { userId: req.user.id, userType: 'admin' }
         );
 
@@ -107,8 +123,9 @@ const markAsShipped = async (req, res, next) => {
  */
 const markAsDelivered = async (req, res, next) => {
     try {
+        const shipmentId = validateId(req.params.id, 'Shipment');
         const shipment = await shipmentService.markAsDelivered(
-            parseInt(req.params.id),
+            shipmentId,
             { userId: req.user.id, userType: 'admin' }
         );
 

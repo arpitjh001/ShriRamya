@@ -1,6 +1,6 @@
 FROM node:20-alpine AS build
 
-ARG REACT_APP_BACKEND_URL=http://localhost:8000
+ARG REACT_APP_BACKEND_URL=http://localhost:8080
 
 WORKDIR /app
 COPY package*.json ./

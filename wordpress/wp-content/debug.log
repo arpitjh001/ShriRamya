@@ -1,5 +1,0 @@
-[27-Feb-2026 12:46:53 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function wc_generate_api_key() in /var/www/html/gen_woo_key.php:17
-Stack trace:
-#0 {main}
-  thrown in /var/www/html/gen_woo_key.php on line 17
-[27-Feb-2026 12:46:54 UTC] PHP Deprecated:  Creation of dynamic property ftp::$features is deprecated in /var/www/html/wp-admin/includes/class-ftp.php on line 161

@@ -22,10 +22,17 @@ import AdminAnalyticsPage from './AdminAnalyticsPage';
 // Updated TABS with Phase 9 features (removed WooCommerce tab)
 const TABS = ['Native Products', 'Inventory', 'Coupons', 'Orders', 'Analytics'];
 
+// View modes for Native Products tab
+const VIEW_MODES = {
+    DETAILED: 'detailed', // View B - Dashboard style with badges
+    LIST: 'list' // View A - Compact list view
+};
+
 const AdminWooCommercePage = () => {
     const { user, login } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('Products');
+    const [activeTab, setActiveTab] = useState('Native Products');
+    const [viewMode, setViewMode] = useState(VIEW_MODES.DETAILED); // Default to detailed view (View B)
     const [loading, setLoading] = useState(false);
     const [adminCheck, setAdminCheck] = useState('checking'); // 'checking' | 'admin' | 'denied' | 'login'
 
@@ -84,16 +91,27 @@ const AdminWooCommercePage = () => {
         }
         try {
             const res = await authAPI.checkAdmin();
-            if (res.data.is_admin) {
+            // Response data is unwrapped by interceptor: res.data = { is_admin: true }
+            if (res.data && res.data.is_admin) {
                 setAdminCheck('admin');
             } else {
                 setAdminCheck('denied');
             }
         } catch (err) {
+            console.error('Admin check failed:', err);
             if (err.response?.status === 401) {
                 setAdminCheck('login');
-            } else {
+            } else if (err.response?.status === 403) {
                 setAdminCheck('denied');
+            } else {
+                // For other errors, check user role directly as fallback
+                const userRole = (user.role || '').toLowerCase();
+                const userRoles = (user.roles || []).map(r => r.toLowerCase());
+                if (userRole === 'admin' || userRoles.includes('admin')) {
+                    setAdminCheck('admin');
+                } else {
+                    setAdminCheck('denied');
+                }
             }
         }
     };
@@ -106,14 +124,15 @@ const AdminWooCommercePage = () => {
             await login(loginForm.email, loginForm.password);
             // After login, the useEffect on user will re-check admin
         } catch (err) {
-            setLoginError(err.response?.data?.detail || 'Login failed');
+            // Fix: Use correct error field from backend response
+            setLoginError(err.response?.data?.message || err.message || 'Login failed');
         }
         setLoginLoading(false);
     };
 
     useEffect(() => {
         if (adminCheck !== 'admin') return;
-        if (activeTab === 'Products') loadProducts();
+        if (activeTab === 'Native Products') loadProducts();
         if (activeTab === 'Categories') loadCategories();
         if (activeTab === 'Orders') loadOrders();
         if (activeTab === 'Customers') loadCustomers();
@@ -123,9 +142,41 @@ const AdminWooCommercePage = () => {
     const loadProducts = async () => {
         setLoading(true);
         try {
-            const data = await wcProductsAPI.getAll({ per_page: 50 });
-            setProducts(data.products || []);
-        } catch { toast.error('Failed to load products'); }
+            // Load from native products API
+            const data = await productsAPI.getAll({ per_page: 100 });
+            const productsData = data.products || data.data || [];
+
+            // Map API response to frontend format with correct price mapping
+            const mappedProducts = productsData.map(product => {
+                // Fix: Correctly map basePrice from product.basePrice or product.base_price
+                const priceValue = product.basePrice || product.base_price || product.price || 0;
+                const basePrice = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
+
+                // Get SKU from product or first variant
+                const sku = product.sku || (product.variants && product.variants.length > 0 ? product.variants[0].sku : 'N/A');
+
+                // Calculate total stock from all variants
+                const stock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+
+                // Get category names for display
+                const categoryNames = product.categories
+                    ? product.categories.map(cat => cat.name).join(', ')
+                    : (product.category || 'Uncategorized');
+
+                return {
+                    ...product,
+                    basePrice: basePrice || 0,
+                    sku: sku,
+                    stock: stock,
+                    category: categoryNames,
+                    variants: product.variants || []
+                };
+            });
+
+            setProducts(mappedProducts);
+        } catch (err) {
+            toast.error('Failed to load products');
+        }
         setLoading(false);
     };
 
@@ -635,29 +686,13 @@ const AdminWooCommercePage = () => {
     }
     return (
         <div style={{
-            minHeight: '100vh', padding: '2rem 3rem',
+            minHeight: '100vh', padding: '1rem',
             background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
             color: '#e2e8f0', fontFamily: "'Inter', sans-serif",
         }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div>
-                        <h1 style={{
-                            fontSize: '2rem', fontWeight: 700,
-                            background: 'linear-gradient(135deg, #f093fb, #f5576c)',
-                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                        }}>Product Dashboard</h1>
-                        <p style={{ color: '#94a3b8', marginTop: 4 }}>Manage products, orders, customers & coupons</p>
-                    </div>
-                    {loading && <div style={{
-                        padding: '0.5rem 1rem', borderRadius: 8, background: 'rgba(99,102,241,0.2)',
-                        color: '#a5b4fc', fontSize: '0.875rem',
-                    }}>Loading...</div>}
-                </div>
-
+            <div style={{ maxWidth: 1400, margin: '0 auto' }}>
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: '2rem', borderBottom: '1px solid rgba(148,163,184,0.2)', paddingBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', borderBottom: '1px solid rgba(148,163,184,0.2)', paddingBottom: 8 }}>
                     {TABS.map(tab => (
                         <button key={tab} onClick={() => setActiveTab(tab)} style={{
                             padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -666,614 +701,15 @@ const AdminWooCommercePage = () => {
                             color: activeTab === tab ? '#fff' : '#94a3b8',
                         }}>{tab}</button>
                     ))}
+                    {loading && (
+                        <div style={{
+                            marginLeft: 'auto', padding: '0.5rem 1rem', borderRadius: 8,
+                            background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', fontSize: '0.875rem'
+                        }}>
+                            Loading...
+                        </div>
+                    )}
                 </div>
-
-                {/* ===== PRODUCTS TAB ===== */}
-                {activeTab === 'Products' && (
-                    <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Products ({products.length})</h2>
-                            <button onClick={() => { resetProductForm(); setEditProduct(null); setShowProductForm(true); }} style={{
-                                padding: '0.5rem 1.2rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontWeight: 600,
-                            }}>+ Add Product</button>
-                        </div>
-
-                        {/* Product Form Modal */}
-                        {showProductForm && (
-                            <div style={{
-                                background: 'rgba(30,27,75,0.95)', border: '1px solid rgba(148,163,184,0.2)',
-                                borderRadius: 16, padding: '2rem', marginBottom: '2rem',
-                            }}>
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' }}>
-                                    {editProduct ? 'Edit Product' : 'New Product'}
-                                </h3>
-                                <form onSubmit={handleProductSubmit}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                        {[
-                                            ['name', 'Product Name', 'text', true],
-                                            ['sku', 'SKU', 'text', false],
-                                            ['basePrice', 'Base Price (₹)', 'number', true],
-                                            ['fabric', 'Fabric', 'text', false],
-                                            ['occasion', 'Occasion', 'text', false],
-                                        ].map(([key, label, type, required]) => (
-                                            <div key={key}>
-                                                <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 4 }}>{label}</label>
-                                                <input type={type} value={productForm[key]} required={required}
-                                                    onChange={e => setProductForm({ ...productForm, [key]: e.target.value })}
-                                                    style={{
-                                                        width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)',
-                                                        background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.9rem',
-                                                    }} />
-                                            </div>
-                                        ))}
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 4 }}>Status</label>
-                                            <select value={productForm.status}
-                                                onChange={e => setProductForm({ ...productForm, status: e.target.value })}
-                                                style={{
-                                                    width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8,
-                                                    border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.1)', color: '#e2e8f0',
-                                                }}>
-                                                <option value="published">Published</option>
-                                                <option value="draft">Draft</option>
-                                                <option value="archived">Archived</option>
-                                            </select>
-                                        </div>
-                                        {/* Category Selector */}
-                                        <div style={{ gridColumn: '1 / -1' }}>
-                                            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 8 }}>Categories</label>
-                                            <div style={{
-                                                border: '1px solid rgba(148,163,184,0.3)', borderRadius: 8,
-                                                padding: '0.75rem', background: 'rgba(255,255,255,0.03)',
-                                                maxHeight: 160, overflowY: 'auto',
-                                            }}>
-                                                {categories.length === 0 && (
-                                                    <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0 }}>No categories yet. Create one below.</p>
-                                                )}
-                                                {categories.filter(c => c.name !== 'Uncategorized').map(cat => (
-                                                    <label key={cat.id} style={{
-                                                        display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0',
-                                                        cursor: 'pointer', fontSize: '0.9rem',
-                                                    }}>
-                                                        <input type="checkbox"
-                                                            checked={selectedCategories.includes(String(cat.id))}
-                                                            onChange={() => toggleCategory(cat.id)}
-                                                            style={{ accentColor: '#667eea', width: 16, height: 16 }}
-                                                        />
-                                                        <span style={{ color: '#e2e8f0' }}>{cat.name}</span>
-                                                        <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: 'auto' }}>({cat.count || 0})</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                            {/* Inline Add Category */}
-                                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                                <input
-                                                    value={newCategoryName}
-                                                    onChange={e => setNewCategoryName(e.target.value)}
-                                                    placeholder="New category name"
-                                                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateCategory())}
-                                                    style={{
-                                                        flex: 1, padding: '0.4rem 0.75rem', borderRadius: 8,
-                                                        border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)',
-                                                        color: '#e2e8f0', fontSize: '0.85rem',
-                                                    }}
-                                                />
-                                                <button type="button" onClick={handleCreateCategory} disabled={creatingCategory || !newCategoryName.trim()} style={{
-                                                    padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                                    background: newCategoryName.trim() ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.1)',
-                                                    color: '#fff', fontWeight: 600, fontSize: '0.8rem',
-                                                    opacity: !newCategoryName.trim() ? 0.5 : 1,
-                                                }}>{creatingCategory ? '...' : '+ Add'}</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style={{ marginTop: 16 }}>
-                                        <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 4 }}>Description</label>
-                                        <textarea value={productForm.description} rows={3}
-                                            onChange={e => setProductForm({ ...productForm, description: e.target.value })}
-                                            style={{
-                                                width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8,
-                                                border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0',
-                                            }} />
-                                    </div>
-                                    {/* Explicit Variants UI */}
-                                    <div style={{ marginTop: 16 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                            <h4 style={{ fontSize: '1rem', color: '#e2e8f0' }}>Variants ({productForm.variants.length})</h4>
-                                            <button type="button" onClick={addVariantRow}
-                                                style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontWeight: 600 }}>
-                                                + Add Variant
-                                            </button>
-                                        </div>
-                                        <div style={{
-                                            border: '1px solid rgba(148,163,184,0.25)',
-                                            borderRadius: 10,
-                                            overflowX: 'auto',
-                                            background: 'rgba(255,255,255,0.02)'
-                                        }}>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
-                                                <thead>
-                                                    <tr style={{ borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
-                                                        {['SKU', 'Color', 'Size', 'Price', 'Discount', 'Stock', 'Image URL', 'Actions'].map((header) => (
-                                                            <th key={header} style={{ padding: '0.65rem', textAlign: 'left', fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
-                                                                {header}
-                                                            </th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {productForm.variants.map((variant, idx) => (
-                                                        <tr key={idx} style={{ borderBottom: '1px solid rgba(148,163,184,0.12)' }}>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="SKU"
-                                                                    value={variant.sku || ''}
-                                                                    onChange={e => updateVariantField(idx, 'sku', e.target.value)}
-                                                                    style={{ width: '100%', minWidth: 120, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="Color"
-                                                                    value={variant.attributes?.Color || ''}
-                                                                    onChange={e => updateVariantAttributeField(idx, 'Color', e.target.value)}
-                                                                    style={{ width: '100%', minWidth: 100, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="Size"
-                                                                    value={variant.attributes?.Size || ''}
-                                                                    onChange={e => updateVariantAttributeField(idx, 'Size', e.target.value)}
-                                                                    style={{ width: '100%', minWidth: 80, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    placeholder="Price"
-                                                                    value={variant.price}
-                                                                    onChange={e => updateVariantField(idx, 'price', e.target.value)}
-                                                                    style={{ width: '100%', minWidth: 100, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    placeholder="Discount"
-                                                                    value={variant.discountPrice ?? ''}
-                                                                    onChange={e => updateVariantField(idx, 'discountPrice', e.target.value)}
-                                                                    style={{ width: '100%', minWidth: 100, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    placeholder="Stock"
-                                                                    value={variant.stock}
-                                                                    onChange={e => updateVariantField(idx, 'stock', e.target.value)}
-                                                                    style={{ width: '100%', minWidth: 90, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <div style={{ display: 'flex', gap: 6, minWidth: 300 }}>
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder="Image URL"
-                                                                        value={variant.image || ''}
-                                                                        onChange={e => updateVariantField(idx, 'image', e.target.value)}
-                                                                        style={{ flex: 1, padding: '0.4rem', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.82rem' }}
-                                                                    />
-                                                                    <input
-                                                                        id={`variant-image-input-${idx}`}
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        style={{ display: 'none' }}
-                                                                        onChange={async (e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) await handleVariantImageUpload(file, idx);
-                                                                            e.target.value = '';
-                                                                        }}
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => document.getElementById(`variant-image-input-${idx}`)?.click()}
-                                                                        style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid rgba(99,102,241,0.5)', background: 'transparent', color: '#a5b4fc', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                                                                    >
-                                                                        {uploadingVariantIndex === idx ? 'Uploading...' : 'Upload'}
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                            <td style={{ padding: '0.5rem' }}>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => deleteVariantRow(idx)}
-                                                                    style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid rgba(239,68,68,0.5)', background: 'transparent', color: '#f87171', cursor: 'pointer', fontSize: '0.78rem' }}
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {productForm.variants.length === 0 && (
-                                            <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0' }}>No variants added yet. Click "+ Add Variant" to create one.</p>
-                                        )}
-                                    </div>
-                                    <div style={{ marginTop: 16 }}>
-                                        <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 8 }}>Product Images</label>
-
-                                        {/* Image Previews */}
-                                        {productForm.images.filter(Boolean).length > 0 && (
-                                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-                                                {productForm.images.filter(Boolean).map((img, idx) => (
-                                                    <div key={idx} style={{ position: 'relative', width: 90, height: 90 }}>
-                                                        <img src={img.startsWith('/') ? `${window.location.origin.replace(':3002', ':8002').replace(':3000', ':8002')}${img}` : img}
-                                                            alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 10, border: '1px solid rgba(148,163,184,0.3)' }}
-                                                            onError={e => { e.target.style.display = 'none'; }} />
-                                                        <button type="button" onClick={() => {
-                                                            const newImages = productForm.images.filter((_, i) => i !== idx);
-                                                            setProductForm({ ...productForm, images: newImages.length ? newImages : [''] });
-                                                        }} style={{
-                                                            position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%',
-                                                            background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer',
-                                                            fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        }}>✕</button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {/* Upload Area */}
-                                        <div style={{
-                                            border: '2px dashed rgba(148,163,184,0.3)', borderRadius: 12,
-                                            padding: '1.5rem', textAlign: 'center', cursor: 'pointer',
-                                            background: uploadingImage ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.02)',
-                                            transition: 'all 0.2s',
-                                        }}
-                                            onClick={() => document.getElementById('imageUploadInput').click()}
-                                            onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#667eea'; }}
-                                            onDragLeave={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.3)'; }}
-                                            onDrop={async (e) => {
-                                                e.preventDefault();
-                                                e.currentTarget.style.borderColor = 'rgba(148,163,184,0.3)';
-                                                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                                                for (const file of files) await handleImageUpload(file);
-                                            }}>
-                                            <input id="imageUploadInput" type="file" accept="image/*" multiple
-                                                style={{ display: 'none' }}
-                                                onChange={async (e) => {
-                                                    for (const file of Array.from(e.target.files)) await handleImageUpload(file);
-                                                    e.target.value = '';
-                                                }} />
-                                            {uploadingImage ? (
-                                                <p style={{ color: '#a5b4fc', margin: 0, fontSize: '0.9rem' }}>📤 Uploading...</p>
-                                            ) : (
-                                                <>
-                                                    <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>📷 Click or drag images here to upload</p>
-                                                    <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: '0.75rem' }}>JPG, PNG, WebP, GIF • Max 10MB each</p>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        {/* URL Fallback */}
-                                        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                                            <input
-                                                placeholder="Or paste image URL..."
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        const url = e.target.value.trim();
-                                                        if (url) {
-                                                            const current = productForm.images.filter(Boolean);
-                                                            setProductForm({ ...productForm, images: [...current, url] });
-                                                            e.target.value = '';
-                                                        }
-                                                    }
-                                                }}
-                                                style={{
-                                                    flex: 1, padding: '0.4rem 0.75rem', borderRadius: 8,
-                                                    border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)',
-                                                    color: '#e2e8f0', fontSize: '0.85rem',
-                                                }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 12, marginTop: '1.5rem' }}>
-                                        <button type="submit" disabled={loading} style={{
-                                            padding: '0.6rem 2rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                            background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff', fontWeight: 600,
-                                        }}>{loading ? 'Saving...' : editProduct ? 'Update' : 'Create'}</button>
-                                        <button type="button" onClick={() => { setShowProductForm(false); setEditProduct(null); }} style={{
-                                            padding: '0.6rem 2rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)',
-                                            background: 'transparent', color: '#94a3b8', cursor: 'pointer',
-                                        }}>Cancel</button>
-                                    </div>
-                                </form>
-                            </div>
-                        )}
-
-                        {/* Products Table */}
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
-                                        {['Image', 'Name', 'Category', 'Price', 'Stock', 'Status', 'Actions'].map(h => (
-                                            <th key={h} style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {products.map(p => (
-                                        <tr key={p.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.1)', transition: 'background 0.2s' }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                {getProductThumbnail(p) ? (
-                                                    <img
-                                                        src={getProductThumbnail(p)}
-                                                        alt={p.name || 'Product thumbnail'}
-                                                        style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(148,163,184,0.25)' }}
-                                                        onError={e => { e.currentTarget.style.display = 'none'; }}
-                                                    />
-                                                ) : <div style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.1)' }} />}
-                                            </td>
-                                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>{p.name}</td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                {p.categories?.length > 0 ? (
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                                        {p.categories.map(c => (
-                                                            <span key={c.id} style={{
-                                                                padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem',
-                                                                background: 'rgba(99,102,241,0.15)', color: '#a5b4fc',
-                                                            }}>{c.name}</span>
-                                                        ))}
-                                                    </div>
-                                                ) : <span style={{ color: '#64748b', fontSize: '0.8rem' }}>—</span>}
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                {p.sale_price ? (
-                                                    <><span style={{ textDecoration: 'line-through', color: '#64748b', marginRight: 8 }}>₹{p.basePrice ?? p.regular_price}</span>
-                                                        <span style={{ color: '#f59e0b' }}>₹{p.sale_price}</span></>
-                                                ) : <span>₹{p.basePrice ?? p.regular_price ?? p.price ?? 0}</span>}
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <span style={{
-                                                    padding: '2px 8px', borderRadius: 12, fontSize: '0.8rem',
-                                                    background: (p.variants?.reduce((s, v) => s + (v.stock ?? 0), 0) > 0 || p.stock_quantity > 0) ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                                                    color: (p.variants?.reduce((s, v) => s + (v.stock ?? 0), 0) > 0 || p.stock_quantity > 0) ? '#10b981' : '#ef4444',
-                                                }}>{p.variants ? p.variants.reduce((s, v) => s + (v.stock ?? 0), 0) : (p.stock_quantity ?? 'N/A')}</span>
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <span style={{
-                                                    padding: '2px 8px', borderRadius: 12, fontSize: '0.8rem',
-                                                    background: p.status === 'published' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-                                                    color: p.status === 'published' ? '#10b981' : '#f59e0b',
-                                                }}>{p.status}</span>
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <div style={{ display: 'flex', gap: 8 }}>
-                                                    <button onClick={() => startEditProduct(p)} style={{
-                                                        padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(99,102,241,0.5)',
-                                                        background: 'transparent', color: '#818cf8', cursor: 'pointer', fontSize: '0.8rem',
-                                                    }}>Edit</button>
-                                                    <button onClick={() => handleDeleteProduct(p.id)} style={{
-                                                        padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.5)',
-                                                        background: 'transparent', color: '#f87171', cursor: 'pointer', fontSize: '0.8rem',
-                                                    }}>Delete</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {products.length === 0 && !loading && (
-                                <p style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                                    No products found. {!loading && 'Click "+ Add Product" to create one.'}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* ===== CATEGORIES TAB ===== */}
-                {activeTab === 'Categories' && (
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Categories ({categories.length})</h2>
-                        {/* Add Category */}
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                            <input
-                                value={newCategoryName}
-                                onChange={e => setNewCategoryName(e.target.value)}
-                                placeholder="New category name"
-                                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateCategory())}
-                                style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.85rem' }}
-                            />
-                            <button type="button" onClick={handleCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}
-                                style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', background: newCategoryName.trim() ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.1)', color: '#fff', fontWeight: 600, fontSize: '0.8rem', opacity: !newCategoryName.trim() ? 0.5 : 1 }}
-                            >{creatingCategory ? '...' : '+ Add'}</button>
-                        </div>
-                        {/* Category List */}
-                        <div style={{ border: '1px solid rgba(148,163,184,0.3)', borderRadius: 8, background: 'rgba(255,255,255,0.03)', maxHeight: 300, overflowY: 'auto' }}>
-                            {categories.length === 0 && <p style={{ padding: '0.75rem', color: '#64748b' }}>No categories found.</p>}
-                            {categories.map(cat => (
-                                <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(148,163,184,0.1)' }}>
-                                    <span style={{ color: '#e2e8f0' }}>{cat.name} ({cat.count || 0})</span>
-                                    <button onClick={() => handleDeleteCategory(cat.id)} style={{ padding: '0.2rem 0.5rem', borderRadius: 4, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer', fontSize: '0.75rem' }}>Delete</button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* ===== ORDERS TAB ===== */}
-                {activeTab === 'Orders' && (
-                    <div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Orders ({orders.length})</h2>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
-                                        {['#', 'Customer', 'Total', 'Status', 'Date', 'Actions'].map(h => (
-                                            <th key={h} style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {orders.map(o => (
-                                        <tr key={o.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.1)' }}>
-                                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>#{o.id}</td>
-                                            <td style={{ padding: '0.75rem' }}>{o.billing?.first_name} {o.billing?.last_name}<br />
-                                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{o.billing?.email}</span></td>
-                                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>₹{o.total}</td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <span style={{
-                                                    padding: '2px 10px', borderRadius: 12, fontSize: '0.8rem',
-                                                    background: `${STATUS_COLORS[o.status] || '#6b7280'}22`,
-                                                    color: STATUS_COLORS[o.status] || '#6b7280',
-                                                }}>{o.status}</span>
-                                            </td>
-                                            <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
-                                                {new Date(o.date_created).toLocaleDateString('en-IN')}
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <select value={o.status} onChange={e => handleOrderStatus(o.id, e.target.value)} style={{
-                                                    padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(148,163,184,0.3)',
-                                                    background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontSize: '0.8rem', cursor: 'pointer',
-                                                }}>
-                                                    {['pending', 'processing', 'on-hold', 'completed', 'cancelled', 'refunded'].map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {orders.length === 0 && !loading && <p style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No orders found.</p>}
-                        </div>
-                    </div>
-                )}
-
-                {/* ===== CUSTOMERS TAB ===== */}
-                {activeTab === 'Customers' && (
-                    <div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Customers ({customers.length})</h2>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
-                                    {['ID', 'Name', 'Email', 'Orders', 'Total Spent', 'Registered'].map(h => (
-                                        <th key={h} style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {customers.map(c => (
-                                    <tr key={c.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.1)' }}>
-                                        <td style={{ padding: '0.75rem' }}>#{c.id}</td>
-                                        <td style={{ padding: '0.75rem', fontWeight: 500 }}>{c.first_name} {c.last_name}</td>
-                                        <td style={{ padding: '0.75rem', color: '#94a3b8' }}>{c.email}</td>
-                                        <td style={{ padding: '0.75rem' }}>{c.orders_count ?? 0}</td>
-                                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>₹{c.total_spent ?? '0.00'}</td>
-                                        <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
-                                            {c.date_created ? new Date(c.date_created).toLocaleDateString('en-IN') : '-'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {customers.length === 0 && !loading && <p style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No customers found.</p>}
-                    </div>
-                )}
-
-                {/* ===== COUPONS TAB ===== */}
-                {activeTab === 'Coupons' && (
-                    <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Coupons ({coupons.length})</h2>
-                            <button onClick={() => setShowCouponForm(!showCouponForm)} style={{
-                                padding: '0.5rem 1.2rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontWeight: 600,
-                            }}>+ Add Coupon</button>
-                        </div>
-
-                        {showCouponForm && (
-                            <div style={{
-                                background: 'rgba(30,27,75,0.95)', border: '1px solid rgba(148,163,184,0.2)',
-                                borderRadius: 16, padding: '2rem', marginBottom: '2rem',
-                            }}>
-                                <form onSubmit={handleCouponSubmit}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 4 }}>Code *</label>
-                                            <input value={couponForm.code} required
-                                                onChange={e => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
-                                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 4 }}>Type</label>
-                                            <select value={couponForm.discount_type}
-                                                onChange={e => setCouponForm({ ...couponForm, discount_type: e.target.value })}
-                                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.1)', color: '#e2e8f0' }}>
-                                                <option value="percent">Percentage</option>
-                                                <option value="fixed_cart">Fixed Cart</option>
-                                                <option value="fixed_product">Fixed Product</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: 4 }}>Amount</label>
-                                            <input value={couponForm.amount}
-                                                onChange={e => setCouponForm({ ...couponForm, amount: e.target.value })}
-                                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0' }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 12, marginTop: '1.5rem' }}>
-                                        <button type="submit" disabled={loading} style={{
-                                            padding: '0.6rem 2rem', borderRadius: 8, border: 'none',
-                                            background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontWeight: 600, cursor: 'pointer',
-                                        }}>{loading ? 'Creating...' : 'Create Coupon'}</button>
-                                        <button type="button" onClick={() => setShowCouponForm(false)} style={{
-                                            padding: '0.6rem 2rem', borderRadius: 8, border: '1px solid rgba(148,163,184,0.3)',
-                                            background: 'transparent', color: '#94a3b8', cursor: 'pointer',
-                                        }}>Cancel</button>
-                                    </div>
-                                </form>
-                            </div>
-                        )}
-
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
-                                    {['Code', 'Type', 'Amount', 'Usage', 'Expiry'].map(h => (
-                                        <th key={h} style={{ padding: '0.75rem', textAlign: 'left', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {coupons.map(c => (
-                                    <tr key={c.id} style={{ borderBottom: '1px solid rgba(148,163,184,0.1)' }}>
-                                        <td style={{ padding: '0.75rem', fontWeight: 600, fontFamily: 'monospace', color: '#f59e0b' }}>{c.code}</td>
-                                        <td style={{ padding: '0.75rem' }}>{c.discount_type}</td>
-                                        <td style={{ padding: '0.75rem' }}>{c.discount_type === 'percent' ? `${c.amount}%` : `₹${c.amount}`}</td>
-                                        <td style={{ padding: '0.75rem' }}>{c.usage_count || 0}{c.usage_limit ? ` / ${c.usage_limit}` : ''}</td>
-                                        <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
-                                            {c.date_expires ? new Date(c.date_expires).toLocaleDateString('en-IN') : 'No expiry'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {coupons.length === 0 && !loading && <p style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No coupons found.</p>}
-                    </div>
-                )}
 
                 {/* ===== NATIVE PRODUCTS TAB (Phase 9) ===== */}
                 {activeTab === 'Native Products' && <AdminProductsPage />}

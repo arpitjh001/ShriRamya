@@ -37,6 +37,46 @@ export default defineConfig(({ mode }) => {
         },
         build: {
             outDir: 'dist',
+            // Chunk size warning limit - 800 KB
+            chunkSizeWarningLimit: 800,
+            // Enable source maps for production debugging
+            sourcemap: mode === 'production',
+            // Minify with esbuild for faster builds
+            minify: 'esbuild',
+            // Split vendor bundles and code chunks
+            rollupOptions: {
+                output: {
+                    // Manual chunk splitting for vendor bundles
+                    manualChunks: {
+                        // React vendor chunk
+                        'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+                        // UI libraries chunk
+                        'ui-vendor': [
+                            '@radix-ui/react-accordion',
+                            '@radix-ui/react-dialog',
+                            '@radix-ui/react-dropdown-menu',
+                            '@radix-ui/react-select',
+                            '@radix-ui/react-tabs',
+                            '@radix-ui/react-toast',
+                            '@radix-ui/react-tooltip',
+                        ],
+                        // Charts and visualization
+                        'charts-vendor': ['recharts'],
+                        // Animation library
+                        'animation-vendor': ['framer-motion'],
+                        // Form handling
+                        'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
+                        // Utilities
+                        'utils-vendor': ['axios', 'dayjs', 'clsx', 'tailwind-merge'],
+                    },
+                    // Asset naming with content hash for cache busting
+                    entryFileNames: 'assets/[name]-[hash].js',
+                    chunkFileNames: 'assets/[name]-[hash].js',
+                    assetFileNames: 'assets/[name]-[hash].[ext]',
+                },
+            },
+            // Target modern browsers for smaller bundles
+            target: 'esnext',
         },
         define: {
             'process.env.REACT_APP_BACKEND_URL': JSON.stringify(env.REACT_APP_BACKEND_URL),

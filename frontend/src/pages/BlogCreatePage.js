@@ -13,9 +13,14 @@ const BlogCreatePage = () => {
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [excerpt, setExcerpt] = useState('');
     const [status, setStatus] = useState('draft');
     const [loading, setLoading] = useState(false);
     const [featuredImage, setFeaturedImage] = useState(null);
+    const [seoTitle, setSeoTitle] = useState('');
+    const [seoDescription, setSeoDescription] = useState('');
+    const [readingTime, setReadingTime] = useState(0);
+    const [tagsInput, setTagsInput] = useState('');
     const [uploading, setUploading] = useState(false);
 
     // Redirect if not allowed
@@ -30,9 +35,13 @@ const BlogCreatePage = () => {
 
         setUploading(true);
         try {
-            const response = await blogAPI.uploadMedia(file);
-            if (response.data && response.data.source_url) {
-                setFeaturedImage(response.data.id);
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await blogAPI.api.post('/upload/image', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            if (response.data && response.data.url) {
+                setFeaturedImage(response.data.url);
                 toast.success('Image uploaded successfully');
             }
         } catch (error) {
@@ -55,18 +64,23 @@ const BlogCreatePage = () => {
             const postData = {
                 title,
                 content,
+                excerpt,
                 status,
-                featured_media: featuredImage
+                featuredImage,
+                seo_title: seoTitle,
+                seo_description: seoDescription,
+                reading_time: readingTime,
+                tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean)
             };
 
             const response = await blogAPI.createPost(postData);
             if (response.data) {
-                toast.success(`Post ${status === 'publish' ? 'published' : 'saved as draft'}!`);
-                navigate('/blog');
+                toast.success(`Story ${status === 'published' ? 'published' : 'saved as ' + status}!`);
+                navigate('/admin/blogs');
             }
         } catch (error) {
-            console.error('Failed to create post:', error);
-            toast.error(error.response?.data?.detail || 'Failed to create post');
+            console.error('Failed to create story:', error);
+            toast.error(error.response?.data?.detail || 'Failed to create story');
         } finally {
             setLoading(false);
         }
@@ -110,34 +124,58 @@ const BlogCreatePage = () => {
                         </div>
 
                         <div className="space-y-4">
-                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Featured Image</label>
-                            <div className="flex items-center gap-6">
-                                <div className="relative group">
-                                    <input
-                                        type="file"
-                                        onChange={handleImageUpload}
-                                        accept="image/*"
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        disabled={uploading}
-                                    />
-                                    <div className="h-32 w-48 rounded-xl border-2 border-dashed border-border group-hover:border-primary/50 flex flex-col items-center justify-center bg-accent/5 transition-colors overflow-hidden relative">
-                                        {uploading ? (
-                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                        ) : (
-                                            <>
-                                                <ImageIcon className="h-6 w-6 text-muted-foreground mb-2" />
-                                                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Upload Cover</span>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm text-muted-foreground">
-                                        This image will be displayed at the top of your story and in the blog listing cards.
-                                        Recommended size: 1200x600px.
-                                    </p>
-                                </div>
+                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Story Excerpt</label>
+                            <textarea
+                                value={excerpt}
+                                onChange={(e) => setExcerpt(e.target.value)}
+                                placeholder="A brief summary for the blog cards..."
+                                rows={3}
+                                className="w-full bg-accent/5 border border-border rounded-xl p-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all text-sm"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block text-primary">SEO Title</label>
+                                <input
+                                    type="text"
+                                    value={seoTitle}
+                                    onChange={(e) => setSeoTitle(e.target.value)}
+                                    placeholder="Meta title for SEO"
+                                    className="w-full bg-accent/5 border border-border rounded-lg p-3 text-sm"
+                                />
                             </div>
+                            <div className="space-y-4">
+                                <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block text-primary">Reading Time (min)</label>
+                                <input
+                                    type="number"
+                                    value={readingTime}
+                                    onChange={(e) => setReadingTime(parseInt(e.target.value))}
+                                    className="w-full bg-accent/5 border border-border rounded-lg p-3 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block text-primary">SEO Description</label>
+                            <textarea
+                                value={seoDescription}
+                                onChange={(e) => setSeoDescription(e.target.value)}
+                                placeholder="Meta description for search engines"
+                                rows={2}
+                                className="w-full bg-accent/5 border border-border rounded-xl p-4 text-sm"
+                            />
+                        </div>
+
+                        <div className="space-y-4">
+                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Tags (comma separated)</label>
+                            <input
+                                type="text"
+                                value={tagsInput}
+                                onChange={(e) => setTagsInput(e.target.value)}
+                                placeholder="heritage, silk, weaving..."
+                                className="w-full bg-accent/5 border border-border rounded-lg p-3 text-sm"
+                            />
                         </div>
 
                         <div className="space-y-2">
@@ -156,27 +194,23 @@ const BlogCreatePage = () => {
                             <div className="flex items-center gap-4">
                                 <label className="text-sm font-medium text-muted-foreground">Status:</label>
                                 <div className="flex bg-accent/10 rounded-lg p-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => setStatus('draft')}
-                                        className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${status === 'draft' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        Draft
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setStatus('publish')}
-                                        disabled={!capabilities.publish_posts}
-                                        className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${status === 'publish' ? 'bg-background shadow-sm text-foreground' : capabilities.publish_posts ? 'text-muted-foreground hover:text-foreground' : 'opacity-50 cursor-not-allowed'}`}
-                                    >
-                                        Publish
-                                    </button>
+                                    {['draft', 'review', 'published'].map((s) => (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => setStatus(s)}
+                                            disabled={s === 'published' && !capabilities.publish_posts}
+                                            className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${status === s ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            <Button type="submit" disabled={loading} className="px-8 py-6 rounded-full shadow-luxury-lg hover:shadow-luxury gap-2">
+                            <Button type="submit" disabled={loading} className="px-8 py-6 rounded-full shadow-luxury-lg hover:shadow-luxury gap-2 uppercase tracking-widest text-xs font-bold">
                                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                                {status === 'publish' ? 'Publish Story' : 'Save as Draft'}
+                                {status === 'published' ? 'Publish Story' : 'Save Story'}
                             </Button>
                         </div>
                     </form>

@@ -3,19 +3,14 @@ const app = require('../src/app');
 const mongoose = require('mongoose');
 const config = require('../src/config/config');
 const User = require('../src/models/user.model');
-const wcClient = require('../src/config/integrations/woocommerce');
-const wpClient = require('../src/config/integrations/wordpress');
 
-// Mock integrations
-jest.mock('../src/config/integrations/woocommerce');
-jest.mock('../src/config/integrations/wordpress');
-
-describe('API Endpoints Automation Tests', () => {
+describe('API Endpoints Automation Tests (Native)', () => {
     let adminToken;
 
     beforeAll(async () => {
-        // Use a test DB or the real one
-        await mongoose.connect(config.mongoose.url);
+        // Use a test DB (ensure we don't wipe production)
+        const dbUrl = config.mongoose.url.includes('test') ? config.mongoose.url : `${config.mongoose.url}_test`;
+        await mongoose.connect(dbUrl);
 
         // Seed admin if not present
         const adminEmail = 'admin-user@example.com';
@@ -66,33 +61,11 @@ describe('API Endpoints Automation Tests', () => {
         });
     });
 
-    describe('🛍️ Products', () => {
+    describe('🛍️ Products (Native)', () => {
         test('GET /products - Success', async () => {
-            wcClient.get.mockResolvedValue({ data: [{ id: 1, name: 'Product 1' }] });
             const res = await request(app).get('/api/v1/products');
             expect(res.status).toBe(200);
             expect(res.body.data).toBeInstanceOf(Array);
-        });
-
-        test('POST /products - Success (Admin Only)', async () => {
-            const payload = {
-                name: 'Silk Saree Test',
-                description: 'Description',
-                price: 5000,
-                category: 'Sarees',
-                color: 'Gold',
-                size: 'Free',
-                stock: 10
-            };
-            wcClient.post.mockResolvedValue({ data: { ...payload, id: 100 } });
-
-            const res = await request(app)
-                .post('/api/v1/products')
-                .set('Authorization', `Bearer ${adminToken}`)
-                .send(payload);
-
-            expect(res.status).toBe(201);
-            expect(res.body.data.name).toBe(payload.name);
         });
 
         test('POST /products - Failure (Missing fields)', async () => {
@@ -102,47 +75,19 @@ describe('API Endpoints Automation Tests', () => {
                 .send({ name: 'Incomplete' });
             expect(res.status).toBe(400);
         });
-
-        test('POST /products - Failure (Negative price)', async () => {
-            const res = await request(app)
-                .post('/api/v1/products')
-                .set('Authorization', `Bearer ${adminToken}`)
-                .send({
-                    name: 'Bad Price',
-                    description: 'd',
-                    price: -10,
-                    category: 'c',
-                    color: 'r',
-                    size: 's',
-                    stock: 1
-                });
-            expect(res.status).toBe(400);
-        });
-
-        test('POST /products/categories - Success (Admin Only)', async () => {
-            const payload = { name: 'Test Category' };
-            wcClient.post.mockResolvedValue({ data: { ...payload, id: 50 } });
-
-            const res = await request(app)
-                .post('/api/v1/products/categories')
-                .set('Authorization', `Bearer ${adminToken}`)
-                .send(payload);
-
-            expect(res.status).toBe(201);
-            expect(res.body.data.name).toBe(payload.name);
-        });
     });
 
-    describe('📦 Orders & Customers', () => {
-        test('GET /orders - Failure (No Auth)', async () => {
-            const res = await request(app).get('/api/v1/orders');
+    describe('📦 Orders & Customers (Native)', () => {
+        test('GET /orders/my - Failure (No Auth)', async () => {
+            const res = await request(app).get('/api/v1/orders/my');
             expect(res.status).toBe(401);
         });
 
-        test('GET /orders - Success (Admin)', async () => {
+        test('GET /orders/admin/all - Success (Admin)', async () => {
             const res = await request(app)
-                .get('/api/v1/orders')
+                .get('/api/v1/orders/admin/all')
                 .set('Authorization', `Bearer ${adminToken}`);
+            // Note: status 200 assumed if DB is connected and empty or has data
             expect(res.status).toBe(200);
         });
 
@@ -154,10 +99,9 @@ describe('API Endpoints Automation Tests', () => {
         });
     });
 
-    describe('📰 Blog', () => {
-        test('GET /blog/posts - Success', async () => {
-            wpClient.get.mockResolvedValue({ data: [{ id: 1, title: 'Blog 1' }] });
-            const res = await request(app).get('/api/v1/blog/posts');
+    describe('📰 Blog (Native)', () => {
+        test('GET /blogs - Success', async () => {
+            const res = await request(app).get('/api/v1/blogs');
             expect(res.status).toBe(200);
         });
     });

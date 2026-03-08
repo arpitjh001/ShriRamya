@@ -1,5 +1,4 @@
 <?php
-define('ALLOW_UNFILTERED_UPLOADS', true);
 /**
  * The base configuration for WordPress
  *
@@ -76,14 +75,14 @@ define( 'DB_COLLATE', getenv_docker('WORDPRESS_DB_COLLATE', '') );
  *
  * @since 2.6.0
  */
-define( 'AUTH_KEY',         getenv_docker('WORDPRESS_AUTH_KEY',         '807081e84e6961f68bb7b3fb51dedc2f796a7677') );
-define( 'SECURE_AUTH_KEY',  getenv_docker('WORDPRESS_SECURE_AUTH_KEY',  '92aafb91967db0af40cbfd6b730322b1f6433d6d') );
-define( 'LOGGED_IN_KEY',    getenv_docker('WORDPRESS_LOGGED_IN_KEY',    'e3000aaa64a115f8d5841ba8b436c1e80cf69500') );
-define( 'NONCE_KEY',        getenv_docker('WORDPRESS_NONCE_KEY',        '474f1d6b207bb98118895031d03080fde0d50cca') );
-define( 'AUTH_SALT',        getenv_docker('WORDPRESS_AUTH_SALT',        'c2005cf7d051e83c0ac52625e5900bdfb20a939d') );
-define( 'SECURE_AUTH_SALT', getenv_docker('WORDPRESS_SECURE_AUTH_SALT', 'd2d516aa8217bd6eeaf7eb6c0a21f76df8b8ec81') );
-define( 'LOGGED_IN_SALT',   getenv_docker('WORDPRESS_LOGGED_IN_SALT',   '868f2919df14539b3a96284cfa1ca8dd38ad6866') );
-define( 'NONCE_SALT',       getenv_docker('WORDPRESS_NONCE_SALT',       '09dbdf08470cf08d73268c1e313ddde86e91c086') );
+define( 'AUTH_KEY',         getenv_docker('WORDPRESS_AUTH_KEY',         '75d2f368eca29e581593ee4e76163f5045870d07') );
+define( 'SECURE_AUTH_KEY',  getenv_docker('WORDPRESS_SECURE_AUTH_KEY',  'f27444b50c4efcd309ad37f230cbf3ea05cf24bd') );
+define( 'LOGGED_IN_KEY',    getenv_docker('WORDPRESS_LOGGED_IN_KEY',    '06c97e6ea9423cb0e3eaa4fd9f48174ed59e74e9') );
+define( 'NONCE_KEY',        getenv_docker('WORDPRESS_NONCE_KEY',        '2059b83c13f2e21cae606c8c25740b02a93960db') );
+define( 'AUTH_SALT',        getenv_docker('WORDPRESS_AUTH_SALT',        '386eb3969ae95f999d60fc0abd6636c06b382af3') );
+define( 'SECURE_AUTH_SALT', getenv_docker('WORDPRESS_SECURE_AUTH_SALT', '27fb26036eb26e0b5661d80ccd9032c4caf800f5') );
+define( 'LOGGED_IN_SALT',   getenv_docker('WORDPRESS_LOGGED_IN_SALT',   'fab575a95d43de9320a1aad28348ac21a5dbdeea') );
+define( 'NONCE_SALT',       getenv_docker('WORDPRESS_NONCE_SALT',       'c15eb7c0d7d8eec6f68bc0216bdb14f66e7fe270') );
 // (See also https://wordpress.stackexchange.com/a/152905/199287)
 
 /**#@-*/
@@ -114,24 +113,9 @@ $table_prefix = getenv_docker('WORDPRESS_TABLE_PREFIX', 'wp_');
  *
  * @link https://developer.wordpress.org/advanced-administration/debug/debug-wordpress/
  */
-define( 'WP_DEBUG', true );
-define( 'WP_DEBUG_LOG', true );
-define( 'WP_DEBUG_DISPLAY', false );
-
+define( 'WP_DEBUG', !!getenv_docker('WORDPRESS_DEBUG', '') );
 
 /* Add any custom values between this line and the "stop editing" line. */
-define('WP_CACHE', true);
-define('WP_CACHE_KEY_SALT', getenv_docker('WP_CACHE_KEY_SALT', 'shriramya:'));
-define('WP_REDIS_HOST', getenv_docker('WP_REDIS_HOST', 'redis'));
-define('WP_REDIS_PORT', (int) getenv_docker('WP_REDIS_PORT', '6379'));
-define('WP_REDIS_DATABASE', (int) getenv_docker('WP_REDIS_DATABASE', '0'));
-define('WP_REDIS_PASSWORD', getenv_docker('WP_REDIS_PASSWORD', ''));
-define('WP_REDIS_CLIENT', getenv_docker('WP_REDIS_CLIENT', 'predis'));
-define('WP_REDIS_PREFIX', getenv_docker('WP_REDIS_PREFIX', getenv_docker('WP_CACHE_KEY_SALT', 'shriramya:')));
-define('WP_REDIS_TIMEOUT', 1);
-define('WP_REDIS_READ_TIMEOUT', 1);
-define('WP_REDIS_MAXTTL', 86400);
-
 
 // If we're behind a proxy server and using HTTPS, we need to alert WordPress of that fact
 // see also https://wordpress.org/support/article/administration-over-ssl/#using-a-reverse-proxy

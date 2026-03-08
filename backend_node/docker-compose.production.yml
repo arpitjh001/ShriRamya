@@ -36,12 +36,6 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - WOOCOMMERCE_URL=${WOOCOMMERCE_URL}
-      - WOOCOMMERCE_CONSUMER_KEY=${WOOCOMMERCE_CONSUMER_KEY}
-      - WOOCOMMERCE_CONSUMER_SECRET=${WOOCOMMERCE_CONSUMER_SECRET}
-      - WP_ADMIN_USER=${WP_ADMIN_USER}
-      - WP_APP_PASSWORD=${WP_APP_PASSWORD}
-      - WC_WEBHOOK_SECRET=${WC_WEBHOOK_SECRET}
       - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
       - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
       - CDN_BASE_URL=${CDN_BASE_URL}
@@ -68,7 +62,7 @@ services:
           cpus: '0.5'
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/v1/health"]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8000/api/v1/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -91,7 +85,7 @@ services:
       - shriramya-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -109,7 +103,7 @@ services:
       - shriramya-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -130,7 +124,7 @@ services:
       - shriramya-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 5s
       retries: 5

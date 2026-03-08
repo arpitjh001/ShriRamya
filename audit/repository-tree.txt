@@ -1,0 +1,81 @@
+# Repository Tree - Shri Ramya Ecommerce Platform
+Generated: 2026-03-07
+
+## Root Directory Structure
+```
+ShriRamya/
+├── .agents/                          # AI agent configurations
+├── ai-proxy/                         # Antigravity Claude Proxy Service
+│   ├── bin/                          # CLI binaries
+│   ├── config/                       # Configuration files
+│   ├── images/                       # Static images
+│   ├── node_modules/                 # Dependencies (47.75 MB)
+│   ├── public/                       # Public assets
+│   ├── src/                          # Source code
+│   ├── tests/                        # Test files
+│   └── package.json
+├── backend_node/                     # Node.js Express Backend
+│   ├── scripts/                      # Migration & seed scripts
+│   ├── src/                          # Source code
+│   │   ├── config/                   # Configuration
+│   │   ├── controllers/              # API controllers
+│   │   ├── middlewares/              # Express middlewares
+│   │   ├── models/                   # Mongoose models
+│   │   ├── repositories/             # Data repositories
+│   │   ├── routes/                   # API routes
+│   │   ├── services/                 # Business logic services
+│   │   ├── utils/                    # Utilities
+│   │   ├── validations/              # Joi validations
+│   │   └── app.js
+│   ├── node_modules/                 # Dependencies (22.88 MB)
+│   └── package.json
+├── docs/                             # Documentation
+│   └── general/
+│       └── reports/                  # API test reports
+├── frontend/                         # React Frontend (196.09 MB)
+│   ├── node_modules/                 # Dependencies (184.22 MB)
+│   ├── public/                       # Public assets
+│   └── src/
+│       ├── assets/                   # Static assets
+│       ├── components/               # React components
+│       │   ├── ui/                   # shadcn/ui components
+│       │   └── VirtualTryOn/         # Virtual try-on feature
+│       ├── context/                  # React contexts
+│       ├── hooks/                    # Custom hooks
+│       ├── layouts/                  # Layout components
+│       ├── pages/                    # Page components (25 pages)
+│       ├── routes/                   # Route definitions
+│       ├── services/                 # API services
+│       └── utils/                    # Utilities
+├── memory/                           # Memory/Cache storage
+├── migrations/                       # Database migrations
+├── nginx/                            # Nginx configuration
+├── scripts/                          # Root scripts
+├── tests/                            # Test files
+├── uploads/                          # User uploads (47.91 MB)
+│   └── 2026/03/                      # Monthly upload folders
+├── wordpress/                        # WordPress Installation (125.53 MB)
+│   └── wp-content/
+│       ├── plugins/                  # WordPress plugins (53.13 MB)
+│       │   └── woocommerce/          # WooCommerce (51.04 MB)
+│       └── themes/                   # WordPress themes (13.62 MB)
+├── wordpress_conf/                   # WordPress configuration
+└── docker-compose.yml                # Docker orchestration
+```
+
+## Total Statistics
+- **Total Files:** 59,087
+- **Total Size:** ~520 MB (excluding node_modules: ~75 MB)
+- **Main Projects:** 3 (Backend, Frontend, AI-Proxy)
+- **Primary Languages:** JavaScript, JSX, CSS, SQL
+
+## Key Directories by Size
+| Directory | Size (MB) | Type |
+|-----------|-----------|------|
+| frontend/ | 196.09 | React Application |
+| frontend/node_modules/ | 184.22 | Dependencies |
+| wordpress/ | 125.53 | CMS |
+| wordpress/wp-content/ | 66.85 | WP Content |
+| ai-proxy/ | 58.71 | Proxy Service |
+| uploads/ | 47.91 | User Uploads |
+| backend_node/ | 23.95 | Backend Service |

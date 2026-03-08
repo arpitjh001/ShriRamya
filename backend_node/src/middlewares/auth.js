@@ -32,11 +32,23 @@ const auth = (roles = []) => async (req, res, next) => {
       return next(new ApiError(httpStatus.UNAUTHORIZED, 'Device binding mismatch'));
     }
 
-    // Role check (RBAC)
+    // Role check (RBAC) - case insensitive
     console.log('AUTH MIDDLEWARE - Payload Role:', payload.role);
+    console.log('AUTH MIDDLEWARE - Payload Roles:', payload.roles);
     console.log('AUTH MIDDLEWARE - Allowed Roles:', roles);
-    if (roles.length && !roles.includes(payload.role)) {
-      return next(new ApiError(httpStatus.FORBIDDEN, 'Insufficient permissions'));
+    
+    if (roles.length && payload.role) {
+      // Check if user's role or roles array includes any of the required roles (case-insensitive)
+      const userRole = payload.role.toLowerCase();
+      const userRoles = (payload.roles || []).map(r => r.toLowerCase());
+      const requiredRoles = roles.map(r => r.toLowerCase());
+      
+      const hasRole = requiredRoles.includes(userRole) || 
+                      requiredRoles.some(r => userRoles.includes(r));
+      
+      if (!hasRole) {
+        return next(new ApiError(httpStatus.FORBIDDEN, 'Insufficient permissions'));
+      }
     }
 
     // Attach to request

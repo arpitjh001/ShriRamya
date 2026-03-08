@@ -99,11 +99,11 @@ class ProductService {
   /**
    * Create a new product with its attributes and optional variants
    */
-  async createProduct(productData) {
+  async createProduct(productData, tenantId = 1) {
     try {
-      console.log(`[ProductService] Creating native product: ${productData.name}`);
+      console.log(`[ProductService] Creating native product: ${productData.name} for tenant: ${tenantId}`);
       await this._ensureDefaultCategory(productData);
-      const productId = await mysqlProductRepository.createProduct(productData);
+      const productId = await mysqlProductRepository.createProduct(productData, tenantId);
 
       // If variants are provided during creation, add them
       if (productData.variants && Array.isArray(productData.variants)) {
@@ -172,9 +172,9 @@ class ProductService {
   /**
    * Get a single product with full details
    */
-  async getProductById(id) {
+  async getProductById(id, tenantId = 1) {
     try {
-      const product = await mysqlProductRepository.getProduct(id);
+      const product = await mysqlProductRepository.getProduct(id, tenantId);
       if (!product) {
         const error = new Error('Product not found');
         error.statusCode = 404;
@@ -190,13 +190,13 @@ class ProductService {
   /**
    * Get all products with pagination
    */
-  async getProducts(params = {}) {
+  async getProducts(params = {}, tenantId = 1) {
     try {
       const options = {
         page: parseInt(params.page || 1, 10),
         perPage: parseInt(params.per_page || 20, 10),
       };
-      const result = await mysqlProductRepository.listProducts(params, options);
+      const result = await mysqlProductRepository.listProducts(params, options, tenantId);
       return {
         ...result,
         products: Array.isArray(result.products)
@@ -212,12 +212,12 @@ class ProductService {
   /**
    * Update product, attributes, and variants (full sync)
    */
-  async updateProduct(id, updateData) {
+  async updateProduct(id, updateData, tenantId = 1) {
     try {
-      console.log(`[ProductService] Updating native product: ${id}`);
+      console.log(`[ProductService] Updating native product: ${id} for tenant: ${tenantId}`);
       await this._ensureDefaultCategory(updateData, true);
 
-      const product = await mysqlProductRepository.getProduct(id);
+      const product = await mysqlProductRepository.getProduct(id, tenantId);
       if (!product) {
         const error = new Error('Product not found');
         error.statusCode = 404;
@@ -238,9 +238,9 @@ class ProductService {
   /**
    * Delete a product
    */
-  async deleteProduct(id) {
+  async deleteProduct(id, tenantId = 1) {
     try {
-      const success = await mysqlProductRepository.deleteProduct(id);
+      const success = await mysqlProductRepository.deleteProduct(id, tenantId);
       if (!success) throw new Error('Product not found or already deleted');
       return { id, deleted: true };
     } catch (error) {

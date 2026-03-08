@@ -21,9 +21,11 @@ const getProducts = {
   query: Joi.object().keys({
     page: Joi.number().integer().min(1).default(1),
     per_page: Joi.number().integer().min(1).max(100).default(20),
+    limit: Joi.number().integer().min(1).max(100).default(20),
     status: Joi.string().valid('draft', 'published', 'archived'),
     category: Joi.string(),
     category_id: Joi.number().integer(),
+    featured: Joi.boolean().default(false),
   }),
 };
 
@@ -52,7 +54,9 @@ const createProduct = {
       name: Joi.string().required(),
       values: Joi.array().items(Joi.string()).required()
     })).optional(),
-    variants: Joi.array().items(variantSchema).optional()
+    variants: Joi.array().items(variantSchema).optional(),
+    tenantId: Joi.number().optional().default(1),
+    images: Joi.array().items(Joi.string()).optional()
   }),
 };
 

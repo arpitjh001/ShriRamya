@@ -8,7 +8,29 @@ const userSchema = mongoose.Schema(
     name: { type: String, trim: true },
     phone: { type: String, trim: true },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
-    is_active: { type: Boolean, default: true }
+    is_active: { type: Boolean, default: true },
+    billing: {
+      first_name: String,
+      last_name: String,
+      address_1: String,
+      address_2: String,
+      city: String,
+      state: String,
+      postcode: String,
+      country: String,
+      email: String,
+      phone: String
+    },
+    shipping: {
+      first_name: String,
+      last_name: String,
+      address_1: String,
+      address_2: String,
+      city: String,
+      state: String,
+      postcode: String,
+      country: String
+    }
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

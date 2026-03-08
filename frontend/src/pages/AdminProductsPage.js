@@ -1,8 +1,12 @@
+/**
+ * AdminProductsPage.js - Redesigned Native Products Tab
+ * Complete redesign with integrated category management
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { productsAPI, uploadAPI, categoriesAPI } from '../services/api';
-import CategoriesPage from './CategoriesPage';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,16 +14,14 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Progress } from '../components/ui/progress';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
 import {
   Plus, Trash2, Edit, Save, X, Upload, Image as ImageIcon,
-  Package, Tag, AlignLeft, DollarSign, Layers, ChevronRight,
-  Search, Filter, MoreVertical, Eye, EyeOff, FolderPlus
+  Package, FolderPlus, Search, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,249 +29,163 @@ import { motion, AnimatePresence } from 'framer-motion';
 const AdminProductsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // State
+  const [activeTab, setActiveTab] = useState('products');
+  const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [activeTab, setActiveTab] = useState('list');
-  
-  // Product Form State
+  const [productSearch, setProductSearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
+
+  // Product Modal State
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState({
     name: '',
     description: '',
     basePrice: '',
-    status: 'draft',
-    categoryId: '',
-    categories: [],
-    tags: '',
+    status: 'published',
     fabric: '',
     occasion: '',
-    brand: '',
     images: [],
     variants: []
   });
 
-  // Variant being edited
-  const [editingVariant, setEditingVariant] = useState(null);
+  // Category Modal State
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    image: null
+  });
+
+  // Upload State
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Check admin access
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
+    const userRole = user?.role?.toLowerCase();
+    const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+    
+    if (!user || (!userRoles.includes('admin') && userRole !== 'admin')) {
       toast.error('Access denied');
       navigate('/');
       return;
     }
-    loadProducts();
-    loadCategories();
+    
+    loadData();
   }, [user]);
 
-  const loadProducts = async () => {
+  const loadData = async () => {
     setLoading(true);
+    await Promise.all([loadProducts(), loadCategories()]);
+    setLoading(false);
+  };
+
+  const loadProducts = async () => {
     try {
       const response = await productsAPI.getAll({ per_page: 100 });
       const productsData = response.products || response.data || [];
-
-      console.log('Raw API Response:', productsData[0]); // Debug log
-
-      // Map API response to frontend format
-      const mappedProducts = productsData.map(product => {
-        // Handle both base_price (string) and basePrice formats
-        const priceValue = product.basePrice || product.base_price || 0;
-        const price = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
-
-        // Get SKU from product or first variant
-        const sku = product.sku || (product.variants && product.variants.length > 0 ? product.variants[0].sku : 'N/A');
-
-        // Calculate total stock from all variants
-        const stock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
-
-        // Get category names
-        const categoryNames = product.categories 
-          ? product.categories.map(cat => cat.name).join(', ')
-          : (product.category || 'Uncategorized');
-
-        return {
-          ...product,
-          basePrice: price || 0,
-          sku: sku,
-          stock: stock,
-          category: categoryNames,
-          variants: product.variants || []
-        };
-      });
-
-      console.log('Mapped Products:', mappedProducts[0]); // Debug log
+      
+      const mappedProducts = productsData.map(product => ({
+        ...product,
+        basePrice: typeof (product.basePrice || product.base_price || 0) === 'string' 
+          ? parseFloat(product.basePrice || product.base_price || 0) 
+          : (product.basePrice || product.base_price || 0),
+        sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
+        stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
+        categoryNames: product.categories?.map(cat => cat.name).join(', ') || product.category || 'Uncategorized'
+      }));
+      
       setProducts(mappedProducts);
     } catch (error) {
       console.error('Failed to load products:', error);
       toast.error('Failed to load products');
-    } finally {
-      setLoading(false);
     }
   };
 
   const loadCategories = async () => {
     try {
-      // TODO: Add categoriesAPI to api.js
-      // For now, use empty array or fetch from products
-      setCategories([]);
+      const response = await categoriesAPI.getAll();
+      setCategories(response.categories || []);
     } catch (error) {
       console.error('Failed to load categories:', error);
+      setCategories([]);
     }
   };
 
-  const handleCreateProduct = () => {
-    setProductForm({
-      name: '',
-      description: '',
-      basePrice: '',
-      status: 'draft',
-      categoryId: '',
-      categories: [],
-      tags: '',
-      fabric: '',
-      occasion: '',
-      brand: '',
-      images: [],
-      variants: []
-    });
-    setIsCreating(true);
-    setActiveTab('form');
-  };
-
-  const handleEditProduct = (product) => {
-    setSelectedProduct(product);
-    setProductForm({
-      name: product.name || '',
-      description: product.description || '',
-      basePrice: product.basePrice || product.base_price || '',
-      status: product.status || 'draft',
-      categoryId: product.categoryId || product.category_id || '',
-      categories: product.categories || [],
-      tags: product.tags || '',
-      fabric: product.fabric || '',
-      occasion: product.occasion || '',
-      brand: product.brand || '',
-      images: product.images || [],
-      variants: product.variants || []
-    });
-    setIsEditing(true);
-    setActiveTab('form');
+  // Product Handlers
+  const handleOpenProductModal = (product = null) => {
+    if (product) {
+      setEditingProduct(product);
+      setProductForm({
+        name: product.name || '',
+        description: product.description || '',
+        basePrice: product.basePrice?.toString() || '',
+        status: product.status || 'published',
+        fabric: product.fabric || '',
+        occasion: product.occasion || '',
+        images: product.images || [],
+        variants: product.variants || []
+      });
+    } else {
+      setEditingProduct(null);
+      setProductForm({
+        name: '',
+        description: '',
+        basePrice: '',
+        status: 'published',
+        fabric: '',
+        occasion: '',
+        images: [],
+        variants: []
+      });
+    }
+    setShowProductModal(true);
   };
 
   const handleSaveProduct = async () => {
-    // Validation
     if (!productForm.name.trim()) {
       toast.error('Product name is required');
       return;
     }
 
-    if (!productForm.basePrice || parseFloat(productForm.basePrice) <= 0) {
-      toast.error('Valid base price is required');
-      return;
-    }
-
     try {
-      const payload = {
-        name: productForm.name,
-        description: productForm.description,
-        basePrice: parseFloat(productForm.basePrice) || 0,
-        status: productForm.status,
-        fabric: productForm.fabric,
-        occasion: productForm.occasion,
-        brand: productForm.brand,
-        categoryId: productForm.categoryId || productForm.categories[0] || null,
-        categories: productForm.categories.length > 0
-          ? productForm.categories
-          : productForm.categoryId ? [productForm.categoryId] : [],
-        variants: productForm.variants.map(v => ({
-          sku: v.sku,
-          price: parseFloat(v.price) || 0,
-          discountPrice: v.discountPrice ? parseFloat(v.discountPrice) : null,
-          stock: parseInt(v.stock) || 0,
-          attributes: v.attributes || {},
-          image: v.image || null,
-          lowStockThreshold: v.lowStockThreshold || 5
-        }))
+      const productData = {
+        ...productForm,
+        basePrice: parseFloat(productForm.basePrice) || 0
       };
 
-      console.log('Saving product with payload:', payload);
-
-      if (isCreating) {
-        await productsAPI.create(payload);
-        toast.success('Product created successfully');
-      } else {
-        await productsAPI.update(selectedProduct.id, payload);
+      if (editingProduct) {
+        await productsAPI.update(editingProduct.id, productData);
         toast.success('Product updated successfully');
+      } else {
+        await productsAPI.create(productData);
+        toast.success('Product created successfully');
       }
-
-      setIsCreating(false);
-      setIsEditing(false);
-      setSelectedProduct(null);
-      setActiveTab('list');
-      loadProducts();
+      
+      setShowProductModal(false);
+      await loadProducts();
     } catch (error) {
-      console.error('Failed to save product:', error);
       toast.error(error.response?.data?.message || 'Failed to save product');
     }
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
-
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    
     try {
       await productsAPI.delete(productId);
       toast.success('Product deleted successfully');
-      loadProducts();
+      await loadProducts();
     } catch (error) {
       toast.error('Failed to delete product');
     }
   };
 
-  // Variant Management
-  const handleAddVariant = () => {
-    const newVariant = {
-      sku: `SKU-${Date.now()}`,
-      price: 0,
-      discountPrice: null,
-      stock: 0,
-      attributes: { color: '', size: '', fabric: '' },
-      image: null,
-      lowStockThreshold: 5
-    };
-    setProductForm(prev => ({
-      ...prev,
-      variants: [...prev.variants, newVariant]
-    }));
-    setEditingVariant(newVariant);
-  };
-
-  const handleUpdateVariant = (index, updatedVariant) => {
-    const newVariants = [...productForm.variants];
-    newVariants[index] = updatedVariant;
-    setProductForm(prev => ({
-      ...prev,
-      variants: newVariants
-    }));
-  };
-
-  const handleDeleteVariant = (index) => {
-    const newVariants = productForm.variants.filter((_, i) => i !== index);
-    setProductForm(prev => ({
-      ...prev,
-      variants: newVariants
-    }));
-    if (editingVariant && productForm.variants[index] === editingVariant) {
-      setEditingVariant(null);
-    }
-  };
-
-  // Image Upload
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -277,16 +193,9 @@ const AdminProductsPage = () => {
     setUploadingImage(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', 'products');
-
+      formData.append('image', file);
       const response = await uploadAPI.uploadImage(formData);
-      const imageUrl = response.data?.cdn?.medium || response.data?.medium;
-      
-      setProductForm(prev => ({
-        ...prev,
-        images: [...prev.images, imageUrl]
-      }));
+      setProductForm(prev => ({ ...prev, images: [...prev.images, response.url] }));
       toast.success('Image uploaded successfully');
     } catch (error) {
       toast.error('Failed to upload image');
@@ -295,580 +204,578 @@ const AdminProductsPage = () => {
     }
   };
 
-  const handleRemoveImage = (index) => {
-    setProductForm(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+  // Category Handlers
+  const handleOpenCategoryModal = (category = null) => {
+    if (category) {
+      setEditingCategory(category);
+      setCategoryForm({
+        name: category.name || '',
+        slug: category.slug || '',
+        description: category.description || '',
+        image: category.image || null
+      });
+    } else {
+      setEditingCategory(null);
+      setCategoryForm({
+        name: '',
+        slug: '',
+        description: '',
+        image: null
+      });
+    }
+    setShowCategoryModal(true);
   };
 
-  // Filter products
-  const filteredProducts = products.filter(product => 
-    product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku?.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleSaveCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      toast.error('Category name is required');
+      return;
+    }
+
+    try {
+      if (editingCategory) {
+        await categoriesAPI.update(editingCategory.id, categoryForm);
+        toast.success('Category updated successfully');
+      } else {
+        await categoriesAPI.create(categoryForm);
+        toast.success('Category created successfully');
+      }
+      
+      setShowCategoryModal(false);
+      await loadCategories();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save category');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (!confirm('Are you sure you want to delete this category?')) return;
+    
+    try {
+      await categoriesAPI.delete(categoryId);
+      toast.success('Category deleted successfully');
+      await loadCategories();
+    } catch (error) {
+      toast.error('Failed to delete category');
+    }
+  };
+
+  const handleCategoryImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await uploadAPI.uploadImage(formData);
+      setCategoryForm(prev => ({ ...prev, image: response.url }));
+      toast.success('Image uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Filters
+  const filteredProducts = products.filter(p =>
+    p.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.sku?.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.categoryNames?.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
+  const filteredCategories = categories.filter(c =>
+    c.name?.toLowerCase().includes(categorySearch.toLowerCase()) ||
+    c.slug?.toLowerCase().includes(categorySearch.toLowerCase()) ||
+    c.description?.toLowerCase().includes(categorySearch.toLowerCase())
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', padding: '24px' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+      padding: '32px'
+    }}>
       {/* Header */}
-      <div style={{ background: 'transparent', borderBottom: '1px solid rgba(148, 163, 184, 0.2)' }}>
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      <div style={{ marginBottom: '32px' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Product Dashboard</h1>
+            <p className="text-sm text-gray-300">Manage your products and categories</p>
+          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList style={{ background: 'rgba(255, 255, 255, 0.1)' }}>
+              <TabsTrigger value="products" className="gap-2">
+                <Package className="w-4 h-4" />
+                Products
+              </TabsTrigger>
+              <TabsTrigger value="categories" className="gap-2">
+                <FolderPlus className="w-4 h-4" />
+                Categories
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Products Tab */}
+      {activeTab === 'products' && (
+        <Card style={{ 
+          background: 'rgba(30, 27, 75, 0.6)', 
+          border: '1px solid rgba(148, 163, 184, 0.2)' 
+        }}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-white">
-                  {activeTab === 'categories' ? 'Categories' : 'Products'}
-                </h1>
-                <p className="text-sm text-gray-300 mt-1">
-                  {activeTab === 'categories'
-                    ? 'Manage product categories and their slugs'
-                    : 'Manage your product catalog'}
-                </p>
+                <CardTitle style={{ color: '#ffffff' }}>All Products</CardTitle>
+                <CardDescription style={{ color: '#94a3b8' }}>
+                  {filteredProducts.length} products found
+                </CardDescription>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={activeTab === 'list' || activeTab === 'form' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveTab('list')}
-                  style={{ background: activeTab === 'list' || activeTab === 'form' ? '#6366f1' : 'transparent', borderColor: 'rgba(148, 163, 184, 0.3)' }}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search products..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="pl-10 w-72"
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.05)', 
+                      color: '#e2e8f0',
+                      borderColor: 'rgba(148, 163, 184, 0.3)'
+                    }}
+                  />
+                </div>
+                <Button 
+                  onClick={() => handleOpenProductModal()}
+                  className="gap-2"
+                  style={{ background: '#6366f1' }}
                 >
-                  <Package className="w-4 h-4 mr-2" />
-                  Products
-                </Button>
-                <Button
-                  variant={activeTab === 'categories' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveTab('categories')}
-                  style={{ background: activeTab === 'categories' ? '#6366f1' : 'transparent', borderColor: 'rgba(148, 163, 184, 0.3)' }}
-                >
-                  <FolderPlus className="w-4 h-4 mr-2" />
-                  Categories
+                  <Plus className="w-4 h-4" />
+                  Add Product
                 </Button>
               </div>
             </div>
-            {activeTab !== 'categories' && (
-              <Button onClick={handleCreateProduct} className="gap-2" style={{ background: '#6366f1' }}>
-                <Plus className="w-4 h-4" />
-                Add Product
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-6">
-        {activeTab === 'categories' ? (
-          <CategoriesPage />
-        ) : activeTab === 'list' ? (
-          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle style={{ color: '#ffffff' }}>All Products</CardTitle>
-                  <CardDescription style={{ color: '#94a3b8' }}>
-                    {filteredProducts.length} products found
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      placeholder="Search products..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 w-64"
-                      style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0', borderColor: 'rgba(148, 163, 184, 0.3)' }}
-                    />
-                  </div>
-                </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
               </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Stock</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Variants</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredProducts.map((product) => (
-                        <TableRow key={product.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              {product.images?.[0] && (
-                                <img
-                                  src={product.images[0]}
-                                  alt={product.name}
-                                  className="w-10 h-10 object-cover rounded"
-                                />
-                              )}
-                              <div>
-                                <div className="font-medium">{product.name}</div>
-                                <div className="text-sm text-gray-500">{product.category}</div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{product.sku || 'N/A'}</Badge>
-                          </TableCell>
-                          <TableCell>₹{product.basePrice || 0}</TableCell>
-                          <TableCell>
-                            <Badge variant={product.stock > 10 ? 'default' : 'destructive'}>
-                              {product.stock || 0}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={product.status === 'published' ? 'default' : 'secondary'}>
-                              {product.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{product.variants?.length || 0}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditProduct(product)}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteProduct(product.id)}
-                              >
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {/* Product Form */}
-            <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle style={{ color: '#ffffff' }}>{isCreating ? 'Create Product' : 'Edit Product'}</CardTitle>
-                    <CardDescription style={{ color: '#94a3b8' }}>
-                      Fill in the product details below
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => {
-                      setIsCreating(false);
-                      setIsEditing(false);
-                      setActiveTab('list');
-                    }} style={{ background: 'transparent', borderColor: 'rgba(148, 163, 184, 0.3)', color: '#e2e8f0' }}>
-                      <X className="w-4 h-4 mr-2" />
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSaveProduct} className="gap-2" style={{ background: '#6366f1', color: '#ffffff' }}>
-                      <Save className="w-4 h-4" />
-                      Save Product
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="basic" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4" style={{ background: 'rgba(255, 255, 255, 0.05)' }}>
-                    <TabsTrigger value="basic" style={{ color: '#e2e8f0' }}>Basic Info</TabsTrigger>
-                    <TabsTrigger value="variants">Variants</TabsTrigger>
-                    <TabsTrigger value="media">Media</TabsTrigger>
-                    <TabsTrigger value="organization">Organization</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="basic" className="space-y-4 mt-4">
-                    <div className="grid gap-4">
-                      <div>
-                        <Label htmlFor="name">Product Name *</Label>
-                        <Input
-                          id="name"
-                          value={productForm.name}
-                          onChange={(e) => setProductForm(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Enter product name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={productForm.description}
-                          onChange={(e) => setProductForm(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Product description"
-                          rows={4}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="basePrice">Base Price (₹)</Label>
-                          <Input
-                            id="basePrice"
-                            type="number"
-                            value={productForm.basePrice}
-                            onChange={(e) => setProductForm(prev => ({ ...prev, basePrice: e.target.value }))}
-                            placeholder="0.00"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="status">Status</Label>
-                          <Select
-                            value={productForm.status}
-                            onValueChange={(value) => setProductForm(prev => ({ ...prev, status: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="published">Published</SelectItem>
-                              <SelectItem value="archived">Archived</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="variants" className="mt-4">
-                    <VariantEditor
-                      variants={productForm.variants}
-                      onAddVariant={handleAddVariant}
-                      onUpdateVariant={handleUpdateVariant}
-                      onDeleteVariant={handleDeleteVariant}
-                      editingVariant={editingVariant}
-                      setEditingVariant={setEditingVariant}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="media" className="mt-4">
-                    <MediaUploader
-                      images={productForm.images}
-                      onUpload={handleImageUpload}
-                      onRemove={handleRemoveImage}
-                      uploading={uploadingImage}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="organization" className="space-y-4 mt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="category">Category</Label>
-                        <Select
-                          value={productForm.categoryId}
-                          onValueChange={(value) => setProductForm(prev => ({ ...prev, categoryId: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map(cat => (
-                              <SelectItem key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="tags">Tags</Label>
-                        <Input
-                          id="tags"
-                          value={productForm.tags}
-                          onChange={(e) => setProductForm(prev => ({ ...prev, tags: e.target.value }))}
-                          placeholder="saree, silk, wedding"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="fabric">Fabric</Label>
-                        <Input
-                          id="fabric"
-                          value={productForm.fabric}
-                          onChange={(e) => setProductForm(prev => ({ ...prev, fabric: e.target.value }))}
-                          placeholder="Silk, Cotton, etc."
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="occasion">Occasion</Label>
-                        <Input
-                          id="occasion"
-                          value={productForm.occasion}
-                          onChange={(e) => setProductForm(prev => ({ ...prev, occasion: e.target.value }))}
-                          placeholder="Wedding, Party, etc."
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="brand">Brand</Label>
-                        <Input
-                          id="brand"
-                          value={productForm.brand}
-                          onChange={(e) => setProductForm(prev => ({ ...prev, brand: e.target.value }))}
-                          placeholder="Brand name"
-                        />
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Variant Editor Component
-const VariantEditor = ({ variants, onAddVariant, onUpdateVariant, onDeleteVariant, editingVariant, setEditingVariant }) => {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Product Variants</h3>
-          <p className="text-sm text-gray-500">Different versions of your product (size, color, etc.)</p>
-        </div>
-        <Button onClick={onAddVariant} size="sm" className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Variant
-        </Button>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>SKU</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Discount</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>Color</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {variants.map((variant, index) => (
-              <TableRow key={index}>
-                <TableCell className="font-mono text-sm">{variant.sku}</TableCell>
-                <TableCell>₹{variant.price}</TableCell>
-                <TableCell>
-                  {variant.discountPrice ? (
-                    <Badge variant="default">₹{variant.discountPrice}</Badge>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={variant.stock <= variant.lowStockThreshold ? 'destructive' : 'default'}>
-                    {variant.stock}
-                  </Badge>
-                </TableCell>
-                <TableCell>{variant.attributes?.color || '-'}</TableCell>
-                <TableCell>{variant.attributes?.size || '-'}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingVariant(editingVariant === variant ? null : variant)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeleteVariant(index)}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      <AnimatePresence>
-        {editingVariant && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <VariantForm
-              variant={editingVariant}
-              index={variants.indexOf(editingVariant)}
-              onUpdate={onUpdateVariant}
-              onClose={() => setEditingVariant(null)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// Variant Form Component
-const VariantForm = ({ variant, index, onUpdate, onClose }) => {
-  const [formData, setFormData] = useState(variant);
-
-  const handleSave = () => {
-    onUpdate(index, formData);
-    onClose();
-  };
-
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle className="text-base">Edit Variant</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <Label>SKU</Label>
-            <Input
-              value={formData.sku}
-              onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-            />
-          </div>
-          <div>
-            <Label>Price (₹)</Label>
-            <Input
-              type="number"
-              value={formData.price}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-            />
-          </div>
-          <div>
-            <Label>Discount Price (₹)</Label>
-            <Input
-              type="number"
-              value={formData.discountPrice || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, discountPrice: parseFloat(e.target.value) || null }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div>
-            <Label>Stock</Label>
-            <Input
-              type="number"
-              value={formData.stock}
-              onChange={(e) => setFormData(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))}
-            />
-          </div>
-          <div>
-            <Label>Color</Label>
-            <Input
-              value={formData.attributes?.color || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                attributes: { ...prev.attributes, color: e.target.value }
-              }))}
-            />
-          </div>
-          <div>
-            <Label>Size</Label>
-            <Input
-              value={formData.attributes?.size || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                attributes: { ...prev.attributes, size: e.target.value }
-              }))}
-            />
-          </div>
-          <div>
-            <Label>Fabric</Label>
-            <Input
-              value={formData.attributes?.fabric || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                attributes: { ...prev.attributes, fabric: e.target.value }
-              }))}
-            />
-          </div>
-          <div>
-            <Label>Low Stock Threshold</Label>
-            <Input
-              type="number"
-              value={formData.lowStockThreshold || 5}
-              onChange={(e) => setFormData(prev => ({ ...prev, lowStockThreshold: parseInt(e.target.value) || 5 }))}
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave}>Save Variant</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// Media Uploader Component
-const MediaUploader = ({ images, onUpload, onRemove, uploading }) => {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Product Images</h3>
-        <p className="text-sm text-gray-500 mb-4">Upload high-quality images of your product</p>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {images.map((image, index) => (
-            <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border">
-              <img src={image} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
-              <button
-                onClick={() => onRemove(index)}
-                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              {index === 0 && (
-                <Badge className="absolute bottom-2 left-2">Primary</Badge>
-              )}
-            </div>
-          ))}
-          
-          <label className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
-            {uploading ? (
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             ) : (
-              <>
-                <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                <span className="text-sm text-gray-500">Upload Image</span>
-              </>
+              <div className="rounded-md border border-gray-700">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-gray-300">Product</TableHead>
+                      <TableHead className="text-gray-300">SKU</TableHead>
+                      <TableHead className="text-gray-300">Price</TableHead>
+                      <TableHead className="text-gray-300">Stock</TableHead>
+                      <TableHead className="text-gray-300">Category</TableHead>
+                      <TableHead className="text-gray-300">Status</TableHead>
+                      <TableHead className="text-right text-gray-300">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.map((product) => (
+                      <TableRow key={product.id} className="border-gray-700">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            {product.images?.[0] ? (
+                              <img 
+                                src={product.images[0]} 
+                                alt={product.name}
+                                className="w-12 h-12 object-cover rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                                <Package className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium text-white">{product.name}</div>
+                              <div className="text-xs text-gray-400">{product.description?.substring(0, 50) || 'No description'}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-gray-300">{product.sku}</TableCell>
+                        <TableCell className="text-white">₹{product.basePrice?.toLocaleString() || '0'}</TableCell>
+                        <TableCell>
+                          <Badge variant={product.stock <= 5 ? 'destructive' : 'default'}>
+                            {product.stock}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-gray-300">{product.categoryNames}</TableCell>
+                        <TableCell>
+                          <Badge variant={product.status === 'published' ? 'default' : 'secondary'}>
+                            {product.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenProductModal(product)}
+                              className="hover:bg-indigo-500/20 hover:text-indigo-400"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteProduct(product.id)}
+                              className="hover:bg-red-500/20 hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {filteredProducts.length === 0 && (
+                  <div className="text-center py-12 text-gray-400">
+                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No products found</p>
+                    <Button 
+                      variant="link" 
+                      onClick={() => handleOpenProductModal()}
+                      className="text-indigo-400 mt-2"
+                    >
+                      Add your first product
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onUpload}
-              className="hidden"
-              disabled={uploading}
-            />
-          </label>
-        </div>
-      </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Categories Tab */}
+      {activeTab === 'categories' && (
+        <Card style={{ 
+          background: 'rgba(30, 27, 75, 0.6)', 
+          border: '1px solid rgba(148, 163, 184, 0.2)' 
+        }}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle style={{ color: '#ffffff' }}>Category Management</CardTitle>
+                <CardDescription style={{ color: '#94a3b8' }}>
+                  {filteredCategories.length} categories found
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search categories..."
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    className="pl-10 w-72"
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.05)', 
+                      color: '#e2e8f0',
+                      borderColor: 'rgba(148, 163, 184, 0.3)'
+                    }}
+                  />
+                </div>
+                <Button 
+                  onClick={() => handleOpenCategoryModal()}
+                  className="gap-2"
+                  style={{ background: '#6366f1' }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Category
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+              </div>
+            ) : (
+              <div className="rounded-md border border-gray-700">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-gray-300">Category</TableHead>
+                      <TableHead className="text-gray-300">Slug</TableHead>
+                      <TableHead className="text-gray-300">Description</TableHead>
+                      <TableHead className="text-right text-gray-300">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCategories.map((category) => (
+                      <TableRow key={category.id} className="border-gray-700">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            {category.image ? (
+                              <img 
+                                src={category.image} 
+                                alt={category.name}
+                                className="w-12 h-12 object-cover rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                                <FolderPlus className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium text-white">{category.name}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <code className="px-2 py-1 bg-gray-800 rounded text-xs text-indigo-400">
+                            {category.slug}
+                          </code>
+                        </TableCell>
+                        <TableCell className="max-w-md text-gray-300">
+                          {category.description || 'No description'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenCategoryModal(category)}
+                              className="hover:bg-indigo-500/20 hover:text-indigo-400"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCategory(category.id)}
+                              className="hover:bg-red-500/20 hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {filteredCategories.length === 0 && (
+                  <div className="text-center py-12 text-gray-400">
+                    <FolderPlus className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No categories found</p>
+                    <Button 
+                      variant="link" 
+                      onClick={() => handleOpenCategoryModal()}
+                      className="text-indigo-400 mt-2"
+                    >
+                      Add your first category
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Product Modal */}
+      <Dialog open={showProductModal} onOpenChange={setShowProductModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle style={{ color: '#ffffff' }}>
+              {editingProduct ? 'Edit Product' : 'Create Product'}
+            </DialogTitle>
+            <DialogDescription style={{ color: '#94a3b8' }}>
+              {editingProduct ? 'Update product details' : 'Add a new product to your catalog'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label style={{ color: '#e2e8f0' }}>Product Name *</Label>
+                <Input
+                  value={productForm.name}
+                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                  placeholder="e.g., Kanjeevaram Silk Saree"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+              </div>
+              <div>
+                <Label style={{ color: '#e2e8f0' }}>Price (₹)</Label>
+                <Input
+                  type="number"
+                  value={productForm.basePrice}
+                  onChange={(e) => setProductForm({ ...productForm, basePrice: e.target.value })}
+                  placeholder="999"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+              </div>
+            </div>
+            <div>
+              <Label style={{ color: '#e2e8f0' }}>Description</Label>
+              <Textarea
+                value={productForm.description}
+                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                placeholder="Product description..."
+                rows={3}
+                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label style={{ color: '#e2e8f0' }}>Fabric</Label>
+                <Input
+                  value={productForm.fabric}
+                  onChange={(e) => setProductForm({ ...productForm, fabric: e.target.value })}
+                  placeholder="e.g., Pure Silk"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+              </div>
+              <div>
+                <Label style={{ color: '#e2e8f0' }}>Occasion</Label>
+                <Input
+                  value={productForm.occasion}
+                  onChange={(e) => setProductForm({ ...productForm, occasion: e.target.value })}
+                  placeholder="e.g., Wedding"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+              </div>
+            </div>
+            <div>
+              <Label style={{ color: '#e2e8f0' }}>Status</Label>
+              <Select
+                value={productForm.status}
+                onValueChange={(value) => setProductForm({ ...productForm, status: value })}
+              >
+                <SelectTrigger style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label style={{ color: '#e2e8f0' }}>Product Images</Label>
+              <div className="flex items-center gap-4 mt-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage}
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+                {uploadingImage && (
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+                )}
+              </div>
+              {productForm.images?.length > 0 && (
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {productForm.images.map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={img} alt="Product" className="w-20 h-20 object-cover rounded" />
+                      <button
+                        onClick={() => setProductForm(prev => ({ 
+                          ...prev, 
+                          images: prev.images.filter((_, i) => i !== idx) 
+                        }))}
+                        className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 hover:bg-red-600"
+                      >
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowProductModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveProduct} style={{ background: '#6366f1' }}>
+              <Save className="w-4 h-4 mr-2" />
+              {editingProduct ? 'Update Product' : 'Create Product'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Modal */}
+      <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle style={{ color: '#ffffff' }}>
+              {editingCategory ? 'Edit Category' : 'Create Category'}
+            </DialogTitle>
+            <DialogDescription style={{ color: '#94a3b8' }}>
+              {editingCategory ? 'Update category details' : 'Add a new product category'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label style={{ color: '#e2e8f0' }}>Category Name *</Label>
+                <Input
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                  placeholder="e.g., Silk Sarees"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+              </div>
+              <div>
+                <Label style={{ color: '#e2e8f0' }}>Slug</Label>
+                <Input
+                  value={categoryForm.slug}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })}
+                  placeholder="e.g., silk-sarees"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+              </div>
+            </div>
+            <div>
+              <Label style={{ color: '#e2e8f0' }}>Description</Label>
+              <Textarea
+                value={categoryForm.description}
+                onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                placeholder="Category description..."
+                rows={3}
+                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+              />
+            </div>
+            <div>
+              <Label style={{ color: '#e2e8f0' }}>Category Image</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleCategoryImageUpload}
+                disabled={uploadingImage}
+                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+              />
+              {categoryForm.image && (
+                <img src={categoryForm.image} alt="Category" className="w-32 h-32 object-cover rounded mt-2" />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCategoryModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCategory} style={{ background: '#6366f1' }}>
+              <Save className="w-4 h-4 mr-2" />
+              {editingCategory ? 'Update Category' : 'Create Category'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

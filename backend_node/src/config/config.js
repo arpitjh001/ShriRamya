@@ -13,19 +13,12 @@ const envVarsSchema = Joi.object()
     MYSQL_PASSWORD: Joi.string().required(),
     MYSQL_DATABASE: Joi.string().required(),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
-    WOOCOMMERCE_URL: Joi.string().required(),
-    WOOCOMMERCE_CONSUMER_KEY: Joi.string().required(),
-    WOOCOMMERCE_CONSUMER_SECRET: Joi.string().required(),
-    WP_ADMIN_USER: Joi.string().required(),
-    WP_APP_PASSWORD: Joi.string().required(),
-    WOOCOMMERCE_VERIFY_SSL: Joi.string().default('False'),
     CORS_ORIGINS: Joi.string().default('*'),
     PUBLIC_BASE_URL: Joi.string().default('http://localhost:8000'),
     REDIS_URL: Joi.string().required().description('Redis URL'),
     JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(15),
     JWT_REFRESH_EXPIRATION_DAYS: Joi.number().default(7),
     COOKIE_SECURE: Joi.string().default('false'),
-    WC_WEBHOOK_SECRET: Joi.string().required(),
     RAZORPAY_KEY_ID: Joi.string().allow('', null),
     RAZORPAY_KEY_SECRET: Joi.string().allow('', null),
     CDN_BASE_URL: Joi.string().allow('', null).description('CDN base URL for images'),
@@ -66,22 +59,11 @@ module.exports = {
   cookie: {
     secure: envVars.COOKIE_SECURE === 'true',
   },
-  woocommerce: {
-    url: envVars.WOOCOMMERCE_URL,
-    user: envVars.WOOCOMMERCE_CONSUMER_KEY,
-    password: envVars.WOOCOMMERCE_CONSUMER_SECRET,
-    verifySsl: envVars.WOOCOMMERCE_VERIFY_SSL === 'True'
-  },
-  wordpress: {
-    user: envVars.WP_ADMIN_USER,
-    password: envVars.WP_APP_PASSWORD,
-  },
   cors: envVars.CORS_ORIGINS,
   publicBaseUrl: envVars.PUBLIC_BASE_URL,
   redis: {
     url: envVars.REDIS_URL,
   },
-  webhookSecret: envVars.WC_WEBHOOK_SECRET,
   razorpay: {
     keyId: envVars.RAZORPAY_KEY_ID,
     keySecret: envVars.RAZORPAY_KEY_SECRET

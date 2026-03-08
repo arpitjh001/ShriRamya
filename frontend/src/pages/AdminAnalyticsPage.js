@@ -33,7 +33,11 @@ const AdminAnalyticsPage = () => {
   const [revenueData, setRevenueData] = useState(null);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
+    // Check if user has Admin role (case-insensitive)
+    const userRole = user?.role?.toLowerCase();
+    const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+    
+    if (!user || (!userRoles.includes('admin') && userRole !== 'admin')) {
       toast.error('Access denied');
       navigate('/');
       return;

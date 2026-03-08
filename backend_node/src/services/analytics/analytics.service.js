@@ -52,11 +52,11 @@ class AnalyticsService {
     }
 
     const [rows] = await mysqlPool.query(
-      `SELECT 
+      `SELECT
          DATE_FORMAT(created_at, ?) as period,
          COUNT(*) as order_count,
-         SUM(total_amount) as total_revenue,
-         AVG(total_amount) as avg_order_value,
+         SUM(grand_total) as total_revenue,
+         AVG(grand_total) as avg_order_value,
          COUNT(DISTINCT user_id) as unique_customers
        FROM orders
        WHERE status IN ('completed', 'delivered', 'processing')
@@ -222,12 +222,12 @@ class AnalyticsService {
 
     // Get revenue metrics
     const [metrics] = await mysqlPool.query(
-      `SELECT 
+      `SELECT
          COUNT(*) as total_orders,
-         SUM(total_amount) as gross_revenue,
-         SUM(CASE WHEN status = 'refunded' THEN total_amount ELSE 0 END) as refunds,
-         SUM(CASE WHEN status IN ('completed', 'delivered') THEN total_amount ELSE 0 END) as net_revenue,
-         AVG(total_amount) as avg_order_value
+         SUM(grand_total) as gross_revenue,
+         SUM(CASE WHEN status = 'refunded' THEN grand_total ELSE 0 END) as refunds,
+         SUM(CASE WHEN status IN ('completed', 'delivered') THEN grand_total ELSE 0 END) as net_revenue,
+         AVG(grand_total) as avg_order_value
        FROM orders
        WHERE created_at BETWEEN ? AND ?`,
       [startDate, endDate]
@@ -235,10 +235,10 @@ class AnalyticsService {
 
     // Get revenue by payment method
     const [byPaymentMethod] = await mysqlPool.query(
-      `SELECT 
+      `SELECT
          payment_method,
          COUNT(*) as order_count,
-         SUM(total_amount) as total_revenue
+         SUM(grand_total) as total_revenue
        FROM orders
        WHERE status IN ('completed', 'delivered')
          AND created_at BETWEEN ? AND ?
@@ -248,9 +248,9 @@ class AnalyticsService {
 
     // Get daily revenue trend
     const [dailyTrend] = await mysqlPool.query(
-      `SELECT 
+      `SELECT
          DATE_FORMAT(created_at, '%Y-%m-%d') as date,
-         SUM(total_amount) as revenue,
+         SUM(grand_total) as revenue,
          COUNT(*) as orders
        FROM orders
        WHERE status IN ('completed', 'delivered')
@@ -316,9 +316,9 @@ class AnalyticsService {
 
     // Today's stats
     const [todayStats] = await mysqlPool.query(
-      `SELECT 
+      `SELECT
          COUNT(*) as orders,
-         SUM(total_amount) as revenue
+         SUM(grand_total) as revenue
        FROM orders
        WHERE status IN ('completed', 'delivered')
          AND created_at >= ?`,
@@ -327,9 +327,9 @@ class AnalyticsService {
 
     // Month stats
     const [monthStats] = await mysqlPool.query(
-      `SELECT 
+      `SELECT
          COUNT(*) as orders,
-         SUM(total_amount) as revenue
+         SUM(grand_total) as revenue
        FROM orders
        WHERE status IN ('completed', 'delivered')
          AND created_at >= ?`,
@@ -390,11 +390,11 @@ class AnalyticsService {
     const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
 
     const [stats] = await mysqlPool.query(
-      `SELECT 
+      `SELECT
          COUNT(*) as total_orders,
-         SUM(total_amount) as total_revenue,
+         SUM(grand_total) as total_revenue,
          COUNT(DISTINCT user_id) as new_customers,
-         AVG(total_amount) as avg_order_value
+         AVG(grand_total) as avg_order_value
        FROM orders
        WHERE created_at BETWEEN ? AND ?
          AND status IN ('completed', 'delivered')`,
