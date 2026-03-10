@@ -22,7 +22,7 @@ const AccountPage = () => {
 
     const fetchOrders = async () => {
       try {
-        const response = await ordersAPI.getAll();
+        const response = await ordersAPI.getMyOrders();
         setOrders(response.data);
       } catch (error) {
         console.error('Failed to fetch orders:', error);

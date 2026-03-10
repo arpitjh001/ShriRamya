@@ -86,11 +86,41 @@ const couponLimiter = rateLimit({
   legacyHeaders: false
 });
 
+/**
+ * Coupon Validation Rate Limiter (Stricter for public endpoint)
+ */
+const couponValidationLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 5, // 5 attempts per minute
+  message: new ApiError(
+    httpStatus.TOO_MANY_REQUESTS,
+    'Too many coupon validation attempts. Please try again later.'
+  ),
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+/**
+ * Cart Rate Limiter
+ */
+const cartLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // 30 cart operations per minute
+  message: new ApiError(
+    httpStatus.TOO_MANY_REQUESTS,
+    'Too many cart operations. Please try again later.'
+  ),
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 module.exports = {
   authLimiter,
   apiLimiter,
   searchLimiter,
   uploadLimiter,
   reviewLimiter,
-  couponLimiter
+  couponLimiter,
+  couponValidationLimiter,
+  cartLimiter
 };

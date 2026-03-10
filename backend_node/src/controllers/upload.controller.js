@@ -13,14 +13,17 @@ const httpStatus = require('http-status');
  */
 const uploadImage = async (req, res, next) => {
   try {
-    if (!req.file) {
+    // Handle both 'file' and 'image' field names from multer.fields()
+    const file = req.files?.file?.[0] || req.files?.image?.[0] || req.file;
+    
+    if (!file) {
       const error = new Error('No file uploaded');
       error.statusCode = httpStatus.BAD_REQUEST;
       throw error;
     }
 
     const category = req.body.category || 'products';
-    const result = await imageService.processImage(req.file, category);
+    const result = await imageService.processImage(file, category);
 
     return successResponse(res, result, 'Image uploaded and optimized successfully', httpStatus.CREATED);
   } catch (error) {

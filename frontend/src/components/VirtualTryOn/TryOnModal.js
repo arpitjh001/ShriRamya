@@ -192,7 +192,7 @@ const TryOnModal = ({ open, onOpenChange, product }) => {
           files: [file]
         });
       } catch (error) {
-        console.log('Share failed:', error);
+        console.error('Share failed:', error);
         toast.info('Sharing not supported on this device');
       }
     } else {

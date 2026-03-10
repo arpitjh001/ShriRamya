@@ -16,8 +16,11 @@ const router = express.Router();
 // Customer Order Routes
 // ==========================================
 
-// Create order
+// Create order (primary route)
 router.post('/', auth(), orderController.createOrder);
+
+// Create order (alias for backward compatibility with frontend)
+router.post('/create', auth(), orderController.createOrder);
 
 // Get customer's orders
 router.get('/my', auth(), orderController.getCustomerOrders);

@@ -48,6 +48,7 @@ const AllProductsPage = () => {
         .filter(p => {
             const price = Number(p.sale_price || p.price || 0);
             if (price < priceRange[0] || price > priceRange[1]) return false;
+            if (p.status && p.status !== 'published' && p.status !== 'publish') return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 return (p.name || '').toLowerCase().includes(q) ||

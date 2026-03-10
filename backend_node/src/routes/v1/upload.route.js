@@ -1,23 +1,15 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const uuid = require('uuid');
 const auth = require('../../middlewares/auth');
 const uploadController = require('../../controllers/upload.controller');
 const ApiError = require('../../utils/ApiError');
 const httpStatus = require('http-status');
 
-const uploadDir = path.join(process.cwd(), 'uploads');
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `${uuid.v4()}${ext}`);
-    },
-});
+// IMPORTANT:
+// The upload controller runs image optimization via Sharp and expects `file.buffer`.
+// That only exists when using `multer.memoryStorage()`.
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -38,7 +30,8 @@ const upload = multer({
 
 const router = express.Router();
 
-router.post('/image', auth(['admin']), upload.single('file'), uploadController.uploadImage);
+// Accept both 'file' and 'image' field names for compatibility
+router.post('/image', auth(['admin']), upload.fields([{ name: 'file', maxCount: 1 }, { name: 'image', maxCount: 1 }]), uploadController.uploadImage);
 router.post('/images', auth(['admin']), upload.array('files', 10), uploadController.uploadMultipleImages);
 
 module.exports = router;

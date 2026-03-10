@@ -123,15 +123,46 @@ export const productsAPI = {
     try {
       const res = await api.get("/products", { params });
 
-      const rawProducts = res.data.products || res.data;
-      const safeData = Array.isArray(rawProducts)
+      const rawProducts = res.data.products || res.data || [];
+      const transformedData = Array.isArray(rawProducts)
         ? transformWooProducts(rawProducts)
         : [];
 
-      return { ...res, data: safeData };
+      return {
+        ...res,
+        data: transformedData,
+        products: rawProducts // Expose raw products for admin dashboard
+      };
     } catch (err) {
       handleError(err);
-      return { data: [] };
+      return { data: [], products: [] };
+    }
+  },
+
+  /* ---- Create Product ---- */
+  create: async (data) => {
+    try {
+      return await api.post("/products", data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  /* ---- Update Product ---- */
+  update: async (id, data) => {
+    try {
+      return await api.put(`/products/${id}`, data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  /* ---- Delete Product ---- */
+  delete: async (id) => {
+    try {
+      return await api.delete(`/products/${id}`);
+    } catch (err) {
+      handleError(err);
     }
   },
 
@@ -252,6 +283,49 @@ export const cartAPI = {
       throw err;
     }
   },
+
+  // Coupon methods
+  applyCoupon: async (couponCode, sessionId) => {
+    try {
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
+      }
+      const res = await api.post("/cart/coupon/apply", { couponCode }, config);
+      return { data: res.data };
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  removeCoupon: async (sessionId) => {
+    try {
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
+      }
+      const res = await api.delete("/cart/coupon/remove", config);
+      return { data: res.data };
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  getAppliedCoupon: async (sessionId) => {
+    try {
+      const config = {};
+      if (sessionId) {
+        config.headers = { 'x-session-id': sessionId };
+      }
+      const res = await api.get("/cart/coupon", config);
+      return { data: res.data };
+    } catch (err) {
+      handleError(err);
+      return { data: null };
+    }
+  },
 };
 
 /* =========================
@@ -292,7 +366,7 @@ export const wishlistAPI = {
 export const ordersAPI = {
   create: async (data) => {
     try {
-      return await api.post("/orders/create", data);
+      return await api.post("/orders", data);
     } catch (err) {
       handleError(err);
     }
@@ -308,7 +382,16 @@ export const ordersAPI = {
 
   getAll: async () => {
     try {
-      return await api.get("/orders");
+      return await api.get("/orders/admin/all");
+    } catch (err) {
+      handleError(err);
+      return { data: [] };
+    }
+  },
+
+  getMyOrders: async () => {
+    try {
+      return await api.get("/orders/my");
     } catch (err) {
       handleError(err);
       return { data: [] };
@@ -326,10 +409,44 @@ export const ordersAPI = {
 
   track: async (orderNumber) => {
     try {
-      return await api.get(`/orders/track/${orderNumber}`);
+      return await api.get(`/orders/${orderNumber}/tracking`);
     } catch (err) {
       handleError(err);
       return { data: null };
+    }
+  },
+
+  cancelOrder: async (id) => {
+    try {
+      return await api.post(`/orders/my/${id}/cancel`);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getShipments: async (id) => {
+    try {
+      return await api.get(`/orders/${id}/shipments`);
+    } catch (err) {
+      handleError(err);
+      return { data: [] };
+    }
+  },
+
+  requestRefund: async (id, data) => {
+    try {
+      return await api.post(`/orders/${id}/refunds`, data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getRefunds: async (id) => {
+    try {
+      return await api.get(`/orders/${id}/refunds`);
+    } catch (err) {
+      handleError(err);
+      return { data: [] };
     }
   }
 };
@@ -463,6 +580,15 @@ export const blogAPI = {
       handleError(err);
       throw err;
     }
+  },
+
+  deletePost: async (postId) => {
+    try {
+      return await api.delete(`/blogs/${postId}`);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
   }
 };
 
@@ -509,7 +635,18 @@ export const couponsAPI = {
     } catch (err) {
       handleError(err);
     }
-  }
+  },
+
+  // Customer-facing validation
+  validateCoupon: async (code) => {
+    try {
+      const res = await api.get(`/coupons/validate/${encodeURIComponent(code)}`);
+      return { data: res.data };
+    } catch (err) {
+      handleError(err);
+      return { data: { valid: false, message: 'Invalid coupon code' } };
+    }
+  },
 };
 
 /* =========================
@@ -731,7 +868,8 @@ export const categoriesAPI = {
   delete: async (id) => {
     try {
       const response = await api.delete(`/categories/${id}`);
-      return response.data.data || response.data;
+      // For delete operations, return success status
+      return { success: true, ...response.data };
     } catch (err) {
       handleError(err);
       throw err;
@@ -739,5 +877,18 @@ export const categoriesAPI = {
   }
 };
 
+// Export all services
 export default api;
+
+// Export centralized API client
+export { api as apiClient, auth, handleError } from './apiClient';
+
+// Export admin services
+export { default as adminOrderService } from './adminOrderService';
+export { default as userManagementService } from './userManagementService';
+export { default as tenantService } from './tenantService';
+export { default as reviewService } from './reviewService';
+export { default as searchService } from './searchService';
+export { default as notificationService } from './notificationService';
+export { default as analyticsService } from './analyticsService';
 

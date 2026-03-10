@@ -43,7 +43,7 @@ class CategoryService {
 
     async getAllCategories() {
         // Try Redis cache first
-        if (redis) {
+        if (redis && redis.get) {
             try {
                 const cached = await redis.get(this.CACHE_KEY);
                 if (cached) {
@@ -76,9 +76,9 @@ class CategoryService {
         });
 
         // Cache in Redis
-        if (redis) {
+        if (redis && redis.set) {
             try {
-                await redis.setex(this.CACHE_KEY, CACHE_TTL, JSON.stringify(rootCategories));
+                await redis.set(this.CACHE_KEY, JSON.stringify(rootCategories), { ex: CACHE_TTL });
             } catch (err) {
                 console.error('Redis cache error:', err.message);
             }
@@ -113,7 +113,7 @@ class CategoryService {
     }
 
     async clearCache() {
-        if (redis) {
+        if (redis && redis.del) {
             try {
                 await redis.del(this.CACHE_KEY);
             } catch (err) {
@@ -122,12 +122,12 @@ class CategoryService {
         }
     }
 
-    async getProductsByCategoryId(categoryId, limit = 100) {
-        return categoryRepository.getProductsByCategoryId(categoryId, limit);
+    async getProductsByCategoryId(categoryId, limit = 100, status = 'published') {
+        return categoryRepository.getProductsByCategoryId(categoryId, limit, status);
     }
 
-    async getProductsByCategorySlug(slug, limit = 100) {
-        return categoryRepository.getProductsByCategorySlug(slug, limit);
+    async getProductsByCategorySlug(slug, limit = 100, status = 'published') {
+        return categoryRepository.getProductsByCategorySlug(slug, limit, status);
     }
 }
 

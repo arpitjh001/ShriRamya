@@ -9,6 +9,7 @@ const orderStateMachine = require('../services/orderStateMachine.service');
 const orderEventService = require('../services/events/orderEvent.service');
 const shipmentService = require('../services/shipment.service');
 const refundService = require('../services/refund.service');
+const couponService = require('../services/coupon.service');
 const { successResponse } = require('../utils/response');
 const { ORDER_STATUS } = require('../services/orderStateMachine.service');
 const ApiError = require('../utils/ApiError');
@@ -40,7 +41,7 @@ function generateOrderNumber() {
  */
 const createOrder = async (req, res, next) => {
     const connection = await mysqlPool.getConnection();
-    
+
     try {
         await connection.beginTransaction();
 
@@ -116,27 +117,80 @@ const createOrder = async (req, res, next) => {
             });
         }
 
+        // ==========================================
+        // COUPON INTEGRATION
+        // ==========================================
+        let discountTotal = 0;
+        let appliedCouponId = null;
+        let appliedCouponCode = null;
+
+        if (couponCode && couponCode.trim().length > 0) {
+            try {
+                // Get cart data for coupon validation
+                const cartData = {
+                    subtotal: subtotal,
+                    items: orderItems.map(item => ({
+                        product_id: item.productId,
+                        category_ids: [],
+                        price: item.unitPrice,
+                        quantity: item.quantity
+                    }))
+                };
+
+                // Validate and calculate discount
+                const couponResult = await couponService.validateAndApplyCoupon(
+                    couponCode.trim(),
+                    cartData,
+                    userId
+                );
+
+                discountTotal = couponResult.discount;
+                appliedCouponId = couponResult.coupon.id;
+                appliedCouponCode = couponResult.coupon.code;
+
+                console.log(`[OrderController] Coupon applied: ${appliedCouponCode}, Discount: ₹${discountTotal}`);
+            } catch (couponError) {
+                // Log warning but continue order without coupon
+                console.warn(`[OrderController] Coupon validation failed: ${couponError.message}`);
+                // Don't fail the order, just proceed without discount
+            }
+        }
+        // ==========================================
+
         // Calculate totals
-        const discountTotal = 0; // Apply coupon logic here
         const taxTotal = orderItems.reduce((sum, item) => sum + item.taxAmount, 0);
         const shippingCost = subtotal > 5000 ? 0 : 100; // Free shipping above 5000
-        const grandTotal = subtotal - discountTotal + taxTotal + shippingCost;
+        
+        // Apply free shipping coupon if applicable
+        let finalShippingCost = shippingCost;
+        if (appliedCouponCode) {
+            const [couponRows] = await connection.query(
+                'SELECT type FROM coupons WHERE code = ? AND status = "active"',
+                [appliedCouponCode]
+            );
+            if (couponRows.length > 0 && couponRows[0].type === 'free_shipping') {
+                finalShippingCost = 0;
+            }
+        }
+        
+        const grandTotal = subtotal - discountTotal + taxTotal + finalShippingCost;
 
         // Generate order number
         const orderNumber = generateOrderNumber();
 
         // Create order
         const [orderResult] = await connection.query(
-            `INSERT INTO orders 
+            `INSERT INTO orders
             (user_id, order_number, status, payment_status, fulfillment_status,
-             subtotal, discount_total, tax_total, shipping_cost, grand_total,
+             subtotal, discount_total, tax_total, shipping_cost, grand_total, final_total,
+             coupon_id, coupon_code,
              payment_method, customer_email, customer_phone,
              billing_first_name, billing_last_name, billing_address_1, billing_address_2,
              billing_city, billing_state, billing_postcode, billing_country,
              shipping_first_name, shipping_last_name, shipping_address_1, shipping_address_2,
              shipping_city, shipping_state, shipping_postcode, shipping_country,
              customer_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId,
                 orderNumber,
@@ -146,8 +200,11 @@ const createOrder = async (req, res, next) => {
                 subtotal,
                 discountTotal,
                 taxTotal,
-                shippingCost,
+                finalShippingCost,
                 grandTotal,
+                grandTotal, // final_total
+                appliedCouponId,
+                appliedCouponCode,
                 paymentMethod || 'cod',
                 user.email,
                 user.phone || billing.phone,

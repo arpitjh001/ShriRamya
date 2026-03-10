@@ -64,15 +64,19 @@ const generateRefreshToken = async (userId, deviceId) => {
     // rt_family:{userId}:{deviceId} stores the active hashed token for rotation check
     const familyKey = `rt_family:${userId}:${deviceId}`;
 
-    // Store the active token in the family
-    await redis.setex(familyKey, expiresSeconds, hashedToken);
-    // Store detailed token info
-    await redis.setex(tokenKey, expiresSeconds, JSON.stringify({
-        userId,
-        deviceId,
-        jti,
-        iat: Date.now(),
-    }));
+    // Store the active token in the family (use safe Redis wrapper)
+    if (redis && redis.set) {
+        await redis.set(familyKey, hashedToken, { ex: expiresSeconds });
+        // Store detailed token info
+        await redis.set(tokenKey, JSON.stringify({
+            userId,
+            deviceId,
+            jti,
+            iat: Date.now(),
+        }), { ex: expiresSeconds });
+    } else {
+        console.warn('[TokenService] Redis unavailable, refresh token not stored');
+    }
 
     return token;
 };
@@ -95,14 +99,21 @@ const refreshAuthTokens = async (oldRefreshToken, deviceId) => {
 
     const hashedToken = hashToken(token);
     const familyKey = `rt_family:${userId}:${deviceId}`;
-    const currentHashed = await redis.get(familyKey);
+    
+    // Use safe Redis wrapper
+    let currentHashed = null;
+    if (redis && redis.get) {
+        currentHashed = await redis.get(familyKey);
+    }
 
     // REPLAY DETECTION
     if (!currentHashed || currentHashed !== hashedToken) {
         // Replay detected or token revoked! Invalidate entire family.
-        await redis.del(familyKey);
-        const keys = await redis.keys(`rt:${userId}:${deviceId}:*`);
-        if (keys.length > 0) await redis.del(...keys);
+        if (redis && redis.del) {
+            await redis.del(familyKey);
+            const keys = await redis.keys ? await redis.keys(`rt:${userId}:${deviceId}:*`) : [];
+            if (keys.length > 0) await redis.del(...keys);
+        }
         throw new Error('Refresh token session breach detected. Global logout enforced.');
     }
 
@@ -131,8 +142,8 @@ const refreshAuthTokens = async (oldRefreshToken, deviceId) => {
  */
 const blacklistAccessToken = async (jti, exp) => {
     const secondsToExpiry = exp - Math.floor(Date.now() / 1000);
-    if (secondsToExpiry > 0) {
-        await redis.setex(`at_blacklist:${jti}`, secondsToExpiry, '1');
+    if (secondsToExpiry > 0 && redis && redis.set) {
+        await redis.set(`at_blacklist:${jti}`, '1', { ex: secondsToExpiry });
     }
 };
 

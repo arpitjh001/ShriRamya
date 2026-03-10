@@ -1,6 +1,8 @@
 const httpStatus = require('http-status');
 const cartService = require('../services/cart.service');
+const couponService = require('../services/coupon.service');
 const { successResponse } = require('../utils/response');
+const ApiError = require('../utils/ApiError');
 
 /**
  * Get or create cart for user/session
@@ -274,6 +276,96 @@ const getCartById = async (req, res, next) => {
     }
 };
 
+// ==========================================
+// Coupon Handlers (Customer-Facing)
+// ==========================================
+
+/**
+ * Apply coupon to cart
+ * POST /api/v1/cart/coupon/apply
+ */
+const applyCoupon = async (req, res, next) => {
+    try {
+        const userId = req.user?.id || null;
+        const sessionId = req.headers['x-session-id'] || req.query.session_id || null;
+        const { couponCode } = req.body;
+
+        if (!couponCode || couponCode.trim().length === 0) {
+            throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code is required');
+        }
+
+        // Get or create cart to get cartId
+        const cart = await cartService.getOrCreateCart(userId, sessionId);
+        
+        // Apply coupon using coupon service
+        const result = await couponService.applyCouponToCart(cart.id, couponCode.trim(), userId);
+
+        return successResponse(res, {
+            ...result,
+            cartId: cart.id,
+        }, 'Coupon applied successfully');
+    } catch (error) {
+        if (error instanceof ApiError) {
+            return res.status(error.statusCode).send({
+                success: false,
+                message: error.message,
+            });
+        }
+        next(error);
+    }
+};
+
+/**
+ * Remove coupon from cart
+ * DELETE /api/v1/cart/coupon/remove
+ */
+const removeCoupon = async (req, res, next) => {
+    try {
+        const userId = req.user?.id || null;
+        const sessionId = req.headers['x-session-id'] || req.query.session_id || null;
+
+        // Get cart to get cartId
+        const cart = await cartService.getOrCreateCart(userId, sessionId);
+
+        // Remove coupon using coupon service
+        const result = await couponService.removeCouponFromCart(cart.id);
+
+        return successResponse(res, {
+            ...result,
+            cartId: cart.id,
+        }, 'Coupon removed from cart');
+    } catch (error) {
+        if (error instanceof ApiError) {
+            return res.status(error.statusCode).send({
+                success: false,
+                message: error.message,
+            });
+        }
+        next(error);
+    }
+};
+
+/**
+ * Get applied coupon for cart
+ * GET /api/v1/cart/coupon
+ */
+const getAppliedCoupon = async (req, res, next) => {
+    try {
+        const userId = req.user?.id || null;
+        const sessionId = req.headers['x-session-id'] || req.query.session_id || null;
+
+        // Get cart to get cartId
+        const cart = await cartService.getOrCreateCart(userId, sessionId);
+
+        // Get applied coupon
+        const appliedCoupon = await couponService.getAppliedCoupon(cart.id);
+
+        return successResponse(res, appliedCoupon);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getCart,
     addToCart,
@@ -281,4 +373,7 @@ module.exports = {
     removeCartItem,
     clearCart,
     getCartById,
+    applyCoupon,
+    removeCoupon,
+    getAppliedCoupon,
 };

@@ -31,7 +31,7 @@ const AuthDialog = ({ open, onOpenChange }) => {
 
         // Redirect based on role
         if (data.user?.role === 'admin') {
-          navigate('/admin/woocommerce');
+          navigate('/admin/dashboard');
         }
       } else {
         await register(formData);

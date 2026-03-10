@@ -1,8 +1,8 @@
 {
-  "total": 14,
-  "passed": 5,
-  "failed": 9,
-  "passRate": "35.71",
+  "total": 17,
+  "passed": 6,
+  "failed": 11,
+  "passRate": "35.29",
   "tests": [
     {
       "name": "Health endpoint",
@@ -34,9 +34,22 @@
       "error": "Request failed with status code 401"
     },
     {
-      "name": "Customer Role Tests",
+      "name": "Customer: View Products",
+      "passed": true
+    },
+    {
+      "name": "Customer: Create Product (should fail)",
       "passed": false,
       "error": "Request failed with status code 401"
+    },
+    {
+      "name": "Customer: Create Blog (should fail)",
+      "passed": false,
+      "error": "Request failed with status code 401"
+    },
+    {
+      "name": "Customer: Access Admin API (should fail)",
+      "passed": true
     },
     {
       "name": "Tenant Isolation",
@@ -63,7 +76,8 @@
     },
     {
       "name": "Security: Invalid token rejected",
-      "passed": true
+      "passed": false,
+      "error": "Invalid token accepted"
     },
     {
       "name": "Security: Unauthenticated access blocked",

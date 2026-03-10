@@ -29,9 +29,21 @@ const getTenantId = (req) => {
 const getProducts = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
+
+    // Check for admin/editor status to allow viewing drafts
+    const isAdminOrEditor = req.user && (
+      (req.user.roles || []).some(r => ['admin', 'editor'].includes(r.toLowerCase())) ||
+      ['admin', 'editor'].includes((req.user.role || '').toLowerCase())
+    );
+
+    // If not admin/editor, force published status
+    if (!isAdminOrEditor) {
+      req.query.status = 'published';
+    }
+
     // Generate cache key based on query params and tenant
-    const cacheKey = `${getCacheKey(PRODUCTS_CACHE_KEY, req.query)}:${tenantId}`;
-    
+    const cacheKey = `${getCacheKey(PRODUCTS_CACHE_KEY, req.query)}:${tenantId}:${isAdminOrEditor ? 'admin' : 'public'}`;
+
     // Try to get from Redis cache first
     if (redis) {
       try {
@@ -45,20 +57,20 @@ const getProducts = async (req, res, next) => {
         console.error('[ProductController] Redis cache read error:', cacheErr.message);
       }
     }
-    
+
     // Cache miss - fetch from database
     console.log(`[ProductController] Cache miss for products: ${cacheKey} (tenant: ${tenantId})`);
     const data = await productService.getProducts(req.query, tenantId);
-    
+
     // Store in Redis cache with TTL
     if (redis) {
       try {
-        await redis.setex(cacheKey, PRODUCTS_CACHE_TTL, JSON.stringify(data));
+        await redis.set(cacheKey, JSON.stringify(data), { ex: PRODUCTS_CACHE_TTL });
       } catch (cacheErr) {
         console.error('[ProductController] Redis cache write error:', cacheErr.message);
       }
     }
-    
+
     return successResponse(res, data);
   } catch (error) {
     next(error);
@@ -69,6 +81,18 @@ const getProduct = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
     const product = await productService.getProductById(req.params.product_id, tenantId);
+
+    // Check for admin/editor status to allow viewing drafts
+    const isAdminOrEditor = req.user && (
+      (req.user.roles || []).some(r => ['admin', 'editor'].includes(r.toLowerCase())) ||
+      ['admin', 'editor'].includes((req.user.role || '').toLowerCase())
+    );
+
+    if (product.status !== 'published' && !isAdminOrEditor) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
     return successResponse(res, product);
   } catch (error) {
     next(error);
@@ -140,11 +164,11 @@ const assignCategoriesToProduct = async (req, res, next) => {
   try {
     const { product_id } = req.params;
     const { categoryIds } = req.body;
-    
+
     if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
       return res.status(400).send({ message: 'categoryIds must be a non-empty array' });
     }
-    
+
     const result = await productService.assignCategoriesToProduct(product_id, categoryIds);
     return successResponse(res, result, 'Categories assigned to product successfully');
   } catch (error) {

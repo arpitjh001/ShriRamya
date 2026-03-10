@@ -72,7 +72,15 @@ const getProductsByCategory = async (req, res, next) => {
     try {
         const { categoryId } = req.params;
         const limit = parseInt(req.query.limit, 10) || 100;
-        const products = await categoryService.getProductsByCategoryId(categoryId, limit);
+
+        // Check for admin/editor status to allow viewing drafts
+        const isAdminOrEditor = req.user && (
+            (req.user.roles || []).some(r => ['admin', 'editor'].includes(r.toLowerCase())) ||
+            ['admin', 'editor'].includes((req.user.role || '').toLowerCase())
+        );
+
+        const status = isAdminOrEditor ? (req.query.status || null) : 'published';
+        const products = await categoryService.getProductsByCategoryId(categoryId, limit, status);
         return successResponse(res, products);
     } catch (error) {
         next(error);

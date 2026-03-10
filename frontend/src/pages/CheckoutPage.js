@@ -8,13 +8,15 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
+import { Tag, X, Loader2 } from 'lucide-react';
 
 const CheckoutPage = () => {
-  const { cart, clearCart } = useCart();
+  const { cart, clearCart, appliedCoupon, discountAmount, removeCoupon } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [cartProducts, setCartProducts] = useState([]);
+  const [removingCoupon, setRemovingCoupon] = useState(false);
 
   const [shippingData, setShippingData] = useState({
     name: user?.name || '',
@@ -60,7 +62,19 @@ const CheckoutPage = () => {
 
   const subtotal = calculateSubtotal();
   const shipping = subtotal > 999 ? 0 : 99;
-  const total = subtotal + shipping;
+  const total = subtotal - discountAmount + shipping;
+
+  const handleRemoveCoupon = async () => {
+    setRemovingCoupon(true);
+    try {
+      await removeCoupon();
+      toast.success('Coupon removed');
+    } catch (error) {
+      toast.error('Failed to remove coupon');
+    } finally {
+      setRemovingCoupon(false);
+    }
+  };
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -89,6 +103,7 @@ const CheckoutPage = () => {
         items: cart.items,
         shipping_address: shippingData,
         email,
+        couponCode: appliedCoupon?.code, // Include coupon code if applied
       };
 
       const orderResponse = await ordersAPI.create(orderData);
@@ -303,6 +318,31 @@ const CheckoutPage = () => {
 
               {/* Totals */}
               <div className="space-y-3 pt-4 border-t border-border">
+                {/* Coupon Display */}
+                {appliedCoupon && (
+                  <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-green-600" />
+                        <span className="font-medium text-green-800 dark:text-green-200 text-sm">{appliedCoupon.code}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveCoupon}
+                        disabled={removingCoupon}
+                        className="h-6 w-6 p-0 text-green-600 hover:text-green-800"
+                      >
+                        {removingCoupon ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span data-testid="checkout-subtotal">{formatPrice(subtotal)}</span>
@@ -313,6 +353,12 @@ const CheckoutPage = () => {
                     {shipping === 0 ? 'Free' : formatPrice(shipping)}
                   </span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span className="text-muted-foreground">Discount</span>
+                    <span data-testid="checkout-discount">-{formatPrice(discountAmount)}</span>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-border flex justify-between text-lg font-medium">
                   <span>Total</span>
                   <span data-testid="checkout-total">{formatPrice(total)}</span>

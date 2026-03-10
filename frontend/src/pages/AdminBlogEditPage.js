@@ -16,8 +16,12 @@ const AdminBlogEditPage = () => {
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
 
+    const [categories, setCategories] = useState([]);
+    const [featuredImageUrl, setFeaturedImageUrl] = useState('');
+
     const [postData, setPostData] = useState({
         title: '',
+        slug: '',
         content: '',
         excerpt: '',
         status: 'draft',
@@ -54,6 +58,7 @@ const AdminBlogEditPage = () => {
 
                     setPostData({
                         title: p.title || '',
+                        slug: p.slug || '',
                         content: p.content || '',
                         excerpt: p.excerpt || '',
                         status: p.status || 'draft',
@@ -65,6 +70,7 @@ const AdminBlogEditPage = () => {
                         featuredImage: p.featured_image || ''
                     });
                     setTagsInput(p.tags ? p.tags.join(', ') : '');
+                    setFeaturedImageUrl(p.featured_image || '');
                 }
             } catch (error) {
                 console.error('Failed to load post data:', error);
@@ -102,21 +108,21 @@ const AdminBlogEditPage = () => {
             const tempUrl = URL.createObjectURL(file);
             setFeaturedImageUrl(tempUrl); // Optimistic UI
 
-            const res = await blogAPI.uploadMedia(file);
+            // Use uploadAPI with FormData
+            const { uploadAPI } = await import('../services/api');
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await uploadAPI.uploadImage(formData);
 
-            // WP REST API media upload returns the media ID and URL
-            // If we want to strictly set featured media, we must pass `featured_media` id to PUT /posts
-            // For now, let's keep it simple by just passing back the attachment or simply letting them upload inline
-            // We also update state to hold the `featured_media` ID so `handleSave` can use it 
-            if (res.data && res.data.id) {
-                setPostData(prev => ({ ...prev, featured_media: res.data.id }));
+            if (res.data && res.data.url) {
+                setPostData(prev => ({ ...prev, featuredImage: res.data.url }));
                 setFeaturedImageUrl(res.data.url);
-                toast.success("Image uploaded to WordPress successfully");
+                toast.success("Image uploaded successfully");
             }
         } catch (error) {
             console.error('Failed to upload image:', error);
             toast.error('Image upload failed');
-            setFeaturedImageUrl(''); // Revert on failure
+            setFeaturedImageUrl(postData.featuredImage || ''); // Revert on failure
         } finally {
             setUploadingImage(false);
         }
@@ -183,6 +189,23 @@ const AdminBlogEditPage = () => {
                                     placeholder="Enter title here"
                                     required
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-2">URL Slug</label>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">/blog/</span>
+                                    <input
+                                        type="text"
+                                        name="slug"
+                                        value={postData.slug}
+                                        onChange={handleInputChange}
+                                        className="flex-1 px-4 py-2 bg-background border border-border rounded-lg font-mono text-sm"
+                                        placeholder="auto-generated-from-title"
+                                        required
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">This will be the URL path for your blog post</p>
                             </div>
 
                             <div>

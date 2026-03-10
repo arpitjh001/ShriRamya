@@ -96,8 +96,8 @@ const HomePage = () => {
           productsAPI.getAll({ featured: true, limit: 4 }),
           productsAPI.getAll({ category: 'most-desired', limit: 4 }),
         ]);
-        setFeaturedProducts(featured.data);
-        setTrendingProducts(trending.data);
+        setFeaturedProducts((featured.data || []).filter(p => p.status === 'published'));
+        setTrendingProducts((trending.data || []).filter(p => p.status === 'published'));
       } catch (error) {
         console.error('Failed to fetch products:', error);
       } finally {

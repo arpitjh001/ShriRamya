@@ -156,7 +156,7 @@ class SearchService {
       WHERE p.status = 'published'
       ${category ? 'AND JSON_SEARCH(si.category_names, \'one\', ?) IS NOT NULL' : ''}
     `;
-    
+
     const countValues = category ? [category] : [];
     const [countResult] = await mysqlPool.query(countQuery, countValues);
     const total = countResult[0].total;
@@ -222,7 +222,7 @@ class SearchService {
     }
 
     const cacheKey = `search:suggestions:${query.toLowerCase()}`;
-    
+
     if (redis) {
       try {
         const cached = await redis.get(cacheKey);
@@ -290,9 +290,9 @@ class SearchService {
 
     // Get price range
     const [priceRange] = await mysqlPool.query(
-      `SELECT 
-         MIN(p.basePrice) as min_price,
-         MAX(p.basePrice) as max_price
+      `SELECT
+         MIN(p.base_price) as min_price,
+         MAX(p.base_price) as max_price
        FROM products p
        WHERE p.status = 'published'`
     );
@@ -348,7 +348,7 @@ class SearchService {
     const searchVector = searchParts.join(' ').toLowerCase();
 
     // Build category names JSON
-    const categoryNames = product.category_names 
+    const categoryNames = product.category_names
       ? JSON.stringify(product.category_names.split(',').filter(Boolean))
       : '[]';
 
@@ -356,10 +356,10 @@ class SearchService {
     const attributes = {};
     for (const variant of variants || []) {
       if (variant.attributes) {
-        const attrs = typeof variant.attributes === 'string' 
-          ? JSON.parse(variant.attributes) 
+        const attrs = typeof variant.attributes === 'string'
+          ? JSON.parse(variant.attributes)
           : variant.attributes;
-        
+
         for (const [key, value] of Object.entries(attrs)) {
           if (!attributes[key]) {
             attributes[key] = [];
@@ -408,9 +408,9 @@ class SearchService {
         sku,
         categoryNames,
         attributeNames,
-        product.basePrice || 0,
+        product.base_price || 0,
         totalStock,
-        product.status,
+        product.status || 'published',
         searchVector
       ]
     );
@@ -431,8 +431,8 @@ class SearchService {
    * Rebuild search index for all products
    */
   async rebuildSearchIndex() {
-    const [products] = await mysqlPool.query('SELECT id FROM products WHERE status = "published"');
-    
+    const [products] = await mysqlPool.query('SELECT id FROM products');
+
     let successCount = 0;
     let errorCount = 0;
 
@@ -462,7 +462,7 @@ class SearchService {
       .sort()
       .map(key => `${key}=${params[key]}`)
       .join('&');
-    
+
     return `search:products:${sortedParams}`;
   }
 
@@ -471,14 +471,14 @@ class SearchService {
    */
   _extractUniqueValues(rows, fieldName) {
     const values = new Set();
-    
+
     for (const row of rows) {
       if (row[fieldName]) {
         try {
-          const arr = typeof row[fieldName] === 'string' 
-            ? JSON.parse(row[fieldName]) 
+          const arr = typeof row[fieldName] === 'string'
+            ? JSON.parse(row[fieldName])
             : row[fieldName];
-          
+
           if (Array.isArray(arr)) {
             arr.forEach(v => values.add(v));
           }
@@ -509,6 +509,7 @@ class SearchService {
       reviewCount: product.review_count || 0,
       categoryNames: product.category_names ? JSON.parse(product.category_names) : [],
       attributeNames: product.attribute_names ? JSON.parse(product.attribute_names) : {},
+      status: product.status || 'published',
       relevanceScore: product.relevance_score,
       inStock: (product.total_stock || 0) > 0
     };

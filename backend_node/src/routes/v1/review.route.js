@@ -9,15 +9,26 @@ router.use(apiLimiter);
 
 /**
  * Review endpoints
- * POST /api/v1/products/:id/reviews
- * GET /api/v1/products/:id/reviews
+ * Specific routes MUST come before parameterized routes
  */
+
+// Get review by ID (specific route first)
+router.get('/:id', reviewController.getReview);
+
+// Mark review as helpful (must come before /approve to avoid conflicts)
+router.post('/:id/helpful', auth(['customer', 'admin']), reviewLimiter, reviewController.markReviewHelpful);
+
+// Approve review (admin only)
+router.put('/:id/approve', auth(['admin']), reviewController.approveReview);
+
+// Delete review
+router.delete('/:id', auth(['customer', 'admin']), reviewController.deleteReview);
+
+// Product reviews
 router.post('/products/:id/reviews', auth(['customer', 'admin']), reviewLimiter, reviewController.createReview);
 router.get('/products/:id/reviews', reviewController.getProductReviews);
+
+// User reviews
 router.get('/users/:userId/reviews', reviewController.getUserReviews);
-router.get('/:id', reviewController.getReview);
-router.post('/:id/helpful', auth(['customer', 'admin']), reviewLimiter, reviewController.markReviewHelpful);
-router.put('/:id/approve', auth(['admin']), reviewController.approveReview);
-router.delete('/:id', auth(['customer', 'admin']), reviewController.deleteReview);
 
 module.exports = router;

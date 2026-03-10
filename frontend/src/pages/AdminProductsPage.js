@@ -49,7 +49,8 @@ const AdminProductsPage = () => {
     fabric: '',
     occasion: '',
     images: [],
-    variants: []
+    variants: [],
+    categories: [] // Array of category IDs
   });
 
   // Category Modal State
@@ -69,13 +70,13 @@ const AdminProductsPage = () => {
   useEffect(() => {
     const userRole = user?.role?.toLowerCase();
     const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
-    
+
     if (!user || (!userRoles.includes('admin') && userRole !== 'admin')) {
       toast.error('Access denied');
       navigate('/');
       return;
     }
-    
+
     loadData();
   }, [user]);
 
@@ -88,18 +89,23 @@ const AdminProductsPage = () => {
   const loadProducts = async () => {
     try {
       const response = await productsAPI.getAll({ per_page: 100 });
+      // response.products is the raw data, response.data is the transformed data
       const productsData = response.products || response.data || [];
-      
-      const mappedProducts = productsData.map(product => ({
-        ...product,
-        basePrice: typeof (product.basePrice || product.base_price || 0) === 'string' 
-          ? parseFloat(product.basePrice || product.base_price || 0) 
-          : (product.basePrice || product.base_price || 0),
-        sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
-        stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
-        categoryNames: product.categories?.map(cat => cat.name).join(', ') || product.category || 'Uncategorized'
-      }));
-      
+
+      const mappedProducts = productsData.map(product => {
+        // Correctly handle basePrice from multiple possible fields
+        const priceValue = product.basePrice || product.base_price || product.price || 0;
+        const basePrice = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
+
+        return {
+          ...product,
+          basePrice: basePrice,
+          sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
+          stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
+          categoryNames: product.categories?.map(cat => cat.name).join(', ') || product.category || 'Uncategorized'
+        };
+      });
+
       setProducts(mappedProducts);
     } catch (error) {
       console.error('Failed to load products:', error);
@@ -110,7 +116,12 @@ const AdminProductsPage = () => {
   const loadCategories = async () => {
     try {
       const response = await categoriesAPI.getAll();
-      setCategories(response.categories || []);
+      // Handle the case where response is an array of categories
+      // or an object with a 'categories' property
+      const categoriesData = Array.isArray(response)
+        ? response
+        : (response?.categories || []);
+      setCategories(categoriesData);
     } catch (error) {
       console.error('Failed to load categories:', error);
       setCategories([]);
@@ -125,11 +136,12 @@ const AdminProductsPage = () => {
         name: product.name || '',
         description: product.description || '',
         basePrice: product.basePrice?.toString() || '',
-        status: product.status || 'published',
+        status: 'draft',
         fabric: product.fabric || '',
         occasion: product.occasion || '',
         images: product.images || [],
-        variants: product.variants || []
+        variants: product.variants || [],
+        categories: product.categories?.map(c => c.id.toString()) || []
       });
     } else {
       setEditingProduct(null);
@@ -137,11 +149,12 @@ const AdminProductsPage = () => {
         name: '',
         description: '',
         basePrice: '',
-        status: 'published',
+        status: 'draft',
         fabric: '',
         occasion: '',
         images: [],
-        variants: []
+        variants: [],
+        categories: []
       });
     }
     setShowProductModal(true);
@@ -154,9 +167,22 @@ const AdminProductsPage = () => {
     }
 
     try {
+      // Clean variants - remove effectivePrice as it's not allowed by backend
+      const cleanVariants = (productForm.variants || []).map(v => {
+        const { effectivePrice, ...rest } = v;
+        return rest;
+      });
+
       const productData = {
-        ...productForm,
-        basePrice: parseFloat(productForm.basePrice) || 0
+        name: productForm.name,
+        description: productForm.description,
+        fabric: productForm.fabric,
+        occasion: productForm.occasion,
+        basePrice: parseFloat(productForm.basePrice) || 0,
+        status: productForm.status,
+        images: productForm.images,
+        categories: productForm.categories, // Send as 'categories' not 'categoryIds'
+        variants: cleanVariants
       };
 
       if (editingProduct) {
@@ -166,7 +192,7 @@ const AdminProductsPage = () => {
         await productsAPI.create(productData);
         toast.success('Product created successfully');
       }
-      
+
       setShowProductModal(false);
       await loadProducts();
     } catch (error) {
@@ -176,7 +202,7 @@ const AdminProductsPage = () => {
 
   const handleDeleteProduct = async (productId) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    
+
     try {
       await productsAPI.delete(productId);
       toast.success('Product deleted successfully');
@@ -193,9 +219,12 @@ const AdminProductsPage = () => {
     setUploadingImage(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('file', file);
       const response = await uploadAPI.uploadImage(formData);
-      setProductForm(prev => ({ ...prev, images: [...prev.images, response.url] }));
+      const uploaded = response?.data || {};
+      const imageUrl = uploaded?.cdn?.medium || uploaded?.medium || uploaded?.original || uploaded?.url;
+      if (!imageUrl) throw new Error('Upload succeeded but no image URL returned');
+      setProductForm(prev => ({ ...prev, images: [...prev.images, imageUrl] }));
       toast.success('Image uploaded successfully');
     } catch (error) {
       toast.error('Failed to upload image');
@@ -240,7 +269,7 @@ const AdminProductsPage = () => {
         await categoriesAPI.create(categoryForm);
         toast.success('Category created successfully');
       }
-      
+
       setShowCategoryModal(false);
       await loadCategories();
     } catch (error) {
@@ -250,7 +279,7 @@ const AdminProductsPage = () => {
 
   const handleDeleteCategory = async (categoryId) => {
     if (!confirm('Are you sure you want to delete this category?')) return;
-    
+
     try {
       await categoriesAPI.delete(categoryId);
       toast.success('Category deleted successfully');
@@ -267,9 +296,12 @@ const AdminProductsPage = () => {
     setUploadingImage(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('file', file);
       const response = await uploadAPI.uploadImage(formData);
-      setCategoryForm(prev => ({ ...prev, image: response.url }));
+      const uploaded = response?.data || {};
+      const imageUrl = uploaded?.cdn?.medium || uploaded?.medium || uploaded?.original || uploaded?.url;
+      if (!imageUrl) throw new Error('Upload succeeded but no image URL returned');
+      setCategoryForm(prev => ({ ...prev, image: imageUrl }));
       toast.success('Image uploaded successfully');
     } catch (error) {
       toast.error('Failed to upload image');
@@ -292,8 +324,8 @@ const AdminProductsPage = () => {
   );
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
       padding: '32px'
     }}>
@@ -321,9 +353,9 @@ const AdminProductsPage = () => {
 
       {/* Products Tab */}
       {activeTab === 'products' && (
-        <Card style={{ 
-          background: 'rgba(30, 27, 75, 0.6)', 
-          border: '1px solid rgba(148, 163, 184, 0.2)' 
+        <Card style={{
+          background: 'rgba(30, 27, 75, 0.6)',
+          border: '1px solid rgba(148, 163, 184, 0.2)'
         }}>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -341,14 +373,14 @@ const AdminProductsPage = () => {
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     className="pl-10 w-72"
-                    style={{ 
-                      background: 'rgba(255, 255, 255, 0.05)', 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
                       color: '#e2e8f0',
                       borderColor: 'rgba(148, 163, 184, 0.3)'
                     }}
                   />
                 </div>
-                <Button 
+                <Button
                   onClick={() => handleOpenProductModal()}
                   className="gap-2"
                   style={{ background: '#6366f1' }}
@@ -384,8 +416,8 @@ const AdminProductsPage = () => {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {product.images?.[0] ? (
-                              <img 
-                                src={product.images[0]} 
+                              <img
+                                src={product.images[0]}
                                 alt={product.name}
                                 className="w-12 h-12 object-cover rounded-lg"
                               />
@@ -441,8 +473,8 @@ const AdminProductsPage = () => {
                   <div className="text-center py-12 text-gray-400">
                     <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No products found</p>
-                    <Button 
-                      variant="link" 
+                    <Button
+                      variant="link"
                       onClick={() => handleOpenProductModal()}
                       className="text-indigo-400 mt-2"
                     >
@@ -458,9 +490,9 @@ const AdminProductsPage = () => {
 
       {/* Categories Tab */}
       {activeTab === 'categories' && (
-        <Card style={{ 
-          background: 'rgba(30, 27, 75, 0.6)', 
-          border: '1px solid rgba(148, 163, 184, 0.2)' 
+        <Card style={{
+          background: 'rgba(30, 27, 75, 0.6)',
+          border: '1px solid rgba(148, 163, 184, 0.2)'
         }}>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -478,14 +510,14 @@ const AdminProductsPage = () => {
                     value={categorySearch}
                     onChange={(e) => setCategorySearch(e.target.value)}
                     className="pl-10 w-72"
-                    style={{ 
-                      background: 'rgba(255, 255, 255, 0.05)', 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
                       color: '#e2e8f0',
                       borderColor: 'rgba(148, 163, 184, 0.3)'
                     }}
                   />
                 </div>
-                <Button 
+                <Button
                   onClick={() => handleOpenCategoryModal()}
                   className="gap-2"
                   style={{ background: '#6366f1' }}
@@ -518,8 +550,8 @@ const AdminProductsPage = () => {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {category.image ? (
-                              <img 
-                                src={category.image} 
+                              <img
+                                src={category.image}
                                 alt={category.name}
                                 className="w-12 h-12 object-cover rounded-lg"
                               />
@@ -569,8 +601,8 @@ const AdminProductsPage = () => {
                   <div className="text-center py-12 text-gray-400">
                     <FolderPlus className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No categories found</p>
-                    <Button 
-                      variant="link" 
+                    <Button
+                      variant="link"
                       onClick={() => handleOpenCategoryModal()}
                       className="text-indigo-400 mt-2"
                     >
@@ -663,6 +695,97 @@ const AdminProductsPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Category Selection */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label style={{ color: '#e2e8f0' }}>Categories</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleOpenCategoryModal()}
+                  className="h-7 px-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 gap-1 text-xs"
+                >
+                  <Plus className="w-3 h-3" />
+                  New Category
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 rounded border"
+                style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(148, 163, 184, 0.3)' }}>
+                {categories.map((category) => (
+                  <div
+                    key={category.id}
+                    className="flex items-center justify-between p-2 rounded hover:bg-white/10 transition-colors group"
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer flex-1" style={{ color: '#e2e8f0' }}>
+                      <input
+                        type="checkbox"
+                        checked={productForm.categories?.includes(category.id.toString())}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setProductForm(prev => ({
+                            ...prev,
+                            categories: isChecked
+                              ? [...(prev.categories || []), category.id.toString()]
+                              : (prev.categories || []).filter(id => id !== category.id.toString())
+                          }));
+                        }}
+                        className="w-4 h-4 rounded border-gray-600 text-indigo-500 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm truncate">{category.name}</span>
+                    </label>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleOpenCategoryModal(category);
+                        }}
+                        className="p-1 text-gray-400 hover:text-indigo-400"
+                        title="Edit Category"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDeleteCategory(category.id);
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-400"
+                        title="Delete Category"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {categories.length === 0 && (
+                  <p className="text-gray-400 text-sm col-span-2 text-center py-4">
+                    No categories available. Create a category first.
+                  </p>
+                )}
+              </div>
+              {productForm.categories?.length > 0 && (
+                <div className="flex gap-1 mt-2 flex-wrap">
+                  {productForm.categories.map(catId => {
+                    const cat = categories.find(c => c.id.toString() === catId);
+                    return cat ? (
+                      <Badge key={catId} variant="secondary" className="gap-1">
+                        {cat.name}
+                        <button
+                          onClick={() => setProductForm(prev => ({
+                            ...prev,
+                            categories: prev.categories.filter(id => id !== catId)
+                          }))}
+                          className="hover:text-red-400"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
             <div>
               <Label style={{ color: '#e2e8f0' }}>Product Images</Label>
               <div className="flex items-center gap-4 mt-2">
@@ -683,9 +806,9 @@ const AdminProductsPage = () => {
                     <div key={idx} className="relative">
                       <img src={img} alt="Product" className="w-20 h-20 object-cover rounded" />
                       <button
-                        onClick={() => setProductForm(prev => ({ 
-                          ...prev, 
-                          images: prev.images.filter((_, i) => i !== idx) 
+                        onClick={() => setProductForm(prev => ({
+                          ...prev,
+                          images: prev.images.filter((_, i) => i !== idx)
                         }))}
                         className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 hover:bg-red-600"
                       >

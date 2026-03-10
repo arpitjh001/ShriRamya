@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Heart, User, Menu, Search, ExternalLink, BookOpen, Home, Shirt, FolderOpen, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,15 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   const categories = [
     {
@@ -48,12 +57,11 @@ const Navbar = () => {
           {(isAdmin() || isEditor() || canViewDashboard()) && (
             <div className="absolute right-4 top-1/2 z-10 -translate-y-1/2 md:right-12">
               <a
-                href="/admin/woocommerce"
+                href="/admin/dashboard"
                 className="dashboard-btn inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/90 px-3 py-1 text-[9px] font-bold text-charcoal shadow-md transition-all hover:bg-accent md:px-4 md:text-[10px]"
               >
                 <ExternalLink className="h-3 w-3" />
                 <span className="hidden sm:inline">DASHBOARD</span>
-                <span className="sm:hidden">WP</span>
               </a>
             </div>
           )}
@@ -83,13 +91,13 @@ const Navbar = () => {
                       <p>Home</p>
                     </TooltipContent>
                   </Tooltip>
-                  
-                  {categories.map((cat, index) => (
-                    <Tooltip key={index}>
+
+                  {categories.map((cat) => (
+                    <Tooltip key={cat.name}>
                       <TooltipTrigger asChild>
                         <div className="relative group">
-                          <Link 
-                            to={cat.path} 
+                          <Link
+                            to={cat.path}
                             className="p-2 rounded-full hover:bg-accent/10 transition-colors"
                           >
                             <cat.icon className={iconClass} />
@@ -114,7 +122,7 @@ const Navbar = () => {
                       </TooltipContent>
                     </Tooltip>
                   ))}
-                  
+
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Link to="/blog" className="p-2 rounded-full hover:bg-accent/10 transition-colors">
@@ -208,6 +216,8 @@ const Navbar = () => {
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="xl:hidden rounded-full border border-accent/20 bg-ivory/5 p-2 text-primary-foreground hover:bg-ivory/10"
                 aria-label="Toggle menu"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-nav-panel"
               >
                 <Menu className="h-6 w-6" />
               </button>
@@ -215,131 +225,110 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile Menu Overlay - No Blur */}
+        {/* Mobile Menu Overlay (Moved outside of nav) */}
         {mobileMenuOpen && (
-          <div 
-            className="fixed inset-0 z-40 bg-black/70 xl:hidden"
-            style={{
-              backdropFilter: 'none',
-              WebkitBackdropFilter: 'none',
-            }}
+          <div
+            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md xl:hidden transition-opacity duration-300"
             onClick={() => setMobileMenuOpen(false)}
           />
         )}
 
-        {/* Mobile Menu Panel */}
+        {/* Mobile Menu Panel (Moved outside of nav) */}
         <div
-          className={`fixed top-0 left-0 z-50 h-full w-[320px] border-r border-accent/30 bg-gradient-to-b from-charcoal via-charcoal to-primary text-primary-foreground shadow-2xl transition-transform duration-300 ease-out xl:hidden ${
-            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-          style={{
-            backdropFilter: 'none',
-            WebkitBackdropFilter: 'none',
-          }}
+          id="mobile-nav-panel"
+          className={`fixed top-0 left-0 z-[70] h-screen w-[85vw] max-w-[320px] border-r border-white/10 bg-black shadow-2xl transition-all duration-500 ease-in-out xl:hidden ${mobileMenuOpen ? 'translate-x-0 shadow-black/80' : '-translate-x-full shadow-none'
+            }`}
         >
-          <div className="mt-16 flex flex-col gap-2 overflow-y-auto p-4">
-            {/* Logo with subtle animation */}
-            <div className="mb-6 px-2 transition-transform duration-500 hover:scale-105">
+          <div className="flex h-full flex-col overflow-y-auto p-4 pt-16">
+            {/* Logo */}
+            <div className="mb-8 px-2">
               <img
                 src={`${process.env.PUBLIC_URL}/logo.png`}
                 alt="Shri Ramya"
-                className="w-40 brightness-110 drop-shadow-lg"
+                className="w-40 brightness-110"
               />
             </div>
 
             {/* Close Button */}
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="absolute right-4 top-4 rounded-full border border-accent/30 bg-charcoal p-2 text-primary-foreground/70 transition-all duration-300 hover:border-accent hover:bg-charcoal hover:text-accent"
+              className="absolute right-4 top-6 rounded-full border border-white/20 bg-white/10 p-2 text-white/70 transition-all hover:bg-white/20"
               aria-label="Close menu"
             >
-              <X className="h-5 w-5" />
+              <X className="h-6 w-6" />
             </button>
 
-            {/* Navigation Links */}
-            <Link
-              to="/"
-              className="group relative overflow-hidden rounded-lg px-4 py-4 font-heading text-lg tracking-wide text-primary-foreground/85 transition-all duration-300 ease-out hover:bg-accent/10 hover:text-accent hover:pl-5"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <span className="relative z-10">Home</span>
-              <div className="absolute inset-y-0 left-0 w-1 bg-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            </Link>
-
-            {categories.map((cat) => (
-              <div key={cat.name} className="border-t border-accent/15">
-                <Link
-                  to={cat.path}
-                  className="group relative block px-4 py-4 font-heading text-xl tracking-wide text-primary-foreground/85 transition-all duration-300 ease-out hover:bg-accent/10 hover:text-accent hover:pl-5"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span className="relative z-10">{cat.name}</span>
-                  <div className="absolute inset-y-0 left-0 w-1 bg-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                </Link>
-                {cat.sub && (
-                  <div className="ml-4 mt-1 flex flex-col border-l border-accent/20 pl-4">
-                    {cat.sub.map(subCat => (
-                      <Link
-                        key={subCat.name}
-                        to={subCat.path}
-                        className="group relative block py-3 font-heading text-base tracking-wide text-primary-foreground/65 transition-all duration-300 ease-out hover:text-accent hover:pl-3"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <span className="relative z-10">{subCat.name}</span>
-                        <div className="absolute inset-y-0 left-0 w-0.5 bg-accent/50 opacity-0 transition-all duration-300 group-hover:w-1 group-hover:opacity-100" />
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <div className="border-t border-accent/15">
+            {/* Nav Links */}
+            <div className="flex flex-col gap-1">
               <Link
-                to="/blog"
-                className="group relative block px-4 py-4 font-heading text-xl tracking-wide text-primary-foreground/85 transition-all duration-300 ease-out hover:bg-accent/10 hover:text-accent hover:pl-5"
+                to="/"
+                className="group relative px-4 py-4 text-lg font-medium text-white/90 hover:bg-white/5 rounded-lg transition-all"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  Blog
-                </span>
-                <div className="absolute inset-y-0 left-0 w-1 bg-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                Home
               </Link>
-            </div>
 
-            {/* User-specific links */}
-            {user && (
-              <>
-                <div className="border-t border-accent/15">
+              {categories.map((cat) => (
+                <div key={cat.name} className="flex flex-col">
+                  <Link
+                    to={cat.path}
+                    className="group relative px-4 py-4 text-xl font-semibold text-white hover:bg-white/5 rounded-lg transition-all"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {cat.name}
+                  </Link>
+                  {cat.sub && (
+                    <div className="ml-4 border-l border-white/10 pl-4 mb-2">
+                      {cat.sub.map(subCat => (
+                        <Link
+                          key={subCat.name}
+                          to={subCat.path}
+                          className="block py-3 text-white/60 hover:text-white transition-all"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {subCat.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <Link
+                to="/blog"
+                className="group relative px-4 py-4 text-xl font-semibold text-white hover:bg-white/5 rounded-lg transition-all flex items-center gap-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <BookOpen className="w-5 h-5" />
+                Blog
+              </Link>
+
+              {user && (
+                <div className="mt-4 border-t border-white/10 pt-4 flex flex-col gap-1">
                   <Link
                     to="/account"
-                    className="group relative block px-4 py-4 font-heading text-lg tracking-wide text-primary-foreground/85 transition-all duration-300 ease-out hover:bg-accent/10 hover:text-accent hover:pl-5"
+                    className="px-4 py-4 text-lg text-white/80 hover:bg-white/5 rounded-lg"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <span className="relative z-10">My Account</span>
-                    <div className="absolute inset-y-0 left-0 w-1 bg-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    My Account
                   </Link>
-                </div>
-                <div className="border-t border-accent/15">
                   <Link
-                    to="/orders"
-                    className="group relative block px-4 py-4 font-heading text-lg tracking-wide text-primary-foreground/85 transition-all duration-300 ease-out hover:bg-accent/10 hover:text-accent hover:pl-5"
+                    to="/account"
+                    className="px-4 py-4 text-lg text-white/80 hover:bg-white/5 rounded-lg"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <span className="relative z-10">My Orders</span>
-                    <div className="absolute inset-y-0 left-0 w-1 bg-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    My Orders
                   </Link>
                 </div>
-              </>
-            )}
+              )}
+            </div>
 
-            {/* Footer branding */}
-            <div className="mt-8 border-t border-accent/20 pt-6 text-center">
-              <p className="font-heading text-xs tracking-[0.2em] text-primary-foreground/40">
-                LUXURY ETHNIC WEAR
+            {/* Footer */}
+            <div className="mt-auto border-t border-white/10 pt-8 pb-4 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">
+                Luxury Ethnic Wear
               </p>
-              <p className="mt-2 text-[10px] text-primary-foreground/30">
+              <p className="mt-2 text-[9px] text-white/20">
                 © 2024 Shri Ramya
               </p>
             </div>

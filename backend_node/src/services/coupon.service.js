@@ -533,6 +533,16 @@ class CouponService {
    * Format coupon response
    */
   _formatCoupon(coupon) {
+    // Safe JSON parse helper
+    const safeJsonParse = (str) => {
+      if (!str || typeof str !== 'string' || str.trim() === '') return null;
+      try {
+        return JSON.parse(str);
+      } catch (e) {
+        return null;
+      }
+    };
+
     return {
       id: coupon.id,
       code: coupon.code,
@@ -546,8 +556,8 @@ class CouponService {
       starts_at: coupon.starts_at,
       expires_at: coupon.expires_at,
       status: coupon.status,
-      applicable_products: coupon.applicable_products ? JSON.parse(coupon.applicable_products) : null,
-      applicable_categories: coupon.applicable_categories ? JSON.parse(coupon.applicable_categories) : null,
+      applicable_products: safeJsonParse(coupon.applicable_products),
+      applicable_categories: safeJsonParse(coupon.applicable_categories),
       buy_x_qty: coupon.buy_x_qty,
       get_y_qty: coupon.get_y_qty,
       created_at: coupon.created_at,

@@ -30,9 +30,10 @@ const AboutPage = lazy(() => import('../pages/AboutPage'));
 const TrackOrderPage = lazy(() => import('../pages/TrackOrderPage'));
 const FabricCarePage = lazy(() => import('../pages/FabricCarePage'));
 const ContactPage = lazy(() => import('../pages/ContactPage'));
-const AdminWooCommercePage = lazy(() => import('../pages/AdminWooCommercePage'));
+const AdminDashboardPage = lazy(() => import('../pages/AdminWooCommercePage'));
 const AllProductsPage = lazy(() => import('../pages/AllProductsPage'));
 const CategoryPage = lazy(() => import('../pages/CategoryPage'));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 // NEW Phase 10 Admin Pages - Lazy loaded
 const AdminProductsPage = lazy(() => import('../pages/AdminProductsPage'));
@@ -66,11 +67,17 @@ const AppRoutes = () => {
                     <Route path="/track-order" element={<TrackOrderPage />} />
                     <Route path="/fabric-care" element={<FabricCarePage />} />
                     <Route path="/contact" element={<ContactPage />} />
-                    <Route path="/admin/woocommerce" element={<AdminWooCommercePage />} />
+                    <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                    <Route path="/admin/products" element={<AdminProductsPage />} />
+                    <Route path="/admin/inventory" element={<AdminInventoryPage />} />
+                    <Route path="/admin/coupons" element={<AdminCouponsPage />} />
+                    <Route path="/admin/orders" element={<AdminOrdersPage />} />
+                    <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
                     <Route path="/admin/blogs" element={<AdminBlogsPage />} />
                     <Route path="/admin/blog/:id/edit" element={<AdminBlogEditPage />} />
                     <Route path="/all-products" element={<AllProductsPage />} />
                     <Route path="/category/:slug" element={<CategoryPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
                 </Route>
             </Routes>
         </Suspense>

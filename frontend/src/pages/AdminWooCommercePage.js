@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import {
-    wcProductsAPI,
-    wcCategoriesAPI,
-    wcOrdersAPI,
-    wcCustomersAPI,
-    wcCouponsAPI,
-} from '../services/wcApi.service';
-import { authAPI, productsAPI, analyticsAPI, warehouseAPI, couponsAPI } from '../services/api';
+import { authAPI, productsAPI, analyticsAPI, warehouseAPI, couponsAPI, ordersAPI, categoriesAPI, userManagementService, uploadAPI } from '../services/api';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 
@@ -19,19 +12,19 @@ import AdminCouponsPage from './AdminCouponsPage';
 import AdminOrdersPage from './AdminOrdersPage';
 import AdminAnalyticsPage from './AdminAnalyticsPage';
 
-// Updated TABS with Phase 9 features (removed WooCommerce tab)
+// Updated TABS - Native APIs only
 const TABS = ['Native Products', 'Inventory', 'Coupons', 'Orders', 'Analytics'];
 
-// View modes for Native Products tab
+// View modes for Products tab
 const VIEW_MODES = {
     DETAILED: 'detailed', // View B - Dashboard style with badges
     LIST: 'list' // View A - Compact list view
 };
 
-const AdminWooCommercePage = () => {
+const AdminDashboardPage = () => {
     const { user, login } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('Native Products');
+    const [activeTab, setActiveTab] = useState('Products');
     const [viewMode, setViewMode] = useState(VIEW_MODES.DETAILED); // Default to detailed view (View B)
     const [loading, setLoading] = useState(false);
     const [adminCheck, setAdminCheck] = useState('checking'); // 'checking' | 'admin' | 'denied' | 'login'
@@ -183,7 +176,7 @@ const AdminWooCommercePage = () => {
     const loadCategories = async () => {
         setLoading(true);
         try {
-            const catData = await wcCategoriesAPI.getAll();
+            const catData = await categoriesAPI.getAll();
             setCategories(catData.categories || []);
         } catch { toast.error('Failed to load categories'); }
         setLoading(false);
@@ -192,7 +185,7 @@ const AdminWooCommercePage = () => {
     const loadOrders = async () => {
         setLoading(true);
         try {
-            const data = await wcOrdersAPI.getAll({ per_page: 50 });
+            const data = await ordersAPI.getAll({ per_page: 50 });
             setOrders(data.orders || []);
         } catch { toast.error('Failed to load orders'); }
         setLoading(false);
@@ -201,8 +194,9 @@ const AdminWooCommercePage = () => {
     const loadCustomers = async () => {
         setLoading(true);
         try {
-            const data = await wcCustomersAPI.getAll({ per_page: 50 });
-            setCustomers(data.customers || []);
+            const res = await userManagementService.getAllUsers({ per_page: 50 });
+            // res.data is the array of users/customers
+            setCustomers(res.data || []);
         } catch { toast.error('Failed to load customers'); }
         setLoading(false);
     };
@@ -210,7 +204,7 @@ const AdminWooCommercePage = () => {
     const loadCoupons = async () => {
         setLoading(true);
         try {
-            const data = await wcCouponsAPI.getAll();
+            const data = await couponsAPI.getAll();
             setCoupons(data.coupons || []);
         } catch { toast.error('Failed to load coupons'); }
         setLoading(false);
@@ -382,10 +376,10 @@ const AdminWooCommercePage = () => {
 
             if (editProduct) {
                 // Backend now handles the full variants array natively (Update / Insert / Delete)
-                await wcProductsAPI.update(editProduct.id, data);
+                await productsAPI.update(editProduct.id, data);
                 toast.success('Product updated!');
             } else {
-                await wcProductsAPI.create(data);
+                await productsAPI.create(data);
                 toast.success('Product created!');
             }
             setShowProductForm(false);
@@ -401,7 +395,7 @@ const AdminWooCommercePage = () => {
     const handleDeleteProduct = async (id) => {
         if (!window.confirm('Delete this product?')) return;
         try {
-            await wcProductsAPI.delete(id);
+            await productsAPI.delete(id);
             toast.success('Product deleted');
             loadProducts();
         } catch { toast.error('Delete failed'); }
@@ -467,7 +461,7 @@ const AdminWooCommercePage = () => {
         if (!newCategoryName.trim()) return;
         setCreatingCategory(true);
         try {
-            const result = await wcCategoriesAPI.create({ name: newCategoryName.trim() });
+            const result = await categoriesAPI.create({ name: newCategoryName.trim() });
             if (result) {
                 toast.success(`Category "${newCategoryName}" created!`);
                 setNewCategoryName('');
@@ -485,7 +479,7 @@ const AdminWooCommercePage = () => {
     const handleDeleteCategory = async (id) => {
         if (!window.confirm('Delete this category? This cannot be undone.')) return;
         try {
-            await wcCategoriesAPI.delete(id);
+            await categoriesAPI.delete(id);
             toast.success('Category deleted');
             loadCategories();
         } catch (err) {
@@ -503,27 +497,18 @@ const AdminWooCommercePage = () => {
 
         const formData = new FormData();
         formData.append('file', file);
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8002'}/api/v1/upload`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData,
-        });
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || 'Upload failed');
-        }
-
-        return await res.json();
+        const res = await uploadAPI.uploadImage(formData);
+        return res.data;
     };
 
     const handleImageUpload = async (file) => {
         setUploadingImage(true);
         try {
             const data = await uploadImageToServer(file);
+            const imageUrl = data?.cdn?.medium || data?.medium || data?.original || data?.url;
+            if (!imageUrl) throw new Error('Upload succeeded but no image URL returned');
             const current = productForm.images.filter(Boolean);
-            setProductForm(prev => ({ ...prev, images: [...current, data.url] }));
+            setProductForm(prev => ({ ...prev, images: [...current, imageUrl] }));
             toast.success(`Image "${file.name}" uploaded!`);
         } catch (err) {
             toast.error(err.message || 'Image upload failed');
@@ -535,7 +520,9 @@ const AdminWooCommercePage = () => {
         setUploadingVariantIndex(variantIndex);
         try {
             const data = await uploadImageToServer(file);
-            updateVariantField(variantIndex, 'image', data.url);
+            const imageUrl = data?.cdn?.medium || data?.medium || data?.original || data?.url;
+            if (!imageUrl) throw new Error('Upload succeeded but no image URL returned');
+            updateVariantField(variantIndex, 'image', imageUrl);
             toast.success(`Variant image "${file.name}" uploaded!`);
         } catch (err) {
             toast.error(err.message || 'Variant image upload failed');
@@ -546,7 +533,7 @@ const AdminWooCommercePage = () => {
     // --- Order Status ---
     const handleOrderStatus = async (orderId, newStatus) => {
         try {
-            await wcOrdersAPI.updateStatus(orderId, newStatus);
+            await ordersAPI.updateStatus(orderId, newStatus);
             toast.success(`Order updated to ${newStatus}`);
             loadOrders();
         } catch { toast.error('Failed to update order'); }
@@ -562,7 +549,7 @@ const AdminWooCommercePage = () => {
                 usage_limit: couponForm.usage_limit ? parseInt(couponForm.usage_limit) : null,
                 expiry_date: couponForm.expiry_date || null,
             };
-            await wcCouponsAPI.create(data);
+            await couponsAPI.create(data);
             toast.success('Coupon created!');
             setShowCouponForm(false);
             setCouponForm({ code: '', discount_type: 'percent', amount: '10', description: '', usage_limit: '', expiry_date: '' });
@@ -730,6 +717,6 @@ const AdminWooCommercePage = () => {
     );
 };
 
-export default AdminWooCommercePage;
+export default AdminDashboardPage;
 
 

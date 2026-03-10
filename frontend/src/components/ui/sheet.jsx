@@ -33,7 +33,7 @@ SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
   "fixed gap-4 p-6 shadow-2xl text-foreground",
-  "transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+  "transition-transform duration-500 ease-in-out",
   "data-[state=closed]:duration-400 data-[state=open]:duration-500",
   {
     variants: {

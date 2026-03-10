@@ -52,11 +52,7 @@ const ProductDetailPage = () => {
 
   useEffect(() => {
     if (product) {
-      console.log('--- Product Debug Info ---');
-      console.log('ID:', product.id);
-      console.log('Raw size_stock:', product.size_stock);
-      console.log('Raw color_stock:', product.color_stock);
-      console.log('Raw variations:', product.variations);
+      // (Intentionally no debug logs in production)
     }
   }, [product]);
 

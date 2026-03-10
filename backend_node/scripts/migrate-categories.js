@@ -1,77 +1,88 @@
-require('dotenv').config();
-const { mysqlPool } = require('../src/config/db');
-const categoryService = require('../src/services/category.service');
-const productService = require('../src/services/product.service');
+/**
+ * Migration Script: Add soft delete columns to categories
+ * Run with: npm run migrate:categories
+ */
 
-const defaultStructure = [
-    {
-        name: 'Women Wear',
-        children: [
-            'Sarees',
-            'Silk Sarees',
-            'Cotton Sarees',
-            'Banarasi Sarees',
-            'Party Wear Sarees',
-            'Kurtis',
-            'Lehengas'
-        ]
-    },
-    {
-        name: 'Home & Lifestyle',
-        children: [
-            'Bedsheets',
-            'Pillow Covers',
-            'Cushion Covers',
-            'Table Runners'
-        ]
-    }
-];
+// Load environment variables from scripts/.env first
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const mysql = require('mysql2/promise');
 
-async function migrate() {
+async function runMigration() {
+    let connection;
+    
     try {
-        console.log('Migrating Categories...');
-        // Create Default Categories
-        for (const parent of defaultStructure) {
-            let parentCat = await categoryService.getCategoryBySlug(categoryService.generateSlug(parent.name));
-            if (!parentCat) {
-                parentCat = await categoryService.createCategory({ name: parent.name });
-            }
+        // Create MySQL connection
+        const pool = mysql.createPool({
+            host: process.env.MYSQL_HOST || 'localhost',
+            port: parseInt(process.env.MYSQL_PORT) || 3307,
+            user: process.env.MYSQL_USER || 'root',
+            password: process.env.MYSQL_PASSWORD || 'rootpassword',
+            database: process.env.MYSQL_DATABASE || 'shriramya',
+            waitForConnections: true,
+            connectionLimit: 1,
+            queueLimit: 0
+        });
 
-            for (const childName of parent.children) {
-                let childCat = await categoryService.getCategoryBySlug(categoryService.generateSlug(childName));
-                if (!childCat) {
-                    await categoryService.createCategory({ name: childName, parent_id: parentCat.id });
-                }
+        connection = await pool.getConnection();
+        console.log('✓ Connected to MySQL');
+
+        // Check if columns already exist
+        const [columns] = await connection.query(`
+            SELECT COLUMN_NAME 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = ? 
+            AND TABLE_NAME = 'categories' 
+            AND COLUMN_NAME IN ('deleted_at', 'is_deleted')
+        `, [process.env.MYSQL_DATABASE || 'shriramya']);
+
+        if (columns.length >= 2) {
+            console.log('✓ Soft delete columns already exist');
+        } else {
+            // Add soft delete columns
+            console.log('Adding soft delete columns to categories table...');
+            
+            await connection.query(`
+                ALTER TABLE categories 
+                ADD COLUMN IF NOT EXISTS deleted_at BIGINT DEFAULT NULL,
+                ADD COLUMN IF NOT EXISTS is_deleted TINYINT(1) DEFAULT 0
+            `);
+            
+            console.log('✓ Added deleted_at and is_deleted columns');
+
+            // Add index for faster queries
+            try {
+                await connection.query(`
+                    CREATE INDEX IF NOT EXISTS idx_categories_deleted 
+                    ON categories(deleted_at, is_deleted)
+                `);
+                console.log('✓ Created index on deleted columns');
+            } catch (indexErr) {
+                console.log('⚠ Index creation skipped:', indexErr.message);
             }
         }
 
-        // Ensure Uncategorized exists
-        let uncategorized = await categoryService.getCategoryBySlug('uncategorized');
-        if (!uncategorized) {
-            uncategorized = await categoryService.createCategory({ name: 'Uncategorized', slug: 'uncategorized' });
-        }
+        // Verify the migration
+        const [verify] = await connection.query(`
+            SELECT deleted_at, is_deleted 
+            FROM categories 
+            LIMIT 1
+        `);
+        
+        console.log('✓ Migration verified - columns are accessible');
+        console.log('\n✅ Migration completed successfully!');
 
-        // Assign categories to existing products
-        const [products] = await mysqlPool.query('SELECT p.id, p.category_id, pc.category_id as pc_cat_id FROM products p left join product_categories pc on pc.product_id = p.id');
-        const existingProductsWithNoCat = products.filter(p => !p.pc_cat_id);
-
-        console.log(`Found ${existingProductsWithNoCat.length} products with no category assignment.`);
-
-        for (const product of existingProductsWithNoCat) {
-            // if it had an old category_id, we map it, else Uncategorized
-            if (product.category_id) {
-                await mysqlPool.query('INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)', [product.id, product.category_id]);
-            } else {
-                await mysqlPool.query('INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)', [product.id, uncategorized.id]);
-            }
-        }
-
-        console.log('Migration Completed.');
-    } catch (err) {
-        console.error('Migration failed', err);
+    } catch (error) {
+        console.error('❌ Migration failed:', error.message);
+        console.error(error.stack);
+        process.exit(1);
     } finally {
+        if (connection) {
+            await connection.release();
+            console.log('Database connection closed');
+        }
         process.exit(0);
     }
 }
 
-migrate();
+// Run the migration
+runMigration();

@@ -12,6 +12,7 @@ const BlogCreatePage = () => {
     const { capabilities } = useAuth();
 
     const [title, setTitle] = useState('');
+    const [slug, setSlug] = useState('');
     const [content, setContent] = useState('');
     const [excerpt, setExcerpt] = useState('');
     const [status, setStatus] = useState('draft');
@@ -22,6 +23,22 @@ const BlogCreatePage = () => {
     const [readingTime, setReadingTime] = useState(0);
     const [tagsInput, setTagsInput] = useState('');
     const [uploading, setUploading] = useState(false);
+
+    // Generate slug from title
+    const generateSlug = (title) => {
+        return title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+    };
+
+    const handleTitleChange = (e) => {
+        const newTitle = e.target.value;
+        setTitle(newTitle);
+        if (!slug) {
+            setSlug(generateSlug(newTitle));
+        }
+    };
 
     // Redirect if not allowed
     if (!capabilities.edit_posts) {
@@ -58,11 +75,16 @@ const BlogCreatePage = () => {
             toast.error('Please fill in both title and content');
             return;
         }
+        if (!slug) {
+            toast.error('Slug is required');
+            return;
+        }
 
         setLoading(true);
         try {
             const postData = {
                 title,
+                slug,
                 content,
                 excerpt,
                 status,
@@ -116,11 +138,26 @@ const BlogCreatePage = () => {
                             <input
                                 type="text"
                                 value={title}
-                                onChange={(e) => setTitle(e.target.value)}
+                                onChange={handleTitleChange}
                                 placeholder="Enter a captivating title..."
                                 className="w-full text-2xl font-heading bg-transparent border-b border-border focus:border-primary focus:outline-none py-2 transition-colors"
                                 required
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground">URL Slug</label>
+                            <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground text-sm">/blog/</span>
+                                <input
+                                    type="text"
+                                    value={slug}
+                                    onChange={(e) => setSlug(e.target.value)}
+                                    placeholder="auto-generated-from-title"
+                                    className="flex-1 px-4 py-2 bg-background border border-border rounded-lg font-mono text-sm"
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">This will be the URL path for your blog post</p>
                         </div>
 
                         <div className="space-y-4">

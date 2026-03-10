@@ -22,11 +22,13 @@ const BlogPostPage = () => {
     const [relatedPosts, setRelatedPosts] = useState([]);
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        setError(null);
 
-        // If it's the Sanganeri post, redirect to the static page
+        // If it's the Sanganeri post, navigate to the static page
         if (slug === 'sanganeri-print') {
             navigate('/blog/sanganeri-print');
             return;
@@ -37,26 +39,31 @@ const BlogPostPage = () => {
 
     const fetchPost = async () => {
         setLoading(true);
+        setError(null);
         try {
             const response = await blogAPI.getPostBySlug(slug);
             if (response.data) {
                 const fetchedPost = response.data;
                 setPost(fetchedPost);
 
-                // Fetch supplementary data
-                const [relatedRes, commentsRes] = await Promise.allSettled([
-                    blogAPI.getRelatedPosts(fetchedPost.id),
-                    blogAPI.getComments(fetchedPost.id)
-                ]);
+                // Fetch supplementary data only for published posts or if user has edit capabilities
+                if (fetchedPost.status === 'published' || capabilities.edit_posts) {
+                    const [relatedRes, commentsRes] = await Promise.allSettled([
+                        blogAPI.getRelatedPosts(fetchedPost.id),
+                        blogAPI.getComments(fetchedPost.id)
+                    ]);
 
-                if (relatedRes.status === 'fulfilled') setRelatedPosts(relatedRes.value.data || []);
-                if (commentsRes.status === 'fulfilled') setComments(commentsRes.value.data || []);
+                    if (relatedRes.status === 'fulfilled') setRelatedPosts(relatedRes.value.data || []);
+                    if (commentsRes.status === 'fulfilled') setComments(commentsRes.value.data || []);
+                }
             } else {
+                setError('Post not found');
                 toast.error('Post not found');
             }
         } catch (error) {
             console.error('Failed to fetch blog data:', error);
-            toast.error('Failed to load post');
+            setError(error.response?.status === 404 ? 'Post not found' : 'Failed to load post');
+            toast.error(error.response?.status === 404 ? 'Post not found' : 'Failed to load post');
         } finally {
             setLoading(false);
         }
@@ -97,12 +104,25 @@ const BlogPostPage = () => {
 
     if (!post) {
         return (
-            <div className="px-6 py-24 text-center">
-                <h1 className="text-3xl font-heading mb-6">Article Not Found</h1>
-                <p className="text-muted-foreground mb-8">The story you are looking for does not exist or has been moved.</p>
-                <Button asChild>
-                    <Link to="/blog">Return to Journal</Link>
-                </Button>
+            <div className="px-6 py-24 text-center min-h-[60vh] flex flex-col items-center justify-center">
+                <h1 className="text-3xl font-heading mb-6">
+                    {error === 'Post not found' ? 'Article Not Found' : 'Error Loading Article'}
+                </h1>
+                <p className="text-muted-foreground mb-8 max-w-md">
+                    {error === 'Post not found' 
+                        ? 'The story you are looking for does not exist, has been moved, or is not yet published.' 
+                        : 'There was a problem loading this story. Please try again later.'}
+                </p>
+                <div className="flex gap-4">
+                    <Button asChild>
+                        <Link to="/blog">Return to Journal</Link>
+                    </Button>
+                    {error && error !== 'Post not found' && (
+                        <Button variant="outline" onClick={() => window.location.reload()}>
+                            Try Again
+                        </Button>
+                    )}
+                </div>
             </div>
         );
     }

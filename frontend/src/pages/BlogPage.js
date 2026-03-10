@@ -7,11 +7,7 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import SEOMeta from '../components/SEOMeta';
 
-const HTMLRenderer = ({ html, className }) => {
-  return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
-};
-
-// Static blog posts (not from WordPress)
+// Static blog posts for homepage
 const STATIC_POSTS = [
   {
     id: 'sanganeri-print',
@@ -31,7 +27,7 @@ const BlogPage = () => {
   const { capabilities } = useAuth();
 
   const [posts, setPosts] = useState([]);
-  const [allPosts, setAllPosts] = useState([]); // Combined static + WordPress posts
+  const [allPosts, setAllPosts] = useState([]); // Combined static + native blog posts
   const [pagination, setPagination] = useState({ current_page: 1, total_pages: 1 });
   const [categories, setCategories] = useState([]);
 
@@ -83,28 +79,30 @@ const BlogPage = () => {
       }
 
       const response = await blogAPI.getPosts(params);
-      let wordpressPosts = [];
+      let nativePosts = [];
       let paginationData = { current_page: 1, total_pages: 1 };
-
-      console.log('Blog API Response:', response); // Debug log
 
       // Response is already unwrapped by interceptor
       // response.data is the actual data from backend
       if (response.data) {
-        wordpressPosts = response.data.posts || [];
+        nativePosts = response.data.posts || [];
         if (response.data.pagination) {
           paginationData = response.data.pagination;
         }
       }
 
-      console.log('WordPress Posts:', wordpressPosts); // Debug log
-      console.log('Pagination:', paginationData); // Debug log
-
-      // Combine static posts with WordPress posts
+      // Combine static posts with native blog posts
       // Static posts always appear first
-      const combinedPosts = [...STATIC_POSTS, ...wordpressPosts];
+      // Ensure native posts have slug field for routing
+      const combinedPosts = [
+        ...STATIC_POSTS,
+        ...nativePosts.map(post => ({
+          ...post,
+          slug: post.slug || `post-${post.id}` // Fallback slug if missing
+        }))
+      ];
       setAllPosts(combinedPosts);
-      setPosts(wordpressPosts);
+      setPosts(nativePosts);
       setPagination(paginationData);
     } catch (error) {
       console.error('Failed to fetch blog posts:', error);
@@ -213,7 +211,7 @@ const BlogPage = () => {
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                         className="group bg-card rounded-2xl border border-border shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col h-full"
                       >
-                        <Link to={post.isStatic ? `/blog/${post.slug}` : `/blog/${post.id}`} className="block flex-1">
+                        <Link to={`/blog/${post.slug}`} className="block flex-1">
                           <div className="aspect-[4/3] overflow-hidden relative">
                             {post.image ? (
                               <img

@@ -92,6 +92,7 @@ const updateProduct = {
       values: Joi.array().items(Joi.string()).required()
     })).optional(),
     variants: Joi.array().items(variantSchema).optional(),
+    images: Joi.array().items(Joi.string()).optional(),
   }).min(1),
 };
 

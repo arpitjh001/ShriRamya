@@ -6,7 +6,7 @@ const router = express.Router();
 
 router
     .route('/')
-    .post(auth(), categoryController.createCategory)
+    .post(auth(['admin', 'editor']), categoryController.createCategory)
     .get(categoryController.getAllCategories);
 
 router.route('/slug/:slug').get(categoryController.getCategoryBySlug);
@@ -14,8 +14,8 @@ router.route('/slug/:slug').get(categoryController.getCategoryBySlug);
 router
     .route('/:categoryId')
     .get(categoryController.getCategoryById)
-    .put(auth(), categoryController.updateCategory)
-    .delete(auth(), categoryController.deleteCategory);
+    .put(auth(['admin', 'editor']), categoryController.updateCategory)
+    .delete(auth(['admin']), categoryController.deleteCategory);
 
 // Get products by category
 router.route('/:categoryId/products').get(categoryController.getProductsByCategory);

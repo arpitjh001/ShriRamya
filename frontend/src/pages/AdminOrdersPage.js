@@ -1,23 +1,38 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { ShoppingCart, Package, DollarSign, Clock, Eye } from 'lucide-react';
-
-// Demo orders data (since API endpoint doesn't exist yet)
-const demoOrders = [
-  { id: 1, order_number: 'ORD-2024-001', customer_name: 'John Doe', customer_email: 'john@example.com', total_amount: 5999, payment_status: 'paid', status: 'delivered', created_at: '2024-03-01T10:30:00Z' },
-  { id: 2, order_number: 'ORD-2024-002', customer_name: 'Jane Smith', customer_email: 'jane@example.com', total_amount: 3499, payment_status: 'paid', status: 'processing', created_at: '2024-03-02T14:20:00Z' },
-  { id: 3, order_number: 'ORD-2024-003', customer_name: 'Mike Johnson', customer_email: 'mike@example.com', total_amount: 8999, payment_status: 'pending', status: 'pending', created_at: '2024-03-03T09:15:00Z' },
-  { id: 4, order_number: 'ORD-2024-004', customer_name: 'Sarah Williams', customer_email: 'sarah@example.com', total_amount: 2799, payment_status: 'paid', status: 'shipped', created_at: '2024-03-04T16:45:00Z' },
-  { id: 5, order_number: 'ORD-2024-005', customer_name: 'David Brown', customer_email: 'david@example.com', total_amount: 12999, payment_status: 'paid', status: 'delivered', created_at: '2024-03-05T11:00:00Z' },
-];
+import { ordersAPI } from '../services/api';
 
 const AdminOrdersPage = () => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadOrders = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await ordersAPI.getAll();
+      const list = Array.isArray(res.data) ? res.data : (res.data?.orders || []);
+      setOrders(list);
+    } catch (e) {
+      setError(e?.message || 'Failed to load orders');
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
   const handleView = (order) => {
-    toast.info(`View order ${order.order_number} (demo)`);
+    toast.info(`Order ${order.order_number || order.id}`);
   };
 
   const getStatusBadge = (status) => {
@@ -43,14 +58,19 @@ const AdminOrdersPage = () => {
     return { variant: variants[status] || 'secondary', label: status };
   };
 
-  const stats = {
-    total: demoOrders.length,
-    pending: demoOrders.filter(o => o.status === 'pending').length,
-    processing: demoOrders.filter(o => o.status === 'processing').length,
-    delivered: demoOrders.filter(o => o.status === 'delivered').length,
-    revenue: demoOrders.filter(o => o.status !== 'cancelled' && o.status !== 'refunded')
-      .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0)
-  };
+  const stats = useMemo(() => {
+    const getStatus = (o) => (o.order_status || o.status || '').toString().toLowerCase();
+    const getTotal = (o) => Number(o.total_amount ?? o.total ?? 0) || 0;
+    return {
+      total: orders.length,
+      pending: orders.filter(o => getStatus(o) === 'pending').length,
+      processing: orders.filter(o => getStatus(o) === 'processing').length,
+      delivered: orders.filter(o => getStatus(o) === 'delivered').length,
+      revenue: orders
+        .filter(o => !['cancelled', 'refunded'].includes(getStatus(o)))
+        .reduce((sum, o) => sum + getTotal(o), 0),
+    };
+  }, [orders]);
 
   return (
     <div className="p-6 space-y-6">
@@ -107,9 +127,19 @@ const AdminOrdersPage = () => {
                 Manage and track customer orders
               </CardDescription>
             </div>
+            <Button variant="outline" onClick={loadOrders} disabled={loading}>
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 rounded border border-destructive/30 bg-destructive/5 p-4 text-sm">
+              <div className="font-medium text-destructive">Failed to load orders</div>
+              <div className="text-muted-foreground">{error}</div>
+            </div>
+          )}
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -124,44 +154,57 @@ const AdminOrdersPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {demoOrders.map((order) => {
-                  const status = getStatusBadge(order.status);
-                  const payment = getPaymentBadge(order.payment_status);
-                  return (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-mono">{order.order_number}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{order.customer_name}</div>
-                          <div className="text-sm text-gray-500">{order.customer_email}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">₹{order.total_amount.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={payment.variant}>{payment.label}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleView(order)}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                      Loading orders…
+                    </TableCell>
+                  </TableRow>
+                ) : orders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                      No orders found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  orders.map((order) => {
+                    const statusValue = (order.order_status || order.status || 'pending').toString().toLowerCase();
+                    const paymentValue = (order.payment_status || order.paymentStatus || 'pending').toString().toLowerCase();
+                    const status = getStatusBadge(statusValue);
+                    const payment = getPaymentBadge(paymentValue);
+                    const total = Number(order.total_amount ?? order.total ?? 0) || 0;
+
+                    return (
+                      <TableRow key={order.id || order.order_number}>
+                        <TableCell className="font-mono">{order.order_number || order.id}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{order.customer_name || order.customer?.name || '—'}</div>
+                            <div className="text-sm text-gray-500">{order.customer_email || order.customer?.email || ''}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">₹{total.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={payment.variant}>{payment.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={status.variant}>{status.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => handleView(order)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
-          </div>
-          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Note:</strong> This is a demo view with sample orders. Connect to the backend API to see real orders.
-            </p>
           </div>
         </CardContent>
       </Card>

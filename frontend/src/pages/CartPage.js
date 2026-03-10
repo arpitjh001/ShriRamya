@@ -3,18 +3,24 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { productsAPI, cartAPI } from '../services/api';
 import { Button } from '../components/ui/button';
-import { Trash2, Plus, Minus, ShoppingBag, Loader2 } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Trash2, Plus, Minus, ShoppingBag, Loader2, Tag, X } from 'lucide-react';
 import { formatPrice, getSessionId } from '../utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CartPage = () => {
-  const { cart, fetchCart } = useCart();
+  const { cart, fetchCart, appliedCoupon, discountAmount, applyCoupon, removeCoupon, calculateSubtotal } = useCart();
   const navigate = useNavigate();
   const [cartProducts, setCartProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingItems, setUpdatingItems] = useState(new Set()); // Uses composite key: productId-variationStr
   const [removingItems, setRemovingItems] = useState(new Set()); // Uses composite key: productId-variationStr
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   useEffect(() => {
     const loadCartProducts = async () => {
@@ -120,18 +126,38 @@ const CartPage = () => {
     }
   };
 
-  const calculateSubtotal = () => {
-    return cart.items.reduce((total, item) => {
-      const product = cartProducts.find((p) => String(p.id) === String(item.product_id));
-      if (!product) return total;
-      const price = product.sale_price || product.price;
-      return total + price * item.quantity;
-    }, 0);
-  };
-
   const subtotal = calculateSubtotal();
   const shipping = subtotal > 999 ? 0 : 99;
-  const total = subtotal + shipping;
+  const total = subtotal - discountAmount + shipping;
+
+  // Coupon handlers
+  const handleApplyCoupon = async (e) => {
+    e.preventDefault();
+    if (!couponCode.trim()) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+
+    setApplyingCoupon(true);
+    try {
+      await applyCoupon(couponCode.trim());
+      toast.success('Coupon applied successfully!');
+      setCouponCode('');
+    } catch (error) {
+      toast.error(error.message || 'Failed to apply coupon');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    try {
+      await removeCoupon();
+      toast.success('Coupon removed');
+    } catch (error) {
+      toast.error('Failed to remove coupon');
+    }
+  };
 
   if (loading) {
     return (
@@ -306,6 +332,62 @@ const CartPage = () => {
           >
             <h2 className="text-xl font-heading font-medium mb-6">Order Summary</h2>
 
+            {/* Coupon Section */}
+            <div className="mb-6">
+              {appliedCoupon ? (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-green-600" />
+                      <span className="font-medium text-green-800 dark:text-green-200">{appliedCoupon.code}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveCoupon}
+                      disabled={applyingCoupon}
+                      className="h-6 w-6 p-0 text-green-600 hover:text-green-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="text-sm text-green-700 dark:text-green-300">
+                    Discount: -{formatPrice(discountAmount)}
+                  </div>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleApplyCoupon} className="space-y-2">
+                  <Label htmlFor="coupon-code" className="text-sm font-medium">Coupon Code</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="coupon-code"
+                      type="text"
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      disabled={applyingCoupon}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={applyingCoupon || !couponCode.trim()}
+                      className="whitespace-nowrap"
+                    >
+                      {applyingCoupon ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Apply'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -321,6 +403,16 @@ const CartPage = () => {
                   )}
                 </span>
               </div>
+              {discountAmount > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="flex justify-between text-green-600"
+                >
+                  <span className="text-muted-foreground">Discount</span>
+                  <span data-testid="cart-discount" className="font-medium">-{formatPrice(discountAmount)}</span>
+                </motion.div>
+              )}
               {subtotal < 999 && shipping > 0 && (
                 <motion.p
                   initial={{ opacity: 0, height: 0 }}

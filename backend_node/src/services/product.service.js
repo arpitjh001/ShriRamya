@@ -1,5 +1,6 @@
 const mysqlProductRepository = require('../repositories/product.sql.repository');
 const categoryService = require('./category.service');
+const searchService = require('./search/search.service');
 
 class ProductService {
   toIsoDateOrNull(value) {
@@ -113,6 +114,14 @@ class ProductService {
       }
 
       const product = await mysqlProductRepository.getProduct(productId);
+
+      // Update search index
+      try {
+        await searchService.updateSearchIndex(productId);
+      } catch (searchError) {
+        console.error(`[ProductService] Failed to update search index for new product ${productId}:`, searchError.message);
+      }
+
       return this.formatProductForResponse(product);
     } catch (error) {
       console.error('[ProductService] createProduct failed:', error.message);
@@ -226,6 +235,13 @@ class ProductService {
 
       // Repository now handles base fields, attributes, AND variants sync in one transaction
       await mysqlProductRepository.updateProduct(id, updateData);
+
+      // Update search index
+      try {
+        await searchService.updateSearchIndex(id);
+      } catch (searchError) {
+        console.error(`[ProductService] Failed to update search index for product ${id}:`, searchError.message);
+      }
 
       const updatedProduct = await mysqlProductRepository.getProduct(id);
       return this.formatProductForResponse(updatedProduct);

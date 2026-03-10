@@ -70,18 +70,24 @@ class ProductSqlRepository {
         try {
             await connection.beginTransaction();
 
+            // Handle images - convert array to JSON string for storage
+            const imagesJson = data.images && Array.isArray(data.images) && data.images.length > 0
+                ? JSON.stringify(data.images)
+                : null;
+
             const [result] = await connection.query(
-                `INSERT INTO products (name, sku, description, fabric, occasion, base_price, category_id, status, tenant_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO products (name, sku, description, fabric, occasion, images, base_price, category_id, status, tenant_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     data.name,
                     data.sku ? String(data.sku).trim() : null,
                     data.description || '',
                     data.fabric ? String(data.fabric).trim() : null,
                     data.occasion ? String(data.occasion).trim() : null,
+                    imagesJson,
                     data.basePrice || 0,
                     data.categoryId || null,
-                    data.status || 'published',
+                    data.status || 'draft',
                     tenantId
                 ]
             );
@@ -242,6 +248,14 @@ class ProductSqlRepository {
             if (data.occasion !== undefined) {
                 updateFields.push('occasion = ?');
                 updateValues.push(data.occasion ? String(data.occasion).trim() : null);
+            }
+            // Handle images - convert array to JSON string for storage
+            if (data.images !== undefined) {
+                updateFields.push('images = ?');
+                const imagesJson = data.images && Array.isArray(data.images) && data.images.length > 0
+                    ? JSON.stringify(data.images)
+                    : null;
+                updateValues.push(imagesJson);
             }
             if (data.basePrice !== undefined) {
                 updateFields.push('base_price = ?');
@@ -504,6 +518,19 @@ class ProductSqlRepository {
 
         const product = { ...products[0] };
 
+        // Parse images JSON to array
+        if (product.images) {
+            try {
+                product.images = typeof product.images === 'string'
+                    ? JSON.parse(product.images)
+                    : product.images;
+            } catch (e) {
+                product.images = [];
+            }
+        } else {
+            product.images = [];
+        }
+
         // Fetch Attributes
         const [attributes] = await mysqlPool.query(
             `SELECT pa.id, pa.name, GROUP_CONCAT(pav.value) as values_list
@@ -524,7 +551,7 @@ class ProductSqlRepository {
             `SELECT c.id, c.name, c.slug, c.image
              FROM categories c
              INNER JOIN product_categories pc ON c.id = pc.category_id
-             WHERE pc.product_id = ?`,
+             WHERE pc.product_id = ? AND (c.deleted_at IS NULL OR c.deleted_at = 0)`,
             [id]
         );
         product.categories = categories;
@@ -558,6 +585,8 @@ class ProductSqlRepository {
         if (filter.status) {
             whereClause += ' AND p.status = ?';
             params.push(filter.status);
+        } else if (!filter.all_statuses) {
+            whereClause += ' AND (p.status = "published" OR p.status = "publish")';
         }
         if (filter.category_id) {
             joins += ' INNER JOIN product_categories pc1 ON p.id = pc1.product_id';
@@ -569,7 +598,7 @@ class ProductSqlRepository {
                 joins += ' INNER JOIN product_categories pc1 ON p.id = pc1.product_id';
             }
             joins += ' INNER JOIN categories c0 ON c0.id = pc1.category_id';
-            whereClause += ' AND c0.slug = ?';
+            whereClause += ' AND c0.slug = ? AND (c0.deleted_at IS NULL OR c0.deleted_at = 0)';
             params.push(filter.category);
         }
 
@@ -605,7 +634,7 @@ class ProductSqlRepository {
             `SELECT c.id, c.name, c.slug, c.image, pc.product_id
              FROM categories c
              INNER JOIN product_categories pc ON c.id = pc.category_id
-             WHERE pc.product_id IN (?)
+             WHERE pc.product_id IN (?) AND (c.deleted_at IS NULL OR c.deleted_at = 0)
              ORDER BY pc.product_id`,
             [productIds]
         );
@@ -636,6 +665,20 @@ class ProductSqlRepository {
         // Assemble products with their variants and categories
         const products = rows.map((row) => {
             const product = { ...row };
+
+            // Parse images JSON to array
+            if (product.images) {
+                try {
+                    product.images = typeof product.images === 'string'
+                        ? JSON.parse(product.images)
+                        : product.images;
+                } catch (e) {
+                    product.images = [];
+                }
+            } else {
+                product.images = [];
+            }
+
             product.variants = variantsByProduct.get(row.id) || [];
             product.categories = categoriesByProduct.get(row.id) || [];
             return product;
@@ -677,7 +720,7 @@ class ProductSqlRepository {
         const [rows] = await mysqlPool.query(
             `SELECT c.* FROM categories c
              INNER JOIN product_categories pc ON c.id = pc.category_id
-             WHERE pc.product_id = ?`,
+             WHERE pc.product_id = ? AND (c.deleted_at IS NULL OR c.deleted_at = 0)`,
             [productId]
         );
         return rows;
