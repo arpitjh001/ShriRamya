@@ -2,8 +2,8 @@ const Joi = require('joi');
 
 const variantSchema = Joi.object({
   id: Joi.number().integer().allow(null).optional(),
-  sku: Joi.string().required(),
-  price: Joi.number().min(0).required(),
+  sku: Joi.string().allow('', null).optional(),
+  price: Joi.number().min(0).optional(),
   discountPrice: Joi.number().min(0).less(Joi.ref('price')).allow(null, '').optional(),
   discountStart: Joi.date().iso().allow(null, '').optional(),
   discountEnd: Joi.date().iso().allow(null, '').when('discountStart', {
@@ -12,9 +12,18 @@ const variantSchema = Joi.object({
     otherwise: Joi.date().iso().allow(null, '')
   }),
   stock: Joi.number().integer().min(0).default(0),
+  stock_quantity: Joi.number().integer().min(0).default(0),
   image: Joi.string().allow('', null).optional(),
-  attributes: Joi.object().required().description('Map of attribute names to values, e.g. {"Color": "Red", "Size": "L"}'),
+  color: Joi.string().allow('', null).optional(),
+  size: Joi.string().allow('', null).optional(),
+  attributes: Joi.object().optional().description('Map of attribute names to values, e.g. {"Color": "Red", "Size": "L"}'),
+  price_override: Joi.number().min(0).allow(null).optional(),
   lowStockThreshold: Joi.number().integer().min(0).default(5).optional(),
+  weight_grams: Joi.number().min(0).allow(null).optional(),
+  length_cm: Joi.number().min(0).allow(null).optional(),
+  width_cm: Joi.number().min(0).allow(null).optional(),
+  height_cm: Joi.number().min(0).allow(null).optional(),
+  barcode: Joi.string().allow('', null).optional(),
 });
 
 const getProducts = {
@@ -32,6 +41,7 @@ const getProducts = {
     min_price: Joi.number().min(0),
     max_price: Joi.number().min(0),
     tenant_id: Joi.number().integer(),
+    include_deleted: Joi.boolean().default(false),
   }).unknown(true), // Allow unknown query params to pass through
 };
 
@@ -44,6 +54,7 @@ const getProduct = {
 const createProduct = {
   body: Joi.object().keys({
     name: Joi.string().required(),
+    slug: Joi.string().allow('', null).optional(),
     sku: Joi.string().allow('', null).optional(),
     description: Joi.string().allow('').optional(),
     fabric: Joi.string().allow('', null).optional(),
@@ -62,7 +73,11 @@ const createProduct = {
     })).optional(),
     variants: Joi.array().items(variantSchema).optional(),
     tenantId: Joi.number().optional().default(1),
-    images: Joi.array().items(Joi.string()).optional()
+    images: Joi.array().items(Joi.string()).optional(),
+    metadata: Joi.object().optional(),
+    metaTitle: Joi.string().allow('').optional(),
+    metaDescription: Joi.string().allow('').optional(),
+    metaKeywords: Joi.string().allow('').optional(),
   }),
 };
 
@@ -81,6 +96,7 @@ const updateProduct = {
   }),
   body: Joi.object().keys({
     name: Joi.string().optional(),
+    slug: Joi.string().allow('', null).optional(),
     sku: Joi.string().allow('', null).optional(),
     description: Joi.string().allow('').optional(),
     fabric: Joi.string().allow('', null).optional(),
@@ -99,6 +115,10 @@ const updateProduct = {
     })).optional(),
     variants: Joi.array().items(variantSchema).optional(),
     images: Joi.array().items(Joi.string()).optional(),
+    metadata: Joi.object().optional(),
+    metaTitle: Joi.string().allow('').optional(),
+    metaDescription: Joi.string().allow('').optional(),
+    metaKeywords: Joi.string().allow('').optional(),
   }).min(1),
 };
 
@@ -119,6 +139,25 @@ const deleteVariant = {
   }),
 };
 
+const syncVariantMatrix = {
+  params: Joi.object().keys({
+    product_id: Joi.number().integer().required(),
+  }),
+  body: Joi.object().keys({
+    variants: Joi.array().items(variantSchema).required(),
+  }).required(),
+};
+
+const updateVariantStock = {
+  params: Joi.object().keys({
+    product_id: Joi.number().integer().required(),
+    variant_id: Joi.number().integer().required(),
+  }),
+  body: Joi.object().keys({
+    stockLevel: Joi.number().integer().min(0).required(),
+  }).required(),
+};
+
 module.exports = {
   getProducts,
   getProduct,
@@ -127,4 +166,6 @@ module.exports = {
   addVariant,
   updateVariant,
   deleteVariant,
+  syncVariantMatrix,
+  updateVariantStock,
 };

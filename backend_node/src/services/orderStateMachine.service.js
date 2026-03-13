@@ -5,6 +5,7 @@
 
 const { mysqlPool } = require('../config/db');
 const orderEventService = require('./events/orderEvent.service');
+const { variantInventoryService } = require('./variant-inventory.service');
 
 /**
  * Order Status Constants
@@ -194,6 +195,14 @@ class OrderStateMachine {
                     'UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?',
                     [PAYMENT_STATUS.PAID, orderId]
                 );
+
+                // Reduce variant stock when order is paid
+                try {
+                    await reduceOrderStock(orderId, connection);
+                } catch (stockError) {
+                    console.error('[OrderStateMachine] Failed to reduce stock for order:', orderId, stockError.message);
+                    // Don't fail the order, but log the error
+                }
             } else if (newStatus === ORDER_STATUS.REFUNDED) {
                 await connection.query(
                     'UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?',
@@ -494,6 +503,60 @@ class OrderStateMachine {
             ...options,
             reason: options.reason || 'Customer requested cancellation'
         });
+    }
+}
+
+/**
+ * Reduce stock for all items in an order
+ * Called when order is marked as PAID
+ * @param {number} orderId - Order ID
+ * @param {object} connection - MySQL connection
+ */
+async function reduceOrderStock(orderId, connection) {
+    try {
+        // Get all order items with variant information
+        const [items] = await connection.query(
+            `SELECT oi.id, oi.variant_id, oi.quantity, oi.variant_attributes,
+                    pv.color, pv.size, pv.stock_quantity, pv.version
+             FROM order_items oi
+             LEFT JOIN product_variants pv ON oi.variant_id = pv.id
+             WHERE oi.order_id = ?`,
+            [orderId]
+        );
+
+        if (items.length === 0) {
+            return; // No items to process
+        }
+
+        // Reduce stock for each item
+        for (const item of items) {
+            if (item.variant_id) {
+                // Use the variant inventory service for stock reduction with optimistic locking
+                const result = await variantInventoryService.reduceStock(
+                    item.variant_id,
+                    item.quantity,
+                    item.version // Use version for optimistic locking
+                );
+
+                if (!result.success) {
+                    console.error(
+                        `[OrderStateMachine] Stock reduction failed for variant ${item.variant_id}:`,
+                        result.error
+                    );
+
+                    // If stock reduction fails, we should potentially cancel the order
+                    // For now, just log the error
+                } else {
+                    console.log(
+                        `[OrderStateMachine] Stock reduced for variant ${item.variant_id} (${item.color || 'N/A'} ${item.size || 'N/A'}):`,
+                        `-${item.quantity}, new stock: ${result.newStock}`
+                    );
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[OrderStateMachine] reduceOrderStock error:', error.message);
+        throw error;
     }
 }
 

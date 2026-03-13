@@ -119,4 +119,72 @@ router.delete('/:product_id',
     productController.deleteProduct
 );
 
+// ========== VARIANT MATRIX ENDPOINTS ==========
+
+// Get variant matrix for a product (Color x Size grid)
+router.get('/:product_id/variants/matrix',
+    optionalAuth,
+    optionalTenantIsolation,
+    validate(productValidation.getProduct),
+    productController.getVariantMatrix
+);
+
+// Get available colors for a product
+router.get('/:product_id/variants/colors',
+    optionalAuth,
+    optionalTenantIsolation,
+    validate(productValidation.getProduct),
+    productController.getProductColors
+);
+
+// Get available sizes for a product (optionally filtered by color)
+router.get('/:product_id/variants/sizes',
+    optionalAuth,
+    optionalTenantIsolation,
+    validate(productValidation.getProduct),
+    productController.getProductSizes
+);
+
+// Get stock for a specific variant
+router.get('/:product_id/variants/stock',
+    optionalAuth,
+    optionalTenantIsolation,
+    validate(productValidation.getProduct),
+    productController.getVariantStock
+);
+
+// Validate stock availability for a variant
+router.get('/:product_id/variants/validate-stock',
+    optionalAuth,
+    optionalTenantIsolation,
+    validate(productValidation.getProduct),
+    productController.validateVariantStock
+);
+
+// Sync variant matrix for a product (bulk create/update) - Admin only
+router.put('/:product_id/variants/matrix',
+    authRBAC,
+    requireRole('Admin', 'Editor'),
+    ensureTenantIsolation,
+    validate(productValidation.syncVariantMatrix),
+    productController.syncVariantMatrix
+);
+
+// Update stock level for a specific variant - Admin only
+router.put('/:product_id/variants/:variant_id/stock',
+    authRBAC,
+    requireRole('Admin', 'Editor'),
+    ensureTenantIsolation,
+    validate(productValidation.updateVariantStock),
+    productController.updateVariantStockLevel
+);
+
+// Get low stock variants across all products - Admin only
+router.get('/variants/low-stock',
+    authRBAC,
+    requireRole('Admin', 'InventoryManager'),
+    ensureTenantIsolation,
+    productController.getLowStockVariants
+);
+
 module.exports = router;

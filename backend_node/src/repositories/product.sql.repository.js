@@ -2,6 +2,52 @@ const { mysqlPool } = require('../config/db');
 const crypto = require('crypto');
 
 class ProductSqlRepository {
+    /**
+     * Generate URL-friendly slug from string
+     * @param {string} text - Text to convert to slug
+     * @returns {string} URL-friendly slug
+     */
+    generateSlug(text) {
+        if (!text) return '';
+        return text
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .replace(/-+/g, '-');
+    }
+
+    /**
+     * Generate unique slug by appending random suffix if needed
+     * @param {string} baseSlug - Base slug
+     * @param {number} productId - Product ID (for updates)
+     * @returns {Promise<string>} Unique slug
+     */
+    async generateUniqueSlug(baseSlug, productId = null) {
+        let slug = baseSlug;
+        let suffix = '';
+        let attempts = 0;
+
+        while (attempts < 10) {
+            const checkSlug = slug + (suffix ? `-${suffix}` : '');
+
+            const [rows] = await mysqlPool.query(
+                'SELECT id FROM products WHERE slug = ?' + (productId ? ' AND id != ?' : ''),
+                productId ? [checkSlug, productId] : [checkSlug]
+            );
+
+            if (rows.length === 0) {
+                return checkSlug;
+            }
+
+            // Generate random 4-digit suffix
+            suffix = Math.floor(1000 + Math.random() * 9000);
+            attempts++;
+        }
+
+        // Fallback: append timestamp
+        return `${slug}-${Date.now()}`;
+    }
+
     parseAttributes(attributesValue) {
         if (attributesValue == null) return {};
         if (typeof attributesValue === 'object') return attributesValue;
@@ -70,16 +116,24 @@ class ProductSqlRepository {
         try {
             await connection.beginTransaction();
 
+            // Auto-generate slug from name if not provided
+            let slug = data.slug;
+            if (!slug && data.name) {
+                const baseSlug = this.generateSlug(data.name);
+                slug = await this.generateUniqueSlug(baseSlug);
+            }
+
             // Handle images - convert array to JSON string for storage
             const imagesJson = data.images && Array.isArray(data.images) && data.images.length > 0
                 ? JSON.stringify(data.images)
                 : null;
 
             const [result] = await connection.query(
-                `INSERT INTO products (name, sku, description, fabric, occasion, images, base_price, category_id, status, tenant_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO products (name, slug, sku, description, fabric, occasion, images, base_price, category_id, status, tenant_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     data.name,
+                    slug,
                     data.sku ? String(data.sku).trim() : null,
                     data.description || '',
                     data.fabric ? String(data.fabric).trim() : null,
@@ -232,6 +286,18 @@ class ProductSqlRepository {
             if (data.name) {
                 updateFields.push('name = ?');
                 updateValues.push(data.name);
+
+                // Auto-update slug if name changed and slug not explicitly provided
+                if (!data.slug) {
+                    const baseSlug = this.generateSlug(data.name);
+                    const uniqueSlug = await this.generateUniqueSlug(baseSlug, id);
+                    updateFields.push('slug = ?');
+                    updateValues.push(uniqueSlug);
+                }
+            }
+            if (data.slug !== undefined) {
+                updateFields.push('slug = ?');
+                updateValues.push(data.slug ? this.generateSlug(data.slug) : null);
             }
             if (data.sku !== undefined) {
                 updateFields.push('sku = ?');
@@ -268,6 +334,24 @@ class ProductSqlRepository {
             if (data.status !== undefined) {
                 updateFields.push('status = ?');
                 updateValues.push(data.status);
+            }
+            // Handle metadata
+            if (data.metadata !== undefined) {
+                updateFields.push('metadata = ?');
+                updateValues.push(JSON.stringify(data.metadata));
+            }
+            // Handle SEO fields
+            if (data.metaTitle !== undefined) {
+                updateFields.push('meta_title = ?');
+                updateValues.push(data.metaTitle);
+            }
+            if (data.metaDescription !== undefined) {
+                updateFields.push('meta_description = ?');
+                updateValues.push(data.metaDescription);
+            }
+            if (data.metaKeywords !== undefined) {
+                updateFields.push('meta_keywords = ?');
+                updateValues.push(data.metaKeywords);
             }
 
             if (updateFields.length > 0) {
@@ -579,9 +663,14 @@ class ProductSqlRepository {
         const skip = (options.page - 1) * options.perPage;
         const limit = options.perPage;
 
-        let whereClause = '1=1 AND p.tenant_id = ?';
+        let whereClause = '1=1 AND p.tenant_id = ? AND (p.deleted_at IS NULL OR p.deleted_at = 0)';
         const params = [tenantId];
         let joins = '';
+
+        // Allow including deleted products for admin views
+        if (filter.include_deleted) {
+            whereClause = '1=1 AND p.tenant_id = ?';
+        }
 
         if (filter.status) {
             whereClause += ' AND p.status = ?';
@@ -694,10 +783,48 @@ class ProductSqlRepository {
     }
 
     /**
-     * Delete a product (cascade will handle variants and attributes)
+     * Delete a product (soft delete - sets deleted_at timestamp)
      */
     async deleteProduct(id, tenantId = 1) {
-        const [result] = await mysqlPool.query('DELETE FROM products WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+        const connection = await mysqlPool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Soft delete - set deleted_at timestamp
+            const [result] = await connection.query(
+                'UPDATE products SET deleted_at = NOW() WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
+            );
+
+            await connection.commit();
+            return result.affectedRows > 0;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    /**
+     * Restore a soft-deleted product
+     */
+    async restoreProduct(id, tenantId = 1) {
+        const [result] = await mysqlPool.query(
+            'UPDATE products SET deleted_at = NULL WHERE id = ? AND tenant_id = ? AND deleted_at IS NOT NULL',
+            [id, tenantId]
+        );
+        return result.affectedRows > 0;
+    }
+
+    /**
+     * Permanently delete a product (hard delete - use with caution)
+     */
+    async hardDeleteProduct(id, tenantId = 1) {
+        const [result] = await mysqlPool.query(
+            'DELETE FROM products WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
+        );
         return result.affectedRows > 0;
     }
 
@@ -759,6 +886,337 @@ class ProductSqlRepository {
             [productId, categoryId]
         );
         return result.affectedRows > 0;
+    }
+
+    /**
+     * Get variant by color and size
+     */
+    async getVariantByColorSize(productId, color, size) {
+        const [rows] = await mysqlPool.query(
+            `SELECT v.*, vi.stock_level, vi.low_stock_threshold
+             FROM product_variants v
+             LEFT JOIN variant_inventory vi ON v.id = vi.variant_id
+             WHERE v.product_id = ?
+               AND (v.color = ? OR (v.color IS NULL AND ? IS NULL))
+               AND (v.size = ? OR (v.size IS NULL AND ? IS NULL))
+             LIMIT 1`,
+            [productId, color, color, size, size]
+        );
+
+        if (rows.length === 0) return null;
+        return this.mapVariantRow(rows[0]);
+    }
+
+    /**
+     * Get all variants for a product with color/size matrix
+     */
+    async getVariantMatrix(productId) {
+        const [rows] = await mysqlPool.query(
+            `SELECT v.*, vi.stock_level, vi.low_stock_threshold
+             FROM product_variants v
+             LEFT JOIN variant_inventory vi ON v.id = vi.variant_id
+             WHERE v.product_id = ?
+             ORDER BY v.color, v.size`,
+            [productId]
+        );
+
+        return rows.map(row => this.mapVariantRow(row));
+    }
+
+    /**
+     * Get all available colors for a product
+     */
+    async getProductColors(productId) {
+        const [rows] = await mysqlPool.query(
+            `SELECT DISTINCT color
+             FROM product_variants
+             WHERE product_id = ? AND color IS NOT NULL AND color != ''
+             ORDER BY color`,
+            [productId]
+        );
+        return rows.map(r => r.color);
+    }
+
+    /**
+     * Get all available sizes for a product (optionally filtered by color)
+     */
+    async getProductSizes(productId, color = null) {
+        let query, params;
+
+        if (color) {
+            query = `SELECT DISTINCT size
+                     FROM product_variants
+                     WHERE product_id = ? AND color = ?
+                     ORDER BY FIELD(size, 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'ONE_SIZE')`;
+            params = [productId, color];
+        } else {
+            query = `SELECT DISTINCT size
+                     FROM product_variants
+                     WHERE product_id = ?
+                     ORDER BY FIELD(size, 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'ONE_SIZE')`;
+            params = [productId];
+        }
+
+        const [rows] = await mysqlPool.query(query, params);
+        return rows.map(r => r.size);
+    }
+
+    /**
+     * Get stock for a specific variant
+     */
+    async getVariantStock(productId, color, size) {
+        const variant = await this.getVariantByColorSize(productId, color, size);
+        if (!variant) return null;
+
+        return {
+            variantId: variant.id,
+            stock: variant.stock_level || variant.stock_quantity || 0,
+            lowStockThreshold: variant.low_stock_threshold || 5,
+            isOutOfStock: (variant.stock_level || variant.stock_quantity || 0) === 0,
+            isLowStock: (variant.stock_level || variant.stock_quantity || 0) <= (variant.low_stock_threshold || 5)
+        };
+    }
+
+    /**
+     * Update variant stock with optimistic locking
+     * Returns { success: boolean, newStock: number, error?: string }
+     */
+    async updateVariantStockOptimistic(variantId, quantityToDeduct, expectedVersion = null) {
+        const connection = await mysqlPool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Get current variant state
+            const [current] = await connection.query(
+                'SELECT stock_quantity, version FROM product_variants WHERE id = ? FOR UPDATE',
+                [variantId]
+            );
+
+            if (current.length === 0) {
+                await connection.rollback();
+                return { success: false, error: 'Variant not found' };
+            }
+
+            const { stock_quantity: currentStock, version: currentVersion } = current[0];
+
+            // Check version for optimistic locking
+            if (expectedVersion !== null && expectedVersion !== currentVersion) {
+                await connection.rollback();
+                return {
+                    success: false,
+                    error: 'Stock was modified by another request. Please refresh and try again.',
+                    currentStock
+                };
+            }
+
+            // Check if enough stock
+            if (currentStock < quantityToDeduct) {
+                await connection.rollback();
+                return {
+                    success: false,
+                    error: 'Insufficient stock',
+                    currentStock,
+                    requested: quantityToDeduct
+                };
+            }
+
+            // Update stock and increment version
+            const newStock = currentStock - quantityToDeduct;
+            await connection.query(
+                'UPDATE product_variants SET stock_quantity = ?, version = version + 1 WHERE id = ?',
+                [newStock, variantId]
+            );
+
+            // Sync with variant_inventory
+            await connection.query(
+                'UPDATE variant_inventory SET stock_level = ? WHERE variant_id = ?',
+                [newStock, variantId]
+            );
+
+            await connection.commit();
+
+            return {
+                success: true,
+                newStock,
+                newVersion: currentVersion + 1
+            };
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    /**
+     * Bulk create/update variants for a product (variant matrix sync)
+     */
+    async syncVariantMatrix(productId, variants) {
+        const connection = await mysqlPool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Get existing variants
+            const [existing] = await connection.query(
+                'SELECT id, color, size, attributes_hash FROM product_variants WHERE product_id = ?',
+                [productId]
+            );
+
+            const existingMap = new Map();
+            existing.forEach(v => {
+                const key = `${v.color || ''}_${v.size || ''}`;
+                existingMap.set(key, v);
+            });
+
+            const processedKeys = new Set();
+
+            for (const variant of variants) {
+                const color = variant.color || null;
+                const size = variant.size || null;
+                const key = `${color || ''}_${size || ''}`;
+                processedKeys.add(key);
+
+                const attributes = {
+                    ...(variant.attributes || {}),
+                    color: color || undefined,
+                    size: size || undefined
+                };
+
+                const attributesHash = this.hashAttributes(attributes);
+                const { discountPrice, discountStart, discountEnd } = this.normalizeDiscountFields(variant);
+
+                const existingVariant = existingMap.get(key);
+
+                if (existingVariant) {
+                    // Update existing variant
+                    await connection.query(
+                        `UPDATE product_variants
+                         SET sku = ?, price = ?, discount_price = ?, discount_start = ?, discount_end = ?,
+                             image = ?, attributes_json = ?, attributes_hash = ?,
+                             stock_quantity = ?, price_override = ?, version = version
+                         WHERE id = ? AND product_id = ?`,
+                        [
+                            variant.sku || `SKU-${productId}-${color || 'X'}-${size || 'X'}`,
+                            variant.price || 0,
+                            discountPrice,
+                            discountStart,
+                            discountEnd,
+                            variant.image || null,
+                            JSON.stringify(attributes),
+                            attributesHash,
+                            variant.stock_quantity ?? variant.stock ?? 0,
+                            variant.price_override || null,
+                            existingVariant.id,
+                            productId
+                        ]
+                    );
+
+                    // Update inventory
+                    await connection.query(
+                        'UPDATE variant_inventory SET stock_level = ? WHERE variant_id = ?',
+                        [variant.stock_quantity ?? variant.stock ?? 0, existingVariant.id]
+                    );
+                } else {
+                    // Insert new variant
+                    const [result] = await connection.query(
+                        `INSERT INTO product_variants
+                         (product_id, sku, price, discount_price, discount_start, discount_end,
+                          image, attributes_json, attributes_hash, color, size, stock_quantity, price_override)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                            productId,
+                            variant.sku || `SKU-${productId}-${color || 'X'}-${size || 'X'}`,
+                            variant.price || 0,
+                            discountPrice,
+                            discountStart,
+                            discountEnd,
+                            variant.image || null,
+                            JSON.stringify(attributes),
+                            attributesHash,
+                            color,
+                            size,
+                            variant.stock_quantity ?? variant.stock ?? 0,
+                            variant.price_override || null
+                        ]
+                    );
+
+                    const variantId = result.insertId;
+
+                    // Create inventory record
+                    await connection.query(
+                        'INSERT INTO variant_inventory (variant_id, stock_level, low_stock_threshold) VALUES (?, ?, 5)',
+                        [variantId, variant.stock_quantity ?? variant.stock ?? 0]
+                    );
+                }
+            }
+
+            // Delete variants not in the new matrix
+            const variantsToDelete = [];
+            for (const [key, variant] of existingMap) {
+                if (!processedKeys.has(key)) {
+                    variantsToDelete.push(variant.id);
+                }
+            }
+
+            if (variantsToDelete.length > 0) {
+                await connection.query(
+                    'DELETE FROM variant_inventory WHERE variant_id IN (?)',
+                    [variantsToDelete]
+                );
+                await connection.query(
+                    'DELETE FROM product_variants WHERE id IN (?) AND product_id = ?',
+                    [variantsToDelete, productId]
+                );
+            }
+
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    /**
+     * Calculate total stock for a product (sum of all variants)
+     */
+    async getProductTotalStock(productId) {
+        const [rows] = await mysqlPool.query(
+            `SELECT COALESCE(SUM(vi.stock_level), 0) as total_stock
+             FROM product_variants v
+             LEFT JOIN variant_inventory vi ON v.id = vi.variant_id
+             WHERE v.product_id = ?`,
+            [productId]
+        );
+
+        return rows[0]?.total_stock || 0;
+    }
+
+    /**
+     * Get variant stock status summary for a product
+     */
+    async getVariantStockSummary(productId) {
+        const [rows] = await mysqlPool.query(
+            `SELECT
+                v.id,
+                v.color,
+                v.size,
+                vi.stock_level,
+                CASE
+                    WHEN vi.stock_level = 0 THEN 'out_of_stock'
+                    WHEN vi.stock_level <= vi.low_stock_threshold THEN 'low_stock'
+                    ELSE 'in_stock'
+                END as stock_status
+             FROM product_variants v
+             LEFT JOIN variant_inventory vi ON v.id = vi.variant_id
+             WHERE v.product_id = ?
+             ORDER BY v.color, v.size`,
+            [productId]
+        );
+
+        return rows;
     }
 }
 

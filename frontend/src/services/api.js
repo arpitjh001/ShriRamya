@@ -181,6 +181,41 @@ export const productsAPI = {
     }
   },
 
+  /* ---- Variant Matrix ---- */
+  getVariantMatrix: async (id) => {
+    try {
+      const res = await api.get(`/products/${id}/variants/matrix`);
+      return res;
+    } catch (err) {
+      handleError(err);
+      return { data: { variants: [] } };
+    }
+  },
+
+  getVariantStock: async (id, color, size) => {
+    try {
+      const res = await api.get(`/products/${id}/variants/stock`, {
+        params: { color, size }
+      });
+      return res;
+    } catch (err) {
+      handleError(err);
+      return { data: null };
+    }
+  },
+
+  validateVariantStock: async (id, color, size, quantity = 1) => {
+    try {
+      const res = await api.get(`/products/${id}/variants/validate-stock`, {
+        params: { color, size, quantity }
+      });
+      return res;
+    } catch (err) {
+      handleError(err);
+      return { data: { valid: false } };
+    }
+  },
+
   /* ---- Categories ---- */
   getCategories: async () => {
     try {

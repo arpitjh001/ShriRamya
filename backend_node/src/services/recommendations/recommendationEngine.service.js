@@ -72,16 +72,24 @@ class RecommendationEngine {
    * Get all recommendations (combined strategies)
    */
   async _getAllRecommendations(productId, limit) {
-    const [product] = await mysqlPool.query(
-      'SELECT id, category_id, base_price FROM products WHERE id = ?',
+    const [productRows] = await mysqlPool.query(
+      'SELECT id, base_price FROM products WHERE id = ?',
       [productId]
     );
 
-    if (product.length === 0) {
+    if (productRows.length === 0) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
     }
 
-    const productData = product[0];
+    const productData = productRows[0];
+
+    // Get category IDs from the junction table instead of relying on category_id column
+    const [categoryRows] = await mysqlPool.query(
+      'SELECT category_id FROM product_categories WHERE product_id = ?',
+      [productId]
+    );
+
+    productData.category_ids = categoryRows.map(row => row.category_id);
 
     // Get recommendations from different strategies with scores
     const scoredProducts = new Map();

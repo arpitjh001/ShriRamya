@@ -19,9 +19,10 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
+import VariantGridInput from '../components/VariantGridInput';
 import {
   Plus, Trash2, Edit, Save, X, Upload, Image as ImageIcon,
-  Package, FolderPlus, Search, Eye, EyeOff
+  Package, FolderPlus, Search, Eye, EyeOff, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -51,7 +52,11 @@ const AdminProductsPage = () => {
     images: [],
     variants: [],
     categories: [], // Array of category IDs
-    discountPrice: ''
+    discountPrice: '',
+    // Stock management fields
+    totalStock: 0,
+    lowStockThreshold: 5,
+    sku: '' // Product-level SKU
   });
 
   // Category Modal State
@@ -66,6 +71,14 @@ const AdminProductsPage = () => {
 
   // Upload State
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Variant Selection State
+  const [selectedColors, setSelectedColors] = useState([]);
+  const [selectedSizes, setSelectedSizes] = useState([]);
+
+  // Predefined colors and sizes for clothing
+  const availableColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Pink', 'Purple', 'Orange', 'Grey', 'Navy', 'Brown'];
+  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'ONE_SIZE'];
 
   // Check admin access
   useEffect(() => {
@@ -139,6 +152,8 @@ const AdminProductsPage = () => {
   const handleOpenProductModal = (product = null) => {
     if (product) {
       setEditingProduct(product);
+      // Calculate total stock from variants
+      const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
       setProductForm({
         name: product.name || '',
         description: product.description || '',
@@ -147,9 +162,16 @@ const AdminProductsPage = () => {
         fabric: product.fabric || '',
         occasion: product.occasion || '',
         images: product.images || [],
-        variants: product.variants || [],
+        variants: product.variants?.map(v => ({
+          ...v,
+          size: v.attributes?.size || v.size || '',
+          color: v.attributes?.color || v.color || ''
+        })) || [],
         categories: product.categories?.map(c => c.id.toString()) || [],
-        discountPrice: product.variants?.[0]?.discountPrice?.toString() || ''
+        discountPrice: product.variants?.[0]?.discountPrice?.toString() || '',
+        totalStock: totalStock.toString(),
+        lowStockThreshold: product.variants?.[0]?.lowStockThreshold?.toString() || '5',
+        sku: product.sku || ''
       });
     } else {
       setEditingProduct(null);
@@ -163,7 +185,10 @@ const AdminProductsPage = () => {
         images: [],
         variants: [],
         categories: [],
-        discountPrice: ''
+        discountPrice: '',
+        totalStock: '0',
+        lowStockThreshold: '5',
+        sku: ''
       });
     }
     setShowProductModal(true);
@@ -176,17 +201,24 @@ const AdminProductsPage = () => {
     }
 
     try {
-      // Scrub variants to only match valid Joi schema fields
+      // Generate product-level SKU if not provided
+      const productSku = productForm.sku || productForm.name?.substring(0, 3).toUpperCase() + '-' + Date.now().toString().substring(5);
+
+      // Format variants with proper structure
+      // All variants share the same product SKU
       const cleanVariants = (productForm.variants || []).map(v => {
         return {
           id: v.id,
-          sku: v.sku,
+          sku: productSku, // All variants share product SKU
           price: parseFloat(v.price) || parseFloat(productForm.basePrice) || 0,
           discountPrice: (productForm.discountPrice !== '' && productForm.discountPrice !== null) ? parseFloat(productForm.discountPrice) : null,
           stock: parseInt(v.stock, 10) || 0,
           image: v.image || '',
-          attributes: typeof v.attributes === 'string' ? JSON.parse(v.attributes || '{}') : (v.attributes || {}),
-          lowStockThreshold: parseInt(v.lowStockThreshold, 10) || 5
+          attributes: {
+            size: v.size || '',
+            color: v.color || ''
+          },
+          lowStockThreshold: parseInt(v.lowStockThreshold || productForm.lowStockThreshold, 10) || 5
         };
       });
 
@@ -198,8 +230,8 @@ const AdminProductsPage = () => {
         basePrice: parseFloat(productForm.basePrice) || 0,
         status: productForm.status,
         images: productForm.images,
-        categories: productForm.categories, // Send as 'categories' not 'categoryIds'
-        // Only send variants if there are any (prevent deleting existing variants on update)
+        categories: productForm.categories,
+        sku: productSku, // Product-level SKU
         variants: editingProduct && cleanVariants.length === 0 ? undefined : cleanVariants
       };
 
@@ -334,6 +366,68 @@ const AdminProductsPage = () => {
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  // Variant Management Handlers
+  const toggleColor = (color) => {
+    setSelectedColors(prev =>
+      prev.includes(color)
+        ? prev.filter(c => c !== color)
+        : [...prev, color]
+    );
+  };
+
+  const toggleSize = (size) => {
+    setSelectedSizes(prev =>
+      prev.includes(size)
+        ? prev.filter(s => s !== size)
+        : [...prev, size]
+    );
+  };
+
+  const handleGenerateVariants = () => {
+    const colors = selectedColors.length > 0 ? selectedColors : ['ONE_SIZE'];
+    const sizes = selectedSizes.length > 0 ? selectedSizes : ['ONE_SIZE'];
+
+    const variants = [];
+    for (const color of colors) {
+      for (const size of sizes) {
+        variants.push({
+          id: `variant_${color}_${size}_${Date.now()}`,
+          color: color === 'ONE_SIZE' ? '' : color,
+          size: size === 'ONE_SIZE' ? '' : size,
+          stock: 0,
+          price: parseFloat(productForm.basePrice) || 0,
+          attributes: {}
+        });
+      }
+    }
+
+    setProductForm(prev => ({ ...prev, variants }));
+    setSelectedColors([]);
+    setSelectedSizes([]);
+    toast.success(`Generated ${variants.length} variants`);
+  };
+
+  const updateVariantStock = (index, stock) => {
+    const newVariants = [...productForm.variants];
+    newVariants[index].stock = stock;
+    setProductForm({ ...productForm, variants: newVariants });
+  };
+
+  const removeVariant = (index) => {
+    const newVariants = productForm.variants.filter((_, i) => i !== index);
+    setProductForm({ ...productForm, variants: newVariants });
+  };
+
+  const clearAllSelections = () => {
+    setSelectedColors([]);
+    setSelectedSizes([]);
+    setProductForm(prev => ({ ...prev, variants: [] }));
+  };
+
+  const getTotalStock = () => {
+    return productForm.variants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
   };
 
   // Filters
@@ -665,6 +759,16 @@ const AdminProductsPage = () => {
                 />
               </div>
               <div>
+                <Label style={{ color: '#e2e8f0' }}>Product SKU</Label>
+                <Input
+                  value={productForm.sku}
+                  onChange={(e) => setProductForm({ ...productForm, sku: e.target.value.toUpperCase() })}
+                  placeholder="e.g., SRE-BANA-001"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0', fontFamily: 'monospace' }}
+                />
+                <p className="text-xs text-gray-400 mt-1">Auto-generated if left blank</p>
+              </div>
+              <div>
                 <Label style={{ color: '#e2e8f0' }}>Price (₹)</Label>
                 <Input
                   type="number"
@@ -674,16 +778,16 @@ const AdminProductsPage = () => {
                   style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
                 />
               </div>
-              <div>
-                <Label style={{ color: '#e2e8f0' }}>Discount Price (₹)</Label>
-                <Input
-                  type="number"
-                  value={productForm.discountPrice}
-                  onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
-                  placeholder="799"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
-                />
-              </div>
+            </div>
+            <div>
+              <Label style={{ color: '#e2e8f0' }}>Discount Price (₹)</Label>
+              <Input
+                type="number"
+                value={productForm.discountPrice}
+                onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
+                placeholder="799"
+                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+              />
             </div>
             <div>
               <Label style={{ color: '#e2e8f0' }}>Description</Label>
@@ -822,6 +926,30 @@ const AdminProductsPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Stock Management Section - Variant Grid */}
+            <div className="border-t pt-4" style={{ borderColor: 'rgba(148, 163, 184, 0.3)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Package className="w-5 h-5" style={{ color: '#6366f1' }} />
+                  <Label className="text-base" style={{ color: '#e2e8f0' }}>Variant Inventory (Color × Size)</Label>
+                </div>
+                {productForm.variants?.length > 0 && (
+                  <Badge variant="default" className="bg-green-600">
+                    {productForm.variants.length} variants | {getTotalStock()} total stock
+                  </Badge>
+                )}
+              </div>
+
+              {/* Variant Grid Input Component */}
+              <VariantGridInput
+                variants={productForm.variants || []}
+                onChange={(newVariants) => setProductForm({ ...productForm, variants: newVariants })}
+                basePrice={parseFloat(productForm.basePrice) || 0}
+              />
+            </div>
+
+            {/* Product Images */}
             <div>
               <Label style={{ color: '#e2e8f0' }}>Product Images</Label>
               <div className="flex items-center gap-4 mt-2">

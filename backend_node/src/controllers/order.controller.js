@@ -10,6 +10,7 @@ const orderEventService = require('../services/events/orderEvent.service');
 const shipmentService = require('../services/shipment.service');
 const refundService = require('../services/refund.service');
 const couponService = require('../services/coupon.service');
+const { variantInventoryService } = require('../services/variant-inventory.service');
 const { successResponse } = require('../utils/response');
 const { ORDER_STATUS } = require('../services/orderStateMachine.service');
 const ApiError = require('../utils/ApiError');

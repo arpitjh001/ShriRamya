@@ -8,14 +8,14 @@ const { successResponse } = require('../utils/response');
 
 /**
  * Get product recommendations
- * GET /api/v1/products/:id/recommendations
+ * GET /api/v1/products/:product_id/recommendations
  */
 const getProductRecommendations = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { product_id } = req.params;
     const { strategy = 'all', limit = 10 } = req.query;
-    
-    const result = await recommendationEngine.getRecommendations(id, strategy, parseInt(limit));
+
+    const result = await recommendationEngine.getRecommendations(product_id, strategy, parseInt(limit));
     return successResponse(res, result);
   } catch (error) {
     next(error);

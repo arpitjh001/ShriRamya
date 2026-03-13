@@ -18,6 +18,7 @@ const notificationRoute = require('./notification.route');
 const fraudRoute = require('./fraud.route');
 const tenantsRoute = require('./tenants.route');
 const usersRoute = require('./users.route'); // User management
+const aiCollaborationRoute = require('./ai-collaboration.route'); // AI collaboration loop
 
 const router = express.Router();
 
@@ -40,6 +41,7 @@ router.use('/notifications', notificationRoute);
 router.use('/admin/fraud', fraudRoute);
 router.use('/tenants', tenantsRoute);
 router.use('/users', usersRoute); // User management routes
+router.use('/ai-collaborate', aiCollaborationRoute); // AI collaboration loop
 
 module.exports = router;
 

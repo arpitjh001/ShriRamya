@@ -218,6 +218,244 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
+/**
+ * Get variant matrix for a product (Color x Size grid)
+ * GET /api/v1/products/:product_id/variants/matrix
+ */
+const getVariantMatrix = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const tenantId = getTenantId(req);
+
+    // First verify product exists and belongs to tenant
+    const product = await productService.getProductById(product_id, tenantId);
+    if (!product) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    const matrix = await variantInventoryService.getVariantMatrix(product_id);
+
+    return successResponse(res, {
+      productId: product_id,
+      productName: product.name,
+      variants: matrix,
+      totalStock: matrix.reduce((sum, v) => sum + v.stock, 0),
+      availableColors: [...new Set(matrix.map(v => v.color).filter(Boolean))],
+      availableSizes: [...new Set(matrix.map(v => v.size).filter(Boolean))]
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get available colors for a product
+ * GET /api/v1/products/:product_id/variants/colors
+ */
+const getProductColors = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const tenantId = getTenantId(req);
+
+    const product = await productService.getProductById(product_id, tenantId);
+    if (!product) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    const colors = await variantInventoryService.getAvailableColors(product_id);
+
+    return successResponse(res, { productId: product_id, colors });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get available sizes for a product (optionally filtered by color)
+ * GET /api/v1/products/:product_id/variants/sizes
+ */
+const getProductSizes = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const { color } = req.query;
+    const tenantId = getTenantId(req);
+
+    const product = await productService.getProductById(product_id, tenantId);
+    if (!product) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    const sizes = await variantInventoryService.getAvailableSizes(product_id, color);
+
+    return successResponse(res, { productId: product_id, color, sizes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get stock for a specific variant
+ * GET /api/v1/products/:product_id/variants/stock
+ */
+const getVariantStock = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const { color, size } = req.query;
+    const tenantId = getTenantId(req);
+
+    if (!color || !size) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.BAD_REQUEST, 'color and size query parameters are required');
+    }
+
+    const product = await productService.getProductById(product_id, tenantId);
+    if (!product) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    const stockInfo = await variantInventoryService.getVariantStock(product_id, color, size);
+
+    return successResponse(res, stockInfo);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Validate stock availability for a variant
+ * GET /api/v1/products/:product_id/variants/validate-stock
+ */
+const validateVariantStock = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const { color, size, quantity = 1 } = req.query;
+    const tenantId = getTenantId(req);
+
+    if (!color || !size) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.BAD_REQUEST, 'color and size query parameters are required');
+    }
+
+    const product = await productService.getProductById(product_id, tenantId);
+    if (!product) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    const validation = await variantInventoryService.validateStockAvailability(
+      product_id,
+      color,
+      size,
+      parseInt(quantity, 10)
+    );
+
+    return successResponse(res, validation);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Sync variant matrix for a product (bulk create/update)
+ * PUT /api/v1/products/:product_id/variants/matrix
+ */
+const syncVariantMatrix = async (req, res, next) => {
+  try {
+    const { product_id } = req.params;
+    const { variants } = req.body;
+    const tenantId = getTenantId(req);
+
+    if (!Array.isArray(variants)) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.BAD_REQUEST, 'variants must be an array');
+    }
+
+    // Verify product exists
+    const product = await productService.getProductById(product_id, tenantId);
+    if (!product) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    await variantInventoryService.syncVariantMatrix(product_id, variants);
+
+    // Clear cache
+    await clearProductsCache();
+
+    // Fetch updated variant matrix
+    const updatedMatrix = await variantInventoryService.getVariantMatrix(product_id);
+
+    return successResponse(res, {
+      productId: product_id,
+      variants: updatedMatrix,
+      message: 'Variant matrix synced successfully'
+    }, 'Variant matrix synced successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update stock level for a specific variant
+ * PUT /api/v1/products/:product_id/variants/:variant_id/stock
+ */
+const updateVariantStockLevel = async (req, res, next) => {
+  try {
+    const { product_id, variant_id } = req.params;
+    const { stockLevel } = req.body;
+    const tenantId = getTenantId(req);
+
+    if (stockLevel === undefined || stockLevel === null) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.BAD_REQUEST, 'stockLevel is required');
+    }
+
+    // Verify product exists
+    const product = await productService.getProductById(product_id, tenantId);
+    if (!product) {
+      const ApiError = require('../utils/ApiError');
+      throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+    }
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    const result = await variantInventoryService.updateStockLevel(variant_id, stockLevel);
+
+    // Clear cache
+    await clearProductsCache();
+
+    return successResponse(res, result, 'Stock level updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get low stock variants
+ * GET /api/v1/products/variants/low-stock
+ */
+const getLowStockVariants = async (req, res, next) => {
+  try {
+    const { threshold = 5 } = req.query;
+
+    const variantInventoryService = require('../services/variant-inventory.service').variantInventoryService;
+    const lowStockVariants = await variantInventoryService.getLowStockVariants(parseInt(threshold, 10));
+
+    return successResponse(res, lowStockVariants, 'Low stock variants retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProducts,
   getProduct,
@@ -230,4 +468,12 @@ module.exports = {
   assignCategoriesToProduct,
   getProductCategories,
   removeCategoryFromProduct,
+  getVariantMatrix,
+  getProductColors,
+  getProductSizes,
+  getVariantStock,
+  validateVariantStock,
+  syncVariantMatrix,
+  updateVariantStockLevel,
+  getLowStockVariants,
 };

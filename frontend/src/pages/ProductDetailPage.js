@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productsAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
-import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles } from 'lucide-react';
+import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
 import CraftStorySection from '../components/CraftStorySection';
 import LuxuryBadge from '../components/LuxuryBadge';
 import TryOnModal from '../components/VirtualTryOn/TryOnModal';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -23,8 +23,14 @@ const ProductDetailPage = () => {
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
+  const [variantStock, setVariantStock] = useState(null);
   const [tryOnModalOpen, setTryOnModalOpen] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState('description');
+
+  // Variant matrix state
+  const [variantMatrix, setVariantMatrix] = useState([]);
+  const [availableColors, setAvailableColors] = useState([]);
+  const [availableSizes, setAvailableSizes] = useState([]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -37,9 +43,34 @@ const ProductDetailPage = () => {
         setProduct(productRes.data);
         setRecommendations(recsRes.data || []);
 
-        const variantsData = productRes.data?.variants || productRes.data?.variations || [];
-        if (variantsData.length > 0) {
-          setSelectedVariation(variantsData[0]);
+        // Fetch variant matrix
+        try {
+          const matrixRes = await productsAPI.getVariantMatrix(id);
+          const variants = matrixRes.data?.variants || [];
+          setVariantMatrix(variants);
+
+          // Extract unique colors and sizes
+          const colors = [...new Set(variants.map(v => v.color).filter(Boolean))];
+          const sizes = [...new Set(variants.map(v => v.size).filter(Boolean))];
+          setAvailableColors(colors);
+          setAvailableSizes(sizes);
+
+          // Select first available color/size if variants exist
+          if (variants.length > 0 && colors.length > 0 && sizes.length > 0) {
+            const firstInStockVariant = variants.find(v => v.stock > 0) || variants[0];
+            if (firstInStockVariant) {
+              setSelectedColor(firstInStockVariant.color);
+              setSelectedSize(firstInStockVariant.size);
+              setSelectedVariation(firstInStockVariant);
+              updateVariantStock(firstInStockVariant.color, firstInStockVariant.size);
+            }
+          }
+        } catch (err) {
+          console.log('Variant matrix not available, using legacy variant system');
+          const variantsData = productRes.data?.variants || productRes.data?.variations || [];
+          if (variantsData.length > 0) {
+            setSelectedVariation(variantsData[0]);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch product:', error);
@@ -51,25 +82,108 @@ const ProductDetailPage = () => {
     fetchProduct();
   }, [id]);
 
-  const handleAddToCart = async () => {
-    if ((product.size_stock?.length > 0 && !selectedSize) || (product.color_stock?.length > 0 && !selectedColor)) {
-      toast.error('Please select both size and color');
-      return;
+  // Update variant stock when color/size changes
+  const updateVariantStock = (color, size) => {
+    const variant = variantMatrix.find(v => v.color === color && v.size === size);
+    if (variant) {
+      setVariantStock({
+        stock: variant.stock,
+        isOutOfStock: variant.stock === 0,
+        isLowStock: variant.stock > 0 && variant.stock <= 5,
+        stockStatus: variant.stock === 0 ? 'out_of_stock' : variant.stock <= 5 ? 'low_stock' : 'in_stock'
+      });
+    } else {
+      setVariantStock(null);
     }
-    try {
-      const hasCustomVariations = product.size_stock?.length > 0 || product.color_stock?.length > 0;
-      let variation = hasCustomVariations
-        ? { size: selectedSize, color: selectedColor }
-        : selectedVariation;
+  };
 
-      if (variation && !variation.size && !variation.color) {
-        variation = null;
+  // Handle color selection
+  const handleColorSelect = (color) => {
+    setSelectedColor(color);
+    setSelectedSize(''); // Reset size when color changes
+    setVariantStock(null);
+
+    // Get available sizes for this color
+    const sizesForColor = [...new Set(
+      variantMatrix
+        .filter(v => v.color === color && v.stock > 0)
+        .map(v => v.size)
+    )];
+
+    // Auto-select first available size if only one exists
+    if (sizesForColor.length === 1) {
+      setSelectedSize(sizesForColor[0]);
+      updateVariantStock(color, sizesForColor[0]);
+    }
+  };
+
+  // Handle size selection
+  const handleSizeSelect = (size) => {
+    setSelectedSize(size);
+    if (selectedColor) {
+      updateVariantStock(selectedColor, size);
+      const variant = variantMatrix.find(v => v.color === selectedColor && v.size === size);
+      setSelectedVariation(variant);
+    }
+  };
+
+  // Check if a size is available for selected color
+  const isSizeAvailable = (size) => {
+    if (!selectedColor) return true;
+    const variant = variantMatrix.find(v => v.color === selectedColor && v.size === size);
+    return variant && variant.stock > 0;
+  };
+
+  // Get stock count for a specific variant
+  const getStockForSize = (size) => {
+    if (!selectedColor) return 0;
+    const variant = variantMatrix.find(v => v.color === selectedColor && v.size === size);
+    return variant ? variant.stock : 0;
+  };
+
+  const handleAddToCart = async () => {
+    // Validate variant selection for clothing products
+    if (variantMatrix.length > 0) {
+      if (!selectedColor) {
+        toast.error('Please select a color');
+        return;
+      }
+      if (!selectedSize) {
+        toast.error('Please select a size');
+        return;
+      }
+
+      // Validate stock
+      if (!variantStock || variantStock.isOutOfStock) {
+        toast.error('This variant is out of stock');
+        return;
+      }
+    }
+
+    try {
+      let variation = null;
+
+      if (variantMatrix.length > 0) {
+        // Use variant matrix system
+        variation = {
+          variantId: selectedVariation?.id,
+          color: selectedColor,
+          size: selectedSize,
+          stock: variantStock?.stock || 0
+        };
+      } else if (selectedVariation) {
+        // Legacy variant system
+        variation = selectedVariation;
       }
 
       await addToCart(product.id, 1, variation);
       toast.success('Added to cart!');
     } catch (error) {
-      toast.error('Failed to add to cart');
+      if (error.response?.data?.code === 'INSUFFICIENT_STOCK') {
+        toast.error(`Only ${error.response?.data?.availableStock} items available`);
+      } else {
+        toast.error('Failed to add to cart');
+      }
     }
   };
 
@@ -226,55 +340,107 @@ const ProductDetailPage = () => {
               <Sparkles className="ml-auto w-5 h-5 text-royal-maroon/30 animate-pulse" />
             </div>
 
-            {/* Selection Options */}
+            {/* Selection Options - Variant Matrix System */}
             <div className="space-y-8">
-              {/* Size Select */}
-              {product.size_stock?.length > 0 && (
+              {/* Color Selection - Variant Matrix */}
+              {availableColors.length > 0 && (
+                <div className="space-y-4">
+                  <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">
+                    Color: <span className="text-charcoal/60 capitalize">{selectedColor || 'Choose'}</span>
+                  </label>
+                  <div className="flex flex-wrap gap-4">
+                    {availableColors.map((color, index) => {
+                      const hasStock = variantMatrix.some(v => v.color === color && v.stock > 0);
+                      const isSelected = selectedColor === color;
+
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => handleColorSelect(color)}
+                          disabled={!hasStock}
+                          className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                            isSelected ? 'ring-2 ring-charcoal ring-offset-4 ring-offset-[#F7F3EC] scale-105' : ''
+                          } ${!hasStock ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'}`}
+                        >
+                          <div
+                            className="w-full h-full rounded-full shadow-inner border border-charcoal/5"
+                            style={{ backgroundColor: color.toLowerCase() }}
+                          />
+                          {!hasStock && (
+                            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-full flex items-center justify-center">
+                              <span className="text-[8px] font-bold text-charcoal">SOLD</span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Size Selection - Variant Matrix */}
+              {(availableSizes.length > 0 || product.size_stock?.length > 0) && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">Select Size</label>
                     <button className="text-[10px] uppercase font-bold text-royal-maroon hover:underline tracking-widest opacity-60">Size Guide</button>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {product.size_stock.map((item, index) => (
-                      <button
-                        key={index}
-                        disabled={item.qty === 0}
-                        onClick={() => setSelectedSize(item.size)}
-                        className={`min-w-[50px] h-[50px] rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 border ${
-                          selectedSize === item.size 
-                            ? 'bg-charcoal text-white border-charcoal shadow-lg shadow-charcoal/20' 
-                            : 'bg-white text-charcoal border-charcoal/5 hover:border-charcoal/20'
-                        } ${item.qty === 0 ? 'opacity-20 cursor-not-allowed grayscale' : ''}`}
-                      >
-                        {item.size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    {/* Use variant matrix sizes if available */}
+                    {(availableSizes.length > 0 ? availableSizes : product.size_stock?.map(s => s.size) || []).map((size, index) => {
+                      const isAvailable = variantMatrix.length > 0
+                        ? isSizeAvailable(size)
+                        : (product.size_stock?.find(s => s.size === size)?.qty || 0) > 0;
+                      const isSelected = selectedSize === size;
+                      const stockCount = variantMatrix.length > 0
+                        ? getStockForSize(size)
+                        : (product.size_stock?.find(s => s.size === size)?.qty || 0);
 
-              {/* Color Swatches */}
-              {product.color_stock?.length > 0 && (
-                <div className="space-y-4">
-                  <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">Color: <span className="text-charcoal/60 capitalize">{selectedColor || 'Choose'}</span></label>
-                  <div className="flex flex-wrap gap-4">
-                    {product.color_stock.map((item, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedColor(item.color)}
-                        className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                          selectedColor === item.color ? 'ring-2 ring-charcoal ring-offset-4 ring-offset-[#F7F3EC]' : ''
-                        }`}
-                      >
-                         <div 
-                          className="w-full h-full rounded-full shadow-inner border border-charcoal/5"
-                          style={{ backgroundColor: item.color }}
-                         />
-                         {item.qty === 0 && <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-full flex items-center justify-center text-[10px] font-bold text-charcoal opacity-50">SOLD</div>}
-                      </button>
-                    ))}
+                      return (
+                        <button
+                          key={index}
+                          disabled={!isAvailable}
+                          onClick={() => handleSizeSelect(size)}
+                          className={`min-w-[60px] h-[55px] rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 border relative ${
+                            isSelected
+                              ? 'bg-charcoal text-white border-charcoal shadow-lg shadow-charcoal/20'
+                              : 'bg-white text-charcoal border-charcoal/5 hover:border-charcoal/20'
+                          } ${!isAvailable ? 'opacity-20 cursor-not-allowed grayscale' : ''}`}
+                        >
+                          {size}
+                          {!isAvailable && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-xl">
+                              <span className="text-[9px] font-bold text-charcoal/50 rotate-12">SOLD OUT</span>
+                            </div>
+                          )}
+                          {isAvailable && stockCount <= 5 && stockCount > 0 && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" title="Low stock" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  {/* Stock message for selected variant */}
+                  {selectedColor && selectedSize && variantStock && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`text-sm ${
+                        variantStock.isOutOfStock
+                          ? 'text-red-600 font-semibold'
+                          : variantStock.isLowStock
+                          ? 'text-orange-600 font-medium'
+                          : 'text-green-600'
+                      }`}
+                    >
+                      {variantStock.isOutOfStock
+                        ? 'This variant is currently out of stock'
+                        : variantStock.isLowStock
+                        ? `Hurry! Only ${variantStock.stock} pieces left`
+                        : 'In stock'}
+                    </motion.div>
+                  )}
                 </div>
               )}
             </div>
@@ -314,13 +480,13 @@ const ProductDetailPage = () => {
                 { id: 'return', title: 'Returns & Exchanges', content: 'This product is returnable within 14 days of delivery. Returns are not applicable on styles under Sale Section. Please ensure labels are intact.' }
               ].map((item) => (
                 <div key={item.id} className="group">
-                  <button 
+                  <button
                     onClick={() => toggleAccordion(item.id)}
                     className="w-full py-4 flex items-center justify-between text-[11px] uppercase font-bold tracking-widest group-hover:text-charcoal"
                   >
                     {item.title}
                     <motion.span animate={{ rotate: activeAccordion === item.id ? 180 : 0 }}>
-                      <Menu className="w-3 h-3" />
+                      <ChevronDown className="w-3 h-3" />
                     </motion.span>
                   </button>
                   <AnimatePresence>

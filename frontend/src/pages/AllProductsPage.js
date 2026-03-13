@@ -21,7 +21,21 @@ const AllProductsPage = () => {
             const params = {};
             if (filterCategory) params.category = filterCategory;
             const res = await productsAPI.getAll(params);
-            setProducts(Array.isArray(res.data) ? res.data : []);
+            const productsData = Array.isArray(res.data) ? res.data : [];
+
+            // Enhance products with calculated stock from variants
+            const enhancedProducts = productsData.map(product => ({
+                ...product,
+                // Calculate total stock from all variants
+                stock_quantity: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0)
+                    ?? product.stock_quantity
+                    ?? product.stock
+                    ?? 0,
+                // Use first variant's SKU if product doesn't have one
+                sku: product.sku ?? product.variants?.[0]?.sku ?? 'N/A',
+            }));
+
+            setProducts(enhancedProducts);
         } catch (err) {
             console.error('Failed to load products:', err);
             setProducts([]);
@@ -275,13 +289,29 @@ const AllProductsPage = () => {
 
                                             {/* Stock */}
                                             {product.stock_quantity !== undefined && (
-                                                <p style={{
-                                                    fontSize: '0.75rem', marginTop: 8,
-                                                    color: product.stock_quantity > 0 ? '#16a34a' : '#dc2626',
-                                                    fontWeight: 500,
-                                                }}>
-                                                    {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out of stock'}
-                                                </p>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                    <span style={{
+                                                        fontSize: '0.75rem',
+                                                        color: product.stock_quantity > 0 ? '#16a34a' : '#dc2626',
+                                                        fontWeight: 500,
+                                                        padding: '2px 8px',
+                                                        borderRadius: 12,
+                                                        background: product.stock_quantity > 0 ? '#dcfce7' : '#fee2e2',
+                                                    }}>
+                                                        {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out of stock'}
+                                                    </span>
+                                                    {product.variants && product.variants.length > 1 && (
+                                                        <span style={{
+                                                            fontSize: '0.7rem',
+                                                            color: '#64748b',
+                                                            background: '#f1f5f9',
+                                                            padding: '2px 6px',
+                                                            borderRadius: 8,
+                                                        }}>
+                                                            {product.variants.length} variants
+                                                        </span>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -358,11 +388,26 @@ const AllProductsPage = () => {
                                         {/* Stock */}
                                         <div>
                                             {product.stock_quantity !== undefined ? (
-                                                <span style={{
-                                                    padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 500,
-                                                    background: product.stock_quantity > 0 ? '#dcfce7' : '#fee2e2',
-                                                    color: product.stock_quantity > 0 ? '#16a34a' : '#dc2626',
-                                                }}>{product.stock_quantity} {product.stock_quantity > 0 ? 'in stock' : 'out'}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                                                    <span style={{
+                                                        padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 500,
+                                                        background: product.stock_quantity > 0 ? '#dcfce7' : '#fee2e2',
+                                                        color: product.stock_quantity > 0 ? '#16a34a' : '#dc2626',
+                                                    }}>
+                                                        {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out'}
+                                                    </span>
+                                                    {product.variants && product.variants.length > 1 && (
+                                                        <span style={{
+                                                            fontSize: '0.7rem',
+                                                            color: '#64748b',
+                                                            background: '#f1f5f9',
+                                                            padding: '2px 6px',
+                                                            borderRadius: 8,
+                                                        }}>
+                                                            {product.variants.length} variants
+                                                        </span>
+                                                    )}
+                                                </div>
                                             ) : <span style={{ color: '#cbd5e1' }}>—</span>}
                                         </div>
 

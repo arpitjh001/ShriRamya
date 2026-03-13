@@ -148,7 +148,7 @@ class CartSqlRepository {
 
         // Get cart items with variant and product details
         const [items] = await mysqlPool.query(
-            `SELECT 
+            `SELECT
                 ci.id AS cart_item_id,
                 ci.variant_id,
                 ci.quantity,
@@ -157,7 +157,7 @@ class CartSqlRepository {
                 ci.updated_at AS item_updated_at,
                 pv.sku,
                 pv.price AS variant_price,
-                pv.discount_price,
+                COALESCE(pv.discount_price, 0) AS discount_price,
                 pv.discount_start,
                 pv.discount_end,
                 pv.image AS variant_image,
