@@ -78,6 +78,44 @@ class ProductSqlRepository {
         return { discountPrice, discountStart, discountEnd };
     }
 
+    /**
+     * Normalize variant fields to ensure correct data types
+     * Prevents MySQL type errors (e.g., string SKU being inserted into numeric price column)
+     */
+    normalizeVariantFields(variantData = {}) {
+        // Convert price to number, default to 0 if invalid
+        let price = 0;
+        if (variantData.price !== undefined && variantData.price !== null && variantData.price !== '') {
+            price = Number(variantData.price);
+            if (Number.isNaN(price)) {
+                console.warn('[ProductSqlRepository] Invalid price value, defaulting to 0:', variantData.price);
+                price = 0;
+            }
+        }
+
+        // Convert stock to number, default to 0 if invalid
+        let stock = 0;
+        if (variantData.stock !== undefined && variantData.stock !== null && variantData.stock !== '') {
+            stock = Number(variantData.stock);
+            if (Number.isNaN(stock)) {
+                console.warn('[ProductSqlRepository] Invalid stock value, defaulting to 0:', variantData.stock);
+                stock = 0;
+            }
+        }
+
+        // Convert lowStockThreshold to number, default to 5 if invalid
+        let lowStockThreshold = 5;
+        if (variantData.lowStockThreshold !== undefined && variantData.lowStockThreshold !== null && variantData.lowStockThreshold !== '') {
+            lowStockThreshold = Number(variantData.lowStockThreshold);
+            if (Number.isNaN(lowStockThreshold)) {
+                console.warn('[ProductSqlRepository] Invalid lowStockThreshold value, defaulting to 5:', variantData.lowStockThreshold);
+                lowStockThreshold = 5;
+            }
+        }
+
+        return { price, stock, lowStockThreshold };
+    }
+
     mapVariantRow(variantRow) {
         return {
             id: variantRow.id,
@@ -201,31 +239,48 @@ class ProductSqlRepository {
 
             const attributesHash = this.hashAttributes(variantData.attributes);
             const { discountPrice, discountStart, discountEnd } = this.normalizeDiscountFields(variantData);
+            const { price, stock, lowStockThreshold } = this.normalizeVariantFields(variantData);
 
-            // 1. Insert Variant
+            // Extract color and size from attributes if not provided directly
+            const color = variantData.color || variantData.attributes?.color || null;
+            const size = variantData.size || variantData.attributes?.size || null;
+
+            // Generate SKU if not provided
+            const sku = variantData.sku || `VAR-${productId}-${color || 'X'}-${size || 'X'}-${Date.now().toString().substring(5)}`;
+
+            // Ensure attributes_json is never null
+            const attributes = variantData.attributes || { color, size };
+
+            // Recalculate hash with proper attributes
+            const finalAttributesHash = this.hashAttributes(attributes);
+
+            // 1. Insert Variant with explicit color/size columns
             const [variantResult] = await connection.query(
-                `INSERT INTO product_variants 
-                (product_id, sku, price, discount_price, discount_start, discount_end, image, attributes_json, attributes_hash) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO product_variants
+                (product_id, sku, price, discount_price, discount_start, discount_end, image, color, size, stock_quantity, attributes_json, attributes_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     productId,
-                    variantData.sku,
-                    variantData.price,
+                    sku,
+                    price,
                     discountPrice,
                     discountStart,
                     discountEnd,
                     variantData.image || null,
-                    JSON.stringify(variantData.attributes),
-                    attributesHash
+                    color,
+                    size,
+                    stock,
+                    JSON.stringify(attributes),
+                    finalAttributesHash
                 ]
             );
             const variantId = variantResult.insertId;
 
             // 2. Insert Inventory
             await connection.query(
-                `INSERT INTO variant_inventory (variant_id, stock_level, low_stock_threshold) 
+                `INSERT INTO variant_inventory (variant_id, stock_level, low_stock_threshold)
                  VALUES (?, ?, ?)`,
-                [variantId, variantData.stock ?? 0, variantData.lowStockThreshold ?? 5]
+                [variantId, stock, lowStockThreshold]
             );
 
             await connection.commit();
@@ -427,53 +482,71 @@ class ProductSqlRepository {
                 for (const variant of data.variants) {
                     const attributesHash = this.hashAttributes(variant.attributes);
                     const { discountPrice, discountStart, discountEnd } = this.normalizeDiscountFields(variant);
+                    const { price, stock, lowStockThreshold } = this.normalizeVariantFields(variant);
+
+                    // Extract color and size from attributes if not provided directly
+                    const color = variant.color || variant.attributes?.color || null;
+                    const size = variant.size || variant.attributes?.size || null;
+
+                    // Generate SKU if not provided
+                    const sku = variant.sku || `VAR-${id}-${color || 'X'}-${size || 'X'}-${Date.now().toString().substring(5)}`;
+
+                    // Ensure attributes_json is never null
+                    const attributes = variant.attributes || { color, size };
+                    const finalAttributesHash = this.hashAttributes(attributes);
 
                     if (variant.id) {
-                        // Update existing variant
+                        // Update existing variant with color/size
                         await connection.query(
-                            `UPDATE product_variants 
-                             SET sku = ?, price = ?, discount_price = ?, discount_start = ?, discount_end = ?, image = ?, attributes_json = ?, attributes_hash = ? 
+                            `UPDATE product_variants
+                             SET sku = ?, price = ?, discount_price = ?, discount_start = ?, discount_end = ?, image = ?, color = ?, size = ?, stock_quantity = ?, attributes_json = ?, attributes_hash = ?
                              WHERE id = ? AND product_id = ?`,
                             [
-                                variant.sku,
-                                variant.price,
+                                sku,
+                                price,
                                 discountPrice,
                                 discountStart,
                                 discountEnd,
                                 variant.image || null,
-                                JSON.stringify(variant.attributes),
-                                attributesHash,
+                                color,
+                                size,
+                                stock,
+                                JSON.stringify(attributes),
+                                finalAttributesHash,
                                 variant.id,
                                 id
                             ]
                         );
                         await connection.query(
                             `UPDATE variant_inventory SET stock_level = ?, low_stock_threshold = ? WHERE variant_id = ?`,
-                            [variant.stock ?? 0, variant.lowStockThreshold ?? 5, variant.id]
+                            [stock, lowStockThreshold, variant.id]
                         );
                     } else {
-                        // Insert new variant
+                        // Insert new variant with color/size
                         const [variantResult] = await connection.query(
-                            `INSERT INTO product_variants 
-                             (product_id, sku, price, discount_price, discount_start, discount_end, image, attributes_json, attributes_hash) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            `INSERT INTO product_variants
+                             (product_id, sku, price, discount_price, discount_start, discount_end, image, color, size, stock_quantity, attributes_json, attributes_hash)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                             [
                                 id,
-                                variant.sku,
-                                variant.price,
+                                sku,
+                                price,
                                 discountPrice,
                                 discountStart,
                                 discountEnd,
                                 variant.image || null,
-                                JSON.stringify(variant.attributes),
-                                attributesHash
+                                color,
+                                size,
+                                stock,
+                                JSON.stringify(attributes),
+                                finalAttributesHash
                             ]
                         );
                         const variantId = variantResult.insertId;
 
                         await connection.query(
                             `INSERT INTO variant_inventory (variant_id, stock_level, low_stock_threshold) VALUES (?, ?, ?)`,
-                            [variantId, variant.stock ?? 0, variant.lowStockThreshold ?? 5]
+                            [variantId, stock, lowStockThreshold]
                         );
                     }
                 }
@@ -508,18 +581,26 @@ class ProductSqlRepository {
 
             const attributesHash = this.hashAttributes(variantData.attributes);
             const { discountPrice, discountStart, discountEnd } = this.normalizeDiscountFields(variantData);
+            const { price, stock, lowStockThreshold } = this.normalizeVariantFields(variantData);
+
+            // Extract color and size from attributes if not provided directly
+            const color = variantData.color || variantData.attributes?.color || null;
+            const size = variantData.size || variantData.attributes?.size || null;
 
             const [variantResult] = await connection.query(
-                `UPDATE product_variants 
-                 SET sku = ?, price = ?, discount_price = ?, discount_start = ?, discount_end = ?, image = ?, attributes_json = ?, attributes_hash = ? 
+                `UPDATE product_variants
+                 SET sku = ?, price = ?, discount_price = ?, discount_start = ?, discount_end = ?, image = ?, color = ?, size = ?, stock_quantity = ?, attributes_json = ?, attributes_hash = ?
                  WHERE id = ? AND product_id = ?`,
                 [
                     variantData.sku,
-                    variantData.price,
+                    price,
                     discountPrice,
                     discountStart,
                     discountEnd,
                     variantData.image || null,
+                    color,
+                    size,
+                    stock,
                     JSON.stringify(variantData.attributes),
                     attributesHash,
                     variantId,
@@ -535,13 +616,13 @@ class ProductSqlRepository {
 
             const [inventoryResult] = await connection.query(
                 `UPDATE variant_inventory SET stock_level = ?, low_stock_threshold = ? WHERE variant_id = ?`,
-                [variantData.stock ?? 0, variantData.lowStockThreshold ?? 5, variantId]
+                [stock, lowStockThreshold, variantId]
             );
 
             if (inventoryResult.affectedRows === 0) {
                 await connection.query(
                     `INSERT INTO variant_inventory (variant_id, stock_level, low_stock_threshold) VALUES (?, ?, ?)`,
-                    [variantId, variantData.stock ?? 0, variantData.lowStockThreshold ?? 5]
+                    [variantId, stock, lowStockThreshold]
                 );
             }
 
@@ -1084,6 +1165,7 @@ class ProductSqlRepository {
 
                 const attributesHash = this.hashAttributes(attributes);
                 const { discountPrice, discountStart, discountEnd } = this.normalizeDiscountFields(variant);
+                const { price, stock, lowStockThreshold } = this.normalizeVariantFields(variant);
 
                 const existingVariant = existingMap.get(key);
 
@@ -1097,14 +1179,14 @@ class ProductSqlRepository {
                          WHERE id = ? AND product_id = ?`,
                         [
                             variant.sku || `SKU-${productId}-${color || 'X'}-${size || 'X'}`,
-                            variant.price || 0,
+                            price,
                             discountPrice,
                             discountStart,
                             discountEnd,
                             variant.image || null,
                             JSON.stringify(attributes),
                             attributesHash,
-                            variant.stock_quantity ?? variant.stock ?? 0,
+                            stock,
                             variant.price_override || null,
                             existingVariant.id,
                             productId
@@ -1114,7 +1196,7 @@ class ProductSqlRepository {
                     // Update inventory
                     await connection.query(
                         'UPDATE variant_inventory SET stock_level = ? WHERE variant_id = ?',
-                        [variant.stock_quantity ?? variant.stock ?? 0, existingVariant.id]
+                        [stock, existingVariant.id]
                     );
                 } else {
                     // Insert new variant
@@ -1126,7 +1208,7 @@ class ProductSqlRepository {
                         [
                             productId,
                             variant.sku || `SKU-${productId}-${color || 'X'}-${size || 'X'}`,
-                            variant.price || 0,
+                            price,
                             discountPrice,
                             discountStart,
                             discountEnd,
@@ -1135,7 +1217,7 @@ class ProductSqlRepository {
                             attributesHash,
                             color,
                             size,
-                            variant.stock_quantity ?? variant.stock ?? 0,
+                            stock,
                             variant.price_override || null
                         ]
                     );
