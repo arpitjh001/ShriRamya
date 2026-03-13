@@ -4,6 +4,8 @@
  */
 
 const express = require('express');
+const validate = require('../../middlewares/validate');
+const blogValidation = require('../../validations/blog.validation');
 const router = express.Router();
 const blogController = require('../../controllers/blog.controller');
 const { auth, requireRole, ensureTenantIsolation, optionalTenantIsolation } = require('../../middlewares/authRBAC');
@@ -15,6 +17,7 @@ const { auth, requireRole, ensureTenantIsolation, optionalTenantIsolation } = re
  */
 router.get('/',
     optionalTenantIsolation,
+    validate(blogValidation.getPosts),
     blogController.getPosts
 );
 
@@ -84,6 +87,7 @@ router.get('/:post_id/comments',
  */
 router.post('/:post_id/comment',
     auth,
+    validate(blogValidation.addComment),
     blogController.addComment
 );
 
@@ -94,6 +98,7 @@ router.post('/:post_id/comment',
  */
 router.get('/:post_id',
     optionalTenantIsolation,
+    validate(blogValidation.postId),
     blogController.getPost
 );
 
@@ -106,6 +111,7 @@ router.post('/',
     auth,
     requireRole('Editor', 'Admin'),
     ensureTenantIsolation,
+    validate(blogValidation.createPost),
     blogController.createPost
 );
 
@@ -118,6 +124,7 @@ router.put('/:post_id',
     auth,
     requireRole('Editor', 'Admin'),
     ensureTenantIsolation,
+    validate(blogValidation.updatePost),
     blogController.updatePost
 );
 
@@ -130,6 +137,7 @@ router.post('/:post_id/publish',
     auth,
     requireRole('Editor', 'Admin'),
     ensureTenantIsolation,
+    validate(blogValidation.postId),
     blogController.publishPost
 );
 
@@ -142,6 +150,7 @@ router.post('/:post_id/archive',
     auth,
     requireRole('Editor', 'Admin'),
     ensureTenantIsolation,
+    validate(blogValidation.postId),
     blogController.archivePost
 );
 
@@ -166,6 +175,7 @@ router.delete('/:post_id',
     auth,
     requireRole('Admin'),
     ensureTenantIsolation,
+    validate(blogValidation.postId),
     blogController.deletePost
 );
 

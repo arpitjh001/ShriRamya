@@ -13,38 +13,13 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: shriramya
-      MYSQL_USER: wpuser
+      MYSQL_USER: shriramya_user
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./wordpress_conf/mysql-performance.cnf:/etc/mysql/conf.d/zzz-performance.cnf:ro
     networks:
       - internal
     # PORTS REMOVED: DB NOT EXPOSED TO HOST
-
-  wordpress:
-    image: wordpress:6.4-fpm-alpine
-    restart: always
-    depends_on:
-      - mysql
-    volumes:
-      - ./wordpress:/var/www/html
-      - ./uploads:/var/www/html/wp-content/uploads
-    environment:
-      WORDPRESS_DB_HOST: mysql:3306
-      WORDPRESS_DB_USER: wpuser
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-      WORDPRESS_DB_NAME: shriramya
-      WP_REDIS_HOST: redis
-      WP_REDIS_PORT: 6379
-      WP_REDIS_DATABASE: 0
-      WP_REDIS_CLIENT: predis
-      WP_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      WP_REDIS_PREFIX: "shriramya:"
-      WP_CACHE_KEY_SALT: "shriramya:"
-    networks:
-      - internal
-      - public
 
   mongodb:
     image: mongo:6
@@ -64,32 +39,6 @@ services:
     networks:
       - internal
     # PORTS REMOVED
-
-  wpcli:
-    image: wordpress:cli
-    restart: "no"
-    depends_on:
-      - mysql
-      - wordpress
-      - redis
-    environment:
-      WORDPRESS_DB_HOST: mysql:3306
-      WORDPRESS_DB_USER: wpuser
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-      WORDPRESS_DB_NAME: shriramya
-      WP_REDIS_HOST: redis
-      WP_REDIS_PORT: 6379
-      WP_REDIS_DATABASE: 0
-      WP_REDIS_CLIENT: predis
-      WP_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      WP_REDIS_PREFIX: "shriramya:"
-      WP_CACHE_KEY_SALT: "shriramya:"
-    volumes:
-      - ./wordpress:/var/www/html
-      - ./wordpress_conf/setup-redis-cache.sh:/usr/local/bin/setup-redis-cache.sh:ro
-    entrypoint: ["/bin/sh", "/usr/local/bin/setup-redis-cache.sh"]
-    networks:
-      - internal
 
   backend:
     build: ./backend_node

@@ -5,10 +5,10 @@ Welcome to the **Shri Ramya** project. This repository has been fully migrated f
 ## 🏗️ Tech Stack
 - **Frontend**: React.js (located in `/frontend`)
 - **Backend**: Node.js / Express (located in `/backend_node`)
-- **Database**: 
+- **Database**:
   - **MongoDB**: For user accounts, orders, and persistent session data.
-  - **MySQL**: Powering the WordPress/WooCommerce CMS.
-- **CMS**: WordPress + WooCommerce (Headless mode)
+  - **MySQL**: Native CMS for blogs, products, and categories.
+- **CMS**: Native MySQL-based Content Management System
 - **Containerization**: Docker & Docker Compose
 
 ## 🚀 Getting Started
@@ -27,7 +27,6 @@ Welcome to the **Shri Ramya** project. This repository has been fully migrated f
 4. Access the application:
    - **Frontend**: [http://localhost:8080](http://localhost:8080)
    - **Backend API**: [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
-   - **WordPress Admin**: [http://localhost:8080/wp/wp-admin](http://localhost:8080/wp/wp-admin)
    - **Anthropic Proxy**: [http://localhost:8081](http://localhost:8081) (Dashboard for linking accounts)
 
 ## 🤖 AI Development (Claude Code Proxy)
@@ -68,7 +67,7 @@ npm test
 
 ## 📜 Documentation
 - [Final API Test Report](./API_FINAL_TEST_REPORT.md)
-- [WooCommerce Headless Guide](./WOOCOMMERCE_HEADLESS_GUIDE.md)
+- [System Architecture](./SYSTEM_AUDIT_ARCHITECTURE_MAP.md)
 
 ---
 **Shri Ramya** - Redefining Luxury Ethnic Fashion.

@@ -13,6 +13,7 @@ const reviewRoute = require('./review.route');
 const recommendationRoute = require('./recommendation.route');
 const analyticsRoute = require('./analytics.route');
 const warehouseRoute = require('./warehouse.route');
+const inventoryRoute = require('./inventory.route');
 const notificationRoute = require('./notification.route');
 const fraudRoute = require('./fraud.route');
 const tenantsRoute = require('./tenants.route');
@@ -34,6 +35,7 @@ router.use('/reviews', reviewRoute);
 router.use('/recommendations', recommendationRoute);
 router.use('/admin/analytics', analyticsRoute);
 router.use('/admin/warehouses', warehouseRoute);
+// router.use('/admin/inventory', inventoryRoute); // Temporarily disabled
 router.use('/notifications', notificationRoute);
 router.use('/admin/fraud', fraudRoute);
 router.use('/tenants', tenantsRoute);

@@ -9,7 +9,7 @@ All Phase 9 enterprise features are now integrated as **tabs within the Admin Wo
 ## 🧭 How to Access
 
 ### Single Admin URL
-**http://localhost:8080/admin/woocommerce**
+**http://localhost:8080/admin/dashboard**
 
 This single page now contains **6 tabs** with all admin functionality:
 
@@ -51,7 +51,7 @@ This single page now contains **6 tabs** with all admin functionality:
 ## 🔐 Access Requirements
 
 - Must be logged in as **admin**
-- Navigate to: **http://localhost:8080/admin/woocommerce**
+- Navigate to: **http://localhost:8080/admin/dashboard**
 - Click on any tab to access that feature
 
 ---
@@ -104,7 +104,7 @@ This single page now contains **6 tabs** with all admin functionality:
 
 ## 🚀 Quick Start
 
-1. **Open Browser:** http://localhost:8080/admin/woocommerce
+1. **Open Browser:** http://localhost:8080/admin/dashboard
 2. **Login as Admin**
 3. **Click on any tab** to access that feature
 4. **Start managing** your store!
@@ -149,7 +149,7 @@ frontend/src/routes/AppRoutes.jsx
 
 ## 🔗 Quick Links
 
-- **Admin Dashboard:** http://localhost:8080/admin/woocommerce
+- **Admin Dashboard:** http://localhost:8080/admin/dashboard
 - **Storefront:** http://localhost:8080
 - **API Health:** http://localhost:8080/api/v1/health
 

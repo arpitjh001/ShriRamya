@@ -221,7 +221,7 @@ class ProductSqlRepository {
     /**
      * Update product details
      */
-    async updateProduct(id, data) {
+    async updateProduct(id, data, tenantId = 1) {
         const connection = await mysqlPool.getConnection();
         try {
             await connection.beginTransaction();
@@ -272,8 +272,9 @@ class ProductSqlRepository {
 
             if (updateFields.length > 0) {
                 updateValues.push(id);
+                updateValues.push(tenantId);
                 await connection.query(
-                    `UPDATE products SET ${updateFields.join(', ')} WHERE id = ?`,
+                    `UPDATE products SET ${updateFields.join(', ')} WHERE id = ? AND tenant_id = ?`,
                     updateValues
                 );
             }
@@ -324,8 +325,8 @@ class ProductSqlRepository {
                 }
             }
 
-            // Sync Variants if provided
-            if (data.variants && Array.isArray(data.variants)) {
+            // Sync Variants if provided (only if non-empty array is sent)
+            if (data.variants && Array.isArray(data.variants) && data.variants.length > 0) {
                 // Get existing variants
                 const [existingVariants] = await connection.query('SELECT id FROM product_variants WHERE product_id = ?', [id]);
                 const existingVariantIds = existingVariants.map(v => v.id);

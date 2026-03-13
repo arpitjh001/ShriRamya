@@ -8,7 +8,12 @@ const MainLayout = () => {
     return (
         <div className="App min-h-screen flex flex-col">
             <Navbar />
-            <main className="flex-1">
+            {/* 
+                Main content with padding-top to account for fixed Navbar
+                Navbar height: ~100px on mobile, ~120px on desktop
+                Using pt-28 (112px) mobile, pt-36 (144px) desktop for safe clearance
+            */}
+            <main className="flex-1 pt-28 md:pt-36">
                 <Outlet />
             </main>
             <Footer />

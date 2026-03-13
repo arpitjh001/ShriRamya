@@ -25,7 +25,6 @@
 | Total Size | ~520 MB |
 | Source Files (excl. deps) | ~75 MB |
 | node_modules | ~255 MB |
-| WordPress | ~125 MB |
 | User Uploads | ~48 MB |
 
 ### Project Structure
@@ -34,7 +33,6 @@ ShriRamya/
 ├── backend_node/     - Node.js Express API (23.95 MB)
 ├── frontend/         - React Application (196.09 MB)
 ├── ai-proxy/         - Claude Proxy Service (58.71 MB)
-├── wordpress/        - WordPress CMS (125.53 MB)
 └── uploads/          - User Content (47.91 MB)
 ```
 
@@ -56,7 +54,6 @@ ShriRamya/
 | Category | Location | Action |
 |----------|----------|--------|
 | npm cache | `*/node_modules/.cache/` | `npm cache clean --force` |
-| Unused theme | `wordpress/wp-content/themes/twentytwentyfour/` | Remove if not needed |
 | Old uploads | `uploads/2026/02/` | Archive if migrated |
 
 ### Commands

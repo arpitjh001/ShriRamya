@@ -15,7 +15,8 @@ const getCategoryById = async (req, res, next) => {
     try {
         const category = await categoryService.getCategoryById(req.params.categoryId);
         if (!category) {
-            return res.status(httpStatus.NOT_FOUND).send({ message: 'Category not found' });
+            const ApiError = require('../utils/ApiError');
+            throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
         }
         return successResponse(res, category);
     } catch (error) {
@@ -27,7 +28,8 @@ const getCategoryBySlug = async (req, res, next) => {
     try {
         const category = await categoryService.getCategoryBySlug(req.params.slug);
         if (!category) {
-            return res.status(httpStatus.NOT_FOUND).send({ message: 'Category not found' });
+            const ApiError = require('../utils/ApiError');
+            throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
         }
         return successResponse(res, category);
     } catch (error) {
@@ -48,7 +50,8 @@ const updateCategory = async (req, res, next) => {
     try {
         const category = await categoryService.updateCategory(req.params.categoryId, req.body);
         if (!category) {
-            return res.status(httpStatus.NOT_FOUND).send({ message: 'Category not found' });
+            const ApiError = require('../utils/ApiError');
+            throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
         }
         return successResponse(res, null, 'Category updated successfully');
     } catch (error) {
@@ -60,7 +63,8 @@ const deleteCategory = async (req, res, next) => {
     try {
         const success = await categoryService.deleteCategory(req.params.categoryId);
         if (!success) {
-            return res.status(httpStatus.NOT_FOUND).send({ message: 'Category not found' });
+            const ApiError = require('../utils/ApiError');
+            throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
         }
         return successResponse(res, null, 'Category deleted successfully');
     } catch (error) {

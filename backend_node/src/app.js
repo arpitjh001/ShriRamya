@@ -10,6 +10,8 @@ const httpStatus = require('http-status');
 const config = require('./config/config');
 const routes = require('./routes/v1');
 const { errorConverter, errorHandler } = require('./middlewares/error');
+const requestId = require('./middlewares/requestId');
+const logger = require('./utils/logger');
 const ApiError = require('./utils/ApiError');
 
 const cookieParser = require('cookie-parser');
@@ -18,10 +20,20 @@ const { authLimiter } = require('./middlewares/rateLimit.middleware');
 const app = express();
 
 /**
+ * Request ID Middleware (Must be first for tracing)
+ */
+app.use(requestId);
+
+/**
  * Logging
  */
 if (config.env !== 'test') {
   app.use(morgan('dev'));
+  logger.info('Server initializing', {
+    env: config.env,
+    port: config.port,
+    frontendUrl: config.frontendUrl,
+  });
 }
 
 /**
@@ -70,6 +82,7 @@ app.get('/api/v1/health', (req, res) => {
     success: true,
     status: 'ok',
     timestamp: new Date().toISOString(),
+    requestId: req.requestId,
   });
 });
 
@@ -79,15 +92,16 @@ app.get('/api/v1/health', (req, res) => {
 if (config.env === 'development' || config.env === 'test') {
   try {
     const { swaggerSpec, swaggerDocs, swaggerUi } = require('./config/swagger');
-    
+
     app.get('/api/docs.json', (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.send(swaggerSpec);
     });
-    
+
     app.use('/api/docs', swaggerUi.serve, swaggerDocs);
+    logger.info('Swagger documentation enabled', { path: '/api/docs' });
   } catch (error) {
-    console.log('[Swagger] Documentation not available:', error.message);
+    logger.warn('Swagger documentation not available', { error: error.message });
   }
 }
 
@@ -100,6 +114,11 @@ app.use('/api/v1', routes);
  * 404 Handler
  */
 app.use((req, res, next) => {
+  logger.debug('Endpoint not found', {
+    method: req.method,
+    path: req.path,
+    requestId: req.requestId,
+  });
   next(new ApiError(httpStatus.NOT_FOUND, 'Endpoint not found'));
 });
 

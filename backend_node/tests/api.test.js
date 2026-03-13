@@ -8,9 +8,18 @@ describe('API Endpoints Automation Tests (Native)', () => {
     let adminToken;
 
     beforeAll(async () => {
-        // Use a test DB (ensure we don't wipe production)
-        const dbUrl = config.mongoose.url.includes('test') ? config.mongoose.url : `${config.mongoose.url}_test`;
-        await mongoose.connect(dbUrl);
+        console.log('🧪 Setting up test database connection...');
+
+        // Use test database from environment
+        const dbUrl = config.mongoose.url;
+
+        try {
+            await mongoose.connect(dbUrl);
+            console.log('✓ Connected to MongoDB test database');
+        } catch (error) {
+            console.error('❌ MongoDB connection failed:', error.message);
+            throw error;
+        }
 
         // Seed admin if not present
         const adminEmail = 'admin-user@example.com';
@@ -24,10 +33,12 @@ describe('API Endpoints Automation Tests (Native)', () => {
                 name: 'Admin User',
                 role: 'admin'
             });
+            console.log('✓ Created admin user');
         } else {
             admin.password = adminPassword;
             admin.role = 'admin';
             await admin.save();
+            console.log('✓ Updated admin user');
         }
 
         // Login to get token
@@ -35,11 +46,22 @@ describe('API Endpoints Automation Tests (Native)', () => {
             .post('/api/v1/auth/login')
             .send({ email: adminEmail, password: adminPassword });
 
-        adminToken = res.body.data.access_token;
-    });
+        if (res.body && res.body.data && res.body.data.access_token) {
+            adminToken = res.body.data.access_token;
+            console.log('✓ Obtained admin token');
+        } else {
+            throw new Error('Failed to obtain admin token');
+        }
+    }, 30000);
 
     afterAll(async () => {
-        await mongoose.connection.close();
+        console.log('🧹 Cleaning up test database...');
+        try {
+            await mongoose.connection.close();
+            console.log('✓ MongoDB connection closed');
+        } catch (error) {
+            console.error('❌ Error closing connection:', error.message);
+        }
     });
 
     describe('🔐 Authentication', () => {

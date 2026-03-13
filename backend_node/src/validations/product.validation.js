@@ -4,12 +4,12 @@ const variantSchema = Joi.object({
   id: Joi.number().integer().allow(null).optional(),
   sku: Joi.string().required(),
   price: Joi.number().min(0).required(),
-  discountPrice: Joi.number().min(0).less(Joi.ref('price')).allow(null).optional(),
-  discountStart: Joi.date().iso().allow(null).optional(),
-  discountEnd: Joi.date().iso().allow(null).when('discountStart', {
+  discountPrice: Joi.number().min(0).less(Joi.ref('price')).allow(null, '').optional(),
+  discountStart: Joi.date().iso().allow(null, '').optional(),
+  discountEnd: Joi.date().iso().allow(null, '').when('discountStart', {
     is: Joi.date().iso().required(),
-    then: Joi.date().iso().greater(Joi.ref('discountStart')).allow(null),
-    otherwise: Joi.date().iso().allow(null)
+    then: Joi.date().iso().greater(Joi.ref('discountStart')).allow(null, ''),
+    otherwise: Joi.date().iso().allow(null, '')
   }),
   stock: Joi.number().integer().min(0).default(0),
   image: Joi.string().allow('', null).optional(),
@@ -26,7 +26,13 @@ const getProducts = {
     category: Joi.string(),
     category_id: Joi.number().integer(),
     featured: Joi.boolean().default(false),
-  }),
+    search: Joi.string().allow('', null),
+    sort: Joi.string(),
+    order: Joi.string(),
+    min_price: Joi.number().min(0),
+    max_price: Joi.number().min(0),
+    tenant_id: Joi.number().integer(),
+  }).unknown(true), // Allow unknown query params to pass through
 };
 
 const getProduct = {

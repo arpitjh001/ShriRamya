@@ -3,30 +3,32 @@
  * Multi-Tenant Role-Based Access Control
  */
 
-const { mysqlPool } = require('../config/db');
+const db = require('../config/db');
+// Helper to get mysqlPool safely (handles potential circular dependencies)
+const getPool = () => db.mysqlPool;
 
 /**
  * Role Model
  */
 class Role {
     static async findById(id) {
-        const [rows] = await mysqlPool.query('SELECT * FROM roles WHERE id = ?', [id]);
+        const [rows] = await getPool().query('SELECT * FROM roles WHERE id = ?', [id]);
         return rows[0] || null;
     }
 
     static async findByName(name) {
-        const [rows] = await mysqlPool.query('SELECT * FROM roles WHERE name = ?', [name]);
+        const [rows] = await getPool().query('SELECT * FROM roles WHERE name = ?', [name]);
         return rows[0] || null;
     }
 
     static async findByTenant(tenantId) {
-        const [rows] = await mysqlPool.query('SELECT * FROM roles WHERE tenant_id = ? OR is_system_role = TRUE', [tenantId]);
+        const [rows] = await getPool().query('SELECT * FROM roles WHERE tenant_id = ? OR is_system_role = TRUE', [tenantId]);
         return rows;
     }
 
     static async create(data) {
         const { name, description, tenantId, isSystemRole = false } = data;
-        const [result] = await mysqlPool.query(
+        const [result] = await getPool().query(
             'INSERT INTO roles (name, description, tenant_id, is_system_role) VALUES (?, ?, ?, ?)',
             [name, description, tenantId, isSystemRole]
         );
@@ -39,22 +41,22 @@ class Role {
  */
 class Permission {
     static async findById(id) {
-        const [rows] = await mysqlPool.query('SELECT * FROM permissions WHERE id = ?', [id]);
+        const [rows] = await getPool().query('SELECT * FROM permissions WHERE id = ?', [id]);
         return rows[0] || null;
     }
 
     static async findByName(name) {
-        const [rows] = await mysqlPool.query('SELECT * FROM permissions WHERE name = ?', [name]);
+        const [rows] = await getPool().query('SELECT * FROM permissions WHERE name = ?', [name]);
         return rows[0] || null;
     }
 
     static async findAll() {
-        const [rows] = await mysqlPool.query('SELECT * FROM permissions ORDER BY resource, name');
+        const [rows] = await getPool().query('SELECT * FROM permissions ORDER BY resource, name');
         return rows;
     }
 
     static async findByResource(resource) {
-        const [rows] = await mysqlPool.query('SELECT * FROM permissions WHERE resource = ?', [resource]);
+        const [rows] = await getPool().query('SELECT * FROM permissions WHERE resource = ?', [resource]);
         return rows;
     }
 }
@@ -64,7 +66,7 @@ class Permission {
  */
 class RolePermissionService {
     static async getPermissionsForRole(roleId) {
-        const [rows] = await mysqlPool.query(
+        const [rows] = await getPool().query(
             `SELECT p.* FROM permissions p
              INNER JOIN role_permissions rp ON p.id = rp.permission_id
              WHERE rp.role_id = ?`,
@@ -79,7 +81,7 @@ class RolePermissionService {
     }
 
     static async assignPermissionsToRole(roleId, permissionIds) {
-        const connection = await mysqlPool.getConnection();
+        const connection = await getPool().getConnection();
         try {
             await connection.beginTransaction();
 
@@ -106,7 +108,7 @@ class RolePermissionService {
     }
 
     static async addPermissionToRole(roleId, permissionId) {
-        await mysqlPool.query(
+        await getPool().query(
             'INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
             [roleId, permissionId]
         );
@@ -114,7 +116,7 @@ class RolePermissionService {
     }
 
     static async removePermissionFromRole(roleId, permissionId) {
-        await mysqlPool.query(
+        await getPool().query(
             'DELETE FROM role_permissions WHERE role_id = ? AND permission_id = ?',
             [roleId, permissionId]
         );
@@ -128,14 +130,14 @@ class RolePermissionService {
 class UserRoleService {
     static async getRolesForUser(userId, tenantId) {
         // First, get the MySQL user ID from MongoDB user ID
-        const [userRows] = await mysqlPool.query(
+        const [userRows] = await getPool().query(
             'SELECT id FROM mysql_users WHERE mongo_user_id = ? AND tenant_id = ?',
             [userId, tenantId]
         );
 
         if (userRows.length === 0) {
             // Try without tenant_id match (for backward compatibility)
-            const [fallbackRows] = await mysqlPool.query(
+            const [fallbackRows] = await getPool().query(
                 'SELECT id FROM mysql_users WHERE mongo_user_id = ?',
                 [userId]
             );
@@ -148,7 +150,7 @@ class UserRoleService {
         }
 
         // Now get roles using MySQL user ID
-        const [rows] = await mysqlPool.query(
+        const [rows] = await getPool().query(
             `SELECT r.* FROM roles r
              INNER JOIN user_roles ur ON r.id = ur.role_id
              WHERE ur.user_id = ? AND ur.tenant_id = ?`,
@@ -163,7 +165,7 @@ class UserRoleService {
     }
 
     static async assignRoleToUser(userId, roleId, tenantId) {
-        const [result] = await mysqlPool.query(
+        const [result] = await getPool().query(
             'INSERT INTO user_roles (user_id, role_id, tenant_id) VALUES (?, ?, ?)',
             [userId, roleId, tenantId]
         );
@@ -171,7 +173,7 @@ class UserRoleService {
     }
 
     static async removeRoleFromUser(userId, roleId, tenantId) {
-        await mysqlPool.query(
+        await getPool().query(
             'DELETE FROM user_roles WHERE user_id = ? AND role_id = ? AND tenant_id = ?',
             [userId, roleId, tenantId]
         );
@@ -179,7 +181,7 @@ class UserRoleService {
     }
 
     static async syncUserRoles(userId, roleIds, tenantId) {
-        const connection = await mysqlPool.getConnection();
+        const connection = await getPool().getConnection();
         try {
             await connection.beginTransaction();
 
@@ -209,7 +211,7 @@ class UserRoleService {
     }
 
     static async hasRole(userId, roleName, tenantId) {
-        const [rows] = await mysqlPool.query(
+        const [rows] = await getPool().query(
             `SELECT r.* FROM roles r
              INNER JOIN user_roles ur ON r.id = ur.role_id
              WHERE ur.user_id = ? AND ur.tenant_id = ? AND r.name = ?`,
@@ -219,7 +221,7 @@ class UserRoleService {
     }
 
     static async hasPermission(userId, permissionName, tenantId) {
-        const [rows] = await mysqlPool.query(
+        const [rows] = await getPool().query(
             `SELECT p.* FROM permissions p
              INNER JOIN role_permissions rp ON p.id = rp.permission_id
              INNER JOIN user_roles ur ON rp.role_id = ur.role_id
@@ -230,7 +232,7 @@ class UserRoleService {
     }
 
     static async getPermissionsForUser(userId, tenantId) {
-        const [rows] = await mysqlPool.query(
+        const [rows] = await getPool().query(
             `SELECT DISTINCT p.* FROM permissions p
              INNER JOIN role_permissions rp ON p.id = rp.permission_id
              INNER JOIN user_roles ur ON rp.role_id = ur.role_id
@@ -251,23 +253,23 @@ class UserRoleService {
  */
 class Tenant {
     static async findById(id) {
-        const [rows] = await mysqlPool.query('SELECT * FROM tenants WHERE id = ?', [id]);
+        const [rows] = await getPool().query('SELECT * FROM tenants WHERE id = ?', [id]);
         return rows[0] || null;
     }
 
     static async findByDomain(domain) {
-        const [rows] = await mysqlPool.query('SELECT * FROM tenants WHERE domain = ?', [domain]);
+        const [rows] = await getPool().query('SELECT * FROM tenants WHERE domain = ?', [domain]);
         return rows[0] || null;
     }
 
     static async findAll() {
-        const [rows] = await mysqlPool.query('SELECT * FROM tenants WHERE status = "active"');
+        const [rows] = await getPool().query('SELECT * FROM tenants WHERE status = "active"');
         return rows;
     }
 
     static async create(data) {
         const { name, domain, ownerUserId, status = 'active', settings = null } = data;
-        const [result] = await mysqlPool.query(
+        const [result] = await getPool().query(
             'INSERT INTO tenants (name, domain, owner_user_id, status, settings) VALUES (?, ?, ?, ?, ?)',
             [name, domain, ownerUserId, status, settings ? JSON.stringify(settings) : null]
         );
@@ -298,7 +300,7 @@ class Tenant {
         if (fields.length === 0) return false;
 
         values.push(id);
-        await mysqlPool.query(
+        await getPool().query(
             `UPDATE tenants SET ${fields.join(', ')} WHERE id = ?`,
             values
         );
@@ -306,7 +308,7 @@ class Tenant {
     }
 
     static async delete(id) {
-        await mysqlPool.query('DELETE FROM tenants WHERE id = ?', [id]);
+        await getPool().query('DELETE FROM tenants WHERE id = ?', [id]);
         return true;
     }
 }
@@ -316,7 +318,7 @@ class Tenant {
  */
 class TenantSettingsService {
     static async getSetting(tenantId, key) {
-        const [rows] = await mysqlPool.query(
+        const [rows] = await getPool().query(
             'SELECT setting_value FROM tenant_settings WHERE tenant_id = ? AND setting_key = ?',
             [tenantId, key]
         );
@@ -324,7 +326,7 @@ class TenantSettingsService {
     }
 
     static async getAllSettings(tenantId) {
-        const [rows] = await mysqlPool.query(
+        const [rows] = await getPool().query(
             'SELECT setting_key, setting_value FROM tenant_settings WHERE tenant_id = ?',
             [tenantId]
         );
@@ -338,7 +340,7 @@ class TenantSettingsService {
     }
 
     static async setSetting(tenantId, key, value) {
-        await mysqlPool.query(
+        await getPool().query(
             `INSERT INTO tenant_settings (tenant_id, setting_key, setting_value) 
              VALUES (?, ?, ?)
              ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
@@ -348,7 +350,7 @@ class TenantSettingsService {
     }
 
     static async deleteSetting(tenantId, key) {
-        await mysqlPool.query(
+        await getPool().query(
             'DELETE FROM tenant_settings WHERE tenant_id = ? AND setting_key = ?',
             [tenantId, key]
         );

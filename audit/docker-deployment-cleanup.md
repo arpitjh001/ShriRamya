@@ -132,7 +132,7 @@ Go to: http://localhost:8080
 After clearing cache, test:
 
 1. **Admin Login:**
-   - Go to: http://localhost:8080/admin/woocommerce
+   - Go to: http://localhost:8080/admin/dashboard
    - Email: `admin@shriramya.com`
    - Password: `Admin@123`
    - Should login successfully
@@ -154,7 +154,7 @@ After clearing cache, test:
 |---------|-----|--------|
 | Frontend | http://localhost:8080 | ✅ |
 | Backend API | http://localhost:8080/api/v1 | ✅ |
-| Admin Dashboard | http://localhost:8080/admin/woocommerce | ✅ |
+| Admin Dashboard | http://localhost:8080/admin/dashboard | ✅ |
 | Blog | http://localhost:8080/blog | ✅ |
 | WordPress | http://localhost:8080/wp | ✅ |
 | API Docs | http://localhost:8080/api/docs | ✅ |

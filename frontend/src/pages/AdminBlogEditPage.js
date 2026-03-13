@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import { blogAPI } from '../services/api';
 import { Button } from '../components/ui/button';
@@ -9,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 const AdminBlogEditPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user, capabilities } = useAuth();
+    const { user, capabilities, loading: authLoading, isAdmin } = useAuth();
     const fileInputRef = useRef(null);
 
     const [loading, setLoading] = useState(true);
@@ -27,16 +29,68 @@ const AdminBlogEditPage = () => {
         status: 'draft',
         categories: [],
         tags: [],
-        seo_title: '',
-        seo_description: '',
-        reading_time: 0,
-        featuredImage: ''
+        seoTitle: '',
+        seoDescription: '',
+        featuredImage: '',
+        images: []
     });
     const [tagsInput, setTagsInput] = useState('');
 
+    const quillRef = useRef(null);
+
+    const quillImageHandler = () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+            const file = input.files[0];
+            if (!file) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await blogAPI.api.post('/upload/image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                if (response.data) {
+                    const uploaded = response.data;
+                    const imageUrl = uploaded.medium || uploaded.original || uploaded.url;
+                    if (imageUrl) {
+                        const quill = quillRef.current.getEditor();
+                        const range = quill.getSelection(true) || { index: quill.getLength() };
+                        quill.insertEmbed(range.index, 'image', imageUrl);
+                    }
+                }
+            } catch (error) {
+                console.error('Editor image upload failed:', error);
+                toast.error('Failed to upload image into editor');
+            }
+        };
+    };
+
+    const modules = useMemo(() => ({
+        toolbar: {
+            container: [
+                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+                ['link', 'image'],
+                ['clean']
+            ],
+            handlers: {
+                image: quillImageHandler
+            }
+        }
+    }), []);
+
     useEffect(() => {
+        if (authLoading) return;
+
         // RBAC check
-        if (!capabilities.edit_posts && !capabilities.edit_others_posts) {
+        if (!user || (!capabilities.edit_posts && !capabilities.edit_others_posts && !isAdmin())) {
             toast.error('Insufficient permissions to edit stories');
             navigate('/blog');
             return;
@@ -64,10 +118,10 @@ const AdminBlogEditPage = () => {
                         status: p.status || 'draft',
                         categories: p.categories || [],
                         tags: p.tags || [],
-                        seo_title: p.seo_title || '',
-                        seo_description: p.seo_description || '',
-                        reading_time: p.reading_time || 0,
-                        featuredImage: p.featured_image || ''
+                        seoTitle: p.seo_title || p.meta_title || '',
+                        seoDescription: p.seo_description || p.meta_description || '',
+                        featuredImage: p.featured_image || '',
+                        images: p.images || []
                     });
                     setTagsInput(p.tags ? p.tags.join(', ') : '');
                     setFeaturedImageUrl(p.featured_image || '');
@@ -100,29 +154,51 @@ const AdminBlogEditPage = () => {
     };
 
     const handleImageUpload = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
 
         try {
             setUploadingImage(true);
-            const tempUrl = URL.createObjectURL(file);
-            setFeaturedImageUrl(tempUrl); // Optimistic UI
+            const uploadedUrls = [];
+            
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await blogAPI.api.post('/upload/image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
 
-            // Use uploadAPI with FormData
-            const { uploadAPI } = await import('../services/api');
-            const formData = new FormData();
-            formData.append('file', file);
-            const res = await uploadAPI.uploadImage(formData);
+                if (res.data) {
+                    const uploaded = res.data;
+                    const imageUrl = uploaded.medium || uploaded.original || uploaded.url;
+                    if (imageUrl) uploadedUrls.push(imageUrl);
+                }
+            }
 
-            if (res.data && res.data.url) {
-                setPostData(prev => ({ ...prev, featuredImage: res.data.url }));
-                setFeaturedImageUrl(res.data.url);
-                toast.success("Image uploaded successfully");
+            if (uploadedUrls.length > 0) {
+                setPostData(prev => {
+                    if (!prev.featuredImage) {
+                        return { 
+                            ...prev, 
+                            featuredImage: uploadedUrls[0],
+                            images: [...(prev.images || []), ...uploadedUrls.slice(1)]
+                        };
+                    } else {
+                        return { 
+                            ...prev, 
+                            images: [...(prev.images || []), ...uploadedUrls]
+                        };
+                    }
+                });
+                
+                if (!postData.featuredImage) {
+                    setFeaturedImageUrl(uploadedUrls[0]);
+                }
+                toast.success("Image(s) uploaded successfully");
             }
         } catch (error) {
             console.error('Failed to upload image:', error);
             toast.error('Image upload failed');
-            setFeaturedImageUrl(postData.featuredImage || ''); // Revert on failure
         } finally {
             setUploadingImage(false);
         }
@@ -161,7 +237,7 @@ const AdminBlogEditPage = () => {
         <div className="px-6 md:px-12 lg:px-24 py-12 max-w-5xl mx-auto">
             <div className="mb-8 flex items-center justify-between">
                 <div>
-                    <Button variant="ghost" onClick={() => navigate('/admin/woocommerce')} className="mb-4 text-muted-foreground hover:text-primary">
+                    <Button variant="ghost" onClick={() => navigate('/admin/dashboard')} className="mb-4 text-muted-foreground hover:text-primary">
                         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
                     </Button>
                     <h1 className="text-3xl font-heading font-medium tracking-tight">Edit Story</h1>
@@ -210,15 +286,14 @@ const AdminBlogEditPage = () => {
 
                             <div>
                                 <label className="block text-sm font-medium mb-2">Content (Rich HTML/Text)</label>
-                                <div className="bg-muted/30 border border-border rounded-lg p-2 min-h-[400px]">
-                                    {/* Basic Textarea for Rich Text/HTML Input */}
-                                    <textarea
-                                        name="content"
-                                        value={postData.content}
-                                        onChange={handleInputChange}
-                                        className="w-full h-[400px] p-4 bg-background border-none outline-none resize-y rounded text-sm font-mono"
-                                        placeholder="<p>Write your amazing story here in HTML or plain text...</p>"
-                                        required
+                                <div className="bg-background border border-border rounded-lg pb-10">
+                                    <ReactQuill 
+                                        ref={quillRef}
+                                        theme="snow" 
+                                        value={postData.content} 
+                                        onChange={(val) => setPostData(prev => ({ ...prev, content: val }))} 
+                                        modules={modules}
+                                        className="h-[400px]"
                                     />
                                 </div>
                             </div>
@@ -234,34 +309,24 @@ const AdminBlogEditPage = () => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-border">
+                            <div className="grid grid-cols-1 gap-6 pt-6 border-t border-border">
                                 <div>
                                     <label className="block text-sm font-medium mb-2 text-primary">SEO Title</label>
                                     <input
                                         type="text"
-                                        name="seo_title"
-                                        value={postData.seo_title}
+                                        name="seoTitle"
+                                        value={postData.seoTitle}
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-2 bg-background border border-border rounded-lg"
                                         placeholder="Title for search engines"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 text-primary">Reading Time (min)</label>
-                                    <input
-                                        type="number"
-                                        name="reading_time"
-                                        value={postData.reading_time}
-                                        onChange={handleInputChange}
-                                        className="w-full px-4 py-2 bg-background border border-border rounded-lg"
                                     />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-2 text-primary">SEO Description</label>
                                 <textarea
-                                    name="seo_description"
-                                    value={postData.seo_description}
+                                    name="seoDescription"
+                                    value={postData.seoDescription}
                                     onChange={handleInputChange}
                                     className="w-full px-4 py-2 bg-background border border-border rounded-lg h-24"
                                     placeholder="Meta description for SEO"
@@ -275,10 +340,12 @@ const AdminBlogEditPage = () => {
                             {/* Image Upload Widget */}
                             <div className="p-4 border border-border rounded-lg bg-background">
                                 <label className="block text-sm font-medium mb-4 flex items-center gap-2">
-                                    <ImageIcon className="w-4 h-4 text-primary" /> Featured Image
+                                    <ImageIcon className="w-4 h-4 text-primary" /> Story Imagery
                                 </label>
+                                
+                                <p className="text-xs font-medium text-muted-foreground mb-2">Featured Image</p>
                                 <div
-                                    className="aspect-video bg-muted/50 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group"
+                                    className="aspect-video bg-muted/50 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group mb-4"
                                     onClick={() => fileInputRef.current?.click()}
                                 >
                                     {featuredImageUrl ? (
@@ -294,8 +361,8 @@ const AdminBlogEditPage = () => {
                                                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                                             ) : (
                                                 <>
-                                                    <ImageIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                                                    <span className="text-sm text-muted-foreground">Click to upload</span>
+                                                    <ImageIcon className="w-8 h-8 mx-auto text-muted-foreground mb-1" />
+                                                    <span className="text-[10px] text-muted-foreground">Select Main Image</span>
                                                 </>
                                             )}
                                         </div>
@@ -307,6 +374,37 @@ const AdminBlogEditPage = () => {
                                         accept="image/*"
                                         onChange={handleImageUpload}
                                     />
+                                </div>
+
+                                <p className="text-xs font-medium text-muted-foreground mb-2">Gallery Images</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {postData.images && postData.images.map((img, idx) => (
+                                        <div key={idx} className="relative aspect-square rounded border border-border overflow-hidden group">
+                                            <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                                            <button 
+                                                type="button"
+                                                onClick={() => setPostData(prev => ({ 
+                                                    ...prev, 
+                                                    images: prev.images.filter((_, i) => i !== idx) 
+                                                }))}
+                                                className="absolute top-1 right-1 w-5 h-5 bg-destructive/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Plus className="w-2.5 h-2.5 rotate-45" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {(postData.images?.length || 0) < 6 && (
+                                        <label className="aspect-square rounded border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center bg-accent/5 cursor-pointer transition-all">
+                                            <Plus className="w-5 h-5 text-muted-foreground" />
+                                            <input 
+                                                type="file" 
+                                                multiple 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                                onChange={handleImageUpload} 
+                                            />
+                                        </label>
+                                    )}
                                 </div>
                             </div>
 

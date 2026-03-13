@@ -4,6 +4,8 @@
  */
 
 const express = require('express');
+const validate = require('../../middlewares/validate');
+const userValidation = require('../../validations/user.validation');
 const router = express.Router();
 const userManagementController = require('../../controllers/user-management.controller');
 const { auth, requireRole, ensureTenantIsolation } = require('../../middlewares/authRBAC');
@@ -13,10 +15,11 @@ const { auth, requireRole, ensureTenantIsolation } = require('../../middlewares/
  * @desc    Get all users with roles for tenant
  * @access  Private (Admin only)
  */
-router.get('/', 
+router.get('/',
     auth,
     requireRole('Admin'),
     ensureTenantIsolation,
+    validate(userValidation.getUsers),
     userManagementController.getUsers
 );
 
@@ -25,9 +28,10 @@ router.get('/',
  * @desc    Get user by MongoDB ID
  * @access  Private (Admin only)
  */
-router.get('/:id', 
+router.get('/:id',
     auth,
     requireRole('Admin'),
+    validate(userValidation.mongoUserId),
     userManagementController.getUserById
 );
 
@@ -36,9 +40,10 @@ router.get('/:id',
  * @desc    Sync MongoDB user with mysql_users mapping
  * @access  Private (Admin only)
  */
-router.post('/sync', 
+router.post('/sync',
     auth,
     requireRole('Admin'),
+    validate(userValidation.syncUserMapping),
     userManagementController.syncUserMapping
 );
 
@@ -47,9 +52,10 @@ router.post('/sync',
  * @desc    Assign single role to user
  * @access  Private (Admin only)
  */
-router.post('/:userId/roles', 
+router.post('/:userId/roles',
     auth,
     requireRole('Admin'),
+    validate(userValidation.assignRole),
     userManagementController.assignRole
 );
 
@@ -58,9 +64,10 @@ router.post('/:userId/roles',
  * @desc    Assign multiple roles to user
  * @access  Private (Admin only)
  */
-router.post('/:userId/roles/multiple', 
+router.post('/:userId/roles/multiple',
     auth,
     requireRole('Admin'),
+    validate(userValidation.assignMultipleRoles),
     userManagementController.assignMultipleRoles
 );
 
@@ -69,9 +76,10 @@ router.post('/:userId/roles/multiple',
  * @desc    Remove role from user
  * @access  Private (Admin only)
  */
-router.delete('/:userId/roles/:roleId', 
+router.delete('/:userId/roles/:roleId',
     auth,
     requireRole('Admin'),
+    validate(userValidation.removeRole),
     userManagementController.removeRole
 );
 
@@ -80,7 +88,7 @@ router.delete('/:userId/roles/:roleId',
  * @desc    Get all available roles
  * @access  Private (Admin, Editor)
  */
-router.get('/roles', 
+router.get('/roles',
     auth,
     requireRole('Admin', 'Editor'),
     userManagementController.getRoles
@@ -91,7 +99,7 @@ router.get('/roles',
  * @desc    Get all available permissions
  * @access  Private (Admin, Editor)
  */
-router.get('/permissions', 
+router.get('/permissions',
     auth,
     userManagementController.getPermissions
 );
@@ -101,9 +109,10 @@ router.get('/permissions',
  * @desc    Create custom role
  * @access  Private (Admin only)
  */
-router.post('/roles', 
+router.post('/roles',
     auth,
     requireRole('Admin'),
+    validate(userValidation.createRole),
     userManagementController.createRole
 );
 
@@ -112,9 +121,10 @@ router.post('/roles',
  * @desc    Delete custom role
  * @access  Private (Admin only)
  */
-router.delete('/roles/:id', 
+router.delete('/roles/:id',
     auth,
     requireRole('Admin'),
+    validate(userValidation.deleteRole),
     userManagementController.deleteRole
 );
 

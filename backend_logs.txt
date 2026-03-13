@@ -1,0 +1,20 @@
+  "userAgent": "node",
+  "ip": "::ffff:172.18.0.1",
+  "requestId": "2c3367b7-d1b1-4b3d-8c77-6e4e83507552",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[GLOBAL_TRACE] 1. Received GET /api/v1/health
+[GLOBAL_TRACE] 2. Parsed body for GET /api/v1/health
+[36mINFO [0m [2026-03-13T05:42:51.280Z] [2c3367b7-d1b1-4b3d-8c77-6e4e83507552] API Request Completed {
+  "method": "GET",
+  "path": "/api/v1/health",
+  "statusCode": 200,
+  "duration": "6ms",
+  "requestId": "2c3367b7-d1b1-4b3d-8c77-6e4e83507552",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/health [32m200[0m 2.561 ms - 120[0m

@@ -456,6 +456,7 @@ export const ordersAPI = {
 ========================= */
 
 export const blogAPI = {
+  api,  // Expose the axios instance for direct API calls (e.g., image upload)
   getPosts: async (params) => {
     try {
       return await api.get("/blogs", { params });

@@ -1,0 +1,47 @@
+{
+  "models": [
+    {
+      "title": "DeepSeek Coder Local",
+      "provider": "ollama",
+      "model": "deepseek-coder:6.7b",
+      "apiBase": "http://localhost:11434"
+    },
+    {
+      "title": "DeepSeek Coder V2",
+      "provider": "ollama",
+      "model": "deepseek-coder-v2:latest",
+      "apiBase": "http://localhost:11434"
+    },
+    {
+      "title": "DeepSeek R1 Reasoning",
+      "provider": "ollama",
+      "model": "deepseek-r1:8b",
+      "apiBase": "http://localhost:11434"
+    },
+    {
+      "title": "Gemma 3 Fast",
+      "provider": "ollama",
+      "model": "gemma3:4b",
+      "apiBase": "http://localhost:11434"
+    }
+  ],
+  "embeddingsProvider": {
+    "provider": "ollama",
+    "model": "nomic-embed-text:latest",
+    "apiBase": "http://localhost:11434"
+  },
+  "autocompleteModel": {
+    "provider": "ollama",
+    "model": "deepseek-coder:6.7b",
+    "apiBase": "http://localhost:11434"
+  },
+  "tabAutocompleteOptions": {
+    "maxPromptTokens": 1024,
+    "debounceDelay": 500,
+    "maxSuffixPercentage": 0.2,
+    "prefixPercentage": 0.3,
+    "transform": true
+  },
+  "allowAnonymousTelemetry": false,
+  "userToken": null
+}

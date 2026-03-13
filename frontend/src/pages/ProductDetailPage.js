@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { productsAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
@@ -23,6 +24,7 @@ const ProductDetailPage = () => {
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [tryOnModalOpen, setTryOnModalOpen] = useState(false);
+  const [activeAccordion, setActiveAccordion] = useState('description');
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -35,7 +37,6 @@ const ProductDetailPage = () => {
         setProduct(productRes.data);
         setRecommendations(recsRes.data || []);
 
-        // Use variants/variations safely
         const variantsData = productRes.data?.variants || productRes.data?.variations || [];
         if (variantsData.length > 0) {
           setSelectedVariation(variantsData[0]);
@@ -50,19 +51,12 @@ const ProductDetailPage = () => {
     fetchProduct();
   }, [id]);
 
-  useEffect(() => {
-    if (product) {
-      // (Intentionally no debug logs in production)
-    }
-  }, [product]);
-
   const handleAddToCart = async () => {
     if ((product.size_stock?.length > 0 && !selectedSize) || (product.color_stock?.length > 0 && !selectedColor)) {
       toast.error('Please select both size and color');
       return;
     }
     try {
-      // Choose between custom variations (size/color) or legacy variations array
       const hasCustomVariations = product.size_stock?.length > 0 || product.color_stock?.length > 0;
       let variation = hasCustomVariations
         ? { size: selectedSize, color: selectedColor }
@@ -81,13 +75,14 @@ const ProductDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="px-6 md:px-12 lg:px-24 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div className="h-[600px] bg-muted animate-pulse rounded" />
-          <div className="space-y-4">
-            <div className="h-8 bg-muted animate-pulse rounded" />
-            <div className="h-12 bg-muted animate-pulse rounded" />
-            <div className="h-32 bg-muted animate-pulse rounded" />
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+          <div className="aspect-[3/4] bg-charcoal/5 animate-pulse rounded-2xl" />
+          <div className="space-y-6">
+            <div className="h-4 w-1/4 bg-charcoal/5 animate-pulse rounded" />
+            <div className="h-12 w-3/4 bg-charcoal/5 animate-pulse rounded" />
+            <div className="h-8 w-1/2 bg-charcoal/5 animate-pulse rounded" />
+            <div className="h-40 w-full bg-charcoal/5 animate-pulse rounded" />
           </div>
         </div>
       </div>
@@ -96,8 +91,9 @@ const ProductDetailPage = () => {
 
   if (!product) {
     return (
-      <div className="px-6 md:px-12 lg:px-24 py-12 text-center">
-        <p className="text-xl text-muted-foreground">Product not found</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
+        <p className="text-2xl font-heading text-charcoal/50 mb-6">Product not found</p>
+        <Button onClick={() => navigate('/')} variant="outline" className="border-charcoal/20">Return Home</Button>
       </div>
     );
   }
@@ -127,236 +123,274 @@ const ProductDetailPage = () => {
   const hasDiscount = salePrice > 0 && salePrice < regularPrice;
   const displayPrice = hasDiscount ? salePrice : regularPrice;
 
+  const toggleAccordion = (id) => {
+    setActiveAccordion(activeAccordion === id ? null : id);
+  };
+
   return (
-    <div data-testid="product-detail-page" className="px-6 md:px-12 lg:px-24 py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-24">
-        {/* Images */}
-        <div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="aspect-[3/4] overflow-hidden rounded mb-4"
-          >
-            <img
-              src={product.images[selectedImage]}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          </motion.div>
+    <div className="bg-[#F7F3EC] min-h-screen">
+      {/* Breadcrumbs */}
+      <nav className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pt-12 pb-6">
+        <ol className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-charcoal/40">
+          <li><Link to="/" className="hover:text-royal-maroon transition-colors">Home</Link></li>
+          <li className="flex items-center gap-2">
+            <span>/</span>
+            <Link to={`/category/${product.category?.toLowerCase()}`} className="hover:text-royal-maroon transition-colors">{product.category}</Link>
+          </li>
+          <li className="flex items-center gap-2 text-charcoal/80 italic">
+            <span>/</span>
+            <span>{product.name}</span>
+          </li>
+        </ol>
+      </nav>
 
-          {product.images.length > 1 && (
-            <div className="grid grid-cols-4 gap-4">
-              {product.images.map((img, index) => (
-                <button
-                  key={index}
-                  data-testid={`product-image-${index}`}
-                  onClick={() => setSelectedImage(index)}
-                  className={`aspect-square overflow-hidden rounded border-2 ${selectedImage === index ? 'border-primary' : 'border-transparent'
-                    }`}
-                >
-                  <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
+          
+          {/* Left Column: Media Gallery */}
+          <div className="lg:col-span-7 space-y-4">
+            <motion.div
+              layoutId={`product-hero-${product.id}`}
+              className="relative aspect-[3/4.5] overflow-hidden rounded-3xl group"
+            >
+              <img
+                src={product.images[selectedImage]}
+                alt={product.name}
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-charcoal/20 to-transparent pointer-events-none" />
+              {product.luxury_collection && (
+                <div className="absolute top-6 left-6">
+                  <LuxuryBadge className="bg-white/80 backdrop-blur-md border-none px-4 py-2" />
+                </div>
+              )}
+            </motion.div>
 
-        {/* Details */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
-          <div className="flex items-center gap-3 mb-2">
-            <p className="text-sm text-muted-foreground">{product.category}</p>
-            {product.luxury_collection && <LuxuryBadge />}
-          </div>
-          <h1 className="text-4xl font-heading font-medium tracking-tight mb-4">{product.name}</h1>
-
-          <div className="flex items-center gap-3 mb-6">
-            <span className="text-3xl font-medium">{formatPrice(displayPrice)}</span>
-            {hasDiscount && (
-              <>
-                <span className="text-xl text-muted-foreground line-through">{formatPrice(regularPrice)}</span>
-                <span className="bg-primary text-primary-foreground px-2 py-1 text-sm rounded">
-                  {Math.round(((regularPrice - salePrice) / regularPrice) * 100)}% OFF
-                </span>
-              </>
-            )}
-          </div>
-
-          <p className="text-lg leading-relaxed text-muted-foreground mb-8">{product.description}</p>
-
-          {/* Custom Size Selection */}
-          {product.size_stock?.length > 0 ? (
-            <div className="mb-6">
-              <h3 className="font-body font-semibold mb-3">Select Size</h3>
-              <div className="flex flex-wrap gap-2">
-                {product.size_stock.map((item, index) => (
-                  <Button
-                    key={index}
-                    variant={selectedSize === item.size ? 'default' : 'outline'}
-                    onClick={() => setSelectedSize(item.size)}
-                    disabled={item.qty === 0}
-                    className={`min-w-[3rem] ${item.qty === 0 ? 'opacity-50 line-through' : ''}`}
-                  >
-                    {item.size}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            product.color_stock?.length > 0 && <div className="mb-2 text-sm text-muted-foreground">Standard size available</div>
-          )}
-
-          {/* Custom Color Selection */}
-          {product.color_stock?.length > 0 && (
-            <div className="mb-8">
-              <h3 className="font-body font-semibold mb-3">Select Color</h3>
-              <div className="flex flex-wrap gap-3">
-                {product.color_stock.map((item, index) => (
+            {product.images.length > 1 && (
+              <div className="grid grid-cols-4 md:grid-cols-5 gap-4">
+                {product.images.map((img, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedColor(item.color)}
-                    disabled={item.qty === 0}
-                    title={item.color}
-                    className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${selectedColor === item.color ? 'border-primary ring-2 ring-primary/20' : 'border-border'
-                      } ${item.qty === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:scale-110'}`}
+                    onClick={() => setSelectedImage(index)}
+                    className={`aspect-[3/4] overflow-hidden rounded-xl border-2 transition-all duration-300 ${
+                      selectedImage === index ? 'border-royal-maroon scale-95' : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}
                   >
-                    <div
-                      className="w-8 h-8 rounded-full border border-black/10"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    {item.qty === 0 && <div className="absolute w-10 h-[1px] bg-red-500 rotate-45" />}
+                    <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
-              {selectedColor && <p className="text-sm mt-2 text-muted-foreground capitalize">Selected: {selectedColor}</p>}
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Legacy Variations fallback */}
-          {(!product.size_stock?.length && !product.color_stock?.length && product.variations?.length > 0) && (
-            <div className="mb-8">
-              <h3 className="font-body font-semibold mb-4">Select Variation</h3>
-              <div className="flex flex-wrap gap-2">
-                {product.variations.map((variation, index) => (
-                  <Button
-                    key={index}
-                    variant={selectedVariation === variation ? 'default' : 'outline'}
-                    onClick={() => setSelectedVariation(variation)}
+          {/* Right Column: Information (Sticky) */}
+          <div className="lg:col-span-5 h-fit lg:sticky lg:top-32 space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold tracking-[0.3em] text-royal-maroon/60">
+                  {product.category}
+                </span>
+                <button className="p-2 hover:bg-white rounded-full transition-colors text-charcoal/40 hover:text-royal-maroon">
+                  <Heart className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <h1 className="text-4xl md:text-5xl font-heading font-medium text-charcoal tracking-tight leading-tight">
+                {product.name}
+              </h1>
+
+              <div className="flex items-baseline gap-4">
+                <span className="text-3xl font-medium text-charcoal">{formatPrice(displayPrice)}</span>
+                {hasDiscount && (
+                  <>
+                    <span className="text-xl text-charcoal/30 line-through decoration-royal-maroon/30">{formatPrice(regularPrice)}</span>
+                    <span className="text-sm font-bold text-royal-maroon tracking-wider">
+                      ({Math.round(((regularPrice - salePrice) / regularPrice) * 100)}% OFF)
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Model Info (Inspiration from Maybell) */}
+            <div className="bg-white/40 border border-white/60 p-5 rounded-2xl flex items-center gap-6">
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">Model wears</span>
+                <span className="text-sm font-medium text-charcoal">Size S (Medium)</span>
+              </div>
+              <div className="w-[1px] h-8 bg-charcoal/10" />
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">Height</span>
+                <span className="text-sm font-medium text-charcoal">5'9" ft</span>
+              </div>
+              <Sparkles className="ml-auto w-5 h-5 text-royal-maroon/30 animate-pulse" />
+            </div>
+
+            {/* Selection Options */}
+            <div className="space-y-8">
+              {/* Size Select */}
+              {product.size_stock?.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">Select Size</label>
+                    <button className="text-[10px] uppercase font-bold text-royal-maroon hover:underline tracking-widest opacity-60">Size Guide</button>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {product.size_stock.map((item, index) => (
+                      <button
+                        key={index}
+                        disabled={item.qty === 0}
+                        onClick={() => setSelectedSize(item.size)}
+                        className={`min-w-[50px] h-[50px] rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 border ${
+                          selectedSize === item.size 
+                            ? 'bg-charcoal text-white border-charcoal shadow-lg shadow-charcoal/20' 
+                            : 'bg-white text-charcoal border-charcoal/5 hover:border-charcoal/20'
+                        } ${item.qty === 0 ? 'opacity-20 cursor-not-allowed grayscale' : ''}`}
+                      >
+                        {item.size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Color Swatches */}
+              {product.color_stock?.length > 0 && (
+                <div className="space-y-4">
+                  <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">Color: <span className="text-charcoal/60 capitalize">{selectedColor || 'Choose'}</span></label>
+                  <div className="flex flex-wrap gap-4">
+                    {product.color_stock.map((item, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedColor(item.color)}
+                        className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          selectedColor === item.color ? 'ring-2 ring-charcoal ring-offset-4 ring-offset-[#F7F3EC]' : ''
+                        }`}
+                      >
+                         <div 
+                          className="w-full h-full rounded-full shadow-inner border border-charcoal/5"
+                          style={{ backgroundColor: item.color }}
+                         />
+                         {item.qty === 0 && <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-full flex items-center justify-center text-[10px] font-bold text-charcoal opacity-50">SOLD</div>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* CTAs */}
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleAddToCart}
+                  disabled={!product.in_stock}
+                  className="flex-[2] h-16 rounded-2xl bg-charcoal text-white hover:bg-black transition-all text-sm uppercase font-bold tracking-widest"
+                >
+                  <ShoppingCart className="w-5 h-5 mr-3" />
+                  {product.in_stock ? 'Add to Shopping Bag' : 'Out of Stock'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 h-16 rounded-2xl border-charcoal/10 hover:border-charcoal bg-white transition-all text-sm uppercase font-bold tracking-widest"
+                >
+                  Buy Now
+                </Button>
+              </div>
+              
+              <div className="flex items-center justify-center gap-8 py-4 opacity-40 grayscale group-hover:grayscale-0 transition-all">
+                <img src="/images/visa.png" alt="Visa" className="h-4 object-contain" />
+                <img src="/images/mastercard.png" alt="Mastercard" className="h-4 object-contain" />
+                <img src="/images/upi.png" alt="UPI" className="h-4 object-contain" />
+              </div>
+            </div>
+
+            {/* Information Accordion (Maybell Inspired) */}
+            <div className="border-t border-charcoal/10 pt-4 space-y-2 text-charcoal/80">
+              {[
+                { id: 'description', title: 'Product Details', content: product.description },
+                { id: 'shipping', title: 'Shipping & Delivery', content: 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. We offer free shipping on prepaid orders over ₹999.' },
+                { id: 'return', title: 'Returns & Exchanges', content: 'This product is returnable within 14 days of delivery. Returns are not applicable on styles under Sale Section. Please ensure labels are intact.' }
+              ].map((item) => (
+                <div key={item.id} className="group">
+                  <button 
+                    onClick={() => toggleAccordion(item.id)}
+                    className="w-full py-4 flex items-center justify-between text-[11px] uppercase font-bold tracking-widest group-hover:text-charcoal"
                   >
-                    {variation.size} - {variation.color}
-                  </Button>
-                ))}
-              </div>
+                    {item.title}
+                    <motion.span animate={{ rotate: activeAccordion === item.id ? 180 : 0 }}>
+                      <Menu className="w-3 h-3" />
+                    </motion.span>
+                  </button>
+                  <AnimatePresence>
+                    {activeAccordion === item.id && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <p className="pb-6 text-sm leading-relaxed text-charcoal/60 font-medium">
+                          {item.content}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
             </div>
-          )}
 
-          {/* Actions */}
-          <div className="flex gap-4 mb-4">
-            <Button
-              data-testid="add-to-cart-button"
-              size="lg"
-              className="flex-1"
-              onClick={handleAddToCart}
-              disabled={!product.in_stock}
-            >
-              <ShoppingCart className="h-5 w-5 mr-2" />
-              {product.in_stock ? 'Add to Cart' : 'Out of Stock'}
-            </Button>
-            <Button data-testid="wishlist-button" variant="outline" size="lg">
-              <Heart className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Virtual Try-On Button - Only for clothing items */}
-          {(product.category === 'Women Ethnic Wear' || product.subcategory?.includes('Saree') || product.subcategory?.includes('Lehenga')) && (
-            <Button
-              data-testid="try-on-button"
-              variant="secondary"
-              size="lg"
-              className="w-full mb-8"
-              onClick={() => setTryOnModalOpen(true)}
-            >
-              <Sparkles className="h-5 w-5 mr-2" />
-              Virtual Try-On
-            </Button>
-          )}
-
-          {/* Try-On Modal */}
-          <TryOnModal
-            open={tryOnModalOpen}
-            onOpenChange={setTryOnModalOpen}
-            product={product}
-          />
-
-          {/* Features */}
-          <div className="grid grid-cols-3 gap-4 py-8 border-y border-border mb-8">
-            <div className="text-center">
-              <Truck className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <p className="text-sm font-medium">Free Shipping</p>
-              <p className="text-xs text-muted-foreground">Above ₹999</p>
+            {/* Specs Grid */}
+            <div className="grid grid-cols-2 gap-y-6 pt-10 border-t border-charcoal/5">
+              {[
+                { label: 'Fabric', value: product.fabric },
+                { label: 'Craft Style', value: product.craft_style },
+                { label: 'Origin', value: product.state_of_origin },
+                { label: 'Occasion', value: product.occasion },
+                { label: 'Wash Care', value: 'Dry Clean Only' }
+              ].filter(s => s.value).map((spec, i) => (
+                <div key={i} className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/30">{spec.label}</span>
+                  <span className="text-sm font-medium text-charcoal">{spec.value}</span>
+                </div>
+              ))}
             </div>
-            <div className="text-center">
-              <Shield className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <p className="text-sm font-medium">Authentic</p>
-              <p className="text-xs text-muted-foreground">Handcrafted</p>
-            </div>
-            <div className="text-center">
-              <RefreshCw className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <p className="text-sm font-medium">Easy Returns</p>
-              <p className="text-xs text-muted-foreground">7 Days</p>
-            </div>
-          </div>
 
-          {/* Product Details */}
-          <div className="space-y-4">
-            {product.fabric && (
-              <div>
-                <h3 className="font-body font-semibold mb-2">Fabric</h3>
-                <p className="text-muted-foreground font-accent italic">{product.fabric}</p>
-              </div>
+            {/* Try-on Trigger */}
+            {(product.category === 'Women Ethnic Wear' || product.subcategory?.includes('Saree')) && (
+              <button 
+                onClick={() => setTryOnModalOpen(true)}
+                className="w-full h-16 rounded-2xl bg-gradient-to-r from-royal-maroon/5 to-charcoal/5 border border-charcoal/10 flex items-center justify-center gap-3 hover:shadow-lg transition-all"
+              >
+                <Sparkles className="w-5 h-5 text-royal-maroon" />
+                <span className="text-sm font-bold uppercase tracking-widest text-charcoal">Virtual Try-On</span>
+              </button>
             )}
-            {product.craft_style && (
-              <div>
-                <h3 className="font-body font-semibold mb-2">Craft Style</h3>
-                <p className="text-muted-foreground">{product.craft_style}</p>
-              </div>
-            )}
-            {product.state_of_origin && (
-              <div>
-                <h3 className="font-body font-semibold mb-2">Origin</h3>
-                <p className="text-muted-foreground">{product.state_of_origin}, India</p>
-              </div>
-            )}
-            {product.occasion && (
-              <div>
-                <h3 className="font-body font-semibold mb-2">Occasion</h3>
-                <p className="text-muted-foreground">{product.occasion}</p>
-              </div>
-            )}
-            {product.care_instructions && (
-              <div>
-                <h3 className="font-body font-semibold mb-2">Care Instructions</h3>
-                <p className="text-muted-foreground">{product.care_instructions}</p>
-              </div>
-            )}
+            
+            <TryOnModal
+              open={tryOnModalOpen}
+              onOpenChange={setTryOnModalOpen}
+              product={product}
+            />
           </div>
         </div>
       </div>
 
-      {/* Craft Story Section */}
-      <div className="mb-16">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
         <CraftStorySection product={product} />
       </div>
 
       {/* Recommendations */}
       {recommendations.length > 0 && (
-        <section>
-          <h2 className="text-3xl md:text-4xl font-heading font-medium tracking-tight mb-8">
-            You May Also Like
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="recommendations-grid">
-            {recommendations.map((rec) => (
-              <ProductCard key={rec.id} product={rec} />
-            ))}
+        <section className="bg-white py-24">
+          <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
+            <h2 className="text-4xl font-heading text-center mb-16 tracking-tight">You May Also Like</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {recommendations.map((rec) => (
+                <ProductCard key={rec.id} product={rec} />
+              ))}
+            </div>
           </div>
         </section>
       )}

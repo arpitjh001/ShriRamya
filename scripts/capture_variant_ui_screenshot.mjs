@@ -58,7 +58,7 @@ const main = async () => {
       localStorage.setItem('token', authToken);
     }, token);
 
-    await page.goto(`${base}/admin/woocommerce`, { waitUntil: 'networkidle2', timeout: 120000 });
+    await page.goto(`${base}/admin/dashboard`, { waitUntil: 'networkidle2', timeout: 120000 });
     await page.waitForSelector('button', { timeout: 120000 });
 
     const clickButtonByText = async (text) => {

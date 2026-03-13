@@ -18,7 +18,8 @@ const auth = (roles = []) => async (req, res, next) => {
     }
 
     // Verify signature and expiry (Stateless)
-    const payload = jwt.verify(token, config.jwt.secret);
+    const secret = config.jwt.secret.trim();
+    const payload = jwt.verify(token, secret);
 
     // Check Blacklist in Redis (Stateful check for revoked tokens)
     const isBlacklisted = await redis.get(`at_blacklist:${payload.jti}`);
@@ -33,10 +34,6 @@ const auth = (roles = []) => async (req, res, next) => {
     }
 
     // Role check (RBAC) - case insensitive
-    console.log('AUTH MIDDLEWARE - Payload Role:', payload.role);
-    console.log('AUTH MIDDLEWARE - Payload Roles:', payload.roles);
-    console.log('AUTH MIDDLEWARE - Allowed Roles:', roles);
-    
     if (roles.length && payload.role) {
       // Check if user's role or roles array includes any of the required roles (case-insensitive)
       const userRole = payload.role.toLowerCase();

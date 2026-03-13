@@ -50,7 +50,8 @@ const AdminProductsPage = () => {
     occasion: '',
     images: [],
     variants: [],
-    categories: [] // Array of category IDs
+    categories: [], // Array of category IDs
+    discountPrice: ''
   });
 
   // Category Modal State
@@ -88,7 +89,7 @@ const AdminProductsPage = () => {
 
   const loadProducts = async () => {
     try {
-      const response = await productsAPI.getAll({ per_page: 100 });
+      const response = await productsAPI.getAll({ per_page: 100, all_statuses: true });
       // response.products is the raw data, response.data is the transformed data
       const productsData = response.products || response.data || [];
 
@@ -97,8 +98,14 @@ const AdminProductsPage = () => {
         const priceValue = product.basePrice || product.base_price || product.price || 0;
         const basePrice = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
 
+        // Normalize images array to always be strings
+        const normalizedImages = (product.images || []).map(img => 
+           typeof img === 'string' ? img : (img.src || img.url || '')
+        ).filter(Boolean);
+
         return {
           ...product,
+          images: normalizedImages,
           basePrice: basePrice,
           sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
           stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
@@ -136,12 +143,13 @@ const AdminProductsPage = () => {
         name: product.name || '',
         description: product.description || '',
         basePrice: product.basePrice?.toString() || '',
-        status: 'draft',
+        status: product.status || 'draft',
         fabric: product.fabric || '',
         occasion: product.occasion || '',
         images: product.images || [],
         variants: product.variants || [],
-        categories: product.categories?.map(c => c.id.toString()) || []
+        categories: product.categories?.map(c => c.id.toString()) || [],
+        discountPrice: product.variants?.[0]?.discountPrice?.toString() || ''
       });
     } else {
       setEditingProduct(null);
@@ -154,7 +162,8 @@ const AdminProductsPage = () => {
         occasion: '',
         images: [],
         variants: [],
-        categories: []
+        categories: [],
+        discountPrice: ''
       });
     }
     setShowProductModal(true);
@@ -167,10 +176,18 @@ const AdminProductsPage = () => {
     }
 
     try {
-      // Clean variants - remove effectivePrice as it's not allowed by backend
+      // Scrub variants to only match valid Joi schema fields
       const cleanVariants = (productForm.variants || []).map(v => {
-        const { effectivePrice, ...rest } = v;
-        return rest;
+        return {
+          id: v.id,
+          sku: v.sku,
+          price: parseFloat(v.price) || parseFloat(productForm.basePrice) || 0,
+          discountPrice: (productForm.discountPrice !== '' && productForm.discountPrice !== null) ? parseFloat(productForm.discountPrice) : null,
+          stock: parseInt(v.stock, 10) || 0,
+          image: v.image || '',
+          attributes: typeof v.attributes === 'string' ? JSON.parse(v.attributes || '{}') : (v.attributes || {}),
+          lowStockThreshold: parseInt(v.lowStockThreshold, 10) || 5
+        };
       });
 
       const productData = {
@@ -182,7 +199,8 @@ const AdminProductsPage = () => {
         status: productForm.status,
         images: productForm.images,
         categories: productForm.categories, // Send as 'categories' not 'categoryIds'
-        variants: cleanVariants
+        // Only send variants if there are any (prevent deleting existing variants on update)
+        variants: editingProduct && cleanVariants.length === 0 ? undefined : cleanVariants
       };
 
       if (editingProduct) {
@@ -213,23 +231,31 @@ const AdminProductsPage = () => {
   };
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
     setUploadingImage(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await uploadAPI.uploadImage(formData);
-      const uploaded = response?.data || {};
-      const imageUrl = uploaded?.cdn?.medium || uploaded?.medium || uploaded?.original || uploaded?.url;
-      if (!imageUrl) throw new Error('Upload succeeded but no image URL returned');
-      setProductForm(prev => ({ ...prev, images: [...prev.images, imageUrl] }));
-      toast.success('Image uploaded successfully');
+      const uploadedUrls = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await uploadAPI.uploadImage(formData);
+        const uploaded = response?.data || {};
+        const imageUrl = uploaded?.cdn?.medium || uploaded?.medium || uploaded?.original || uploaded?.url;
+        if (imageUrl) uploadedUrls.push(imageUrl);
+      }
+      
+      if (uploadedUrls.length === 0) throw new Error('Upload succeeded but no image URL returned');
+      
+      setProductForm(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
+      toast.success(uploadedUrls.length > 1 ? 'Images uploaded successfully' : 'Image uploaded successfully');
     } catch (error) {
-      toast.error('Failed to upload image');
+      toast.error('Failed to upload image(s)');
     } finally {
       setUploadingImage(false);
+      // Reset file input back to empty
+      e.target.value = null;
     }
   };
 
@@ -629,7 +655,7 @@ const AdminProductsPage = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <Label style={{ color: '#e2e8f0' }}>Product Name *</Label>
                 <Input
                   value={productForm.name}
@@ -645,6 +671,16 @@ const AdminProductsPage = () => {
                   value={productForm.basePrice}
                   onChange={(e) => setProductForm({ ...productForm, basePrice: e.target.value })}
                   placeholder="999"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                />
+              </div>
+              <div>
+                <Label style={{ color: '#e2e8f0' }}>Discount Price (₹)</Label>
+                <Input
+                  type="number"
+                  value={productForm.discountPrice}
+                  onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
+                  placeholder="799"
                   style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
                 />
               </div>
@@ -686,7 +722,7 @@ const AdminProductsPage = () => {
                 onValueChange={(value) => setProductForm({ ...productForm, status: value })}
               >
                 <SelectTrigger style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}>
-                  <SelectValue />
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="draft">Draft</SelectItem>
@@ -792,6 +828,7 @@ const AdminProductsPage = () => {
                 <Input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleImageUpload}
                   disabled={uploadingImage}
                   style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}

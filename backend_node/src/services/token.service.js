@@ -46,7 +46,8 @@ const generateAccessToken = async (userId, role, deviceId, tenantId = 1) => {
         iat: Math.floor(Date.now() / 1000),
         exp: expires,
     };
-    return jwt.sign(payload, config.jwt.secret);
+    const secret = config.jwt.secret.trim();
+    return jwt.sign(payload, secret);
 };
 
 /**

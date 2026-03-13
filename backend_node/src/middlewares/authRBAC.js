@@ -26,7 +26,8 @@ const auth = async (req, res, next) => {
         }
 
         // Verify signature and expiry (Stateless)
-        const payload = jwt.verify(token, config.jwt.secret);
+        const secret = config.jwt.secret.trim();
+        const payload = jwt.verify(token, secret);
 
         // Check Blacklist in Redis (Stateful check for revoked tokens)
         if (redis) {

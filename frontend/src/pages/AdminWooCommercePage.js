@@ -11,9 +11,10 @@ import AdminInventoryPage from './AdminInventoryPage';
 import AdminCouponsPage from './AdminCouponsPage';
 import AdminOrdersPage from './AdminOrdersPage';
 import AdminAnalyticsPage from './AdminAnalyticsPage';
+import AdminBlogsPage from './AdminBlogsPage';
 
 // Updated TABS - Native APIs only
-const TABS = ['Native Products', 'Inventory', 'Coupons', 'Orders', 'Analytics'];
+const TABS = ['Native Products', 'Inventory', 'Coupons', 'Journal', 'Orders', 'Analytics'];
 
 // View modes for Products tab
 const VIEW_MODES = {
@@ -709,6 +710,9 @@ const AdminDashboardPage = () => {
 
                 {/* ===== ORDERS TAB (Phase 9) ===== */}
                 {activeTab === 'Orders' && <AdminOrdersPage />}
+
+                {/* ===== JOURNAL TAB (Phase 10) ===== */}
+                {activeTab === 'Journal' && <AdminBlogsPage />}
 
                 {/* ===== ANALYTICS TAB (Phase 9) ===== */}
                 {activeTab === 'Analytics' && <AdminAnalyticsPage />}

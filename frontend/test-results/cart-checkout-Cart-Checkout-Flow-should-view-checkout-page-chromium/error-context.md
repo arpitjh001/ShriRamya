@@ -1,0 +1,109 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - paragraph [ref=e7]: FREE SHIPPING ON ORDERS OVER ₹5000
+    - navigation [ref=e8]:
+      - generic [ref=e10]:
+        - link "Shri Ramya" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - img "Shri Ramya" [ref=e13]
+        - generic [ref=e14]:
+          - button "Women Wear" [ref=e15] [cursor=pointer]: Women Wear
+          - button "Luxury Collection" [ref=e16] [cursor=pointer]: Luxury Collection
+          - button "Regional Collections" [ref=e17] [cursor=pointer]: Regional Collections
+          - button "Home & Lifestyle" [ref=e18] [cursor=pointer]: Home & Lifestyle
+          - button "Jewellery" [ref=e19] [cursor=pointer]: Jewellery
+          - link "Journal" [ref=e20] [cursor=pointer]:
+            - /url: /blog
+            - text: Journal
+        - generic [ref=e22]:
+          - button "Search" [ref=e23] [cursor=pointer]:
+            - img [ref=e24]
+          - generic [ref=e27]:
+            - button "Account" [ref=e28] [cursor=pointer]:
+              - img [ref=e29]
+            - link "Wishlist" [ref=e33] [cursor=pointer]:
+              - /url: /wishlist
+              - img [ref=e34]
+          - link "Cart" [ref=e37] [cursor=pointer]:
+            - /url: /cart
+            - img [ref=e38]
+            - generic [ref=e41]: "0"
+  - main [ref=e42]:
+    - generic [ref=e44]:
+      - img [ref=e45]
+      - heading "Your cart is empty" [level=2] [ref=e48]
+      - paragraph [ref=e49]: Looks like you haven't added anything to your cart yet.
+      - link "Start Shopping" [ref=e50] [cursor=pointer]:
+        - /url: /products
+  - contentinfo [ref=e51]:
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - link "Shri Ramya" [ref=e57] [cursor=pointer]:
+            - /url: /
+            - img "Shri Ramya" [ref=e58]
+          - paragraph [ref=e59]: House of handcrafted Indian attire curated for weddings, festivities, and timeless celebrations.
+          - generic [ref=e60]:
+            - link [ref=e61] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e62]
+            - link [ref=e64] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e65]
+            - link [ref=e68] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e69]
+        - generic [ref=e71]:
+          - heading "Shop Collections" [level=4] [ref=e72]
+          - list [ref=e73]:
+            - listitem [ref=e74]:
+              - link "Sarees" [ref=e75] [cursor=pointer]:
+                - /url: /products?category=Sarees
+            - listitem [ref=e76]:
+              - link "Lehengas" [ref=e77] [cursor=pointer]:
+                - /url: /products?category=Lehengas
+            - listitem [ref=e78]:
+              - link "Suits" [ref=e79] [cursor=pointer]:
+                - /url: /products?category=Suits
+            - listitem [ref=e80]:
+              - link "Dupattas" [ref=e81] [cursor=pointer]:
+                - /url: /products?category=Dupattas
+            - listitem [ref=e82]:
+              - link "Lookbook" [ref=e83] [cursor=pointer]:
+                - /url: /lookbook
+        - generic [ref=e84]:
+          - heading "Guest Relations" [level=4] [ref=e85]
+          - list [ref=e86]:
+            - listitem [ref=e87]:
+              - link "Our Heritage" [ref=e88] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e89]:
+              - link "Track Your Order" [ref=e90] [cursor=pointer]:
+                - /url: /track-order
+            - listitem [ref=e91]:
+              - link "Artisanal Care Guide" [ref=e92] [cursor=pointer]:
+                - /url: /fabric-care
+            - listitem [ref=e93]:
+              - link "Visit Our Studio" [ref=e94] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e95]:
+              - link "The Heritage Blog" [ref=e96] [cursor=pointer]:
+                - /url: /blog
+        - generic [ref=e97]:
+          - heading "Stay Connected" [level=4] [ref=e98]
+          - list [ref=e99]:
+            - listitem [ref=e100]:
+              - img [ref=e101]
+              - generic [ref=e104]: The Royal Studio, 123 Ethnic Street, Jaipur, Rajasthan 302001
+            - listitem [ref=e105]:
+              - img [ref=e106]
+              - generic [ref=e108]: +91 98765 43210
+            - listitem [ref=e109]:
+              - img [ref=e110]
+              - generic [ref=e113]: concierge@shriramya.com
+      - paragraph [ref=e115]: © 2026 Shri Ramya. Handcrafted in India.
+  - region "Notifications alt+T"
+```

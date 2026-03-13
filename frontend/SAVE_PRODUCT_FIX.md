@@ -396,7 +396,7 @@ Toast: "Failed to save product"
 
 ## Verification Steps
 
-1. **Navigate to:** http://localhost:8080/admin/woocommerce
+1. **Navigate to:** http://localhost:8080/admin/dashboard
 2. **Click:** "Products" tab → "Add Product" button
 3. **Fill form:**
    - Name: Test Product

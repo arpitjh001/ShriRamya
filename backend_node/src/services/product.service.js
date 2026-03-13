@@ -234,7 +234,7 @@ class ProductService {
       }
 
       // Repository now handles base fields, attributes, AND variants sync in one transaction
-      await mysqlProductRepository.updateProduct(id, updateData);
+      await mysqlProductRepository.updateProduct(id, updateData, tenantId);
 
       // Update search index
       try {

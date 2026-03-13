@@ -169,7 +169,7 @@ style={{ background: '#6366f1', color: '#ffffff' }}
 
 ## 🖥️ How to Verify
 
-1. **Navigate to:** http://localhost:8080/admin/woocommerce
+1. **Navigate to:** http://localhost:8080/admin/dashboard
 2. **Click:** "Products" tab
 3. **Check:**
    - Header should have transparent background

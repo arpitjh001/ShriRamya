@@ -19,11 +19,11 @@ class BlogService {
 
         let query = `
             SELECT b.*, u.name as author_name, u.email as author_email,
-            (SELECT GROUP_CONCAT(c.name) FROM blog_categories c 
-             JOIN blog_category_mapping bcm ON c.id = bcm.category_id 
+            (SELECT GROUP_CONCAT(cat.name) FROM categories cat
+             JOIN blog_category_mapping bcm ON cat.id = bcm.category_id
              WHERE bcm.blog_id = b.id) as categories,
-            (SELECT GROUP_CONCAT(t.name) FROM blog_tags t 
-             JOIN blog_tag_mapping btm ON t.id = btm.tag_id 
+            (SELECT GROUP_CONCAT(t.name) FROM blog_tags t
+             JOIN blog_tag_mapping btm ON t.id = btm.tag_id
              WHERE btm.blog_id = b.id) as tags
             FROM blogs b
             LEFT JOIN mysql_users u ON b.author_id = u.id
@@ -62,11 +62,22 @@ class BlogService {
         );
 
         const result = {
-            posts: posts.map(p => ({
-                ...p,
-                categories: p.categories ? p.categories.split(',') : [],
-                tags: p.tags ? p.tags.split(',') : []
-            })),
+            posts: posts.map(p => {
+                let images = [];
+                if (p.images) {
+                    try {
+                        images = typeof p.images === 'string' ? JSON.parse(p.images) : p.images;
+                    } catch (e) {
+                        images = [];
+                    }
+                }
+                return {
+                    ...p,
+                    images,
+                    categories: p.categories ? p.categories.split(',') : [],
+                    tags: p.tags ? p.tags.split(',') : []
+                };
+            }),
             pagination: {
                 total: totalRows[0].count,
                 current_page: parseInt(page),
@@ -108,7 +119,16 @@ class BlogService {
             return null;
         }
 
-        const post = posts[0];
+        const post = { ...posts[0] };
+        if (post.images) {
+            try {
+                post.images = typeof post.images === 'string' ? JSON.parse(post.images) : post.images;
+            } catch (e) {
+                post.images = [];
+            }
+        } else {
+            post.images = [];
+        }
 
         // Cache result
         if (redis) {
@@ -128,11 +148,11 @@ class BlogService {
     async getPostBySlug(slug, tenantId = 1) {
         const [posts] = await mysqlPool.query(
             `SELECT b.*, u.name as author_name, u.email as author_email,
-            (SELECT GROUP_CONCAT(c.name) FROM blog_categories c 
-             JOIN blog_category_mapping bcm ON c.id = bcm.category_id 
+            (SELECT GROUP_CONCAT(cat.name) FROM categories cat
+             JOIN blog_category_mapping bcm ON cat.id = bcm.category_id
              WHERE bcm.blog_id = b.id) as categories,
-            (SELECT GROUP_CONCAT(t.name) FROM blog_tags t 
-             JOIN blog_tag_mapping btm ON t.id = btm.tag_id 
+            (SELECT GROUP_CONCAT(t.name) FROM blog_tags t
+             JOIN blog_tag_mapping btm ON t.id = btm.tag_id
              WHERE btm.blog_id = b.id) as tags
             FROM blogs b
             LEFT JOIN mysql_users u ON b.author_id = u.id
@@ -143,8 +163,17 @@ class BlogService {
         if (posts.length === 0) return null;
 
         const post = posts[0];
+        let images = [];
+        if (post.images) {
+            try {
+                images = typeof post.images === 'string' ? JSON.parse(post.images) : post.images;
+            } catch (e) {
+                images = [];
+            }
+        }
         return {
             ...post,
+            images,
             categories: post.categories ? post.categories.split(',') : [],
             tags: post.tags ? post.tags.split(',') : []
         };
@@ -236,18 +265,21 @@ class BlogService {
             content,
             excerpt,
             featuredImage,
+            images,
             authorId,
             status = 'draft',
             publishedAt,
-            metaTitle,
-            metaDescription
+            seoTitle,
+            seoDescription,
+            metaTitle, // Backward compatibility
+            metaDescription // Backward compatibility
         } = data;
 
         const [result] = await mysqlPool.query(
             `INSERT INTO blogs (
-                tenant_id, title, slug, content, excerpt, featured_image,
-                author_id, status, published_at, meta_title, meta_description
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                tenant_id, title, slug, content, excerpt, featured_image, images,
+                author_id, status, published_at, seo_title, seo_description
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 tenantId,
                 title,
@@ -255,11 +287,12 @@ class BlogService {
                 content || '',
                 excerpt || '',
                 featuredImage || null,
+                images ? JSON.stringify(images) : null,
                 authorId,
                 status,
                 publishedAt || (status === 'published' ? new Date() : null),
-                metaTitle || null,
-                metaDescription || null
+                seoTitle || metaTitle || null,
+                seoDescription || metaDescription || null
             ]
         );
 
@@ -303,6 +336,10 @@ class BlogService {
             fields.push('featured_image = ?');
             values.push(data.featuredImage);
         }
+        if (data.images !== undefined) {
+            fields.push('images = ?');
+            values.push(data.images ? JSON.stringify(data.images) : null);
+        }
         if (data.status !== undefined) {
             fields.push('status = ?');
             values.push(data.status);
@@ -316,13 +353,13 @@ class BlogService {
             fields.push('published_at = ?');
             values.push(data.publishedAt);
         }
-        if (data.metaTitle !== undefined) {
-            fields.push('meta_title = ?');
-            values.push(data.metaTitle);
+        if (data.seoTitle !== undefined || data.metaTitle !== undefined) {
+            fields.push('seo_title = ?');
+            values.push(data.seoTitle || data.metaTitle);
         }
-        if (data.metaDescription !== undefined) {
-            fields.push('meta_description = ?');
-            values.push(data.metaDescription);
+        if (data.seoDescription !== undefined || data.metaDescription !== undefined) {
+            fields.push('seo_description = ?');
+            values.push(data.seoDescription || data.metaDescription);
         }
 
         if (fields.length === 0) {

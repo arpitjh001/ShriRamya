@@ -121,7 +121,7 @@
   }
 
   .glass-dark {
-    background: rgba(31, 31, 31, 0.64);
+    background: rgba(31, 31, 31, 0.4);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(200, 169, 106, 0.26);
@@ -350,4 +350,19 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+/* Premium Logo & Navbar Styling */
+.site-logo {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.site-logo:hover {
+  filter: drop-shadow(0 10px 15px rgba(198, 164, 92, 0.3));
+}
+
+/* Ensure consistent baseline for nav items */
+.nav-link-baseline {
+  display: flex;
+  align-items: baseline;
 }

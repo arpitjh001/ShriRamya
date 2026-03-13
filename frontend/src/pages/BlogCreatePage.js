@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useNavigate, Link } from 'react-router-dom';
 import { blogAPI } from '../services/api';
 import { motion } from 'framer-motion';
@@ -9,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 
 const BlogCreatePage = () => {
     const navigate = useNavigate();
-    const { capabilities } = useAuth();
+    const { user, capabilities, loading: authLoading, isAdmin } = useAuth();
 
     const [title, setTitle] = useState('');
     const [slug, setSlug] = useState('');
@@ -18,11 +20,66 @@ const BlogCreatePage = () => {
     const [status, setStatus] = useState('draft');
     const [loading, setLoading] = useState(false);
     const [featuredImage, setFeaturedImage] = useState(null);
+    const [galleryImages, setGalleryImages] = useState([]);
     const [seoTitle, setSeoTitle] = useState('');
     const [seoDescription, setSeoDescription] = useState('');
-    const [readingTime, setReadingTime] = useState(0);
     const [tagsInput, setTagsInput] = useState('');
     const [uploading, setUploading] = useState(false);
+
+    const quillRef = useRef(null);
+
+    const imageHandler = () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+            const file = input.files[0];
+            if (!file) return;
+
+            setUploading(true);
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await blogAPI.api.post('/upload/image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                if (response.data) {
+                    const uploaded = response.data;
+                    const imageUrl = uploaded.medium || uploaded.original || uploaded.url;
+                    if (imageUrl) {
+                        const quill = quillRef.current.getEditor();
+                        const range = quill.getSelection(true) || { index: quill.getLength() };
+                        quill.insertEmbed(range.index, 'image', imageUrl);
+                    }
+                }
+            } catch (error) {
+                console.error('Editor image upload failed:', error);
+                toast.error('Failed to upload image into editor');
+            } finally {
+                setUploading(false);
+            }
+        };
+    };
+
+    const modules = useMemo(() => ({
+        toolbar: {
+            container: [
+                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+                ['link', 'image'],
+                ['clean']
+            ],
+            handlers: {
+                image: imageHandler
+            }
+        }
+    }), []);
+
+
 
     // Generate slug from title
     const generateSlug = (title) => {
@@ -41,29 +98,54 @@ const BlogCreatePage = () => {
     };
 
     // Redirect if not allowed
-    if (!capabilities.edit_posts) {
-        navigate('/blog');
-        return null;
-    }
+    React.useEffect(() => {
+        if (authLoading) return;
+        if (!user || (!capabilities.edit_posts && !isAdmin())) {
+            toast.error('Access denied');
+            navigate('/blog');
+        }
+    }, [authLoading, capabilities, user, isAdmin, navigate]);
+
+    if (authLoading) return (
+        <div className="flex justify-center items-center h-screen">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        </div>
+    );
 
     const handleImageUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
 
         setUploading(true);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            const response = await blogAPI.api.post('/upload/image', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            if (response.data && response.data.url) {
-                setFeaturedImage(response.data.url);
-                toast.success('Image uploaded successfully');
+            const uploadedUrls = [];
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await blogAPI.api.post('/upload/image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (response.data) {
+                    const uploaded = response.data;
+                    const imageUrl = uploaded.medium || uploaded.original || uploaded.url;
+                    if (imageUrl) uploadedUrls.push(imageUrl);
+                }
+            }
+            
+            if (uploadedUrls.length > 0) {
+                if (!featuredImage) {
+                    setFeaturedImage(uploadedUrls[0]);
+                    if (uploadedUrls.length > 1) {
+                        setGalleryImages(prev => [...prev, ...uploadedUrls.slice(1)]);
+                    }
+                } else {
+                    setGalleryImages(prev => [...prev, ...uploadedUrls]);
+                }
+                toast.success('Image(s) uploaded successfully');
             }
         } catch (error) {
             console.error('Upload failed:', error);
-            toast.error('Failed to upload image');
+            toast.error('Failed to upload image(s)');
         } finally {
             setUploading(false);
         }
@@ -89,9 +171,9 @@ const BlogCreatePage = () => {
                 excerpt,
                 status,
                 featuredImage,
-                seo_title: seoTitle,
-                seo_description: seoDescription,
-                reading_time: readingTime,
+                images: galleryImages,
+                seoTitle: seoTitle,
+                seoDescription: seoDescription,
                 tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean)
             };
 
@@ -161,6 +243,80 @@ const BlogCreatePage = () => {
                         </div>
 
                         <div className="space-y-4">
+                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Story Imagery</label>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Main Featured Image */}
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">Featured Image</p>
+                                    <div 
+                                        onClick={() => document.getElementById('featured-upload').click()}
+                                        className="relative aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-all cursor-pointer group bg-accent/5 overflow-hidden flex items-center justify-center"
+                                    >
+                                        {featuredImage ? (
+                                            <>
+                                                <img src={featuredImage} alt="Featured" className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white text-xs font-bold uppercase tracking-widest">Change Image</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-center">
+                                                <ImageIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                                                <p className="text-xs text-muted-foreground">Select Main Image</p>
+                                            </div>
+                                        )}
+                                        <input 
+                                            id="featured-upload"
+                                            type="file" 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={handleImageUpload}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Gallery Images */}
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">Gallery (WordPress Style)</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {galleryImages.map((img, idx) => (
+                                            <div key={idx} className="relative aspect-square rounded-lg border border-border overflow-hidden group">
+                                                <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setGalleryImages(galleryImages.filter((_, i) => i !== idx))}
+                                                    className="absolute top-1 right-1 w-6 h-6 bg-destructive/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Plus className="w-3 h-3 rotate-45" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {galleryImages.length < 5 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => document.getElementById('gallery-upload').click()}
+                                                className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center bg-accent/5 transition-all"
+                                            >
+                                                <Plus className="w-6 h-6 text-muted-foreground" />
+                                                <span className="text-[10px] text-muted-foreground mt-1">Add Image</span>
+                                                <input 
+                                                    id="gallery-upload"
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    multiple
+                                                    className="hidden" 
+                                                    onChange={handleImageUpload}
+                                                />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground mt-2 italic">Select multiple images to create a story gallery.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
                             <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Story Excerpt</label>
                             <textarea
                                 value={excerpt}
@@ -171,7 +327,7 @@ const BlogCreatePage = () => {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 gap-8">
                             <div className="space-y-4">
                                 <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block text-primary">SEO Title</label>
                                 <input
@@ -179,15 +335,6 @@ const BlogCreatePage = () => {
                                     value={seoTitle}
                                     onChange={(e) => setSeoTitle(e.target.value)}
                                     placeholder="Meta title for SEO"
-                                    className="w-full bg-accent/5 border border-border rounded-lg p-3 text-sm"
-                                />
-                            </div>
-                            <div className="space-y-4">
-                                <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block text-primary">Reading Time (min)</label>
-                                <input
-                                    type="number"
-                                    value={readingTime}
-                                    onChange={(e) => setReadingTime(parseInt(e.target.value))}
                                     className="w-full bg-accent/5 border border-border rounded-lg p-3 text-sm"
                                 />
                             </div>
@@ -217,14 +364,16 @@ const BlogCreatePage = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground">Story Content</label>
-                            <textarea
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="Begin your narrative here..."
-                                rows={12}
-                                className="w-full bg-accent/5 border border-border rounded-xl p-6 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all font-body text-lg leading-relaxed"
-                                required
-                            />
+                            <div className="bg-background rounded-xl overflow-hidden border border-border pb-10">
+                                <ReactQuill 
+                                    ref={quillRef}
+                                    theme="snow" 
+                                    value={content} 
+                                    onChange={setContent} 
+                                    modules={modules}
+                                    className="h-[300px]"
+                                />
+                            </div>
                         </div>
 
                         <div className="pt-8 border-t border-border flex flex-wrap items-center justify-between gap-6">

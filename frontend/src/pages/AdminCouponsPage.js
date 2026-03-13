@@ -80,8 +80,22 @@ const AdminCouponsPage = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     setSaving(true);
+
+    // Prepare data - convert empty strings to null/undefined for optional fields
+    const submitData = {
+      ...formData,
+      value: Number(formData.value),
+      min_cart_value: formData.min_cart_value ? Number(formData.min_cart_value) : undefined,
+      max_discount: formData.max_discount ? Number(formData.max_discount) : undefined,
+      usage_limit: formData.usage_limit ? Number(formData.usage_limit) : undefined,
+      starts_at: formData.starts_at || undefined,
+      expires_at: formData.expires_at || undefined,
+      buy_x_qty: formData.buy_x_qty ? Number(formData.buy_x_qty) : undefined,
+      get_y_qty: formData.get_y_qty ? Number(formData.get_y_qty) : undefined,
+    };
+
     try {
-      await couponsAPI.create(formData);
+      await couponsAPI.create(submitData);
       toast.success('Coupon created successfully');
       setShowCreateDialog(false);
       resetForm();
@@ -97,8 +111,22 @@ const AdminCouponsPage = () => {
   const handleEdit = async (e) => {
     e.preventDefault();
     setSaving(true);
+
+    // Prepare data - convert empty strings to null/undefined for optional fields
+    const submitData = {
+      ...formData,
+      value: formData.value ? Number(formData.value) : undefined,
+      min_cart_value: formData.min_cart_value ? Number(formData.min_cart_value) : undefined,
+      max_discount: formData.max_discount ? Number(formData.max_discount) : undefined,
+      usage_limit: formData.usage_limit ? Number(formData.usage_limit) : undefined,
+      starts_at: formData.starts_at || undefined,
+      expires_at: formData.expires_at || undefined,
+      buy_x_qty: formData.buy_x_qty ? Number(formData.buy_x_qty) : undefined,
+      get_y_qty: formData.get_y_qty ? Number(formData.get_y_qty) : undefined,
+    };
+
     try {
-      await couponsAPI.update(selectedCoupon.id, formData);
+      await couponsAPI.update(selectedCoupon.id, submitData);
       toast.success('Coupon updated successfully');
       setShowEditDialog(false);
       setSelectedCoupon(null);

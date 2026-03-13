@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 
 const AdminBlogsPage = () => {
     const navigate = useNavigate();
-    const { user, capabilities } = useAuth();
+    const { user, capabilities, loading: authLoading, isAdmin } = useAuth();
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState(null);
@@ -20,14 +20,16 @@ const AdminBlogsPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        if (!capabilities.edit_posts) {
+        if (authLoading) return;
+        
+        if (!user || (!capabilities.edit_posts && !isAdmin())) {
             toast.error('Access denied');
             navigate('/blog');
             return;
         }
         fetchData();
         fetchAnalytics();
-    }, [capabilities, navigate]);
+    }, [capabilities, navigate, authLoading, user, isAdmin]);
 
     const fetchData = async () => {
         setLoading(true);

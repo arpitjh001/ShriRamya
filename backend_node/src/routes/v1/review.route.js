@@ -12,6 +12,13 @@ router.use(apiLimiter);
  * Specific routes MUST come before parameterized routes
  */
 
+// Product reviews (must come first before /:id)
+router.get('/products/:id/reviews', reviewController.getProductReviews);
+router.post('/products/:id/reviews', auth(['customer', 'admin']), reviewLimiter, reviewController.createReview);
+
+// User reviews
+router.get('/users/:userId/reviews', reviewController.getUserReviews);
+
 // Get review by ID (specific route first)
 router.get('/:id', reviewController.getReview);
 
@@ -23,12 +30,5 @@ router.put('/:id/approve', auth(['admin']), reviewController.approveReview);
 
 // Delete review
 router.delete('/:id', auth(['customer', 'admin']), reviewController.deleteReview);
-
-// Product reviews
-router.post('/products/:id/reviews', auth(['customer', 'admin']), reviewLimiter, reviewController.createReview);
-router.get('/products/:id/reviews', reviewController.getProductReviews);
-
-// User reviews
-router.get('/users/:userId/reviews', reviewController.getUserReviews);
 
 module.exports = router;

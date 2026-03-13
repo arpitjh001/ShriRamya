@@ -11,19 +11,19 @@ const featuredCollectionTiles = [
   {
     title: 'Wedding Couture',
     subtitle: 'Regal silhouettes for grand ceremonies',
-    image: 'https://images.unsplash.com/photo-1756483510889-dd6c3d9e0a17?auto=format&fit=crop&w=2400&q=80',
+    image: '/images/premium/homepage/wedding_couture.png',
     link: '/luxury-collection',
   },
   {
     title: 'Heirloom Sarees',
     subtitle: 'Handloom drapes with intricate zari work',
-    image: 'https://images.unsplash.com/photo-1756483492198-8ca91227489b?auto=format&fit=crop&w=2400&q=80',
+    image: '/images/premium/homepage/sarees.png',
     link: '/category/sarees',
   },
   {
     title: 'Festive Classics',
     subtitle: 'Curated edits for every celebration',
-    image: 'https://images.unsplash.com/photo-1756483529841-a7e392fd7db1?auto=format&fit=crop&w=2400&q=80',
+    image: '/images/premium/homepage/festive_wear.png',
     link: '/category/festive-wear',
   },
 ];
@@ -32,22 +32,22 @@ const categoryTiles = [
   {
     name: 'Kurta Sets',
     category: 'kurta-sets',
-    image: 'https://images.unsplash.com/photo-1756483527592-0b715e5bd08c?auto=format&fit=crop&w=2400&q=80',
+    image: '/images/premium/homepage/kurta_sets.png',
   },
   {
     name: 'Sarees',
     category: 'sarees',
-    image: 'https://images.unsplash.com/photo-1756483510830-878773b5a59d?auto=format&fit=crop&w=2400&q=80',
+    image: '/images/premium/homepage/sarees.png',
   },
   {
     name: 'Lehengas',
     category: 'lehengas',
-    image: 'https://images.unsplash.com/photo-1756483510818-060b42c7cecc?auto=format&fit=crop&w=2400&q=80',
+    image: '/images/premium/homepage/lehengas.png',
   },
   {
     name: 'Festive Wear',
     category: 'festive-wear',
-    image: 'https://images.unsplash.com/photo-1756483509177-bbabd67a3234?auto=format&fit=crop&w=2400&q=80',
+    image: '/images/premium/homepage/festive_wear.png',
   },
 ];
 
@@ -66,6 +66,24 @@ const homeLifestyleTiles = [
     name: 'Cushion Covers',
     category: 'cushion-covers',
     image: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=2400&q=80',
+  },
+];
+
+const jewelleryTiles = [
+  {
+    name: 'Statement Collections',
+    category: 'jewellery',
+    image: '/images/premium/semi_precious_jewellery_featured_1773308445473.png',
+  },
+  {
+    name: 'Earrings & Jhumkas',
+    category: 'earrings',
+    image: '/images/premium/jewellery_earrings_tile_1773308475012.png',
+  },
+  {
+    name: 'Luxury Bangles',
+    category: 'bangles',
+    image: '/images/premium/jewellery_bangles_tile_1773308496138.png',
   },
 ];
 
@@ -105,43 +123,61 @@ const HomePage = () => {
       }
     };
     fetchProducts();
+
+    // Reset scroll to top on mount
+    window.scrollTo(0, 0);
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <section className="relative min-h-[82vh] overflow-hidden">
+    <div className="min-h-screen bg-background selection:bg-accent/30">
+      <section className="relative min-h-[90vh] overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1771654104630-e3aeb6c15793?auto=format&fit=crop&w=2600&q=80"
+          src="/images/premium/homepage/wedding_couture.png"
           alt="Royal Indian traditional fashion"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[10s] hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/35 to-black/45" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/50" />
         <div className="hero-overlay absolute inset-0" />
-        <div className="absolute inset-0 bg-mandala opacity-20 mix-blend-screen" />
+        <div className="absolute inset-0 bg-mandala opacity-10 mix-blend-screen pulse" />
 
         <motion.div
-          initial={{ opacity: 0, y: 26 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.1 }}
-          className="relative z-10 mx-auto flex min-h-[82vh] max-w-7xl items-end px-6 pb-20 md:px-12 lg:px-20"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+          className="relative z-10 mx-auto flex min-h-[90vh] max-w-7xl items-center px-6 md:px-12 lg:px-20"
         >
-          <div className="glass-dark w-full max-w-2xl rounded-[2rem] p-8 text-primary-foreground md:p-12">
-            <p className="mb-5 font-body text-[11px] uppercase tracking-[0.4em] text-accent">
+          <div className="glass-dark w-full max-w-2xl rounded-[2.5rem] p-10 text-primary-foreground md:p-16 shadow-2xl border border-white/10">
+            <motion.p 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-5 font-body text-xs uppercase tracking-[0.5em] text-accent font-bold"
+            >
               Luxury Indian Atelier
-            </p>
-            <h1 className="mb-6 text-5xl font-medium leading-tight md:text-7xl">
-              Timeless Elegance in Silk
-            </h1>
-            <p className="mb-8 max-w-xl text-sm text-primary-foreground/82 md:text-base">
-              Discover handcrafted sarees inspired by tradition and designed for modern elegance.
-            </p>
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <Button data-testid="hero-shop-button" asChild className="btn-luxury">
+            </motion.p>
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mb-8 text-6xl font-medium leading-[1.1] md:text-8xl tracking-tight"
+            >
+              Timeless <br/><span className="italic font-serif text-accent">Elegance</span>
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="mb-10 max-w-xl text-lg text-primary-foreground/90 leading-relaxed"
+            >
+              Discover handcrafted sarees inspired by tradition and designed for modern royalty. Each piece tells a story of heritage craftsmanship.
+            </motion.p>
+            <div className="flex flex-col gap-5 sm:flex-row">
+              <Button data-testid="hero-shop-button" asChild size="lg" className="btn-luxury px-10 rounded-full h-14 text-base shadow-luxury">
                 <Link to="/category/sarees">
-                  Shop Sarees <ArrowRight className="h-4 w-4" />
+                  Shop Sarees <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-              <Button data-testid="hero-lookbook-button" asChild className="btn-luxury-outline">
+              <Button data-testid="hero-lookbook-button" asChild size="lg" variant="outline" className="border-white/30 bg-white/15 hover:bg-white/25 px-10 rounded-full h-14 text-base backdrop-blur-md transition-all">
                 <Link to="/products">Explore Collection</Link>
               </Button>
             </div>
@@ -149,116 +185,125 @@ const HomePage = () => {
         </motion.div>
       </section>
 
-      <section className="luxury-section px-6 md:px-12 lg:px-20">
-        <div className="mb-14 flex items-end justify-between gap-6">
+      {/* Luxury Collection / Heritage Edit */}
+      <section id="women-wear" className="luxury-section bg-gradient-to-b from-primary to-charcoal px-6 text-primary-foreground md:px-12 lg:px-20 py-32">
+        <div className="mb-16 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-secondary">Featured Collections</p>
-            <h2 className="text-4xl font-medium text-primary md:text-5xl">Curated For Grand Occasions</h2>
+            <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-accent font-bold">The Heritage Edit</p>
+            <h2 className="text-5xl font-medium md:text-6xl tracking-tight">Regal Masterpieces</h2>
           </div>
-          <Button asChild variant="outline" className="hidden md:inline-flex">
-            <Link to="/luxury-collection">Explore Luxury Edit</Link>
-          </Button>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          {featuredCollectionTiles.map((tile, index) => (
-            <motion.div
-              key={tile.title}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.7, delay: index * 0.1 }}
-            >
-              <Link
-                to={tile.link}
-                className="group relative block overflow-hidden rounded-[1.6rem] border border-accent/20 shadow-luxury"
-              >
-                <img
-                  src={tile.image}
-                  alt={tile.title}
-                  className="h-[420px] w-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-charcoal/80 via-charcoal/18 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-7 text-primary-foreground">
-                  <h3 className="mb-2 text-3xl font-medium">{tile.title}</h3>
-                  <p className="mb-3 text-sm text-primary-foreground/80">{tile.subtitle}</p>
-                  <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.26em] text-accent">
-                    Discover <ArrowRight className="h-4 w-4" />
-                  </span>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      <div className="gold-divider mx-6 md:mx-12 lg:mx-20" />
-
-      <section className="luxury-section bg-gradient-to-b from-primary/95 to-charcoal px-6 text-primary-foreground md:px-12 lg:px-20">
-        <div className="mb-14 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-accent">Featured Products</p>
-            <h2 className="text-4xl font-medium md:text-5xl">The Heritage Edit</h2>
-          </div>
-          <Button data-testid="view-all-products-button" asChild variant="outline" className="border-accent/40 bg-primary-foreground/10 text-primary-foreground hover:bg-accent/20 hover:text-primary-foreground">
+          <Button data-testid="view-all-products-button" asChild variant="outline" className="btn-luxury-outline text-primary-foreground border-accent/40 hover:bg-accent/10 rounded-full px-8">
             <Link to="/products">View Entire Trousseau</Link>
           </Button>
         </div>
 
         {loading ? (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="glass-luxury h-[430px] animate-pulse rounded-[1.4rem]" />
+              <div key={i} className="glass-luxury h-[480px] animate-pulse rounded-[2rem]" />
             ))}
           </div>
         ) : (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4" data-testid="featured-products-grid">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4" data-testid="featured-products-grid">
             {featuredProducts.map((product, index) => (
               <motion.div
                 key={product.id}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.6, delay: index * 0.08 }}
+                transition={{ duration: 0.8, delay: index * 0.1, ease: "easeOut" }}
               >
-                <ProductCard product={product} />
+                <div className="transform transition-transform hover:-translate-y-2 duration-500">
+                   <ProductCard product={product} />
+                </div>
               </motion.div>
             ))}
           </div>
         )}
       </section>
 
-      <section className="luxury-section px-6 md:px-12 lg:px-20">
-        <div className="mb-12 text-center">
-          <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-secondary">Category Showcase</p>
-          <h2 className="text-4xl font-medium text-primary md:text-5xl">Lookbook Highlights</h2>
+      {/* Featured Collections / Luxury Showcase */}
+      <section id="luxury-collection" className="luxury-section px-6 md:px-12 lg:px-20 py-32 relative">
+        <div className="absolute top-0 right-0 w-1/3 h-full bg-accent/5 -z-10 blur-3xl opacity-30 transform translate-x-1/2" />
+        <div className="mb-16 flex items-end justify-between gap-8 border-b border-charcoal/5 pb-8">
+          <div className="max-w-2xl">
+            <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">Featured Collections</p>
+            <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">Curated For Grand Occasions</h2>
+            <p className="mt-4 text-muted-foreground text-lg">Hand-picked ensembles that define the essence of luxury and celebration.</p>
+          </div>
+          <Button asChild variant="ghost" className="hidden md:inline-flex group transition-all hover:bg-royal-maroon/5 text-royal-maroon font-bold tracking-widest uppercase text-xs">
+            <Link to="/luxury-collection" className="flex items-center gap-2">
+              Explore Luxury Edit <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </Button>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-10 md:grid-cols-3">
+          {featuredCollectionTiles.map((tile, index) => (
+            <motion.div
+              key={tile.title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.9, delay: index * 0.15 }}
+            >
+              <Link
+                to={tile.link}
+                className="group relative block overflow-hidden rounded-[2rem] border border-accent/10 shadow-luxury-hover transition-all duration-700 hover:shadow-2xl"
+              >
+                <img
+                  src={tile.image}
+                  alt={tile.title}
+                  className="h-[520px] w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/20 to-transparent opacity-90" />
+                <div className="absolute inset-x-0 bottom-0 p-10 text-primary-foreground transform transition-transform duration-500 group-hover:translate-y-[-10px]">
+                  <h3 className="mb-3 text-4xl font-medium tracking-tight leading-none">{tile.title}</h3>
+                  <p className="mb-6 text-base text-primary-foreground/75 font-body">{tile.subtitle}</p>
+                  <span className="inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-accent font-bold group-hover:text-white transition-colors">
+                    Discover <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                  </span>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      <div className="mx-6 md:mx-12 lg:mx-20 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+
+      {/* Category Lookbook Highlights */}
+      <section id="lookbook" className="luxury-section px-6 md:px-12 lg:px-20 py-32 bg-charcoal/2">
+        <div className="mb-20 text-center">
+          <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">Category Showcase</p>
+          <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">Lookbook Highlights</h2>
+          <div className="w-24 h-1 bg-accent mx-auto mt-8 rounded-full" />
+        </div>
+
+        <div className="grid gap-10 md:grid-cols-2">
           {categoryTiles.map((tile, index) => (
             <motion.div
               key={tile.name}
-              initial={{ opacity: 0, y: 28 }}
+              initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.65, delay: index * 0.08 }}
+              transition={{ duration: 1, delay: index * 0.1 }}
             >
               <Link
                 to={`/category/${encodeURIComponent(tile.category)}`}
-                data-testid={`category-${tile.name.toLowerCase().replace(/\s+/g, '-')}`}
-                className="group relative block overflow-hidden rounded-[1.6rem] border border-accent/20 shadow-luxury"
+                className="group relative block overflow-hidden rounded-[2.5rem] border border-accent/15 shadow-2xl"
               >
                 <img
                   src={tile.image}
                   alt={tile.name}
-                  className="h-[360px] w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                  className="h-[440px] w-full object-cover transition-transform duration-[1.5s] group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/25 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-7">
-                  <h3 className="text-4xl font-medium text-primary-foreground">{tile.name}</h3>
-                  <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-accent">
-                    Explore <ArrowRight className="h-4 w-4" />
-                  </span>
+                <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-transparent opacity-85 transition-opacity duration-700 group-hover:opacity-95" />
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-6 p-10">
+                  <h3 className="text-5xl font-medium text-primary-foreground tracking-tight">{tile.name}</h3>
+                  <div className="flex items-center justify-center h-16 w-16 rounded-full bg-accent/20 border border-accent/40 backdrop-blur-md transform group-hover:scale-110 transition-transform duration-500">
+                    <ArrowRight className="h-7 w-7 text-accent transform group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
               </Link>
             </motion.div>
@@ -266,40 +311,42 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="luxury-section bg-background px-6 md:px-12 lg:px-20">
-        <div className="mb-12 text-center">
-          <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-secondary">Home Edit</p>
-          <h2 className="text-4xl font-medium text-primary md:text-5xl">Home & Lifestyle</h2>
-          <p className="mx-auto mt-4 max-w-3xl text-base text-muted-foreground">
-            Luxury textiles to elevate your living space
+      {/* Regional Collections Placeholder Mapping */}
+      <section id="regional-collections" className="py-2"></section>
+
+      {/* Home & Lifestyle */}
+      <section id="home-lifestyle" className="luxury-section bg-primary-foreground/50 px-6 md:px-12 lg:px-20 py-32 border-y border-charcoal/5">
+        <div className="mb-16 text-center max-w-4xl mx-auto">
+          <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">The Home Atelier</p>
+          <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">Living In Grandeur</h2>
+          <p className="mt-8 text-lg text-muted-foreground leading-relaxed">
+            From artisanal textiles to heritage accents, discover luxury pieces choreographed to elevate your sanctuary.
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-3">
           {homeLifestyleTiles.map((tile, index) => (
             <motion.div
               key={tile.name}
+              whileHover={{ y: -10 }}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.65, delay: index * 0.08 }}
+              transition={{ duration: 0.8, delay: index * 0.1 }}
             >
               <Link
                 to={`/category/${encodeURIComponent(tile.category)}`}
-                data-testid={`home-lifestyle-${tile.name.toLowerCase().replace(/\s+/g, '-')}`}
-                className="group relative block overflow-hidden rounded-[1.6rem] border border-accent/20 shadow-luxury"
+                className="group relative block overflow-hidden rounded-3xl border border-accent/20 shadow-lg hover:shadow-2xl transition-all duration-500"
               >
                 <img
                   src={tile.image}
                   alt={tile.name}
-                  className="h-[360px] w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                  className="h-[400px] w-full object-cover grayscale-[20%] transition-transform duration-1000 group-hover:scale-105 group-hover:grayscale-0"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-charcoal/75 via-charcoal/20 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-7">
+                <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/10 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-8 text-center">
                   <h3 className="text-3xl font-medium text-primary-foreground">{tile.name}</h3>
-                  <span className="mt-2 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-accent">
-                    Shop Now <ArrowRight className="h-4 w-4" />
-                  </span>
+                  <div className="mt-4 h-0.5 w-12 bg-accent mx-auto transform scale-x-0 transition-transform duration-500 group-hover:scale-x-100" />
                 </div>
               </Link>
             </motion.div>
@@ -307,97 +354,165 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="luxury-section bg-background px-6 md:px-12 lg:px-20">
-        <div className="mb-14 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-secondary">Trending Products</p>
-            <h2 className="text-4xl font-medium text-primary md:text-5xl">Most Desired Right Now</h2>
+      {/* Semi Precious Jewellery */}
+      <section id="jewellery" className="luxury-section bg-gradient-to-b from-charcoal/5 to-background px-6 md:px-12 lg:px-20 py-32 overflow-hidden">
+        <div className="mb-20 flex flex-col items-center text-center">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            className="mb-6 p-4 rounded-full bg-accent/10 border border-accent/20"
+          >
+            <Sparkles className="h-8 w-8 text-accent" />
+          </motion.div>
+          <p className="mb-4 text-[12px] uppercase tracking-[0.5em] text-secondary font-bold">Heritage Ornamentation</p>
+          <h2 className="text-5xl font-medium text-primary md:text-7xl tracking-tighter">Semi Precious Jewellery</h2>
+          <p className="mx-auto mt-8 max-w-3xl text-lg text-muted-foreground leading-relaxed">
+            Ethereal craftsmanship meets modern brilliance. Each ornament is a tribute to the storied traditions of Indian royale.
+          </p>
+        </div>
+
+        <div className="grid gap-10 md:grid-cols-3">
+          {jewelleryTiles.map((tile, index) => (
+            <motion.div
+              key={tile.name}
+              initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 1.1, delay: index * 0.2 }}
+            >
+              <Link
+                to={`/category/${encodeURIComponent(tile.category)}`}
+                className="group relative block overflow-hidden rounded-[2.5rem] border border-accent/30 shadow-2xl bg-white"
+              >
+                <div className="overflow-hidden relative">
+                   <img
+                    src={tile.image}
+                    alt={tile.name}
+                    className="h-[520px] w-full object-cover transition-transform duration-[2s] group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-primary/20 mix-blend-overlay group-hover:bg-transparent transition-colors duration-1000" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/100 via-primary/30 to-transparent opacity-95 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute inset-x-0 bottom-0 p-10 transform translate-y-3 group-hover:translate-y-0 transition-all duration-700">
+                  <h3 className="text-4xl font-medium text-primary-foreground mb-6 tracking-tight leading-none">{tile.name}</h3>
+                  <div className="flex items-center gap-4 bg-accent/20 border border-accent/30 backdrop-blur-md rounded-full px-6 py-3 w-fit hover:bg-accent transition-colors group">
+                    <span className="text-[10px] uppercase font-bold tracking-[0.3em] text-accent group-hover:text-primary-foreground">Legacy Collection</span>
+                    <ArrowRight className="h-4 w-4 text-accent transform group-hover:translate-x-2 group-hover:text-primary-foreground transition-all" />
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Trending Products */}
+      <section className="luxury-section bg-background px-6 md:px-12 lg:px-20 py-32 border-t border-charcoal/5">
+        <div className="mb-20 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">Trending Right Now</p>
+            <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">The Modern Muse</h2>
+            <p className="mt-4 text-muted-foreground text-lg">Curated pieces that are defining contemporary luxury across the globe.</p>
           </div>
-          <div className="glass-luxury rounded-full px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-secondary">
-            New Stories Weekly
+          <div className="flex items-center gap-4">
+             <div className="glass-luxury rounded-full px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-secondary border border-charcoal/10 shadow-glass">
+              Limited Edition Weekly
+            </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="glass-luxury h-[430px] animate-pulse rounded-[1.4rem]" />
+              <div key={i} className="glass-luxury h-[480px] animate-pulse rounded-[2rem]" />
             ))}
           </div>
         ) : (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4" data-testid="trending-products-grid">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4" data-testid="trending-products-grid">
             {trendingProducts.map((product, index) => (
               <motion.div
                 key={product.id}
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.6, delay: index * 0.08 }}
+                transition={{ duration: 0.8, delay: index * 0.1 }}
               >
-                <ProductCard product={product} />
+                <div className="hover-lift">
+                  <ProductCard product={product} />
+                </div>
               </motion.div>
             ))}
           </div>
         )}
       </section>
 
-      <section className="luxury-section bg-primary px-6 text-primary-foreground md:px-12 lg:px-20">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-center">
+      {/* Seasonal Promo */}
+      <section className="luxury-section bg-primary px-6 text-primary-foreground md:px-12 lg:px-20 py-32 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-mandala opacity-5 mix-blend-screen scale-150" />
+        <div className="grid gap-16 lg:grid-cols-[1.2fr_1fr] lg:items-center relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 26 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 1 }}
           >
-            <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-accent">Festive Promotions</p>
-            <h2 className="mb-6 text-4xl font-medium md:text-5xl">Seasonal Royal Calendar</h2>
-            <p className="mb-8 max-w-2xl text-primary-foreground/82">
-              Limited-edition festive launches inspired by Indian royalty, temple art, and heirloom craftsmanship.
+            <p className="mb-4 text-[13px] uppercase tracking-[0.5em] text-accent font-bold">Royal Traditions</p>
+            <h2 className="mb-8 text-6xl font-medium md:text-7xl tracking-tighter leading-[0.95]">Seasonal <br/>Atelier Highlights</h2>
+            <p className="mb-10 max-w-2xl text-xl text-primary-foreground/85 leading-relaxed font-body font-light">
+              Limited-edition capsule releases inspired by the rhythmic beauty of our heritage. Rare hand-embroidery, pure gold zari, and fabrics sourced from India's most legendary looms.
             </p>
-            <Button data-testid="about-us-button" asChild className="btn-luxury">
-              <Link to="/about">Explore Our Story</Link>
+            <Button data-testid="about-us-button" asChild size="lg" className="btn-luxury px-12 rounded-full h-14 text-base">
+              <Link to="/about">Our Craft Story</Link>
             </Button>
           </motion.div>
 
-          <div className="space-y-4">
+          <div className="grid gap-6">
             {promotions.map((promo, index) => (
               <motion.div
                 key={promo.title}
-                initial={{ opacity: 0, x: 18 }}
-                whileInView={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.4 }}
-                transition={{ duration: 0.6, delay: index * 0.08 }}
-                className="glass-dark rounded-2xl p-5"
+                transition={{ duration: 0.7, delay: index * 0.15 }}
+                className="glass-dark-strong rounded-[2rem] p-8 border border-white/5 hover:border-accent/40 transition-all duration-500 hover:shadow-2xl"
               >
-                <p className="mb-2 flex items-center gap-2 text-sm uppercase tracking-[0.2em] text-accent">
-                  <Sparkles className="h-4 w-4" />
+                <p className="mb-4 flex items-center gap-3 text-sm uppercase tracking-[0.3em] text-accent font-bold">
+                  <Sparkles className="h-5 w-5" />
                   {promo.title}
                 </p>
-                <p className="text-sm text-primary-foreground/82">{promo.detail}</p>
+                <p className="text-lg text-primary-foreground/90 font-light leading-relaxed">{promo.detail}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="luxury-section px-6 md:px-12 lg:px-20">
-        <div className="glass-luxury-strong mx-auto max-w-3xl rounded-[2rem] p-10 text-center md:p-14">
-          <Star className="mx-auto mb-5 h-10 w-10 text-accent" />
-          <h2 className="mb-4 text-4xl font-medium text-primary md:text-5xl">Join The Heritage Circle</h2>
-          <p className="mb-8 text-sm text-muted-foreground md:text-base">
-            Access first drops, private previews, and festive style notes from our atelier.
+      {/* Newsletter / Join The Heritage Circle */}
+      <section className="luxury-section px-6 md:px-12 lg:px-20 py-24">
+        <div className="glass-luxury-strong mx-auto max-w-4xl rounded-[3rem] p-12 text-center md:p-20 border border-accent/20 shadow-heavy">
+          <motion.div 
+             initial={{ rotate: -15 }}
+             whileInView={{ rotate: 0 }}
+             transition={{ duration: 1, type: "spring" }}
+          >
+             <Star className="mx-auto mb-8 h-12 w-12 text-accent" />
+          </motion.div>
+          <h2 className="mb-6 text-5xl font-medium text-primary md:text-6xl tracking-tight">Become An Insider</h2>
+          <p className="mb-12 text-lg text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
+            Gain early access to heirloom drops, private festive previews, and exclusive style notes from our head designer.
           </p>
-          <div className="mx-auto flex max-w-xl flex-col gap-3 sm:flex-row">
+          <div className="mx-auto flex max-w-xl flex-col gap-4 sm:flex-row">
             <input
               type="email"
-              placeholder="Your email address"
+              placeholder="Your royal email"
               data-testid="newsletter-input"
-              className="h-12 flex-1 rounded-full border border-accent/35 bg-background/80 px-5 text-sm text-foreground placeholder:text-muted-foreground/80 focus:border-accent"
+              className="h-14 flex-[1.5] rounded-full border border-accent/30 bg-white/50 px-8 text-base text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:ring-1 focus:ring-accent transition-all"
             />
-            <Button data-testid="newsletter-subscribe-button" className="btn-luxury h-12">
-              Subscribe
+            <Button data-testid="newsletter-subscribe-button" size="lg" className="btn-luxury h-14 px-10 rounded-full flex-1 text-base">
+              Join Circle
             </Button>
           </div>
+          <p className="mt-8 text-[11px] text-muted-foreground/60 uppercase tracking-[0.2em]">Privacy is our philosophy. Unsubscribe at any time.</p>
         </div>
       </section>
     </div>

@@ -113,7 +113,7 @@ All admin pages require admin authentication. If you're not logged in as admin, 
 
 These were already available:
 
-- **WooCommerce Admin:** `http://localhost:8080/admin/woocommerce`
+- **Admin Dashboard:** `http://localhost:8080/admin/dashboard`
 - **Blog Editor:** `http://localhost:8080/admin/blog/:id/edit`
 
 ---
