@@ -36,7 +36,7 @@ router.use('/reviews', reviewRoute);
 router.use('/recommendations', recommendationRoute);
 router.use('/admin/analytics', analyticsRoute);
 router.use('/admin/warehouses', warehouseRoute);
-// router.use('/admin/inventory', inventoryRoute); // Temporarily disabled
+router.use('/admin/inventory', inventoryRoute); // Inventory management
 router.use('/notifications', notificationRoute);
 router.use('/admin/fraud', fraudRoute);
 router.use('/tenants', tenantsRoute);

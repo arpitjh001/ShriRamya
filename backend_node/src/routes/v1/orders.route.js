@@ -8,6 +8,8 @@ const orderController = require('../../controllers/order.controller');
 const shipmentController = require('../../controllers/shipment.controller');
 const refundController = require('../../controllers/refund.controller');
 const webhookController = require('../../controllers/webhook.controller');
+const validate = require('../../middlewares/validate');
+const orderValidation = require('../../validations/order.validation');
 const auth = require('../../middlewares/auth');
 
 const router = express.Router();
@@ -17,10 +19,18 @@ const router = express.Router();
 // ==========================================
 
 // Create order (primary route)
-router.post('/', auth(), orderController.createOrder);
+router.post('/',
+    auth(),
+    validate(orderValidation.createOrder),
+    orderController.createOrder
+);
 
 // Create order (alias for backward compatibility with frontend)
-router.post('/create', auth(), orderController.createOrder);
+router.post('/create',
+    auth(),
+    validate(orderValidation.createOrder),
+    orderController.createOrder
+);
 
 // Get customer's orders
 router.get('/my', auth(), orderController.getCustomerOrders);
@@ -29,7 +39,11 @@ router.get('/my', auth(), orderController.getCustomerOrders);
 router.get('/:id', auth(), orderController.getOrder);
 
 // Cancel order
-router.post('/my/:id/cancel', auth(), orderController.cancelOrder);
+router.post('/my/:id/cancel',
+    auth(),
+    validate(orderValidation.cancelOrder),
+    orderController.cancelOrder
+);
 
 // Get order tracking
 router.get('/:id/tracking', auth(), shipmentController.getOrderTracking);
@@ -38,7 +52,11 @@ router.get('/:id/tracking', auth(), shipmentController.getOrderTracking);
 router.get('/:id/shipments', auth(), shipmentController.getOrderShipments);
 
 // Request refund
-router.post('/:id/refunds', auth(), refundController.createRefund);
+router.post('/:id/refunds',
+    auth(),
+    validate(orderValidation.createRefund),
+    refundController.createRefund
+);
 
 // Get order refunds
 router.get('/:id/refunds', auth(), refundController.getOrderRefunds);
@@ -51,7 +69,11 @@ router.get('/:id/refunds', auth(), refundController.getOrderRefunds);
 router.get('/admin/all', auth(['admin']), orderController.getAllOrders);
 
 // Update order status
-router.patch('/admin/:id/status', auth(['admin']), orderController.updateOrderStatus);
+router.patch('/admin/:id/status',
+    auth(['admin']),
+    validate(orderValidation.updateOrderStatus),
+    orderController.updateOrderStatus
+);
 
 // Get all shipments (MUST be before /admin/:id/shipments to avoid route conflict)
 router.get('/admin/shipments', auth(['admin']), shipmentController.getAllShipments);
@@ -63,10 +85,18 @@ router.get('/admin/shipments/ready-to-ship', auth(['admin']), shipmentController
 router.get('/admin/shipments/pending', auth(['admin']), shipmentController.getPendingShipments);
 
 // Create shipment
-router.post('/admin/:id/shipments', auth(['admin']), shipmentController.createShipment);
+router.post('/admin/:id/shipments',
+    auth(['admin']),
+    validate(orderValidation.createShipment),
+    shipmentController.createShipment
+);
 
 // Update shipment tracking
-router.patch('/admin/shipments/:id/tracking', auth(['admin']), shipmentController.updateTracking);
+router.patch('/admin/shipments/:id/tracking',
+    auth(['admin']),
+    validate(orderValidation.updateTracking),
+    shipmentController.updateTracking
+);
 
 // Mark shipment as shipped
 router.post('/admin/shipments/:id/ship', auth(['admin']), shipmentController.markAsShipped);
@@ -81,7 +111,11 @@ router.delete('/admin/shipments/:id', auth(['admin']), shipmentController.delete
 router.post('/admin/refunds/:id/approve', auth(['admin']), refundController.approveRefund);
 
 // Process refund
-router.post('/admin/refunds/:id/process', auth(['admin']), refundController.processRefund);
+router.post('/admin/refunds/:id/process',
+    auth(['admin']),
+    validate(orderValidation.processRefund),
+    refundController.processRefund
+);
 
 // Reject refund
 router.post('/admin/refunds/:id/reject', auth(['admin']), refundController.rejectRefund);
