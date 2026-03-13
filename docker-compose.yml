@@ -36,6 +36,8 @@ services:
       MONGO_URL: mongodb://mongodb:27017/
       DB_NAME: shriramya
     volumes:
+      - ./backend_node/src:/app/src
+      - ./backend_node/server.js:/app/server.js
       - ./backend_node/uploads:/app/uploads
     ports:
       - "8001:8000"

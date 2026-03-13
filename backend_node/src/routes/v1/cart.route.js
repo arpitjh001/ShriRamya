@@ -29,9 +29,6 @@ router.delete('/item/:id', validate(cartValidation.removeCartItem), cartControll
 // Clear entire cart
 router.delete('/', validate(cartValidation.clearCart), cartController.clearCart);
 
-// Get cart by ID (admin/internal use)
-router.get('/:id', validate(cartValidation.getCartById), cartController.getCartById);
-
 // ==========================================
 // Coupon Routes (Customer-Facing)
 // ==========================================
@@ -44,5 +41,8 @@ router.delete('/coupon/remove', cartLimiter, cartController.removeCoupon);
 
 // Get applied coupon
 router.get('/coupon', cartController.getAppliedCoupon);
+
+// Get cart by ID (admin/internal use)
+router.get('/:id', validate(cartValidation.getCartById), cartController.getCartById);
 
 module.exports = router;

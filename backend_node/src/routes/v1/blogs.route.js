@@ -43,10 +43,9 @@ router.get('/tags',
 /**
  * @route   GET /api/v1/blogs/capabilities
  * @desc    Get blog editing capabilities
- * @access  Authenticated
+ * @access  Public (Guest), Authenticated (Author/Admin)
  */
 router.get('/capabilities',
-    auth,
     blogController.getCapabilities
 );
 
