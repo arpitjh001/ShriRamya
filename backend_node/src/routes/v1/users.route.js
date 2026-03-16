@@ -24,15 +24,26 @@ router.get('/',
 );
 
 /**
- * @route   GET /api/v1/users/:id
- * @desc    Get user by MongoDB ID
- * @access  Private (Admin only)
+ * @route   GET /api/v1/users/roles
+ * @desc    Get all available roles
+ * @access  Private (Admin, Editor)
+ * NOTE: Must be defined BEFORE /:id to avoid route conflict
  */
-router.get('/:id',
+router.get('/roles',
     auth,
-    requireRole('Admin'),
-    validate(userValidation.mongoUserId),
-    userManagementController.getUserById
+    requireRole('Admin', 'Editor'),
+    userManagementController.getRoles
+);
+
+/**
+ * @route   GET /api/v1/users/permissions
+ * @desc    Get all available permissions
+ * @access  Private (Admin, Editor)
+ * NOTE: Must be defined BEFORE /:id to avoid route conflict
+ */
+router.get('/permissions',
+    auth,
+    userManagementController.getPermissions
 );
 
 /**
@@ -45,6 +56,45 @@ router.post('/sync',
     requireRole('Admin'),
     validate(userValidation.syncUserMapping),
     userManagementController.syncUserMapping
+);
+
+/**
+ * @route   POST /api/v1/users/roles
+ * @desc    Create custom role
+ * @access  Private (Admin only)
+ * NOTE: POST route defined before /:id pattern
+ */
+router.post('/roles',
+    auth,
+    requireRole('Admin'),
+    validate(userValidation.createRole),
+    userManagementController.createRole
+);
+
+/**
+ * @route   DELETE /api/v1/users/roles/:id
+ * @desc    Delete custom role
+ * @access  Private (Admin only)
+ * NOTE: Specific path defined before /:id pattern
+ */
+router.delete('/roles/:id',
+    auth,
+    requireRole('Admin'),
+    validate(userValidation.deleteRole),
+    userManagementController.deleteRole
+);
+
+/**
+ * @route   GET /api/v1/users/:id
+ * @desc    Get user by MongoDB ID
+ * @access  Private (Admin only)
+ * NOTE: Parameterized route must come AFTER specific routes like /roles, /permissions
+ */
+router.get('/:id',
+    auth,
+    requireRole('Admin'),
+    validate(userValidation.mongoUserId),
+    userManagementController.getUserById
 );
 
 /**
@@ -81,51 +131,6 @@ router.delete('/:userId/roles/:roleId',
     requireRole('Admin'),
     validate(userValidation.removeRole),
     userManagementController.removeRole
-);
-
-/**
- * @route   GET /api/v1/users/roles
- * @desc    Get all available roles
- * @access  Private (Admin, Editor)
- */
-router.get('/roles',
-    auth,
-    requireRole('Admin', 'Editor'),
-    userManagementController.getRoles
-);
-
-/**
- * @route   GET /api/v1/users/permissions
- * @desc    Get all available permissions
- * @access  Private (Admin, Editor)
- */
-router.get('/permissions',
-    auth,
-    userManagementController.getPermissions
-);
-
-/**
- * @route   POST /api/v1/users/roles
- * @desc    Create custom role
- * @access  Private (Admin only)
- */
-router.post('/roles',
-    auth,
-    requireRole('Admin'),
-    validate(userValidation.createRole),
-    userManagementController.createRole
-);
-
-/**
- * @route   DELETE /api/v1/users/roles/:id
- * @desc    Delete custom role
- * @access  Private (Admin only)
- */
-router.delete('/roles/:id',
-    auth,
-    requireRole('Admin'),
-    validate(userValidation.deleteRole),
-    userManagementController.deleteRole
 );
 
 module.exports = router;

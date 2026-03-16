@@ -1,91 +1,71 @@
-# Shri Ramya - Luxury Indian Ethnic eCommerce Platform
+# ShriRamya E-Commerce Platform - PRD
 
 ## Original Problem Statement
-Build a modern headless eCommerce website for an ethnic women's clothing brand named "Shri Ramya" with:
-- Premium, elegant, traditional yet modern feel
-- Royal Maroon, Gold, and Cream color palette
-- Standard eCommerce functionality (products, cart, checkout, orders)
-- Home & Lifestyle products expansion
-- Virtual Try-On AI feature
+Check all backend APIs and their integration with frontend. Verify that all routes are well defined with no overlapping.
 
-## Tech Stack
-- **Frontend**: React 19 with Tailwind CSS
-- **Backend**: FastAPI (Python)
-- **Database**: MongoDB
-- **Architecture**: Headless eCommerce (designed for WooCommerce integration but using MongoDB fallback)
-- **AI Integration**: Replicate API for Virtual Try-On (MOCKED)
+## Architecture Overview
+- **Backend:** Node.js/Express (in `/app/backend_node/`)
+- **Frontend:** React with Vite (in `/app/frontend/`)
+- **Databases:** MongoDB + MySQL (hybrid)
+- **Cache:** Redis
+- **Auth:** JWT-based with RBAC
 
 ## What's Been Implemented
 
-### Core Features (Completed)
-- [x] Product catalog with 13 products across 2 main categories
-- [x] Women Ethnic Wear: Sarees, Lehengas, Ladies Suits, Dupattas, Ready-to-Wear
-- [x] Home & Lifestyle: Bedsheets, Pillow Covers, Cushion Covers, Dohar
-- [x] Product filtering by category and subcategory
-- [x] Product detail pages with variations, pricing, descriptions
-- [x] Shopping cart with quantity controls (+/-)
-- [x] Luxury collection badges
-- [x] Discount badges with percentage calculation
-- [x] Virtual Try-On feature (MOCKED)
+### January 2026 - API Audit & Route Fixes
+1. **Comprehensive API audit** - Analyzed 21 backend route files and 10 frontend service files
+2. **Fixed critical route ordering issues:**
+   - `users.route.js` - `/roles`, `/permissions` now before `/:id`
+   - `recommendation.route.js` - `/personal` now before `/:id`
+   - `tenants.route.js` - `/settings`, `/roles`, `/my-roles` now before `/:id`
+   - `warehouse.route.js` - `/variants/:variantId/inventory`, `/inventory/low-stock` now before `/:id`
+3. **Created API Audit Report** at `/app/API_AUDIT_REPORT.md`
 
-### Pages Implemented
-- [x] Homepage with hero, featured products, category sections
-- [x] Products listing page with sidebar filters
-- [x] Product detail page with Try-On button
-- [x] Cart page with quantity controls
+## API Endpoints Summary
 
-### Backend Endpoints
-- `GET /api/products` - List products with filters
-- `GET /api/products/{id}` - Get single product
-- `GET /api/categories` - Get categories
-- `POST /api/cart` - Add to cart
-- `GET /api/cart` - Get cart
-- `PATCH /api/cart/item/{id}` - Update quantity
-- `DELETE /api/cart/item/{id}` - Remove from cart
-- `POST /api/tryon/upload` - Virtual Try-On upload
-- `GET /api/tryon/status/{job_id}` - Check Try-On status
-
-## Mocked/Incomplete Features
-- **Virtual Try-On**: Returns garment image as mock result (no Replicate API token)
-- **WooCommerce**: Disabled - using MongoDB fallback
-- **Payments**: Razorpay configured with test keys
-- **User Authentication**: JWT-based auth implemented but not fully integrated
+### Total Routes: ~150+ endpoints across 21 route files
+- Auth: 5 endpoints
+- Products: 23 endpoints
+- Cart: 9 endpoints
+- Orders: 27 endpoints
+- Blogs: 15 endpoints
+- Categories: 7 endpoints
+- Coupons: 6 endpoints
+- Search: 5 endpoints
+- Reviews: 7 endpoints
+- Recommendations: 3 endpoints
+- Analytics: 4 endpoints
+- Warehouses: 8 endpoints
+- Inventory: 3 endpoints
+- Notifications: 4 endpoints
+- Fraud: 3 endpoints
+- Tenants: 9 endpoints
+- Users: 10 endpoints
+- Customers: 5 endpoints
+- Upload: 2 endpoints
+- AI Collaboration: TBD
 
 ## Prioritized Backlog
 
-### P0 - Critical
-- None currently
+### P0 (Critical) - DONE
+- ✅ Route ordering fixes in users, recommendations, tenants, warehouse routes
 
-### P1 - High Priority
-- User authentication flow integration
-- Checkout and payment flow
-- Order management
+### P1 (Important)
+- [ ] Create frontend service for Customer management API
+- [ ] Create frontend service for AI Collaboration API
+- [ ] Environment setup fixes (supervisor config for Node.js backend)
 
-### P2 - Medium Priority
-- Wishlist functionality
-- User profile/account page
-- Order tracking
+### P2 (Nice to Have)
+- [ ] Standardize review route patterns
+- [ ] Add comprehensive OpenAPI/Swagger documentation
+- [ ] Remove duplicate route patterns
 
-### P3 - Future
-- WooCommerce integration (when credentials available)
-- Real Replicate API integration for Virtual Try-On
-- Blog integration
-- Product recommendations engine
-- Instagram-style lookbook
+## Environment Issues (Blocking Live Testing)
+1. Supervisor configured for Python backend but actual backend is Node.js
+2. Missing `.env` files for both frontend and backend
+3. Frontend uses Vite (`yarn dev`) but supervisor tries `yarn start`
 
-## Key Files
-- `/app/frontend/src/pages/HomePage.js` - Homepage with categories
-- `/app/frontend/src/pages/ProductsPage.js` - Product listing
-- `/app/frontend/src/pages/ProductDetailPage.js` - Product detail with Try-On
-- `/app/frontend/src/components/VirtualTryOn/TryOnModal.js` - Try-On modal
-- `/app/frontend/src/lib/productTransformer.js` - Data transformation
-- `/app/backend/main.py` - FastAPI backend
-- `/app/backend/seed_data_expanded.py` - Product seed data
-
-## Database Schema
-- **products**: id, name, description, price, sale_price, category, subcategory, images, variations, fabric, craft_style, state_of_origin, luxury_collection, featured, trending
-- **carts**: session_id, items, last_updated
-- **users**: name, email, password_hash, wishlist, orders
-
-## Last Updated
-2026-02-21 - Added Home & Lifestyle categories, fixed product images, implemented Virtual Try-On modal
+## Next Steps
+1. Set up proper environment variables
+2. Configure supervisor for Node.js backend
+3. Run live API testing to verify fixes

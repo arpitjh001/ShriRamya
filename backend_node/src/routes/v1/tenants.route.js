@@ -1,6 +1,9 @@
 /**
  * Tenant Routes
  * Multi-tenant management endpoints
+ * 
+ * IMPORTANT: Route ordering matters! Specific string routes MUST be defined
+ * BEFORE parameterized routes like /:id to avoid route conflicts.
  */
 
 const express = require('express');
@@ -33,6 +36,7 @@ router.get('/',
  * @route   GET /api/v1/tenants/current
  * @desc    Get current tenant info
  * @access  Private (All authenticated users)
+ * NOTE: Must be defined BEFORE /:id to avoid route conflict
  */
 router.get('/current', 
     auth,
@@ -41,9 +45,56 @@ router.get('/current',
 );
 
 /**
+ * @route   GET /api/v1/tenants/settings
+ * @desc    Get tenant settings
+ * @access  Private (All authenticated users in tenant)
+ * NOTE: Must be defined BEFORE /:id to avoid route conflict
+ */
+router.get('/settings', 
+    auth,
+    ensureTenantIsolation,
+    tenantController.getTenantSettings
+);
+
+/**
+ * @route   PUT /api/v1/tenants/settings/:key
+ * @desc    Update tenant setting
+ * @access  Private (Admin/Editor only)
+ * NOTE: Must be defined BEFORE /:id to avoid route conflict
+ */
+router.put('/settings/:key', 
+    auth,
+    requireRole('Admin'),
+    tenantController.updateTenantSetting
+);
+
+/**
+ * @route   GET /api/v1/tenants/roles
+ * @desc    Get all roles for current tenant
+ * @access  Private (All authenticated users)
+ * NOTE: Must be defined BEFORE /:id to avoid route conflict
+ */
+router.get('/roles', 
+    auth,
+    tenantController.getTenantRoles
+);
+
+/**
+ * @route   GET /api/v1/tenants/my-roles
+ * @desc    Get current user's roles
+ * @access  Private (All authenticated users)
+ * NOTE: Must be defined BEFORE /:id to avoid route conflict
+ */
+router.get('/my-roles', 
+    auth,
+    tenantController.getMyRoles
+);
+
+/**
  * @route   GET /api/v1/tenants/:id
  * @desc    Get tenant by ID (admin only)
  * @access  Private (Admin only)
+ * NOTE: Parameterized route MUST come AFTER specific routes like /current, /settings, /roles
  */
 router.get('/:id', 
     auth, 
@@ -60,48 +111,6 @@ router.put('/:id',
     auth, 
     requireRole('Admin'),
     tenantController.updateTenant
-);
-
-/**
- * @route   GET /api/v1/tenants/settings
- * @desc    Get tenant settings
- * @access  Private (All authenticated users in tenant)
- */
-router.get('/settings', 
-    auth,
-    ensureTenantIsolation,
-    tenantController.getTenantSettings
-);
-
-/**
- * @route   PUT /api/v1/tenants/settings/:key
- * @desc    Update tenant setting
- * @access  Private (Admin/Editor only)
- */
-router.put('/settings/:key', 
-    auth,
-    requireRole('Admin'),
-    tenantController.updateTenantSetting
-);
-
-/**
- * @route   GET /api/v1/tenants/roles
- * @desc    Get all roles for current tenant
- * @access  Private (All authenticated users)
- */
-router.get('/roles', 
-    auth,
-    tenantController.getTenantRoles
-);
-
-/**
- * @route   GET /api/v1/tenants/my-roles
- * @desc    Get current user's roles
- * @access  Private (All authenticated users)
- */
-router.get('/my-roles', 
-    auth,
-    tenantController.getMyRoles
 );
 
 module.exports = router;
