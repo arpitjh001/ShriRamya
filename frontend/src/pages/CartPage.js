@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { productsAPI, cartAPI } from '../services/api';
+import { cartAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -13,58 +13,34 @@ import { motion, AnimatePresence } from 'framer-motion';
 const CartPage = () => {
   const { cart, fetchCart, appliedCoupon, discountAmount, applyCoupon, removeCoupon, calculateSubtotal } = useCart();
   const navigate = useNavigate();
-  const [cartProducts, setCartProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updatingItems, setUpdatingItems] = useState(new Set()); // Uses composite key: productId-variationStr
-  const [removingItems, setRemovingItems] = useState(new Set()); // Uses composite key: productId-variationStr
+  const [updatingItems, setUpdatingItems] = useState(new Set());
+  const [removingItems, setRemovingItems] = useState(new Set());
   
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   useEffect(() => {
-    const loadCartProducts = async () => {
-      if (!cart.items || cart.items.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const productPromises = cart.items.map((item) =>
-          productsAPI.getById(item.product_id)
-        );
-        const products = await Promise.all(productPromises);
-        setCartProducts(products.map((res) => res.data));
-      } catch (error) {
-        console.error('Failed to load cart products:', error);
-        toast.error('Failed to load cart products');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCartProducts();
+    // Cart items from API already include name, image, price, attributes
+    // No need for separate product fetches
+    if (cart.items !== undefined) {
+      setLoading(false);
+    }
   }, [cart]);
 
-  const updateQuantity = async (productId, newQuantity, variation = null) => {
-    const product = cartProducts.find((p) => p.id === productId);
-    const variationStr = variation ? JSON.stringify(variation) : "";
-    const itemKey = `${productId}-${variationStr}`;
+  const getItemKey = (item) => `${item.productId || item.id}-${item.variantId || ''}`;
 
-    // Validation
+  const updateQuantity = async (item, newQuantity) => {
+    const itemKey = getItemKey(item);
+
     if (newQuantity < 0) return;
 
-    if (newQuantity > (product?.stock_quantity || 100)) {
-      toast.error(`Only ${product?.stock_quantity || 100} items available in stock`);
-      return;
-    }
-
-    // Optimistic update
     setUpdatingItems(prev => new Set(prev).add(itemKey));
 
     try {
       const sessionId = getSessionId();
-      await cartAPI.updateQuantity(productId, newQuantity, sessionId, variation);
+      await cartAPI.updateQuantity(item.productId || item.id, newQuantity, sessionId);
       await fetchCart();
 
       if (newQuantity === 0) {
@@ -73,7 +49,6 @@ const CartPage = () => {
     } catch (error) {
       console.error('Failed to update quantity:', error);
       toast.error(error.response?.data?.detail || 'Failed to update quantity');
-      // Revert optimistic update by refetching
       await fetchCart();
     } finally {
       setUpdatingItems(prev => {
@@ -84,34 +59,21 @@ const CartPage = () => {
     }
   };
 
-  const handleIncrease = (productId, variation = null) => {
-    const cartItem = cart.items.find(item =>
-      item.product_id === productId &&
-      JSON.stringify(item.variation) === JSON.stringify(variation)
-    );
-    if (cartItem) {
-      updateQuantity(productId, cartItem.quantity + 1, variation);
-    }
+  const handleIncrease = (item) => {
+    updateQuantity(item, item.quantity + 1);
   };
 
-  const handleDecrease = (productId, variation = null) => {
-    const cartItem = cart.items.find(item =>
-      item.product_id === productId &&
-      JSON.stringify(item.variation) === JSON.stringify(variation)
-    );
-    if (cartItem) {
-      updateQuantity(productId, cartItem.quantity - 1, variation);
-    }
+  const handleDecrease = (item) => {
+    updateQuantity(item, item.quantity - 1);
   };
 
-  const handleRemove = async (productId, variation = null) => {
-    const variationStr = variation ? JSON.stringify(variation) : "";
-    const itemKey = `${productId}-${variationStr}`;
+  const handleRemove = async (item) => {
+    const itemKey = getItemKey(item);
     setRemovingItems(prev => new Set(prev).add(itemKey));
 
     try {
       const sessionId = getSessionId();
-      await cartAPI.remove(productId, sessionId, variation);
+      await cartAPI.remove(item.productId || item.id, sessionId);
       await fetchCart();
       toast.success('Item removed from cart');
     } catch (error) {
@@ -199,14 +161,13 @@ const CartPage = () => {
           <AnimatePresence mode="popLayout">
             <div className="space-y-4">
               {cart.items.map((item) => {
-                const product = cartProducts.find((p) => p.id === item.product_id);
-                if (!product) return null;
-
-                const price = product.sale_price || product.price;
-                const variationStr = item.variation ? JSON.stringify(item.variation) : "";
-                const itemKey = `${item.product_id}-${variationStr}`;
+                const itemKey = getItemKey(item);
                 const isUpdating = updatingItems.has(itemKey);
                 const isRemoving = removingItems.has(itemKey);
+                const price = item.price || 0;
+                const originalPrice = item.originalPrice || item.price || 0;
+                const itemImage = item.image || item.thumbnail || '/uploads/woocommerce-placeholder.webp';
+                const productId = item.productId || item.id;
 
                 return (
                   <motion.div
@@ -220,40 +181,43 @@ const CartPage = () => {
                     className="flex gap-4 p-4 border border-border rounded bg-background hover:shadow-md transition-shadow"
                   >
                     <Link
-                      to={`/products/${product.id}`}
+                      to={`/products/${productId}`}
                       className="w-24 h-24 flex-shrink-0 overflow-hidden rounded"
                     >
                       <img
-                        src={product.images[0]}
-                        alt={product.name}
+                        src={itemImage}
+                        alt={item.name || 'Product'}
                         className="w-full h-full object-cover hover:scale-105 transition-transform"
+                        onError={(e) => { e.target.src = '/uploads/woocommerce-placeholder.webp'; }}
                       />
                     </Link>
 
                     <div className="flex-1 min-w-0">
                       <Link
-                        to={`/products/${product.id}`}
+                        to={`/products/${productId}`}
                         className="text-lg font-medium hover:text-primary transition-colors mb-1 block truncate"
                       >
-                        {product.name}
+                        {item.name || 'Product'}
                       </Link>
-                      <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
-                      {item.variation && (
+                      {item.attributes && (item.attributes.size || item.attributes.color) && (
                         <p className="text-sm text-muted-foreground mb-2">
-                          {item.variation.size} - {item.variation.color}
+                          {[item.attributes.color, item.attributes.size].filter(Boolean).join(' - ')}
                         </p>
                       )}
                       <p className="text-lg font-medium text-primary">{formatPrice(price)}</p>
+                      {originalPrice > price && (
+                        <p className="text-sm text-muted-foreground line-through">{formatPrice(originalPrice)}</p>
+                      )}
 
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-3 mt-3">
                         <div className="flex items-center border border-border rounded">
                           <Button
-                            data-testid={`decrease-quantity-${item.product_id}`}
+                            data-testid={`decrease-quantity-${productId}`}
                             variant="ghost"
                             size="sm"
                             className="h-9 w-9 p-0 hover:bg-muted"
-                            onClick={() => handleDecrease(item.product_id, item.variation)}
+                            onClick={() => handleDecrease(item)}
                             disabled={isUpdating || isRemoving || item.quantity <= 1}
                           >
                             <Minus className="h-4 w-4" />
@@ -277,16 +241,12 @@ const CartPage = () => {
                             variant="ghost"
                             size="sm"
                             className="h-9 w-9 p-0 hover:bg-muted"
-                            onClick={() => handleIncrease(item.product_id, item.variation)}
-                            disabled={isUpdating || isRemoving || item.quantity >= (product.stock_quantity || 100)}
+                            onClick={() => handleIncrease(item)}
+                            disabled={isUpdating || isRemoving}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
                         </div>
-
-                        {product.stock_quantity && item.quantity >= product.stock_quantity && (
-                          <span className="text-xs text-amber-600">Max stock reached</span>
-                        )}
                       </div>
                     </div>
 
@@ -295,7 +255,7 @@ const CartPage = () => {
                         data-testid={`remove-item-${itemKey}`}
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRemove(item.product_id, item.variation)}
+                        onClick={() => handleRemove(item)}
                         disabled={isRemoving}
                         className="text-muted-foreground hover:text-destructive"
                       >
@@ -311,7 +271,7 @@ const CartPage = () => {
                           {formatPrice(price * item.quantity)}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {formatPrice(price)} × {item.quantity}
+                          {formatPrice(price)} x {item.quantity}
                         </div>
                       </div>
                     </div>

@@ -190,7 +190,7 @@ export const CartProvider = ({ children }) => {
   // Calculate totals with discount
   const calculateSubtotal = () => {
     return cart.items?.reduce((sum, item) => {
-      const price = item.variant?.price || item.product?.price || 0;
+      const price = item.price || item.variant?.price || item.product?.price || 0;
       return sum + (price * item.quantity);
     }, 0) || 0;
   };

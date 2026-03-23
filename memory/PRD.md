@@ -95,23 +95,26 @@ MySQL is not available in this preview environment, so mock data routes are used
 
 ### P0 (Critical) - DONE
 - ✅ Route ordering fixes in users, recommendations, tenants, warehouse routes
+- ✅ Cart page product thumbnail image fix (March 2026)
 
-### P1 (Important)
-- [ ] Create frontend service for Customer management API
-- [ ] Create frontend service for AI Collaboration API
-- [ ] Environment setup fixes (supervisor config for Node.js backend)
+### P1 (Important) - IN PROGRESS
+- [ ] Complete Libas-style category filtering system (FilterSidebar, SortDropdown, MobileFilterDrawer integration into ProductsPage)
+- [ ] URL query parameter synchronization for filters
+- [ ] Skeleton loaders for product loading
 
 ### P2 (Nice to Have)
-- [ ] Standardize review route patterns
-- [ ] Add comprehensive OpenAPI/Swagger documentation
-- [ ] Remove duplicate route patterns
+- [ ] Advanced filter features (dynamic product counts per filter option)
+- [ ] Full user checkout flow testing
+- [ ] Customer management frontend
+- [ ] Non-admin user auth & account management
 
-## Environment Issues (Blocking Live Testing)
-1. Supervisor configured for Python backend but actual backend is Node.js
-2. Missing `.env` files for both frontend and backend
-3. Frontend uses Vite (`yarn dev`) but supervisor tries `yarn start`
+## Environment Notes
+- Backend: Node.js on port 8000, proxied through FastAPI on port 8001
+- Mock data layer active (MySQL/Redis unavailable)
+- Frontend: React/Vite on port 3000
 
-## Next Steps
-1. Set up proper environment variables
-2. Configure supervisor for Node.js backend
-3. Run live API testing to verify fixes
+## Bug Fixes Log
+### March 2026 - Cart Page Thumbnail Fix
+- **Root cause**: CartPage.js used `item.product_id` but cart API returns `item.productId`. Also made N+1 API calls to fetch product details when all data was already on cart items.
+- **Fix**: Refactored CartPage to use cart item data directly (name, image, price, attributes). Eliminated unnecessary API calls.
+- **Files changed**: `/app/frontend/src/pages/CartPage.js`, `/app/frontend/src/context/CartContext.js`
