@@ -48,12 +48,24 @@ Check all backend APIs and their integration with frontend. Verify that all rout
 - Frontend: ✅ Running and displaying correctly
 - Node.js Backend: ✅ Running on port 8000
 - API Routes: ✅ All fixed for proper ordering
-- MySQL Database: ❌ Not available in this environment (required for product/cart data)
+- Mock Data: ✅ Configured for products, categories, cart, search, recommendations
 - MongoDB: ✅ Running (for auth/user data)
 
-### Known Limitations:
-The backend requires MySQL for products, categories, orders, inventory etc.
-In this preview environment, MySQL is not configured, so product listings and cart functionality return 500 errors.
+### Mock Data Includes:
+- 8 sample saree products (Banarasi, Kanjivaram, Chanderi, Pochampally, etc.)
+- 4 categories (Silk, Cotton, Handloom, Designer)
+- Full cart functionality with session management
+- Search and recommendations
+- Sample coupon codes: WELCOME10, SILK20, FESTIVE15
+
+### Note:
+MySQL is not available in this preview environment, so mock data routes are used for:
+- Products (/api/v1/products)
+- Categories (/api/v1/categories)
+- Cart (/api/v1/cart)
+- Search (/api/v1/search)
+- Recommendations (/api/v1/recommendations)
+- Coupon validation (/api/v1/coupons/validate)
 
 ## API Endpoints Summary
 
