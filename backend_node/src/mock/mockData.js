@@ -3,6 +3,63 @@
  * Used when MySQL database is not available
  */
 
+// Mock admin user for testing
+const mockUsers = {
+  'admin@shriramya.com': {
+    id: 'admin_001',
+    email: 'admin@shriramya.com',
+    password: 'Admin@123',
+    name: 'Admin User',
+    role: 'admin',
+    tenantId: 'shriramya',
+    permissions: ['all'],
+    isActive: true,
+    createdAt: '2025-01-01T00:00:00Z'
+  },
+  'customer@test.com': {
+    id: 'customer_001',
+    email: 'customer@test.com',
+    password: 'Test@123',
+    name: 'Test Customer',
+    role: 'customer',
+    tenantId: 'shriramya',
+    permissions: ['read', 'order'],
+    isActive: true,
+    createdAt: '2025-02-01T00:00:00Z'
+  }
+};
+
+// Simple JWT-like token generator for mock purposes
+// Format: header.payload.signature (base64 encoded)
+const generateMockToken = (user) => {
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
+  };
+  
+  const payload = {
+    sub: user.id,
+    user_id: user.id,  // Frontend expects this
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    roles: [user.role],  // Frontend expects array
+    permissions: user.permissions || [],
+    tenant_id: user.tenantId,
+    tenantId: user.tenantId,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor((Date.now() + 24 * 60 * 60 * 1000) / 1000) // 24 hours
+  };
+  
+  // Create JWT-like token (header.payload.signature)
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64').replace(/=/g, '');
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64').replace(/=/g, '');
+  const signature = 'mock_signature_' + Date.now();
+  const encodedSignature = Buffer.from(signature).toString('base64').replace(/=/g, '');
+  
+  return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+};
+
 const mockProducts = [
   {
     id: 1,
@@ -20,6 +77,7 @@ const mockProducts = [
       "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
     ],
     thumbnail: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400",
+    // Product with multiple colors only (no size variants - sarees are one-size)
     variants: [
       {
         id: 1,
@@ -27,13 +85,31 @@ const mockProducts = [
         price: 25999,
         discountPrice: 22999,
         stock: 15,
-        attributes: { color: "Royal Blue", size: "Free Size" },
+        attributes: { color: "Royal Blue" },
+        image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800"
+      },
+      {
+        id: 11,
+        sku: "BAN-SILK-MR-001",
+        price: 25999,
+        discountPrice: 22999,
+        stock: 10,
+        attributes: { color: "Maroon" },
+        image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
+      },
+      {
+        id: 12,
+        sku: "BAN-SILK-GD-001",
+        price: 27999,
+        discountPrice: 24999,
+        stock: 8,
+        attributes: { color: "Gold" },
         image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800"
       }
     ],
     basePrice: 25999,
     effectivePrice: 22999,
-    totalStock: 15,
+    totalStock: 33,
     rating: 4.8,
     reviewCount: 124,
     tags: ["wedding", "silk", "banarasi", "premium"],
@@ -55,6 +131,7 @@ const mockProducts = [
       "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
     ],
     thumbnail: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400",
+    // Product with NO variants - single SKU
     variants: [
       {
         id: 2,
@@ -62,7 +139,7 @@ const mockProducts = [
         price: 35999,
         discountPrice: 31999,
         stock: 8,
-        attributes: { color: "Magenta", size: "Free Size" },
+        attributes: {},
         image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
       }
     ],
@@ -361,6 +438,8 @@ const calculateCartTotals = (cart) => {
 module.exports = {
   mockProducts,
   mockCategories,
+  mockUsers,
+  generateMockToken,
   carts,
   getOrCreateCart,
   calculateCartTotals,

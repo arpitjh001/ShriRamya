@@ -45,13 +45,28 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, [user]);
 
-  const addToCart = async (variantId, quantity = 1) => {
+  const addToCart = async (productIdOrVariantId, quantity = 1, variation = null) => {
     try {
       const storedSessionId = getSessionId() || sessionId;
+      
+      // Build payload - support both old (variantId only) and new (productId + variation) patterns
       const payload = {
-        variantId: Number(variantId),
         quantity,
       };
+      
+      if (variation && variation.variantId) {
+        // New pattern: productId + variation object
+        payload.productId = Number(productIdOrVariantId);
+        payload.variantId = Number(variation.variantId);
+        if (variation.color) payload.color = variation.color;
+        if (variation.size) payload.size = variation.size;
+      } else if (variation && !variation.variantId) {
+        // Product without variants
+        payload.productId = Number(productIdOrVariantId);
+      } else {
+        // Legacy pattern: just variantId
+        payload.variantId = Number(productIdOrVariantId);
+      }
 
       const response = await cartAPI.add(payload, storedSessionId);
 

@@ -49,20 +49,31 @@ const ProductDetailPage = () => {
           const variants = matrixRes.data?.variants || [];
           setVariantMatrix(variants);
 
-          // Extract unique colors and sizes
-          const colors = [...new Set(variants.map(v => v.color).filter(Boolean))];
-          const sizes = [...new Set(variants.map(v => v.size).filter(Boolean))];
+          // Extract unique colors and sizes from variant attributes
+          const colors = [...new Set(variants.map(v => v.attributes?.color || v.color).filter(Boolean))];
+          const sizes = [...new Set(variants.map(v => v.attributes?.size || v.size).filter(Boolean))];
           setAvailableColors(colors);
           setAvailableSizes(sizes);
 
-          // Select first available color/size if variants exist
-          if (variants.length > 0 && colors.length > 0 && sizes.length > 0) {
+          // Auto-select variant only if both color and size exist
+          if (variants.length > 0) {
             const firstInStockVariant = variants.find(v => v.stock > 0) || variants[0];
             if (firstInStockVariant) {
-              setSelectedColor(firstInStockVariant.color);
-              setSelectedSize(firstInStockVariant.size);
+              const variantColor = firstInStockVariant.attributes?.color || firstInStockVariant.color;
+              const variantSize = firstInStockVariant.attributes?.size || firstInStockVariant.size;
+              
+              // Only auto-select if the variant has these attributes
+              if (variantColor && colors.length > 0) {
+                setSelectedColor(variantColor);
+              }
+              if (variantSize && sizes.length > 0) {
+                setSelectedSize(variantSize);
+              }
               setSelectedVariation(firstInStockVariant);
-              updateVariantStock(firstInStockVariant.color, firstInStockVariant.size);
+              
+              if (variantColor && variantSize) {
+                updateVariantStock(variantColor, variantSize);
+              }
             }
           }
         } catch (err) {
@@ -70,6 +81,11 @@ const ProductDetailPage = () => {
           const variantsData = productRes.data?.variants || productRes.data?.variations || [];
           if (variantsData.length > 0) {
             setSelectedVariation(variantsData[0]);
+            // Extract colors and sizes from legacy variants
+            const colors = [...new Set(variantsData.map(v => v.attributes?.color).filter(Boolean))];
+            const sizes = [...new Set(variantsData.map(v => v.attributes?.size).filter(Boolean))];
+            setAvailableColors(colors);
+            setAvailableSizes(sizes);
           }
         }
       } catch (error) {
@@ -142,19 +158,26 @@ const ProductDetailPage = () => {
   };
 
   const handleAddToCart = async () => {
-    // Validate variant selection for clothing products
-    if (variantMatrix.length > 0) {
-      if (!selectedColor) {
+    // Check if product has variants that require selection
+    const hasColors = availableColors.length > 0;
+    const hasSizes = availableSizes.length > 0;
+    const hasVariants = variantMatrix.length > 0;
+    
+    // Only validate if variants exist and require selection
+    if (hasVariants) {
+      // Only require color selection if colors exist
+      if (hasColors && !selectedColor) {
         toast.error('Please select a color');
         return;
       }
-      if (!selectedSize) {
+      // Only require size selection if sizes exist
+      if (hasSizes && !selectedSize) {
         toast.error('Please select a size');
         return;
       }
 
-      // Validate stock
-      if (!variantStock || variantStock.isOutOfStock) {
+      // Validate stock only if variant is selected
+      if ((hasColors || hasSizes) && variantStock && variantStock.isOutOfStock) {
         toast.error('This variant is out of stock');
         return;
       }
@@ -163,18 +186,19 @@ const ProductDetailPage = () => {
     try {
       let variation = null;
 
-      if (variantMatrix.length > 0) {
+      if (hasVariants && (selectedColor || selectedSize)) {
         // Use variant matrix system
         variation = {
           variantId: selectedVariation?.id,
-          color: selectedColor,
-          size: selectedSize,
-          stock: variantStock?.stock || 0
+          color: selectedColor || null,
+          size: selectedSize || null,
+          stock: variantStock?.stock || product.totalStock || 0
         };
       } else if (selectedVariation) {
         // Legacy variant system
         variation = selectedVariation;
       }
+      // If no variants, variation stays null - product will be added without variant
 
       await addToCart(product.id, 1, variation);
       toast.success('Added to cart!');
