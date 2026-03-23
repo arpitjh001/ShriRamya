@@ -73,10 +73,10 @@ const mockProducts = [
     categoryId: 1,
     categoryName: "Silk Sarees",
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800",
-      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
+      "https://images.unsplash.com/photo-1616586169180-2671c5e1cbdc?w=800&q=80",
+      "https://images.unsplash.com/photo-1664636404837-648361ed7901?w=800&q=80"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400",
+    thumbnail: "https://images.unsplash.com/photo-1616586169180-2671c5e1cbdc?w=400&q=80",
     // Product with multiple colors only (no size variants - sarees are one-size)
     variants: [
       {
@@ -86,7 +86,7 @@ const mockProducts = [
         discountPrice: 22999,
         stock: 15,
         attributes: { color: "Royal Blue" },
-        image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800"
+        image: "https://images.unsplash.com/photo-1616586169180-2671c5e1cbdc?w=800&q=80"
       },
       {
         id: 11,
@@ -95,7 +95,7 @@ const mockProducts = [
         discountPrice: 22999,
         stock: 10,
         attributes: { color: "Maroon" },
-        image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
+        image: "https://images.unsplash.com/photo-1664636404837-648361ed7901?w=800&q=80"
       },
       {
         id: 12,
@@ -104,7 +104,7 @@ const mockProducts = [
         discountPrice: 24999,
         stock: 8,
         attributes: { color: "Gold" },
-        image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800"
+        image: "https://images.unsplash.com/photo-1616586169180-2671c5e1cbdc?w=800&q=80"
       }
     ],
     basePrice: 25999,
@@ -128,9 +128,10 @@ const mockProducts = [
     categoryId: 1,
     categoryName: "Silk Sarees",
     images: [
-      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
+      "https://images.unsplash.com/photo-1664636404837-648361ed7901?w=800&q=80",
+      "https://images.unsplash.com/photo-1634034372412-2ca5e654b6f8?w=800&q=80"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400",
+    thumbnail: "https://images.unsplash.com/photo-1664636404837-648361ed7901?w=400&q=80",
     // Product with NO variants - single SKU
     variants: [
       {
@@ -140,7 +141,7 @@ const mockProducts = [
         discountPrice: 31999,
         stock: 8,
         attributes: {},
-        image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
+        image: "https://images.unsplash.com/photo-1664636404837-648361ed7901?w=800&q=80"
       }
     ],
     basePrice: 35999,
@@ -164,9 +165,10 @@ const mockProducts = [
     categoryId: 2,
     categoryName: "Cotton Sarees",
     images: [
-      "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800"
+      "https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/9419023/pexels-photo-9419023.jpeg?auto=compress&cs=tinysrgb&w=800"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=400",
+    thumbnail: "https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=400",
     variants: [
       {
         id: 3,
@@ -175,7 +177,7 @@ const mockProducts = [
         discountPrice: 7499,
         stock: 25,
         attributes: { color: "Mint Green", size: "Free Size" },
-        image: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800"
+        image: "https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
     basePrice: 8999,
@@ -199,9 +201,10 @@ const mockProducts = [
     categoryId: 3,
     categoryName: "Handloom Sarees",
     images: [
-      "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800"
+      "https://images.unsplash.com/photo-1771507056872-bcb9eeba5946?w=800&q=80",
+      "https://images.pexels.com/photos/9419023/pexels-photo-9419023.jpeg?auto=compress&cs=tinysrgb&w=800"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=400",
+    thumbnail: "https://images.unsplash.com/photo-1771507056872-bcb9eeba5946?w=400&q=80",
     variants: [
       {
         id: 4,
@@ -210,7 +213,7 @@ const mockProducts = [
         discountPrice: 10999,
         stock: 12,
         attributes: { color: "Coral", size: "Free Size" },
-        image: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800"
+        image: "https://images.unsplash.com/photo-1771507056872-bcb9eeba5946?w=800&q=80"
       }
     ],
     basePrice: 12999,
@@ -234,9 +237,10 @@ const mockProducts = [
     categoryId: 1,
     categoryName: "Silk Sarees",
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800"
+      "https://images.unsplash.com/photo-1665099210693-c91e2212ba04?w=800&q=80",
+      "https://images.unsplash.com/photo-1616586169180-2671c5e1cbdc?w=800&q=80"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400",
+    thumbnail: "https://images.unsplash.com/photo-1665099210693-c91e2212ba04?w=400&q=80",
     variants: [
       {
         id: 5,
@@ -245,7 +249,7 @@ const mockProducts = [
         discountPrice: null,
         stock: 20,
         attributes: { color: "Gold", size: "Free Size" },
-        image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800"
+        image: "https://images.unsplash.com/photo-1665099210693-c91e2212ba04?w=800&q=80"
       }
     ],
     basePrice: 18999,
@@ -269,9 +273,10 @@ const mockProducts = [
     categoryId: 2,
     categoryName: "Cotton Sarees",
     images: [
-      "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800"
+      "https://images.pexels.com/photos/9419023/pexels-photo-9419023.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=800"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=400",
+    thumbnail: "https://images.pexels.com/photos/9419023/pexels-photo-9419023.jpeg?auto=compress&cs=tinysrgb&w=400",
     variants: [
       {
         id: 6,
@@ -280,7 +285,7 @@ const mockProducts = [
         discountPrice: 13999,
         stock: 10,
         attributes: { color: "White", size: "Free Size" },
-        image: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800"
+        image: "https://images.pexels.com/photos/9419023/pexels-photo-9419023.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
     basePrice: 15999,
@@ -304,9 +309,10 @@ const mockProducts = [
     categoryId: 1,
     categoryName: "Silk Sarees",
     images: [
-      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
+      "https://images.unsplash.com/photo-1634034372412-2ca5e654b6f8?w=800&q=80",
+      "https://images.unsplash.com/photo-1665099210693-c91e2212ba04?w=800&q=80"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400",
+    thumbnail: "https://images.unsplash.com/photo-1634034372412-2ca5e654b6f8?w=400&q=80",
     variants: [
       {
         id: 7,
@@ -315,7 +321,7 @@ const mockProducts = [
         discountPrice: 39999,
         stock: 5,
         attributes: { color: "Purple", size: "Free Size" },
-        image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=800"
+        image: "https://images.unsplash.com/photo-1634034372412-2ca5e654b6f8?w=800&q=80"
       }
     ],
     basePrice: 45999,
@@ -339,9 +345,10 @@ const mockProducts = [
     categoryId: 2,
     categoryName: "Cotton Sarees",
     images: [
-      "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800"
+      "https://images.pexels.com/photos/9419251/pexels-photo-9419251.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.unsplash.com/photo-1771654104010-1d50eb00a04f?w=800&q=80"
     ],
-    thumbnail: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=400",
+    thumbnail: "https://images.pexels.com/photos/9419251/pexels-photo-9419251.jpeg?auto=compress&cs=tinysrgb&w=400",
     variants: [
       {
         id: 8,
@@ -350,7 +357,7 @@ const mockProducts = [
         discountPrice: 3499,
         stock: 50,
         attributes: { color: "Yellow", size: "Free Size" },
-        image: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800"
+        image: "https://images.pexels.com/photos/9419251/pexels-photo-9419251.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
     basePrice: 3999,
@@ -370,7 +377,7 @@ const mockCategories = [
     name: "Silk Sarees",
     slug: "silk-sarees",
     description: "Luxurious silk sarees for special occasions",
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400",
+    image: "https://images.unsplash.com/photo-1616586169180-2671c5e1cbdc?w=400&q=80",
     productCount: 4,
     isActive: true
   },
@@ -379,7 +386,7 @@ const mockCategories = [
     name: "Cotton Sarees",
     slug: "cotton-sarees",
     description: "Comfortable cotton sarees for everyday elegance",
-    image: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=400",
+    image: "https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=400",
     productCount: 3,
     isActive: true
   },
@@ -388,7 +395,7 @@ const mockCategories = [
     name: "Handloom Sarees",
     slug: "handloom-sarees",
     description: "Artisan handwoven sarees from across India",
-    image: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=400",
+    image: "https://images.unsplash.com/photo-1771507056872-bcb9eeba5946?w=400&q=80",
     productCount: 1,
     isActive: true
   },
@@ -397,7 +404,7 @@ const mockCategories = [
     name: "Designer Sarees",
     slug: "designer-sarees",
     description: "Contemporary designer sarees with modern aesthetics",
-    image: "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400",
+    image: "https://images.pexels.com/photos/13162239/pexels-photo-13162239.jpeg?auto=compress&cs=tinysrgb&w=400",
     productCount: 0,
     isActive: true
   }
