@@ -5,10 +5,10 @@
  */
 
 const express = require('express');
-const aiCollaborationController = require('../controllers/ai-collaboration.controller');
-const validate = require('../middlewares/validate');
-const { collaborationValidation } = require('../validations/ai-collaboration.validation');
-const auth = require('../middlewares/auth');
+const aiCollaborationController = require('../../controllers/ai-collaboration.controller');
+const validate = require('../../middlewares/validate');
+const { collaborationValidation } = require('../../validations/ai-collaboration.validation');
+const auth = require('../../middlewares/auth');
 
 const router = express.Router();
 

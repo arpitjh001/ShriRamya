@@ -34,6 +34,14 @@ export default defineConfig(({ mode }) => {
         },
         server: {
             port: 3000,
+            host: '0.0.0.0',
+            allowedHosts: [
+                'localhost',
+                '8a802143-cf4b-4856-a295-0803cac10f61.preview.emergentagent.com',
+                '8a802143-cf4b-4856-a295-0803cac10f61.cluster-4.preview.emergentcf.cloud',
+                '.preview.emergentagent.com',
+                '.emergentcf.cloud'
+            ],
         },
         build: {
             outDir: 'dist',
