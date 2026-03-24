@@ -11,6 +11,7 @@ import CraftStorySection from '../components/CraftStorySection';
 import LuxuryBadge from '../components/LuxuryBadge';
 import TryOnModal from '../components/VirtualTryOn/TryOnModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { addToRecentlyViewed } from '../components/RecentlyViewed';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -42,6 +43,7 @@ const ProductDetailPage = () => {
         ]);
         setProduct(productRes.data);
         setRecommendations(recsRes.data || []);
+        addToRecentlyViewed(id);
 
         // Fetch variant matrix
         try {

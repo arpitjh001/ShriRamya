@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles, Star } from 'lucide-react';
 import { productsAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import ProductCard from '../components/ProductCard';
+import RecentlyViewed from '../components/RecentlyViewed';
 
 const featuredCollectionTiles = [
   {
@@ -515,6 +516,9 @@ const HomePage = () => {
           <p className="mt-8 text-[11px] text-muted-foreground/60 uppercase tracking-[0.2em]">Privacy is our philosophy. Unsubscribe at any time.</p>
         </div>
       </section>
+
+      {/* Recently Viewed Products */}
+      <RecentlyViewed />
     </div>
   );
 };

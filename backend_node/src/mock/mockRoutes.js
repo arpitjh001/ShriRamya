@@ -1072,6 +1072,309 @@ router.get('/auth/check-admin', (req, res) => {
 });
 
 // ==========================================
+// BLOG / JOURNAL ENDPOINTS
+// ==========================================
+const blogPostsStore = [
+  {
+    id: 'blog_1',
+    title: 'The Art of Sanganeri Printing',
+    slug: 'art-of-sanganeri-printing',
+    content: '<p>Sanganeri printing is a traditional form of hand block printing that originated in the town of Sanganer, near Jaipur, Rajasthan. This centuries-old craft combines intricate floral and geometric patterns with natural dyes to create stunning textile designs.</p><p>The artisans use hand-carved wooden blocks dipped in natural dyes to stamp patterns onto fabric. Each block is a work of art in itself, carved with remarkable precision.</p>',
+    excerpt: 'Discover the centuries-old craft of Sanganeri block printing and how it transforms silk sarees into wearable masterpieces.',
+    author: { id: 'admin_001', name: 'Shri Ramya Team' },
+    categories: ['Traditional Crafts', 'Silk Sarees'],
+    tags: ['sanganeri', 'block-print', 'handcraft', 'rajasthan'],
+    status: 'published',
+    featured_image: 'https://images.pexels.com/photos/9419251/pexels-photo-9419251.jpeg?auto=compress&cs=tinysrgb&w=800',
+    views: 245,
+    comments_count: 3,
+    createdAt: '2026-03-01T10:00:00.000Z',
+    updatedAt: '2026-03-01T10:00:00.000Z',
+    publishedAt: '2026-03-01T10:00:00.000Z'
+  },
+  {
+    id: 'blog_2',
+    title: 'How to Style a Banarasi Saree for Every Occasion',
+    slug: 'style-banarasi-saree-every-occasion',
+    content: '<p>A Banarasi saree is the epitome of Indian elegance. Whether you are attending a wedding, a festive celebration, or a formal event, a Banarasi saree can be styled to suit any occasion.</p><p>For weddings, pair your Banarasi with heavy gold jewellery and a classic bun adorned with flowers. For formal events, go minimal with pearl earrings and a sleek updo.</p>',
+    excerpt: 'Learn how to style your Banarasi saree for weddings, festivals, and everyday elegance.',
+    author: { id: 'admin_001', name: 'Shri Ramya Team' },
+    categories: ['Style Guide', 'Silk Sarees'],
+    tags: ['banarasi', 'styling', 'fashion-tips'],
+    status: 'published',
+    featured_image: 'https://images.unsplash.com/photo-1616586169180-2671c5e1cbdc?w=800&q=80',
+    views: 189,
+    comments_count: 5,
+    createdAt: '2026-03-10T12:00:00.000Z',
+    updatedAt: '2026-03-10T12:00:00.000Z',
+    publishedAt: '2026-03-10T12:00:00.000Z'
+  },
+  {
+    id: 'blog_3',
+    title: 'Sustainable Fashion: Why Handloom Matters',
+    slug: 'sustainable-fashion-handloom-matters',
+    content: '<p>In an era of fast fashion, handloom weaving stands as a beacon of sustainable textile production. Each handloom piece is crafted with minimal environmental impact, using traditional techniques passed down through generations.</p>',
+    excerpt: 'Explore why handloom weaving is the future of sustainable fashion and how your choices make a difference.',
+    author: { id: 'admin_001', name: 'Shri Ramya Team' },
+    categories: ['Sustainability', 'Handloom'],
+    tags: ['handloom', 'sustainable', 'eco-fashion'],
+    status: 'draft',
+    featured_image: 'https://images.unsplash.com/photo-1771507056872-bcb9eeba5946?w=800&q=80',
+    views: 0,
+    comments_count: 0,
+    createdAt: '2026-03-15T09:00:00.000Z',
+    updatedAt: '2026-03-15T09:00:00.000Z',
+    publishedAt: null
+  }
+];
+
+const blogCategories = ['Traditional Crafts', 'Style Guide', 'Silk Sarees', 'Sustainability', 'Handloom', 'Fashion Tips', 'Behind the Scenes'];
+
+// GET blogs
+router.get('/blogs', (req, res) => {
+  let filtered = [...blogPostsStore];
+  const { status, search, page = 1, per_page = 10, category } = req.query;
+
+  if (status && status !== 'all') filtered = filtered.filter(p => p.status === status);
+  if (search) filtered = filtered.filter(p => p.title.toLowerCase().includes(search.toLowerCase()));
+  if (category) filtered = filtered.filter(p => p.categories.includes(category));
+
+  const total = filtered.length;
+  const start = (page - 1) * per_page;
+  const posts = filtered.slice(start, start + parseInt(per_page));
+
+  res.json({
+    success: true,
+    data: {
+      posts,
+      pagination: { current_page: parseInt(page), total_pages: Math.ceil(total / per_page), total }
+    }
+  });
+});
+
+// GET blog categories — MUST come before /blogs/:id
+router.get('/blogs/categories', (req, res) => {
+  res.json({ success: true, data: blogCategories });
+});
+
+// GET blog tags — MUST come before /blogs/:id
+router.get('/blogs/tags', (req, res) => {
+  const allTags = [...new Set(blogPostsStore.flatMap(p => p.tags || []))];
+  res.json({ success: true, data: allTags });
+});
+
+// GET blog analytics — MUST come before /blogs/:id
+router.get('/blogs/admin/analytics', (req, res) => {
+  const published = blogPostsStore.filter(p => p.status === 'published').length;
+  const drafts = blogPostsStore.filter(p => p.status === 'draft').length;
+  const totalViews = blogPostsStore.reduce((s, p) => s + (p.views || 0), 0);
+  const totalComments = blogPostsStore.reduce((s, p) => s + (p.comments_count || 0), 0);
+  res.json({
+    success: true,
+    data: { total_posts: blogPostsStore.length, published, drafts, total_views: totalViews, total_comments: totalComments }
+  });
+});
+
+// GET blog capabilities — MUST come before /blogs/:id
+router.get('/blogs/capabilities', (req, res) => {
+  res.json({
+    success: true,
+    data: { edit_posts: true, delete_posts: true, publish_posts: true, manage_categories: true }
+  });
+});
+
+// GET blog by slug — MUST come before /blogs/:id
+router.get('/blogs/slug/:slug', (req, res) => {
+  const post = blogPostsStore.find(p => p.slug === req.params.slug);
+  if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+  res.json({ success: true, data: post });
+});
+
+// GET blog by ID — AFTER all specific /blogs/* routes
+router.get('/blogs/:id', (req, res) => {
+  const post = blogPostsStore.find(p => p.id === req.params.id);
+  if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+  res.json({ success: true, data: post });
+});
+
+// POST create blog
+router.post('/blogs', (req, res) => {
+  const { title, content, excerpt, status, slug, tags, categories, featured_image, seo_title, seo_description } = req.body;
+  if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
+
+  const newPost = {
+    id: 'blog_' + Date.now(),
+    title,
+    slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+    content: content || '',
+    excerpt: excerpt || '',
+    author: { id: 'admin_001', name: 'Admin' },
+    categories: categories || [],
+    tags: (tags || '').split(',').map(t => t.trim()).filter(Boolean),
+    status: status || 'draft',
+    featured_image: featured_image || null,
+    seo_title: seo_title || '',
+    seo_description: seo_description || '',
+    views: 0,
+    comments_count: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    publishedAt: status === 'published' ? new Date().toISOString() : null
+  };
+
+  blogPostsStore.push(newPost);
+  res.json({ success: true, data: newPost, message: 'Blog post created successfully' });
+});
+
+// PUT update blog
+router.put('/blogs/:id', (req, res) => {
+  const idx = blogPostsStore.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ success: false, message: 'Post not found' });
+
+  blogPostsStore[idx] = { ...blogPostsStore[idx], ...req.body, updatedAt: new Date().toISOString() };
+  res.json({ success: true, data: blogPostsStore[idx] });
+});
+
+// POST publish blog
+router.post('/blogs/:id/publish', (req, res) => {
+  const post = blogPostsStore.find(p => p.id === req.params.id);
+  if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+  post.status = 'published';
+  post.publishedAt = new Date().toISOString();
+  post.updatedAt = new Date().toISOString();
+  res.json({ success: true, data: post });
+});
+
+// POST archive blog
+router.post('/blogs/:id/archive', (req, res) => {
+  const post = blogPostsStore.find(p => p.id === req.params.id);
+  if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+  post.status = 'archived';
+  post.updatedAt = new Date().toISOString();
+  res.json({ success: true, data: post });
+});
+
+// DELETE blog
+router.delete('/blogs/:id', (req, res) => {
+  const idx = blogPostsStore.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ success: false, message: 'Post not found' });
+  blogPostsStore.splice(idx, 1);
+  res.json({ success: true, message: 'Blog post deleted successfully' });
+});
+
+// GET related blogs
+router.get('/blogs/:id/related', (req, res) => {
+  const post = blogPostsStore.find(p => p.id === req.params.id);
+  const related = blogPostsStore.filter(p => p.id !== req.params.id && p.status === 'published').slice(0, 3);
+  res.json({ success: true, data: related });
+});
+
+// GET blog comments
+router.get('/blogs/:id/comments', (req, res) => {
+  res.json({ success: true, data: [] });
+});
+
+// POST blog comment
+router.post('/blogs/:id/comment', (req, res) => {
+  res.json({ success: true, data: { id: 'comment_' + Date.now(), ...req.body, createdAt: new Date().toISOString() } });
+});
+
+// ==========================================
+// ANALYTICS ENDPOINTS (Admin)
+// ==========================================
+router.get('/analytics/overview', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      total_revenue: 485999,
+      total_orders: 23,
+      total_customers: 156,
+      conversion_rate: 3.2,
+      avg_order_value: 21130,
+      revenue_growth: 12.5,
+      orders_growth: 8.3,
+      customers_growth: 15.2
+    }
+  });
+});
+
+router.get('/analytics/revenue', (req, res) => {
+  const months = ['Jan', 'Feb', 'Mar'];
+  res.json({
+    success: true,
+    data: {
+      chart: months.map((m, i) => ({ month: m, revenue: 120000 + i * 50000, orders: 5 + i * 3 })),
+      total: 485999,
+      growth: 12.5
+    }
+  });
+});
+
+router.get('/analytics/sales', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      top_products: productCatalog.slice(0, 5).map(p => ({ id: p.id, name: p.name, sold: Math.floor(Math.random() * 20 + 5), revenue: p.salePrice * Math.floor(Math.random() * 10 + 3) })),
+      top_categories: [{ name: 'Silk Sarees', sold: 45, revenue: 980000 }, { name: 'Kurtas', sold: 67, revenue: 450000 }, { name: 'Lehengas', sold: 12, revenue: 720000 }]
+    }
+  });
+});
+
+router.get('/analytics/products', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      total: productCatalog.length,
+      in_stock: productCatalog.length - 3,
+      out_of_stock: 3,
+      low_stock: 5,
+      by_category: [
+        { category: 'Silk Sarees', count: 4 }, { category: 'Cotton Sarees', count: 4 },
+        { category: 'Kurtas', count: 20 }, { category: 'Lehengas', count: 5 },
+        { category: 'Suits', count: 5 }, { category: 'Ethnic Dresses', count: 5 }
+      ]
+    }
+  });
+});
+
+// ==========================================
+// USER MANAGEMENT (Admin)
+// ==========================================
+router.get('/users', (req, res) => {
+  const users = Object.values(mockUsers).map(u => {
+    const { password, ...user } = u;
+    return { ...user, createdAt: '2026-01-15T10:00:00.000Z', orders_count: Math.floor(Math.random() * 5) };
+  });
+  res.json({ success: true, data: users });
+});
+
+// ==========================================
+// ORDER STATUS UPDATE (Admin)
+// ==========================================
+router.put('/orders/:id/status', (req, res) => {
+  const order = ordersStore[req.params.id];
+  if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+  order.status = req.body.status || order.status;
+  order.updatedAt = new Date().toISOString();
+  res.json({ success: true, data: order });
+});
+
+// ==========================================
+// UPLOAD ENDPOINT (for blog images)
+// ==========================================
+router.post('/upload/image', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      url: 'https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=800',
+      original: 'https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      medium: 'https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=800',
+      thumbnail: 'https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=400'
+    }
+  });
+});
+
+// ==========================================
 // ORDER & PAYMENT ENDPOINTS
 // ==========================================
 

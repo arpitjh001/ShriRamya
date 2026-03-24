@@ -33,7 +33,7 @@
   "seed_data_creation": "None - using mock data from productCatalog.js with 50 products",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "All features tested and working. Backend uses mock data layer in /app/backend_node/src/mock/. Node.js backend runs on port 8000, proxied through FastAPI on 8001. Frontend at https://category-filters-2.preview.emergentagent.com",
+  "context_for_next_testing_agent": "All features tested and working. Backend uses mock data layer in /app/backend_node/src/mock/. Node.js backend runs on port 8000, proxied through FastAPI on 8001. Frontend at https://ecommerce-audit-6.preview.emergentagent.com",
   "features_tested": {
     "backend_api": {
       "health_check": "PASS - GET /api/v1/health returns success",
