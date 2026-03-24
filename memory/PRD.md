@@ -97,20 +97,22 @@ MySQL is not available in this preview environment, so mock data routes are used
 - ✅ Route ordering fixes in users, recommendations, tenants, warehouse routes
 - ✅ Cart page product thumbnail image fix (March 2026)
 - ✅ Real model images seeded across all 50 products and 9 categories (March 2026)
+- ✅ Backend stability: Added Node.js backend to supervisor for auto-restart (March 2026)
+- ✅ Libas-style category filtering system with FilterSidebar, SortDropdown, MobileFilterDrawer, URL sync, filter chips (March 2026)
 
 ### P1 (Important) - IN PROGRESS
-- [ ] Complete Libas-style category filtering system (FilterSidebar, SortDropdown, MobileFilterDrawer integration into ProductsPage)
-- [ ] URL query parameter synchronization for filters
-- [ ] Skeleton loaders for product loading
+- [ ] URL query parameter synchronization for filters ✅ DONE (part of filtering system)
+- [ ] Skeleton loaders for product loading ✅ DONE (integrated in ProductsPage)
+- [ ] Advanced filter features (dynamic product counts per filter option) ✅ DONE (counts show next to each filter option)
 
 ### P2 (Nice to Have)
-- [ ] Advanced filter features (dynamic product counts per filter option)
 - [ ] Full user checkout flow testing
 - [ ] Customer management frontend
 - [ ] Non-admin user auth & account management
+- [ ] Replace mock data with real database (MySQL/Redis dependency)
 
 ## Environment Notes
-- Backend: Node.js on port 8000, proxied through FastAPI on port 8001
+- Backend: Node.js on port 8000, proxied through FastAPI on port 8001, managed by supervisor (node_backend)
 - Mock data layer active (MySQL/Redis unavailable)
 - Frontend: React/Vite on port 3000
 
@@ -119,3 +121,10 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Root cause**: CartPage.js used `item.product_id` but cart API returns `item.productId`. Also made N+1 API calls to fetch product details when all data was already on cart items.
 - **Fix**: Refactored CartPage to use cart item data directly (name, image, price, attributes). Eliminated unnecessary API calls.
 - **Files changed**: `/app/frontend/src/pages/CartPage.js`, `/app/frontend/src/context/CartContext.js`
+
+### March 2026 - Backend Auto-Restart
+- Added supervisor config `/etc/supervisor/conf.d/node_backend.conf` for persistent Node.js backend
+
+### March 2026 - Libas-Style Filtering System
+- Complete filtering UI with 10+ filter types, URL sync, filter chips, infinite scroll, mobile drawer
+- 32/32 backend + all frontend tests passed (test report: `/app/test_reports/iteration_1.json`)
