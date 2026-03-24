@@ -22,14 +22,26 @@ const AdminBlogsPage = () => {
     useEffect(() => {
         if (authLoading) return;
         
-        if (!user || (!capabilities.edit_posts && !isAdmin())) {
+        // Wait for user to be loaded
+        if (!user) {
+            // If auth is done loading but no user, redirect
+            navigate('/blog');
+            return;
+        }
+        
+        // Check if user is admin by role (more reliable than capabilities)
+        const userRole = user?.role?.toLowerCase();
+        const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+        const isUserAdmin = userRoles.includes('admin') || userRole === 'admin';
+        
+        if (!capabilities.edit_posts && !isUserAdmin) {
             toast.error('Access denied');
             navigate('/blog');
             return;
         }
         fetchData();
         fetchAnalytics();
-    }, [capabilities, navigate, authLoading, user, isAdmin]);
+    }, [capabilities, navigate, authLoading, user]);
 
     const fetchData = async () => {
         setLoading(true);

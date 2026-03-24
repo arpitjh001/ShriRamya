@@ -1281,7 +1281,82 @@ router.post('/blogs/:id/comment', (req, res) => {
 
 // ==========================================
 // ANALYTICS ENDPOINTS (Admin)
+// Both /analytics/* and /admin/analytics/* paths supported
 // ==========================================
+router.get('/admin/analytics/overview', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      total_revenue: 485999,
+      total_orders: 23,
+      total_customers: 156,
+      conversion_rate: 3.2,
+      avg_order_value: 21130,
+      revenue_growth: 12.5,
+      orders_growth: 8.3,
+      customers_growth: 15.2
+    }
+  });
+});
+
+router.get('/admin/analytics/revenue', (req, res) => {
+  const months = ['Jan', 'Feb', 'Mar'];
+  res.json({
+    success: true,
+    data: {
+      chart: months.map((m, i) => ({ month: m, revenue: 120000 + i * 50000, orders: 5 + i * 3 })),
+      total: 485999,
+      growth: 12.5
+    }
+  });
+});
+
+router.get('/admin/analytics/sales', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      top_products: productCatalog.slice(0, 5).map(p => ({ id: p.id, name: p.name, sold: Math.floor(Math.random() * 20 + 5), revenue: p.salePrice * Math.floor(Math.random() * 10 + 3) })),
+      top_categories: [{ name: 'Silk Sarees', sold: 45, revenue: 980000 }, { name: 'Kurtas', sold: 67, revenue: 450000 }, { name: 'Lehengas', sold: 12, revenue: 720000 }]
+    }
+  });
+});
+
+router.get('/admin/analytics/products', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      total: productCatalog.length,
+      in_stock: productCatalog.length - 3,
+      out_of_stock: 3,
+      low_stock: 5,
+      by_category: [
+        { category: 'Silk Sarees', count: 4 }, { category: 'Cotton Sarees', count: 4 },
+        { category: 'Kurtas', count: 20 }, { category: 'Lehengas', count: 5 },
+        { category: 'Suits', count: 5 }, { category: 'Ethnic Dresses', count: 5 }
+      ]
+    }
+  });
+});
+
+// Admin warehouse & inventory
+router.get('/admin/warehouses', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 1, name: 'Mumbai Warehouse', location: 'Mumbai, MH', capacity: 5000, utilized: 3200, status: 'active' },
+      { id: 2, name: 'Jaipur Warehouse', location: 'Jaipur, RJ', capacity: 3000, utilized: 1800, status: 'active' }
+    ]
+  });
+});
+
+router.get('/admin/inventory/low-stock', (req, res) => {
+  const lowStock = productCatalog.filter(p => p.stock <= 10).slice(0, 10).map(p => ({
+    id: p.id, name: p.name, stock: p.stock, category: p.categoryName, thumbnail: p.thumbnail
+  }));
+  res.json({ success: true, data: lowStock });
+});
+
+// Legacy non-prefixed analytics routes (keep for backward compatibility)
 router.get('/analytics/overview', (req, res) => {
   res.json({
     success: true,
@@ -1357,6 +1432,25 @@ router.put('/orders/:id/status', (req, res) => {
   order.status = req.body.status || order.status;
   order.updatedAt = new Date().toISOString();
   res.json({ success: true, data: order });
+});
+
+router.patch('/orders/admin/:id/status', (req, res) => {
+  const order = ordersStore[req.params.id];
+  if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+  order.status = req.body.status || order.status;
+  order.updatedAt = new Date().toISOString();
+  res.json({ success: true, data: order });
+});
+
+// Admin shipment stubs
+router.get('/orders/admin/shipments', (req, res) => {
+  res.json({ success: true, data: { shipments: [], total: 0 } });
+});
+router.get('/orders/admin/shipments/ready-to-ship', (req, res) => {
+  res.json({ success: true, data: [] });
+});
+router.get('/orders/admin/shipments/pending', (req, res) => {
+  res.json({ success: true, data: [] });
 });
 
 // ==========================================

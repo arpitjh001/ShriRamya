@@ -89,8 +89,19 @@ const AdminBlogEditPage = () => {
     useEffect(() => {
         if (authLoading) return;
 
+        // Wait for user to be loaded
+        if (!user) {
+            navigate('/blog');
+            return;
+        }
+
+        // Check if user is admin by role
+        const userRole = user?.role?.toLowerCase();
+        const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+        const isUserAdmin = userRoles.includes('admin') || userRole === 'admin';
+
         // RBAC check
-        if (!user || (!capabilities.edit_posts && !capabilities.edit_others_posts && !isAdmin())) {
+        if (!capabilities.edit_posts && !capabilities.edit_others_posts && !isUserAdmin) {
             toast.error('Insufficient permissions to edit stories');
             navigate('/blog');
             return;

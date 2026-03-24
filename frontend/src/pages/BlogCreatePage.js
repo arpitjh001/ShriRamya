@@ -100,13 +100,25 @@ const BlogCreatePage = () => {
     // Redirect if not allowed
     React.useEffect(() => {
         if (authLoading) return;
-        if (!user || (!capabilities.edit_posts && !isAdmin())) {
+        
+        // Wait for user to be loaded
+        if (!user) {
+            navigate('/blog');
+            return;
+        }
+        
+        // Check if user is admin by role
+        const userRole = user?.role?.toLowerCase();
+        const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+        const isUserAdmin = userRoles.includes('admin') || userRole === 'admin';
+        
+        if (!capabilities.edit_posts && !isUserAdmin) {
             toast.error('Access denied');
             navigate('/blog');
         }
-    }, [authLoading, capabilities, user, isAdmin, navigate]);
+    }, [authLoading, capabilities, user, navigate]);
 
-    if (authLoading) return (
+    if (authLoading || !user) return (
         <div className="flex justify-center items-center h-screen">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>

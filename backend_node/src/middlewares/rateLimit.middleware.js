@@ -7,7 +7,7 @@ const ApiError = require('../utils/ApiError');
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 100,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many login attempts. Please try again after 15 minutes.'

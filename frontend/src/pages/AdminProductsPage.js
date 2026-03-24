@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminProductsPage = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // State
@@ -82,17 +82,21 @@ const AdminProductsPage = () => {
 
   // Check admin access
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) return;
+    if (!user) return;
+    
     const userRole = user?.role?.toLowerCase();
     const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
 
-    if (!user || (!userRoles.includes('admin') && userRole !== 'admin')) {
+    if (!userRoles.includes('admin') && userRole !== 'admin') {
       toast.error('Access denied');
       navigate('/');
       return;
     }
 
     loadData();
-  }, [user]);
+  }, [user, navigate, authLoading]);
 
   const loadData = async () => {
     setLoading(true);
