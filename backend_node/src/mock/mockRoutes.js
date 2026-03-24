@@ -1210,7 +1210,7 @@ router.post('/blogs', (req, res) => {
     excerpt: excerpt || '',
     author: { id: 'admin_001', name: 'Admin' },
     categories: categories || [],
-    tags: (tags || '').split(',').map(t => t.trim()).filter(Boolean),
+    tags: Array.isArray(tags) ? tags : (tags || '').split(',').map(t => t.trim()).filter(Boolean),
     status: status || 'draft',
     featured_image: featured_image || null,
     seo_title: seo_title || '',

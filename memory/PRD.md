@@ -116,11 +116,14 @@ MySQL is not available in this preview environment, so mock data routes are used
 - [ ] Replace mock data with real database (MySQL/Redis dependency)
 - [ ] Admin dashboard for order management
 - [ ] Email notifications on order placement
+- [ ] Wishlist feature
+- [ ] User account pages (order history, profile editing)
 
 ## Environment Notes
 - Backend: Node.js on port 8000, proxied through FastAPI on port 8001, managed by supervisor (node_backend)
 - Mock data layer active (MySQL/Redis unavailable)
 - Frontend: React/Vite on port 3000
+- GitHub Remote configured: https://github.com/arpitjh001/ShriRamya.git (read access confirmed, write pending token permissions)
 
 ## Bug Fixes Log
 ### March 2026 - Cart Page Thumbnail Fix
@@ -143,3 +146,11 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Customer auth**: Added `/auth/register` endpoint with token generation.
 - **Order flow**: Full CRUD: create, confirm payment, list user orders, track, cancel.
 - 26/26 backend + 95% frontend tests passed (test report: `/app/test_reports/iteration_2.json`)
+
+### March 24, 2026 - Admin Dashboards, Blog CRUD, Recently Viewed
+- **Admin Dashboard APIs**: Added mock endpoints for `/admin/analytics/*` (overview, revenue, sales, products), `/admin/warehouses`, `/admin/inventory/low-stock`, admin order/shipment stubs
+- **Blog CRUD fixes**: Fixed `Plus` icon missing import in `BlogCreatePage.js` and `AdminBlogEditPage.js` (caused page crash). Fixed `tags` handling to accept both arrays and strings. Fixed categories widget to handle string array from API.
+- **Admin Blogs date fix**: `AdminBlogsPage.js` used snake_case fields (`published_at`, `created_at`) but mock data uses camelCase (`publishedAt`, `createdAt`). Fixed to support both formats.
+- **Recently Viewed**: `RecentlyViewed.js` component using localStorage tracking, integrated into HomePage.
+- **GitHub remote**: Configured with user's PAT (read access confirmed, write pending permissions).
+- 100% frontend tests passed (test report: `/app/test_reports/iteration_4.json`)
