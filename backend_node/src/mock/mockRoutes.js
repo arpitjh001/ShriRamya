@@ -1007,6 +1007,49 @@ router.get('/auth/me', (req, res) => {
   res.status(401).json({ success: false, message: 'Invalid token' });
 });
 
+// Register
+router.post('/auth/register', (req, res) => {
+  const { name, email, password, phone } = req.body;
+
+  if (!email || !password || !name) {
+    return res.status(400).json({ success: false, message: 'Name, email and password are required' });
+  }
+
+  if (mockUsers[email.toLowerCase()]) {
+    return res.status(409).json({ success: false, message: 'User already exists with this email' });
+  }
+
+  const newUser = {
+    id: 'customer_' + Date.now(),
+    email: email.toLowerCase(),
+    password,
+    name,
+    phone: phone || '',
+    role: 'customer',
+    tenantId: 'shriramya',
+    permissions: ['read', 'order'],
+    isActive: true
+  };
+  mockUsers[email.toLowerCase()] = newUser;
+
+  const token = generateMockToken(newUser);
+  const refreshToken = generateMockToken({ ...newUser, type: 'refresh' });
+  const { password: _, ...userWithoutPassword } = newUser;
+
+  res.json({
+    success: true,
+    data: {
+      user: userWithoutPassword,
+      access_token: token,
+      refresh_token: refreshToken,
+      tokens: {
+        access: { token, expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
+        refresh: { token: refreshToken, expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }
+      }
+    }
+  });
+});
+
 router.get('/auth/check-admin', (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

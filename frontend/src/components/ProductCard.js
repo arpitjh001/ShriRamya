@@ -7,6 +7,7 @@ import { wishlistAPI } from '../services/api';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import LuxuryBadge from './LuxuryBadge';
+import QuickViewModal from './QuickViewModal';
 import { formatPrice } from '../utils';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1756483510798-c1fe4e476ecd?auto=format&fit=crop&w=2400&q=80';
@@ -17,6 +18,7 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   const image = useMemo(() => {
     const firstImage = product?.images?.[0];
@@ -111,7 +113,7 @@ const ProductCard = ({ product }) => {
   const handleQuickView = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`/products/${product.id}`);
+    setQuickViewOpen(true);
   };
 
   if (!product) return null;
@@ -186,6 +188,11 @@ const ProductCard = ({ product }) => {
           </div>
         </div>
       </article>
+      <QuickViewModal
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+        productId={product?.id}
+      />
     </Link>
   );
 };
