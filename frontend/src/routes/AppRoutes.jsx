@@ -75,7 +75,7 @@ const AppRoutes = () => {
                     <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
                     <Route path="/admin/blogs" element={<AdminBlogsPage />} />
                     <Route path="/admin/blog/:id/edit" element={<AdminBlogEditPage />} />
-                    <Route path="/all-products" element={<AllProductsPage />} />
+                    <Route path="/all-products" element={<ProductsPage />} />
                     <Route path="/category/:slug" element={<CategoryPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                 </Route>

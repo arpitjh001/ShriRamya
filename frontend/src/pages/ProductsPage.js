@@ -1,13 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { productsAPI } from '../services/api';
 import ProductCard from '../components/ProductCard';
+import FilterSidebar from '../components/FilterSidebar';
+import SortDropdown from '../components/SortDropdown';
+import MobileFilterDrawer from '../components/MobileFilterDrawer';
 import { Button } from '../components/ui/button';
-import { Slider } from '../components/ui/slider';
-import { Filter } from 'lucide-react';
-import { formatPrice } from '../utils';
+import { X, SlidersHorizontal } from 'lucide-react';
 
-const MAX_PRICE = 100000;
+const PER_PAGE = 12;
+const ARRAY_FILTER_KEYS = ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve'];
+const ALL_FILTER_KEYS = [...ARRAY_FILTER_KEYS, 'discount', 'rating', 'price_min', 'price_max', 'in_stock'];
 
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -15,204 +18,352 @@ const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [priceRange, setPriceRange] = useState([0, MAX_PRICE]);
-  const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState(null);
+
+  // selectedFilters: { size: ['S','M'], color: ['Red'], price_min: 999, ... }
+  const [selectedFilters, setSelectedFilters] = useState({});
+  // filterMetadata: { sizes: {S:38,M:38}, colors: {Red:5}, priceRange: {min:999,max:74999}, ... }
+  const [filterMetadata, setFilterMetadata] = useState({});
+  const [sortBy, setSortBy] = useState('popularity');
+  const [sortOptions, setSortOptions] = useState([]);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const observer = React.useRef();
+  const observer = useRef();
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const initialLoadDone = useRef(false);
 
-  const lastProductElementRef = useCallback((node) => {
-    if (loading || loadingMore) return;
-    if (observer.current) observer.current.disconnect();
-
-    observer.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage((prevPage) => prevPage + 1);
+  // Initialize from URL on mount
+  useEffect(() => {
+    const initial = {};
+    ALL_FILTER_KEYS.forEach(key => {
+      const value = searchParams.get(key);
+      if (value) {
+        initial[key] = ARRAY_FILTER_KEYS.includes(key) ? value.split(',') : value;
       }
     });
+    const sort = searchParams.get('sort');
+    if (sort) setSortBy(sort);
+    if (Object.keys(initial).length > 0) setSelectedFilters(initial);
+    initialLoadDone.current = true;
+  }, []);
 
-    if (node) observer.current.observe(node);
-  }, [loading, loadingMore, hasMore]);
-
-  const category = searchParams.get('category');
-  const subcategory = searchParams.get('subcategory');
-
-  const fetchProducts = useCallback(async (currentPage = 1, isReset = false) => {
-    try {
-      if (isReset) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
+  // Sync to URL
+  const syncToURL = useCallback((filters, sort) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value) && value.length > 0) {
+          params.set(key, value.join(','));
+        } else if (!Array.isArray(value)) {
+          params.set(key, String(value));
+        }
       }
+    });
+    if (sort && sort !== 'popularity') params.set('sort', sort);
+    setSearchParams(params, { replace: true });
+  }, [setSearchParams]);
+
+  // Build API params
+  const buildParams = useCallback((pg) => {
+    const params = { page: pg, per_page: PER_PAGE, sort: sortBy };
+    Object.entries(selectedFilters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params[key] = Array.isArray(value) ? value.join(',') : value;
+      }
+    });
+    return params;
+  }, [selectedFilters, sortBy]);
+
+  // Fetch
+  const fetchProducts = useCallback(async (pg = 1, reset = false) => {
+    try {
+      if (reset) setLoading(true);
+      else setLoadingMore(true);
       setError(null);
 
-      const params = {
-        page: currentPage,
-        per_page: 12,
-      };
+      const response = await productsAPI.getAll(buildParams(pg));
+      const newProducts = response.data || [];
 
-      if (subcategory) {
-        params.category = subcategory;
-      } else if (category) {
-        params.category = category;
+      if (reset) setProducts(newProducts);
+      else setProducts(prev => [...prev, ...newProducts]);
+
+      if (response.filters && Object.keys(response.filters).length > 0) {
+        setFilterMetadata(response.filters);
       }
-
-      const response = await productsAPI.getAll(params);
-      const apiData = response?.data?.data || response?.data || [];
-      const newProducts = Array.isArray(apiData) ? apiData : [];
-
-      if (isReset) {
-        setProducts(newProducts);
-      } else {
-        setProducts((prev) => [...prev, ...newProducts]);
-      }
-
-      setHasMore(newProducts.length === 12);
+      if (response.sortOptions?.length > 0) setSortOptions(response.sortOptions);
+      setTotalProducts(response.pagination?.total || response.totalProducts || 0);
+      setHasMore(response.pagination?.hasNext || newProducts.length === PER_PAGE);
     } catch (err) {
-      console.error('Product fetch failed:', err);
       setError('Unable to load products. Please try again.');
-      if (isReset) setProducts([]);
+      if (reset) setProducts([]);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [category, subcategory]);
+  }, [buildParams]);
 
+  // Re-fetch on filter/sort change
   useEffect(() => {
-    setProducts([]);
+    if (!initialLoadDone.current) return;
     setPage(1);
     setHasMore(true);
     fetchProducts(1, true);
-  }, [fetchProducts]);
+    syncToURL(selectedFilters, sortBy);
+  }, [selectedFilters, sortBy]);
 
+  // Initial fetch
   useEffect(() => {
-    if (page > 1) {
-      fetchProducts(page, false);
-    }
-  }, [page, fetchProducts]);
+    fetchProducts(1, true);
+  }, []);
 
-  const filteredProducts = products.filter((p) => {
-    const price = Number(p.sale_price || p.price || 0);
-    return price >= priceRange[0] && price <= priceRange[1];
-  });
+  // Pagination
+  useEffect(() => {
+    if (page > 1) fetchProducts(page, false);
+  }, [page]);
 
-  const formatTitle = (slug) => {
-    if (!slug) return null;
-    return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  };
-  const pageTitle = formatTitle(subcategory) || formatTitle(category) || 'All Products';
+  // Infinite scroll
+  const lastRef = useCallback((node) => {
+    if (loading || loadingMore) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore) setPage(p => p + 1);
+    });
+    if (node) observer.current.observe(node);
+  }, [loading, loadingMore, hasMore]);
+
+  // FilterSidebar calls onFilterChange({ key: value }) - merge into selectedFilters
+  const handleFilterChange = useCallback((filterObj) => {
+    setSelectedFilters(prev => {
+      const next = { ...prev };
+      Object.entries(filterObj).forEach(([key, value]) => {
+        if (value === undefined || value === null || (Array.isArray(value) && value.length === 0) || value === '') {
+          delete next[key];
+        } else {
+          next[key] = value;
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  const handleClearAll = useCallback(() => {
+    setSelectedFilters({});
+    setSortBy('popularity');
+  }, []);
+
+  const handleRemoveChip = useCallback((key, value) => {
+    setSelectedFilters(prev => {
+      const next = { ...prev };
+      if (Array.isArray(next[key])) {
+        next[key] = next[key].filter(v => v !== value);
+        if (next[key].length === 0) delete next[key];
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  }, []);
+
+  // Active filter count
+  const activeCount = useMemo(() =>
+    Object.values(selectedFilters).reduce((c, v) => c + (Array.isArray(v) ? v.length : v ? 1 : 0), 0),
+    [selectedFilters]
+  );
+
+  // Filter chips
+  const chips = useMemo(() => {
+    const arr = [];
+    Object.entries(selectedFilters).forEach(([key, val]) => {
+      if (Array.isArray(val)) {
+        val.forEach(v => arr.push({ key, value: v, label: v }));
+      } else if (key === 'price_min') {
+        const max = selectedFilters.price_max;
+        arr.push({ key: 'price', value: 'range', label: `₹${val}${max ? ` - ₹${max}` : '+'}` });
+      } else if (key === 'price_max' && !selectedFilters.price_min) {
+        arr.push({ key: 'price', value: 'range', label: `Up to ₹${val}` });
+      } else if (key === 'discount') {
+        arr.push({ key, value: val, label: `${val}%+ off` });
+      } else if (key === 'in_stock') {
+        arr.push({ key, value: val, label: 'In Stock' });
+      } else if (key !== 'price_max') {
+        arr.push({ key, value: val, label: String(val) });
+      }
+    });
+    return arr;
+  }, [selectedFilters]);
+
+  // Title
+  const pageTitle = useMemo(() => {
+    const cats = selectedFilters.category;
+    if (cats?.length === 1) return cats[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return 'All Products';
+  }, [selectedFilters]);
 
   return (
-    <div className="min-h-screen px-6 py-16 md:px-12 md:py-20 lg:px-20">
-      <div className="mb-12 md:mb-14">
-        <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-secondary">Luxury Catalogue</p>
-        <h1 className="text-4xl font-medium text-primary md:text-5xl">{pageTitle}</h1>
-        {!loading && (
-          <p className="mt-3 text-sm text-muted-foreground">{filteredProducts.length} items found</p>
-        )}
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-        <aside className={`lg:sticky lg:top-32 lg:h-fit ${showFilters ? 'block' : 'hidden'} lg:block`}>
-          <div className="glass-luxury rounded-[1.5rem] p-6">
-            <div className="mb-7 flex items-center justify-between">
-              <h3 className="font-heading text-2xl text-primary">Refine</h3>
-              <span className="text-[10px] uppercase tracking-[0.22em] text-secondary">Filters</span>
+    <div className="min-h-screen bg-background">
+      {/* Sticky Header Bar */}
+      <div className="border-b border-accent/10 bg-background/95 backdrop-blur-sm sticky top-0 z-30">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-3">
+              <h1 data-testid="page-title" className="text-lg font-semibold text-primary">{pageTitle}</h1>
+              {!loading && (
+                <span data-testid="product-count" className="text-sm text-muted-foreground">
+                  ({totalProducts} products)
+                </span>
+              )}
             </div>
-
-            <div className="space-y-8">
-              <div>
-                <Button
-                  className="w-full justify-start"
-                  variant={!category && !subcategory ? 'default' : 'outline'}
-                  onClick={() => setSearchParams({})}
-                >
-                  All Products
-                </Button>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:block">
+                <SortDropdown value={sortBy} onChange={setSortBy} options={sortOptions} />
               </div>
-
-              <div>
-                <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-secondary">
-                  Price Range
-                </h4>
-                <Slider
-                  min={0}
-                  max={MAX_PRICE}
-                  step={1000}
-                  value={priceRange}
-                  onValueChange={setPriceRange}
-                />
-                <div className="mt-3 flex justify-between text-xs text-muted-foreground">
-                  <span>{formatPrice(priceRange[0])}</span>
-                  <span>{formatPrice(priceRange[1])}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <div>
-          <div className="mb-6 flex items-center justify-between lg:hidden">
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="border-accent/35 bg-background/80"
-            >
-              <Filter className="mr-2 h-4 w-4" />
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </Button>
-          </div>
-
-          {loading && (
-            <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="glass-luxury h-[430px] animate-pulse rounded-[1.4rem]" />
-              ))}
-            </div>
-          )}
-
-          {!loading && error && (
-            <div className="glass-luxury rounded-[1.5rem] py-16 text-center">
-              <p className="text-red-500">{error}</p>
-              <Button onClick={() => fetchProducts(1, true)} className="mt-4">
-                Retry
+              <Button
+                data-testid="mobile-filter-toggle"
+                variant="outline"
+                size="sm"
+                className="lg:hidden flex items-center gap-2"
+                onClick={() => setMobileFilterOpen(true)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+                {activeCount > 0 && (
+                  <span className="bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {activeCount}
+                  </span>
+                )}
               </Button>
             </div>
-          )}
-
-          {!loading && !error && filteredProducts.length > 0 && (
-            <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredProducts.map((product, index) => {
-                const isLastElement = filteredProducts.length === index + 1;
-                return (
-                  <div key={product.id || index} ref={isLastElement ? lastProductElementRef : null}>
-                    <ProductCard product={product} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {loadingMore && (
-            <div className="mt-8 grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={`loading-more-${i}`} className="glass-luxury h-[430px] animate-pulse rounded-[1.4rem]" />
-              ))}
-            </div>
-          )}
-
-          {!loading && !error && filteredProducts.length === 0 && (
-            <div className="glass-luxury rounded-[1.5rem] py-16 text-center">
-              <p className="mb-4 text-muted-foreground">No products found in this price range.</p>
-              <Button asChild>
-                <Link to="/products">View All</Link>
-              </Button>
-            </div>
-          )}
+          </div>
         </div>
       </div>
+
+      {/* Applied Filter Chips */}
+      {chips.length > 0 && (
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 border-b border-accent/5">
+          <div className="flex items-center gap-2 flex-wrap" data-testid="filter-chips">
+            {chips.map((chip, i) => (
+              <button
+                key={`${chip.key}-${chip.value}-${i}`}
+                data-testid={`chip-${chip.key}`}
+                onClick={() => {
+                  if (chip.key === 'price') {
+                    handleFilterChange({ price_min: undefined, price_max: undefined });
+                  } else {
+                    handleRemoveChip(chip.key, chip.value);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                {chip.label}
+                <X className="h-3 w-3" />
+              </button>
+            ))}
+            <button
+              data-testid="clear-all-filters"
+              onClick={handleClearAll}
+              className="text-xs text-muted-foreground hover:text-primary underline ml-2"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex gap-6">
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block w-[260px] flex-shrink-0">
+            <div className="sticky top-20">
+              <FilterSidebar
+                filters={selectedFilters}
+                filterMetadata={filterMetadata}
+                onFilterChange={handleFilterChange}
+                onClearFilters={handleClearAll}
+              />
+            </div>
+          </aside>
+
+          {/* Product Grid */}
+          <div className="flex-1 min-w-0">
+            <div className="sm:hidden mb-4">
+              <SortDropdown value={sortBy} onChange={setSortBy} options={sortOptions} />
+            </div>
+
+            {/* Loading */}
+            {loading && (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="product-skeleton">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="aspect-[3/4] bg-muted rounded-lg mb-3" />
+                    <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-muted rounded w-1/2 mb-2" />
+                    <div className="h-4 bg-muted rounded w-1/3" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error */}
+            {!loading && error && (
+              <div className="text-center py-16" data-testid="error-state">
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <Button onClick={() => fetchProducts(1, true)}>Retry</Button>
+              </div>
+            )}
+
+            {/* Products Grid */}
+            {!loading && !error && products.length > 0 && (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="product-grid">
+                {products.map((product, index) => (
+                  <div
+                    key={product.id || index}
+                    ref={index === products.length - 1 ? lastRef : null}
+                    data-testid={`product-card-${product.id}`}
+                  >
+                    <ProductCard product={product} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Loading More */}
+            {loadingMore && (
+              <div className="mt-6 grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={`more-${i}`} className="animate-pulse">
+                    <div className="aspect-[3/4] bg-muted rounded-lg mb-3" />
+                    <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-muted rounded w-1/3" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty */}
+            {!loading && !error && products.length === 0 && (
+              <div className="text-center py-20" data-testid="empty-state">
+                <p className="text-lg text-muted-foreground mb-2">No products found</p>
+                <p className="text-sm text-muted-foreground mb-6">Try adjusting your filters.</p>
+                <Button onClick={handleClearAll} variant="outline">Clear All Filters</Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Filter Drawer */}
+      <MobileFilterDrawer
+        isOpen={mobileFilterOpen}
+        onClose={() => setMobileFilterOpen(false)}
+        filters={selectedFilters}
+        filterMetadata={filterMetadata}
+        onFilterChange={handleFilterChange}
+        onClearFilters={handleClearAll}
+        totalProducts={totalProducts}
+      />
     </div>
   );
 };

@@ -131,11 +131,16 @@ export const productsAPI = {
       return {
         ...res,
         data: transformedData,
-        products: rawProducts // Expose raw products for admin dashboard
+        products: rawProducts,
+        filters: res.data.filters || {},
+        pagination: res.data.pagination || {},
+        sortOptions: res.data.sortOptions || [],
+        appliedFilters: res.data.appliedFilters || {},
+        totalProducts: res.data.totalProducts || transformedData.length
       };
     } catch (err) {
       handleError(err);
-      return { data: [], products: [] };
+      return { data: [], products: [], filters: {}, pagination: {}, sortOptions: [], totalProducts: 0 };
     }
   },
 

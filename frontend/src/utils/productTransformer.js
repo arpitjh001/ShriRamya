@@ -90,7 +90,7 @@ export const transformWooProduct = (product) => {
     price: regularPrice,
     sale_price: salePrice,
 
-    category: product.categories?.[0]?.name || product.category || null,
+    category: product.categories?.[0]?.name || product.categoryName || product.category || null,
     subcategory: product.subcategory || null,
     categories: product.categories || [],
 
