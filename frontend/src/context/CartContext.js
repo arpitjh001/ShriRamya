@@ -49,10 +49,7 @@ export const CartProvider = ({ children }) => {
     try {
       const storedSessionId = getSessionId() || sessionId;
       
-      // Build payload - support both old (variantId only) and new (productId + variation) patterns
-      const payload = {
-        quantity,
-      };
+      const payload = { quantity };
       
       if (variation && variation.variantId) {
         // New pattern: productId + variation object
@@ -60,12 +57,9 @@ export const CartProvider = ({ children }) => {
         payload.variantId = Number(variation.variantId);
         if (variation.color) payload.color = variation.color;
         if (variation.size) payload.size = variation.size;
-      } else if (variation && !variation.variantId) {
-        // Product without variants
-        payload.productId = Number(productIdOrVariantId);
       } else {
-        // Legacy pattern: just variantId
-        payload.variantId = Number(productIdOrVariantId);
+        // Product without specific variant — just productId
+        payload.productId = Number(productIdOrVariantId);
       }
 
       const response = await cartAPI.add(payload, storedSessionId);

@@ -100,16 +100,22 @@ MySQL is not available in this preview environment, so mock data routes are used
 - ✅ Backend stability: Added Node.js backend to supervisor for auto-restart (March 2026)
 - ✅ Libas-style category filtering system with FilterSidebar, SortDropdown, MobileFilterDrawer, URL sync, filter chips (March 2026)
 
-### P1 (Important) - IN PROGRESS
-- [ ] URL query parameter synchronization for filters ✅ DONE (part of filtering system)
-- [ ] Skeleton loaders for product loading ✅ DONE (integrated in ProductsPage)
-- [ ] Advanced filter features (dynamic product counts per filter option) ✅ DONE (counts show next to each filter option)
+### P1 (Important) - DONE
+- ✅ URL query parameter synchronization for filters (part of filtering system)
+- ✅ Skeleton loaders for product loading (integrated in ProductsPage)
+- ✅ Advanced filter features (dynamic product counts per filter option)
+- ✅ Checkout page totals fix (March 2026)
+- ✅ Razorpay payment flow (mock mode, ready for real keys)
+- ✅ Quick View modal on product cards
+- ✅ Customer registration endpoint
+- ✅ Full checkout flow: Add to Cart → Cart → Checkout → Pay → Order Success
+- ✅ Order management endpoints (create, confirm, list, cancel, track)
 
 ### P2 (Nice to Have)
-- [ ] Full user checkout flow testing
-- [ ] Customer management frontend
-- [ ] Non-admin user auth & account management
+- [ ] Connect real Razorpay test keys (user to provide)
 - [ ] Replace mock data with real database (MySQL/Redis dependency)
+- [ ] Admin dashboard for order management
+- [ ] Email notifications on order placement
 
 ## Environment Notes
 - Backend: Node.js on port 8000, proxied through FastAPI on port 8001, managed by supervisor (node_backend)
@@ -128,3 +134,12 @@ MySQL is not available in this preview environment, so mock data routes are used
 ### March 2026 - Libas-Style Filtering System
 - Complete filtering UI with 10+ filter types, URL sync, filter chips, infinite scroll, mobile drawer
 - 32/32 backend + all frontend tests passed (test report: `/app/test_reports/iteration_1.json`)
+
+### March 2026 - Checkout, Payments, Quick View
+- **Checkout fix**: CheckoutPage used `item.product_id` (undefined) — rewrote to use cart item data directly
+- **Cart fix**: CartContext.addToCart legacy pattern sent `{variantId: productId}` instead of `{productId}` → 404 on add to cart. Fixed to always include `productId`.
+- **Razorpay**: Created order/payment endpoints with mock/real hybrid approach. Mock mode active (real keys to be provided).
+- **Quick View modal**: New `QuickViewModal.js` component with image gallery, variant selectors, quantity control, add-to-cart. Triggered from ProductCard eye icon.
+- **Customer auth**: Added `/auth/register` endpoint with token generation.
+- **Order flow**: Full CRUD: create, confirm payment, list user orders, track, cancel.
+- 26/26 backend + 95% frontend tests passed (test report: `/app/test_reports/iteration_2.json`)

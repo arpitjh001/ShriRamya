@@ -577,7 +577,7 @@ router.get('/categories', (req, res) => {
     return {
       ...cat,
       productCount,
-      image: `https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=400`
+      image: cat.image || `https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=400`
     };
   });
 
@@ -606,7 +606,7 @@ router.get('/categories/:id', (req, res) => {
     data: {
       ...category,
       productCount,
-      image: `https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800`,
+      image: category.image || `https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=800`,
       description: `Explore our beautiful collection of ${category.name}. Premium quality with traditional craftsmanship.`
     }
   });
@@ -629,7 +629,7 @@ router.get('/categories/slug/:slug', (req, res) => {
     data: {
       ...category,
       productCount,
-      image: `https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=800`,
+      image: category.image || `https://images.pexels.com/photos/35212993/pexels-photo-35212993.jpeg?auto=compress&cs=tinysrgb&w=800`,
       description: `Explore our beautiful collection of ${category.name}. Premium quality with traditional craftsmanship.`
     }
   });
