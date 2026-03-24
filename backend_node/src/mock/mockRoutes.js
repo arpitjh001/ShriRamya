@@ -6,6 +6,31 @@
 const express = require('express');
 const router = express.Router();
 const { productCatalog, FILTER_OPTIONS } = require('./productCatalog');
+const crypto = require('crypto');
+
+// ==========================================
+// RAZORPAY SETUP (real or mock)
+// ==========================================
+let razorpayInstance = null;
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+
+if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET && RAZORPAY_KEY_ID !== 'rzp_test_placeholder') {
+  try {
+    const Razorpay = require('razorpay');
+    razorpayInstance = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+    console.log('[Payment] Razorpay initialized with real keys');
+  } catch (e) {
+    console.log('[Payment] Razorpay init failed, using mock:', e.message);
+  }
+} else {
+  console.log('[Payment] No Razorpay keys, using mock payment flow');
+}
+
+// In-memory order store
+const ordersStore = {};
+
+
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -1003,12 +1028,175 @@ router.get('/auth/check-admin', (req, res) => {
   res.status(401).json({ success: false, data: { isAdmin: false, is_admin: false } });
 });
 
+// ==========================================
+// ORDER & PAYMENT ENDPOINTS
+// ==========================================
+
+// Create order
+router.post('/orders', async (req, res) => {
+  try {
+    const { items, shipping_address, email, amount, couponCode } = req.body;
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cart is empty' });
+    }
+
+    const orderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const totalAmount = amount || items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+    const amountInPaise = Math.round(totalAmount * 100);
+
+    let razorpayOrderId = null;
+
+    if (razorpayInstance) {
+      // Real Razorpay order
+      const rzOrder = await razorpayInstance.orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: orderId.substring(0, 40),
+        payment_capture: 1
+      });
+      razorpayOrderId = rzOrder.id;
+    } else {
+      // Mock Razorpay order
+      razorpayOrderId = 'order_mock_' + Date.now();
+    }
+
+    const order = {
+      id: orderId,
+      razorpay_order_id: razorpayOrderId,
+      items,
+      shipping_address,
+      email,
+      couponCode,
+      amount: amountInPaise,
+      amountDisplay: totalAmount,
+      currency: 'INR',
+      status: 'created',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    ordersStore[orderId] = order;
+
+    res.json({
+      success: true,
+      data: {
+        order_id: orderId,
+        razorpay_order_id: razorpayOrderId,
+        amount: amountInPaise,
+        currency: 'INR',
+        razorpay_key_id: RAZORPAY_KEY_ID || 'rzp_test_mock'
+      }
+    });
+  } catch (error) {
+    console.error('[Orders] Create error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create order' });
+  }
+});
+
+// Confirm payment
+router.post('/orders/:orderId/payment', (req, res) => {
+  const { orderId } = req.params;
+  const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+
+  const order = ordersStore[orderId];
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found' });
+  }
+
+  // Verify signature if real Razorpay
+  if (razorpayInstance && RAZORPAY_KEY_SECRET) {
+    const expectedSignature = crypto
+      .createHmac('sha256', RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      order.status = 'payment_failed';
+      order.updatedAt = new Date().toISOString();
+      return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+    }
+  }
+
+  order.status = 'paid';
+  order.payment = {
+    razorpay_payment_id: razorpay_payment_id || 'pay_mock_' + Date.now(),
+    razorpay_order_id,
+    razorpay_signature,
+    paidAt: new Date().toISOString()
+  };
+  order.updatedAt = new Date().toISOString();
+
+  res.json({
+    success: true,
+    data: {
+      order_id: orderId,
+      status: 'paid',
+      payment_id: order.payment.razorpay_payment_id,
+      message: 'Payment confirmed successfully'
+    }
+  });
+});
+
+// Get user orders
+router.get('/orders/my', (req, res) => {
+  const orders = Object.values(ordersStore)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json({ success: true, data: orders });
+});
+
+// Get all orders (admin)
+router.get('/orders/admin/all', (req, res) => {
+  const orders = Object.values(ordersStore)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json({ success: true, data: { orders, total: orders.length } });
+});
+
+// Get single order
+router.get('/orders/:id', (req, res) => {
+  const order = ordersStore[req.params.id];
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found' });
+  }
+  res.json({ success: true, data: order });
+});
+
+// Order tracking
+router.get('/orders/:orderNumber/tracking', (req, res) => {
+  const order = ordersStore[req.params.orderNumber];
+  res.json({
+    success: true,
+    data: {
+      order_id: req.params.orderNumber,
+      status: order?.status || 'processing',
+      tracking: [
+        { status: 'Order Placed', date: order?.createdAt || new Date().toISOString(), completed: true },
+        { status: 'Payment Confirmed', date: order?.payment?.paidAt || null, completed: order?.status === 'paid' },
+        { status: 'Shipped', date: null, completed: false },
+        { status: 'Delivered', date: null, completed: false }
+      ]
+    }
+  });
+});
+
+// Cancel order
+router.post('/orders/my/:id/cancel', (req, res) => {
+  const order = ordersStore[req.params.id];
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found' });
+  }
+  order.status = 'cancelled';
+  order.updatedAt = new Date().toISOString();
+  res.json({ success: true, data: { message: 'Order cancelled', order_id: req.params.id } });
+});
+
 // Health check
 router.get('/health', (req, res) => {
   res.json({
     success: true,
     status: 'ok',
     timestamp: new Date().toISOString(),
+    razorpay: razorpayInstance ? 'connected' : 'mock',
     requestId: req.headers['x-request-id'] || 'unknown'
   });
 });

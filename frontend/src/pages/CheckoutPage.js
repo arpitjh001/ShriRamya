@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { productsAPI, ordersAPI } from '../services/api';
+import { ordersAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -11,11 +11,10 @@ import { toast } from 'sonner';
 import { Tag, X, Loader2 } from 'lucide-react';
 
 const CheckoutPage = () => {
-  const { cart, clearCart, appliedCoupon, discountAmount, removeCoupon } = useCart();
+  const { cart, clearCart, appliedCoupon, discountAmount, removeCoupon, calculateSubtotal } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [cartProducts, setCartProducts] = useState([]);
   const [removingCoupon, setRemovingCoupon] = useState(false);
 
   const [shippingData, setShippingData] = useState({
@@ -30,39 +29,10 @@ const CheckoutPage = () => {
 
   const [email, setEmail] = useState(user?.email || '');
 
-  useEffect(() => {
-    if (!cart.items || cart.items.length === 0) {
-      navigate('/cart');
-      return;
-    }
-
-    const loadCartProducts = async () => {
-      try {
-        const productPromises = cart.items.map((item) =>
-          productsAPI.getById(item.product_id)
-        );
-        const products = await Promise.all(productPromises);
-        setCartProducts(products.map((res) => res.data));
-      } catch (error) {
-        console.error('Failed to load cart products:', error);
-      }
-    };
-
-    loadCartProducts();
-  }, [cart, navigate]);
-
-  const calculateSubtotal = () => {
-    return cart.items.reduce((total, item) => {
-      const product = cartProducts.find((p) => String(p.id) === String(item.product_id));
-      if (!product) return total;
-      const price = product.sale_price || product.price;
-      return total + price * item.quantity;
-    }, 0);
-  };
-
+  // Use cart item data directly — items already include name, image, price, attributes
   const subtotal = calculateSubtotal();
   const shipping = subtotal > 999 ? 0 : 99;
-  const total = subtotal - discountAmount + shipping;
+  const total = Math.max(0, subtotal - discountAmount + shipping);
 
   const handleRemoveCoupon = async () => {
     setRemovingCoupon(true);
@@ -78,6 +48,7 @@ const CheckoutPage = () => {
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve(true);
@@ -91,19 +62,27 @@ const CheckoutPage = () => {
     setLoading(true);
 
     try {
-      // Validate form
       if (!email || !shippingData.name || !shippingData.phone || !shippingData.address_line1 || !shippingData.city || !shippingData.state || !shippingData.pincode) {
         toast.error('Please fill all required fields');
         setLoading(false);
         return;
       }
 
-      // Create order
+      // Create order on backend
       const orderData = {
-        items: cart.items,
+        items: cart.items.map(item => ({
+          productId: item.productId || item.id,
+          variantId: item.variantId,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+          attributes: item.attributes,
+        })),
         shipping_address: shippingData,
         email,
-        couponCode: appliedCoupon?.code, // Include coupon code if applied
+        amount: total,
+        couponCode: appliedCoupon?.code,
       };
 
       const orderResponse = await ordersAPI.create(orderData);
@@ -117,7 +96,6 @@ const CheckoutPage = () => {
         return;
       }
 
-      // Configure Razorpay options
       const options = {
         key: razorpay_key_id,
         amount: amount,
@@ -127,16 +105,12 @@ const CheckoutPage = () => {
         order_id: razorpay_order_id,
         handler: async (response) => {
           try {
-            // Confirm payment
             await ordersAPI.confirmPayment(order_id, {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
             });
-
-            // Clear cart
             await clearCart();
-
             toast.success('Order placed successfully!');
             navigate(`/order-success/${order_id}`);
           } catch (error) {
@@ -148,13 +122,11 @@ const CheckoutPage = () => {
           email: email,
           contact: shippingData.phone,
         },
-        theme: {
-          color: '#800020',
-        },
+        theme: { color: '#800020' },
       };
 
       const paymentObject = new window.Razorpay(options);
-      paymentObject.on('payment.failed', function (response) {
+      paymentObject.on('payment.failed', function () {
         toast.error('Payment failed. Please try again.');
         setLoading(false);
       });
@@ -179,7 +151,6 @@ const CheckoutPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Shipping Form */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Contact Information */}
             <div className="border border-border rounded p-6">
               <h2 className="text-xl font-heading font-medium mb-4">Contact Information</h2>
               <div>
@@ -196,91 +167,39 @@ const CheckoutPage = () => {
               </div>
             </div>
 
-            {/* Shipping Address */}
             <div className="border border-border rounded p-6">
               <h2 className="text-xl font-heading font-medium mb-4">Shipping Address</h2>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      data-testid="checkout-name"
-                      value={shippingData.name}
-                      onChange={(e) => setShippingData({ ...shippingData, name: e.target.value })}
-                      required
-                      className="mt-1"
-                    />
+                    <Input id="name" data-testid="checkout-name" value={shippingData.name} onChange={(e) => setShippingData({ ...shippingData, name: e.target.value })} required className="mt-1" />
                   </div>
                   <div>
                     <Label htmlFor="phone">Phone *</Label>
-                    <Input
-                      id="phone"
-                      data-testid="checkout-phone"
-                      value={shippingData.phone}
-                      onChange={(e) => setShippingData({ ...shippingData, phone: e.target.value })}
-                      required
-                      className="mt-1"
-                    />
+                    <Input id="phone" data-testid="checkout-phone" value={shippingData.phone} onChange={(e) => setShippingData({ ...shippingData, phone: e.target.value })} required className="mt-1" />
                   </div>
                 </div>
-
                 <div>
                   <Label htmlFor="address1">Address Line 1 *</Label>
-                  <Input
-                    id="address1"
-                    data-testid="checkout-address1"
-                    value={shippingData.address_line1}
-                    onChange={(e) => setShippingData({ ...shippingData, address_line1: e.target.value })}
-                    required
-                    className="mt-1"
-                  />
+                  <Input id="address1" data-testid="checkout-address1" value={shippingData.address_line1} onChange={(e) => setShippingData({ ...shippingData, address_line1: e.target.value })} required className="mt-1" />
                 </div>
-
                 <div>
                   <Label htmlFor="address2">Address Line 2</Label>
-                  <Input
-                    id="address2"
-                    data-testid="checkout-address2"
-                    value={shippingData.address_line2}
-                    onChange={(e) => setShippingData({ ...shippingData, address_line2: e.target.value })}
-                    className="mt-1"
-                  />
+                  <Input id="address2" data-testid="checkout-address2" value={shippingData.address_line2} onChange={(e) => setShippingData({ ...shippingData, address_line2: e.target.value })} className="mt-1" />
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="city">City *</Label>
-                    <Input
-                      id="city"
-                      data-testid="checkout-city"
-                      value={shippingData.city}
-                      onChange={(e) => setShippingData({ ...shippingData, city: e.target.value })}
-                      required
-                      className="mt-1"
-                    />
+                    <Input id="city" data-testid="checkout-city" value={shippingData.city} onChange={(e) => setShippingData({ ...shippingData, city: e.target.value })} required className="mt-1" />
                   </div>
                   <div>
                     <Label htmlFor="state">State *</Label>
-                    <Input
-                      id="state"
-                      data-testid="checkout-state"
-                      value={shippingData.state}
-                      onChange={(e) => setShippingData({ ...shippingData, state: e.target.value })}
-                      required
-                      className="mt-1"
-                    />
+                    <Input id="state" data-testid="checkout-state" value={shippingData.state} onChange={(e) => setShippingData({ ...shippingData, state: e.target.value })} required className="mt-1" />
                   </div>
                   <div>
                     <Label htmlFor="pincode">Pincode *</Label>
-                    <Input
-                      id="pincode"
-                      data-testid="checkout-pincode"
-                      value={shippingData.pincode}
-                      onChange={(e) => setShippingData({ ...shippingData, pincode: e.target.value })}
-                      required
-                      className="mt-1"
-                    />
+                    <Input id="pincode" data-testid="checkout-pincode" value={shippingData.pincode} onChange={(e) => setShippingData({ ...shippingData, pincode: e.target.value })} required className="mt-1" />
                   </div>
                 </div>
               </div>
@@ -292,22 +211,27 @@ const CheckoutPage = () => {
             <div className="border border-border rounded p-6 sticky top-24">
               <h2 className="text-xl font-heading font-medium mb-6">Order Summary</h2>
 
-              {/* Items */}
               <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
                 {cart.items.map((item) => {
-                  const product = cartProducts.find((p) => String(p.id) === String(item.product_id));
-                  if (!product) return null;
-                  const price = product.sale_price || product.price;
+                  const price = item.price || 0;
+                  const productId = item.productId || item.id;
+                  const itemImage = item.image || item.thumbnail || '/uploads/woocommerce-placeholder.webp';
 
                   return (
-                    <div key={item.product_id} className="flex gap-3">
+                    <div key={`${productId}-${item.variantId || ''}`} data-testid={`checkout-item-${productId}`} className="flex gap-3">
                       <img
-                        src={product.images[0]}
-                        alt={product.name}
+                        src={itemImage}
+                        alt={item.name || 'Product'}
                         className="w-16 h-16 object-cover rounded"
+                        onError={(e) => { e.target.src = '/uploads/woocommerce-placeholder.webp'; }}
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{product.name}</p>
+                        <p className="text-sm font-medium">{item.name || 'Product'}</p>
+                        {item.attributes && (item.attributes.size || item.attributes.color) && (
+                          <p className="text-xs text-muted-foreground">
+                            {[item.attributes.color, item.attributes.size].filter(Boolean).join(' / ')}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                         <p className="text-sm font-medium">{formatPrice(price * item.quantity)}</p>
                       </div>
@@ -318,7 +242,6 @@ const CheckoutPage = () => {
 
               {/* Totals */}
               <div className="space-y-3 pt-4 border-t border-border">
-                {/* Coupon Display */}
                 {appliedCoupon && (
                   <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
                     <div className="flex items-center justify-between">
@@ -326,18 +249,8 @@ const CheckoutPage = () => {
                         <Tag className="h-4 w-4 text-green-600" />
                         <span className="font-medium text-green-800 dark:text-green-200 text-sm">{appliedCoupon.code}</span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleRemoveCoupon}
-                        disabled={removingCoupon}
-                        className="h-6 w-6 p-0 text-green-600 hover:text-green-800"
-                      >
-                        {removingCoupon ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <X className="h-3 w-3" />
-                        )}
+                      <Button variant="ghost" size="sm" onClick={handleRemoveCoupon} disabled={removingCoupon} className="h-6 w-6 p-0 text-green-600 hover:text-green-800">
+                        {removingCoupon ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
                       </Button>
                     </div>
                   </div>
@@ -349,9 +262,7 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span data-testid="checkout-shipping">
-                    {shipping === 0 ? 'Free' : formatPrice(shipping)}
-                  </span>
+                  <span data-testid="checkout-shipping">{shipping === 0 ? 'Free' : formatPrice(shipping)}</span>
                 </div>
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-green-600">
@@ -365,14 +276,8 @@ const CheckoutPage = () => {
                 </div>
               </div>
 
-              <Button
-                data-testid="place-order-button"
-                type="submit"
-                className="w-full mt-6"
-                size="lg"
-                disabled={loading}
-              >
-                {loading ? 'Processing...' : 'Place Order'}
+              <Button data-testid="place-order-button" type="submit" className="w-full mt-6" size="lg" disabled={loading}>
+                {loading ? 'Processing...' : `Pay ${formatPrice(total)}`}
               </Button>
 
               <p className="text-xs text-muted-foreground text-center mt-4">
