@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { blogAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
-import { Loader2, ArrowLeft, Image as ImageIcon, Save, Check } from 'lucide-react';
+import { Loader2, ArrowLeft, Image as ImageIcon, Save, Check, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const AdminBlogEditPage = () => {
@@ -157,7 +157,7 @@ const AdminBlogEditPage = () => {
             const currentCats = Array.isArray(prev.categories) ? prev.categories : [];
             const isSelected = currentCats.includes(catId);
             if (isSelected) {
-                return { ...prev, categories: currentCats.filter(id => id !== catId) };
+                return { ...prev, categories: currentCats.filter(c => c !== catId) };
             } else {
                 return { ...prev, categories: [...currentCats, catId] };
             }
@@ -423,18 +423,22 @@ const AdminBlogEditPage = () => {
                             <div className="p-4 border border-border rounded-lg bg-background">
                                 <label className="block text-sm font-medium mb-4">Categories</label>
                                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                    {categories.map(cat => (
+                                    {categories.map((cat, idx) => {
+                                        const catId = typeof cat === 'string' ? cat : cat.id;
+                                        const catName = typeof cat === 'string' ? cat : cat.name;
+                                        return (
                                         <label
-                                            key={cat.id}
+                                            key={catId || idx}
                                             className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded cursor-pointer transition-colors"
-                                            onClick={() => handleCategoryChange(cat.id)}
+                                            onClick={() => handleCategoryChange(catId)}
                                         >
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${postData.categories?.includes(cat.id) ? 'bg-primary border-primary' : 'bg-background border-border'}`}>
-                                                {postData.categories?.includes(cat.id) && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${postData.categories?.includes(catId) ? 'bg-primary border-primary' : 'bg-background border-border'}`}>
+                                                {postData.categories?.includes(catId) && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
                                             </div>
-                                            <span className="text-sm">{cat.name}</span>
+                                            <span className="text-sm">{catName}</span>
                                         </label>
-                                    ))}
+                                        );
+                                    })}
                                     {categories.length === 0 && <span className="text-sm text-muted-foreground block p-2">No categories available</span>}
                                 </div>
                             </div>

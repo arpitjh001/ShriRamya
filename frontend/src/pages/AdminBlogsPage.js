@@ -125,7 +125,7 @@ const AdminBlogsPage = () => {
                             <div>
                                 <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Total Views</p>
                                 <p className="text-2xl font-heading font-medium">
-                                    {stats.monthlyStats?.reduce((acc, curr) => acc + curr.views, 0) || 0}
+                                    {stats.total_views || stats.monthlyStats?.reduce((acc, curr) => acc + curr.views, 0) || 0}
                                 </p>
                             </div>
                         </div>
@@ -199,7 +199,7 @@ const AdminBlogsPage = () => {
                                             </div>
                                             <div>
                                                 <p className="font-medium text-foreground mb-0.5 line-clamp-1">{post.title}</p>
-                                                <p className="text-xs text-muted-foreground">{new Date(post.published_at || post.created_at).toDateString()}</p>
+                                                <p className="text-xs text-muted-foreground">{new Date(post.publishedAt || post.published_at || post.createdAt || post.created_at).toDateString()}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -209,14 +209,14 @@ const AdminBlogsPage = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <p className="text-sm font-medium">{post.author_name || 'System'}</p>
+                                        <p className="text-sm font-medium">{post.author?.name || post.author_name || 'System'}</p>
                                         <p className="text-[10px] text-muted-foreground">Shri Ramya Curators</p>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3 text-muted-foreground">
                                             <div className="flex items-center gap-1" title="Views">
                                                 <Eye className="w-3.5 h-3.5" />
-                                                <span className="text-xs">{post.view_count || 0}</span>
+                                                <span className="text-xs">{post.views || post.view_count || 0}</span>
                                             </div>
                                             <div className="flex items-center gap-1" title="Reading Time">
                                                 <Clock className="w-3.5 h-3.5" />

@@ -4,7 +4,7 @@ import 'react-quill-new/dist/quill.snow.css';
 import { useNavigate, Link } from 'react-router-dom';
 import { blogAPI } from '../services/api';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Image as ImageIcon, Loader2, Plus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
