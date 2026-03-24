@@ -107,15 +107,14 @@ if (config.env === 'development' || config.env === 'test') {
 
 /**
  * API Routes
- * Use mock routes for products/cart/categories when MySQL is unavailable
+ * DB-backed routes take priority (MongoDB-powered)
  */
-const mockRoutes = require('./mock/mockRoutes');
+const dbRoutes = require('./routes/dbRoutes');
 
-// Mock routes take priority - they handle products, categories, cart, search, recommendations
-// These routes will work without MySQL
-app.use('/api/v1', mockRoutes);
+// DB-backed routes handle products, categories, cart, search, auth, orders, blogs, wishlist, admin
+app.use('/api/v1', dbRoutes);
 
-// Original routes for auth and other features that use MongoDB
+// Original routes for any remaining features
 app.use('/api/v1', routes);
 
 /**

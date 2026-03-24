@@ -236,16 +236,16 @@ const BlogPage = () => {
                             <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-4">
                               <span className="flex items-center gap-1.5 px-2 py-1 bg-accent/5 rounded-md">
                                 <Calendar className="h-3.5 w-3.5" />
-                                {new Date(post.published_at || post.created_at).toLocaleDateString()}
+                                {new Date(post.publishedAt || post.published_at || post.createdAt || post.created_at || post.date).toLocaleDateString()}
                               </span>
                               <span className="flex items-center gap-1.5 px-2 py-1 bg-accent/5 rounded-md">
                                 <User className="h-3.5 w-3.5" />
-                                {post.author_name || post.author}
+                                {post.author?.name || post.author_name || post.author || 'Shri Ramya Team'}
                               </span>
-                              {post.reading_time > 0 && (
+                              {(post.reading_time || post.readingTime) > 0 && (
                                 <span className="flex items-center gap-1.5 px-2 py-1 bg-accent/5 rounded-md">
                                   <Clock className="h-3.5 w-3.5" />
-                                  {post.reading_time} min
+                                  {post.reading_time || post.readingTime} min
                                 </span>
                               )}
                             </div>
@@ -339,21 +339,28 @@ const BlogPage = () => {
                 <Tag className="h-5 w-5 text-secondary" /> Collections
               </h3>
               <div className="flex flex-col gap-2">
-                {categories.map((cat) => (
+                {categories.map((cat, idx) => {
+                  const catId = typeof cat === 'string' ? cat : (cat.id || cat.name);
+                  const catName = typeof cat === 'string' ? cat : cat.name;
+                  const catCount = typeof cat === 'string' ? '' : cat.count;
+                  return (
                   <button
-                    key={cat.id}
-                    onClick={() => handleCategoryFilter(cat.id.toString())}
-                    className={`flex justify-between items-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${currentCategory === cat.id.toString()
+                    key={catId || idx}
+                    onClick={() => handleCategoryFilter(String(catId))}
+                    className={`flex justify-between items-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${currentCategory === String(catId)
                       ? 'bg-secondary/10 text-secondary'
                       : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'
                       }`}
                   >
-                    <span className="flex-1 text-left">{cat.name}</span>
+                    <span className="flex-1 text-left">{catName}</span>
+                    {catCount && (
                     <span className="bg-background/80 px-2 py-0.5 rounded-md text-xs border border-border">
-                      {cat.count}
+                      {catCount}
                     </span>
+                    )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </aside>

@@ -15,7 +15,7 @@ const envVarsSchema = Joi.object()
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
     CORS_ORIGINS: Joi.string().default('*'),
     PUBLIC_BASE_URL: Joi.string().default('http://localhost:8000'),
-    REDIS_URL: Joi.string().required().description('Redis URL'),
+    REDIS_URL: Joi.string().allow('', null).default('').description('Redis URL'),
     JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(15),
     JWT_REFRESH_EXPIRATION_DAYS: Joi.number().default(7),
     COOKIE_SECURE: Joi.string().default('false'),

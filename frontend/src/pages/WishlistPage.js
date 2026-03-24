@@ -1,75 +1,107 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { wishlistAPI, productsAPI } from '../services/api';
-import ProductCard from '../components/ProductCard';
-import { Heart, ShoppingBag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Heart, ShoppingBag, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
 const WishlistPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [wishlistProducts, setWishlistProducts] = useState([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const userId = user?.id || user?.userId || 'guest';
 
   useEffect(() => {
-    if (!user) {
-      navigate('/');
-      return;
-    }
-
-    const fetchWishlist = async () => {
-      try {
-        const wishlistRes = await wishlistAPI.get();
-        if (wishlistRes.data.items.length > 0) {
-          const productPromises = wishlistRes.data.items.map((item) =>
-            productsAPI.getById(item.product_id)
-          );
-          const products = await Promise.all(productPromises);
-          setWishlistProducts(products.map((res) => res.data));
-        }
-      } catch (error) {
-        console.error('Failed to fetch wishlist:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchWishlist();
-  }, [user, navigate]);
+  }, [user]);
 
-  if (!user) return null;
+  const fetchWishlist = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/wishlist?userId=${userId}`);
+      const data = await res.json();
+      setItems(data.data || []);
+    } catch (err) { console.error('Fetch wishlist:', err); }
+    setLoading(false);
+  };
 
-  if (loading) {
-    return (
-      <div className="px-6 md:px-12 lg:px-24 py-12">
-        <div className="h-64 flex items-center justify-center">
-          <p className="text-lg text-muted-foreground">Loading wishlist...</p>
-        </div>
-      </div>
-    );
-  }
+  const removeItem = async (productId) => {
+    try {
+      await fetch(`${API_BASE}/api/v1/wishlist/remove/${productId}?userId=${userId}`, { method: 'DELETE' });
+      setItems(prev => prev.filter(i => i.productId !== productId));
+      toast.success('Removed from wishlist');
+    } catch (err) { toast.error('Failed to remove'); }
+  };
+
+  const addToCart = async (item) => {
+    try {
+      const sessionId = localStorage.getItem('sessionId') || 'session_' + Date.now();
+      localStorage.setItem('sessionId', sessionId);
+      await fetch(`${API_BASE}/api/v1/cart/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
+        body: JSON.stringify({ productId: item.productId, quantity: 1 }),
+      });
+      toast.success('Added to cart');
+    } catch (err) { toast.error('Failed to add to cart'); }
+  };
 
   return (
-    <div data-testid="wishlist-page" className="px-6 md:px-12 lg:px-24 py-12">
-      <h1 className="text-4xl font-heading font-medium tracking-tight mb-8">My Wishlist</h1>
+    <div data-testid="wishlist-page" className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto px-6 py-10">
+        <div className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-heading font-medium tracking-tight">My Wishlist</h1>
+          <p className="text-muted-foreground mt-1">{items.length} items saved</p>
+        </div>
 
-      {wishlistProducts.length === 0 ? (
-        <div data-testid="empty-wishlist" className="max-w-md mx-auto text-center py-16">
-          <Heart className="h-24 w-24 mx-auto mb-6 text-muted-foreground" />
-          <h2 className="text-2xl font-heading font-medium mb-4">Your wishlist is empty</h2>
-          <p className="text-muted-foreground mb-8">Save items you love to your wishlist.</p>
-          <Button data-testid="empty-wishlist-shop-button" onClick={() => navigate('/products')} size="lg">
-            Start Shopping
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="wishlist-products-grid">
-          {wishlistProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="aspect-[3/4] bg-muted/50 animate-pulse rounded-xl" />)}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-20 bg-card rounded-2xl border border-border">
+            <Heart className="h-20 w-20 mx-auto mb-6 text-muted-foreground/30" />
+            <p className="text-xl font-heading font-medium text-muted-foreground mb-2">Your wishlist is empty</p>
+            <p className="text-sm text-muted-foreground mb-6">Save your favorite items to buy them later</p>
+            <Button onClick={() => navigate('/products')} size="lg">
+              <ShoppingBag className="w-5 h-5 mr-2" /> Browse Products
+            </Button>
+          </div>
+        ) : (
+          <AnimatePresence>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {items.map(item => (
+                <motion.div key={item.productId} layout exit={{ opacity: 0, scale: 0.8 }} data-testid={`wishlist-product-${item.productId}`}
+                  className="bg-card border border-border rounded-xl overflow-hidden group">
+                  <Link to={`/products/${item.productId}`} className="block">
+                    <div className="aspect-[3/4] overflow-hidden relative">
+                      <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <button onClick={(e) => { e.preventDefault(); removeItem(item.productId); }}
+                        className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors shadow-sm"
+                        data-testid={`remove-wishlist-${item.productId}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </Link>
+                  <div className="p-4">
+                    <h3 className="text-sm font-medium line-clamp-2 mb-2">{item.name}</h3>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="font-semibold">Rs.{(item.salePrice || item.price).toLocaleString()}</span>
+                      {item.price > item.salePrice && <span className="text-xs text-muted-foreground line-through">Rs.{item.price.toLocaleString()}</span>}
+                    </div>
+                    <Button size="sm" className="w-full" onClick={() => addToCart(item)} data-testid={`add-to-cart-${item.productId}`}>
+                      <ShoppingBag className="w-4 h-4 mr-2" /> Add to Cart
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </AnimatePresence>
+        )}
+      </div>
     </div>
   );
 };
