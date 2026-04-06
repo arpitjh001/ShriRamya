@@ -319,17 +319,48 @@ app.post('/api/v1/products', async (req, res) => {
     await connectDB();
     const maxProduct = await Product.findOne({}, {}, { sort: { productId: -1 } });
     const newId = (maxProduct?.productId || 0) + 1;
-    const slug = (req.body.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const categorySlug = (req.body.categoryName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const body = req.body;
+    const name = body.name || '';
+    const slug = body.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    
+    // Handle price: accept both 'price' and 'basePrice'
+    const price = body.price || body.basePrice || 0;
+    const salePrice = body.salePrice || body.discountPrice || price;
+    const discount = body.discount || (price > salePrice ? Math.round((1 - salePrice / price) * 100) : 0);
+    
+    // Handle category: accept both 'categoryName' and 'categories' array
+    let categoryName = body.categoryName || '';
+    let categorySlug = body.categorySlug || '';
+    if (!categoryName && body.categories?.length) {
+      const catId = body.categories[0];
+      // Try by ObjectId first, then by slug
+      let cat = null;
+      try { cat = await Category.findById(catId).lean(); } catch (e) {}
+      if (!cat) cat = await Category.findOne({ slug: catId }).lean();
+      if (cat) { categoryName = cat.name; categorySlug = cat.slug; }
+      else { categoryName = catId; categorySlug = catId.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+    }
+    if (!categorySlug) categorySlug = (categoryName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
+    // Handle stock: direct or from variants
+    let stock = body.stock ?? body.totalStock ?? 50;
+    if (body.variants?.length) {
+      stock = body.variants.reduce((s, v) => s + (parseInt(v.stock) || 0), 0);
+    }
+    
     const product = await Product.create({
-      ...req.body,
-      productId: newId,
-      slug: req.body.slug || slug,
-      categorySlug: req.body.categorySlug || categorySlug,
-      brand: req.body.brand || 'Shri Ramya',
-      stock: req.body.stock ?? 50,
-      rating: req.body.rating ?? 4.0,
-      reviewCount: 0,
+      productId: newId, name, slug, description: body.description || '',
+      price, salePrice, discount,
+      categoryName, categorySlug,
+      fabric: body.fabric || '', color: body.color || 'Multi',
+      occasion: body.occasion || '', work: body.work || '',
+      brand: body.brand || 'Shri Ramya',
+      images: body.images || [], thumbnail: body.images?.[0] || body.thumbnail || '',
+      sizes: body.sizes || [], tags: body.tags || [],
+      stock, rating: 0, reviewCount: 0,
+      sku: body.sku || `PROD-${newId}`,
+      status: body.status || 'published',
+      isNew: true, isFeatured: body.isFeatured || false,
     });
     const obj = product.toObject();
     const { _id, __v, ...data } = obj;
@@ -340,9 +371,24 @@ app.put('/api/v1/products/:id', async (req, res) => {
   try {
     await connectDB();
     const { _id, __v, ...updates } = req.body;
+    // Normalize price fields
+    if (updates.basePrice && !updates.price) updates.price = updates.basePrice;
+    if (updates.discountPrice && !updates.salePrice) updates.salePrice = updates.discountPrice;
     if (updates.categoryName && !updates.categorySlug) {
       updates.categorySlug = updates.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     }
+    // Handle categories array → categoryName
+    if (updates.categories?.length && !updates.categoryName) {
+      const catId = updates.categories[0];
+      let cat = null;
+      try { cat = await Category.findById(catId).lean(); } catch (e) {}
+      if (!cat) cat = await Category.findOne({ slug: catId }).lean();
+      if (cat) { updates.categoryName = cat.name; updates.categorySlug = cat.slug; }
+    }
+    if (updates.variants?.length) {
+      updates.stock = updates.variants.reduce((s, v) => s + (parseInt(v.stock) || 0), 0);
+    }
+    if (updates.images?.length && !updates.thumbnail) updates.thumbnail = updates.images[0];
     const product = await Product.findOneAndUpdate(
       { productId: Number(req.params.id) },
       { $set: updates },
@@ -367,8 +413,23 @@ app.delete('/api/v1/products/:id', async (req, res) => {
 app.get('/api/v1/categories', async (req, res) => {
   try {
     await connectDB();
-    const cats = await Product.aggregate([{ $group: { _id: '$categorySlug', name: { $first: '$categoryName' }, count: { $sum: 1 }, image: { $first: '$thumbnail' } } }, { $project: { _id: 0, id: '$_id', slug: '$_id', name: 1, count: 1, image: 1 } }, { $sort: { name: 1 } }]);
-    res.json({ success: true, data: cats });
+    // Get categories derived from products (with counts)
+    const productCats = await Product.aggregate([
+      { $group: { _id: '$categorySlug', name: { $first: '$categoryName' }, count: { $sum: 1 }, image: { $first: '$thumbnail' } } },
+      { $project: { _id: 0, slug: '$_id', name: 1, count: 1, image: 1 } },
+      { $sort: { name: 1 } }
+    ]);
+    // Get explicitly created categories from collection
+    const dbCats = await Category.find({}, { __v: 0 }).lean();
+    // Merge: DB categories override product-derived, include all
+    const merged = new Map();
+    for (const pc of productCats) { merged.set(pc.slug, { ...pc, id: pc.slug }); }
+    for (const dc of dbCats) {
+      const { _id, ...rest } = dc;
+      const existing = merged.get(dc.slug);
+      merged.set(dc.slug, { id: _id.toString(), slug: dc.slug, name: dc.name, description: dc.description || '', image: dc.image || existing?.image || '', count: existing?.count || 0, isActive: dc.isActive !== false, ...rest });
+    }
+    res.json({ success: true, data: Array.from(merged.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '')) });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 app.get('/api/v1/categories/:slug', async (req, res) => {
@@ -795,6 +856,20 @@ app.get('/api/v1/seed', async (req, res) => {
         { name: 'Jaipur Warehouse', location: 'Jaipur, RJ', capacity: 3000, utilized: 1800, status: 'active' },
       ]);
       results.warehouses = 2;
+    }
+    // Seed categories from existing products if not already in categories collection
+    const catCount = await Category.countDocuments();
+    if (catCount === 0) {
+      const productCats = await Product.aggregate([
+        { $group: { _id: '$categorySlug', name: { $first: '$categoryName' }, image: { $first: '$thumbnail' } } }
+      ]);
+      if (productCats.length) {
+        await Category.insertMany(
+          productCats.map(c => ({ name: c.name, slug: c._id, image: c.image || '', isActive: true })),
+          { ordered: false }
+        ).catch(() => {});
+        results.categories = productCats.length;
+      }
     }
     const reviewCount = await Review.countDocuments();
     if (reviewCount === 0) {

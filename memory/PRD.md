@@ -218,6 +218,18 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **GitHub remote**: Configured with user's PAT (read access confirmed, write pending permissions).
 - 100% frontend tests passed (test report: `/app/test_reports/iteration_4.json`)
 
+### April 6, 2026 - Product/Category CRUD UI Integration Fix
+- **Bug**: Admin-created categories/products weren't reflected on UI
+- **Root cause**: `GET /categories` only aggregated from products (not the `categories` collection). Product CRUD didn't handle admin form format (`basePrice`, `categories` as IDs array, `variants`). Stock showed as 0 in admin list.
+- **Fixes**:
+  - `GET /categories`: Now merges both `categories` collection AND product-derived categories
+  - `POST/PUT /products`: Handles both simple format and admin form format (basePrice → price, categories IDs → categoryName, variants → stock)
+  - Category lookup: Now tries both ObjectId AND slug (for product-derived categories)
+  - AdminProductsPage.js: Fixed stock fallback to use `product.stock_quantity || product.stock`
+  - Seed: Auto-creates categories in `categories` collection from existing products
+- **E2E tested**: Create category → create product in category → verify in list, filter, and customer-facing pages
+
+
 ### April 6, 2026 - Product & Category CRUD Endpoints
 - **Product CRUD**: Added `POST /products` (auto-generates productId, slug), `PUT /products/:id`, `DELETE /products/:id`
 - **Category CRUD**: Added Category schema + `POST /categories`, `PUT /categories/:id`, `DELETE /categories/:id` (supports lookup by slug or MongoDB _id)

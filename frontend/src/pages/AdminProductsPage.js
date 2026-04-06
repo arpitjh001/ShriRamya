@@ -125,8 +125,8 @@ const AdminProductsPage = () => {
           images: normalizedImages,
           basePrice: basePrice,
           sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
-          stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
-          categoryNames: product.categories?.map(cat => cat.name).join(', ') || product.category || 'Uncategorized'
+          stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || product.stock_quantity || product.stock || 0,
+          categoryNames: product.categories?.map(cat => cat.name).join(', ') || product.category || product.categoryName || 'Uncategorized'
         };
       });
 
