@@ -219,15 +219,20 @@ MySQL is not available in this preview environment, so mock data routes are used
 - 100% frontend tests passed (test report: `/app/test_reports/iteration_4.json`)
 
 ### April 6, 2026 - Product/Category CRUD UI Integration Fix
-- **Bug**: Admin-created categories/products weren't reflected on UI
-- **Root cause**: `GET /categories` only aggregated from products (not the `categories` collection). Product CRUD didn't handle admin form format (`basePrice`, `categories` as IDs array, `variants`). Stock showed as 0 in admin list.
+- **Bug**: Admin-created categories/products weren't reflected on UI; category assignment to products didn't work
+- **Root causes**:
+  1. `GET /categories` only aggregated from products (not the `categories` collection)
+  2. Product CRUD didn't handle admin form format (`basePrice`, `categories` as IDs array, `variants`)
+  3. Product-derived categories (cotton-sarees, silk-sarees, etc.) weren't in the `categories` collection — so slug-based lookups failed silently
+  4. `GET /products` ignored `per_page` param — admin page always got 20 instead of all products
+  5. Admin product list showed stock as 0 (fallback missing)
 - **Fixes**:
-  - `GET /categories`: Now merges both `categories` collection AND product-derived categories
-  - `POST/PUT /products`: Handles both simple format and admin form format (basePrice → price, categories IDs → categoryName, variants → stock)
-  - Category lookup: Now tries both ObjectId AND slug (for product-derived categories)
-  - AdminProductsPage.js: Fixed stock fallback to use `product.stock_quantity || product.stock`
-  - Seed: Auto-creates categories in `categories` collection from existing products
-- **E2E tested**: Create category → create product in category → verify in list, filter, and customer-facing pages
+  - `GET /categories`: Merges `categories` collection + product-derived categories with proper ObjectIds
+  - `POST/PUT /products`: Category lookup chain: ObjectId → slug → product aggregation → format slug to name
+  - `GET /products`: Now accepts `per_page` param (admin gets all 56 products)
+  - Seed: Auto-creates ALL product-derived categories in `categories` collection (not just when empty)
+  - AdminProductsPage.js: Fixed stock fallback
+- **E2E tested**: Category assignment by ObjectId AND slug both work; all 56 products load in admin
 
 
 ### April 6, 2026 - Product & Category CRUD Endpoints

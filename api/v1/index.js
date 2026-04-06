@@ -235,7 +235,8 @@ app.post('/api/v1/auth/refresh-token', (req, res) => {
 app.get('/api/v1/products', async (req, res) => {
   try {
     await connectDB();
-    const { page = 1, limit = 20, sort, category, search, minPrice, maxPrice, fabric, color, occasion, work, brand, size, discount, rating, isNew, isTrending } = req.query;
+    const { page = 1, limit: rawLimit, per_page, sort, category, search, minPrice, maxPrice, fabric, color, occasion, work, brand, size, discount, rating, isNew, isTrending } = req.query;
+    const limit = parseInt(rawLimit || per_page || 20);
     const filter = {};
     let sortObj = { createdAt: -1 };
 
@@ -338,7 +339,11 @@ app.post('/api/v1/products', async (req, res) => {
       try { cat = await Category.findById(catId).lean(); } catch (e) {}
       if (!cat) cat = await Category.findOne({ slug: catId }).lean();
       if (cat) { categoryName = cat.name; categorySlug = cat.slug; }
-      else { categoryName = catId; categorySlug = catId.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+      else {
+        const productWithCat = await Product.findOne({ categorySlug: catId }, { categoryName: 1 }).lean();
+        if (productWithCat) { categoryName = productWithCat.categoryName; categorySlug = catId; }
+        else { categoryName = catId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); categorySlug = catId.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+      }
     }
     if (!categorySlug) categorySlug = (categoryName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
@@ -383,7 +388,12 @@ app.put('/api/v1/products/:id', async (req, res) => {
       let cat = null;
       try { cat = await Category.findById(catId).lean(); } catch (e) {}
       if (!cat) cat = await Category.findOne({ slug: catId }).lean();
-      if (cat) { updates.categoryName = cat.name; updates.categorySlug = cat.slug; }
+      if (!cat) {
+        // Fallback: derive from products collection
+        const productWithCat = await Product.findOne({ categorySlug: catId }, { categoryName: 1 }).lean();
+        if (productWithCat) { updates.categoryName = productWithCat.categoryName; updates.categorySlug = catId; }
+        else { updates.categoryName = catId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); updates.categorySlug = catId; }
+      } else { updates.categoryName = cat.name; updates.categorySlug = cat.slug; }
     }
     if (updates.variants?.length) {
       updates.stock = updates.variants.reduce((s, v) => s + (parseInt(v.stock) || 0), 0);
@@ -857,20 +867,19 @@ app.get('/api/v1/seed', async (req, res) => {
       ]);
       results.warehouses = 2;
     }
-    // Seed categories from existing products if not already in categories collection
-    const catCount = await Category.countDocuments();
-    if (catCount === 0) {
-      const productCats = await Product.aggregate([
-        { $group: { _id: '$categorySlug', name: { $first: '$categoryName' }, image: { $first: '$thumbnail' } } }
-      ]);
-      if (productCats.length) {
-        await Category.insertMany(
-          productCats.map(c => ({ name: c.name, slug: c._id, image: c.image || '', isActive: true })),
-          { ordered: false }
-        ).catch(() => {});
-        results.categories = productCats.length;
+    // Seed categories from existing products if missing from categories collection
+    const productCats = await Product.aggregate([
+      { $group: { _id: '$categorySlug', name: { $first: '$categoryName' }, image: { $first: '$thumbnail' } } }
+    ]);
+    let catSeeded = 0;
+    for (const pc of productCats) {
+      const exists = await Category.findOne({ slug: pc._id });
+      if (!exists && pc._id) {
+        await Category.create({ name: pc.name, slug: pc._id, image: pc.image || '', isActive: true }).catch(() => {});
+        catSeeded++;
       }
     }
+    if (catSeeded) results.categories = catSeeded;
     const reviewCount = await Review.countDocuments();
     if (reviewCount === 0) {
       const reviewSeed = [];
