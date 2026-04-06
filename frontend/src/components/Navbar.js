@@ -40,7 +40,7 @@ const Navbar = () => {
       name: 'Women Wear', 
       slug: 'women-wear', 
       image: '/images/premium/saree_model_high_res_1773311100000_1773310975132.png',
-      subcategories: ['Sarees', 'Lehengas', 'Suits', 'Kurtis', 'Dupattas'] 
+      subcategories: ['Sarees', 'Lehengas', 'Suits', 'Kurtis', 'Kurti Material', 'Dupattas'] 
     },
     { 
       name: 'Luxury Collection', 

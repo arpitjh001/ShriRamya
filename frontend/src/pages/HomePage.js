@@ -46,6 +46,11 @@ const categoryTiles = [
     image: '/images/premium/homepage/lehengas.png',
   },
   {
+    name: 'Kurti Material',
+    category: 'kurti-material',
+    image: 'https://images.unsplash.com/photo-1652722464455-ec026ef74703?w=800&q=80',
+  },
+  {
     name: 'Festive Wear',
     category: 'festive-wear',
     image: '/images/premium/homepage/festive_wear.png',

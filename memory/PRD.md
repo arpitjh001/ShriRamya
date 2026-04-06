@@ -113,11 +113,8 @@ MySQL is not available in this preview environment, so mock data routes are used
 
 ### P2 (Nice to Have)
 - [ ] Connect real Razorpay test keys (user to provide)
-- [ ] Replace mock data with real database (MySQL/Redis dependency)
-- [ ] Admin dashboard for order management
 - [ ] Email notifications on order placement
-- [ ] Wishlist feature
-- [ ] User account pages (order history, profile editing)
+- [x] Added "Kurti Material" category with 5 products (April 2026)
 
 ## Environment Notes
 - **Development**: Node.js on port 8000, MongoDB local, managed by supervisor
@@ -149,7 +146,13 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Order flow**: Full CRUD: create, confirm payment, list user orders, track, cancel.
 - 26/26 backend + 95% frontend tests passed (test report: `/app/test_reports/iteration_2.json`)
 
-### April 6, 2026 - Git Sync + Comprehensive API Testing
+### April 6, 2026 - New Category: Kurti Material
+- **Added 5 "Kurti Material" products** to MongoDB (productIds 51-55): Chanderi Silk, Cotton Block Print, Georgette Embroidered, Rayon Floral, Chikankari Lucknowi
+- **Homepage:** Added Kurti Material tile in "Lookbook Highlights" section
+- **Navigation:** Added "Kurti Material" to Women Wear dropdown subcategories  
+- **Bug Fix:** Fixed CategoryPage crash (`/categories/slug/${slug}` → `/categories/${slug}`)
+- **Seed script:** Updated `seed.js` to include Kurti Material products for future seeding consistency
+- 6/6 API verification tests passed (categories, products filter, category detail, search, product detail, total count)
 - **Git repo synced**: Pulled latest code from `arpitjh001/ShriRamya.git` (main branch) and pushed all changes back
 - **Fixed /blog page crash**: Categories API returns strings but page expected objects with `.id`, `.name`, `.count`. Fixed `.toString()` on undefined crash.
 - **Comprehensive API test suite**: Created `/app/backend/tests/test_all_apis.py` covering 91 test cases across 12 categories:
