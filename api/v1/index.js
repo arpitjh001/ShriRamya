@@ -142,6 +142,16 @@ const warehouseSchema = new mongoose.Schema({
   status: { type: String, default: 'active' },
 }, { timestamps: true });
 
+const categorySchema = new mongoose.Schema({
+  name: String,
+  slug: { type: String, unique: true, index: true },
+  description: String,
+  image: String,
+  parentId: String,
+  order: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true },
+}, { timestamps: true });
+
 const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 const Blog = mongoose.models.Blog || mongoose.model('Blog', blogSchema);
@@ -150,6 +160,7 @@ const Cart = mongoose.models.Cart || mongoose.model('Cart', cartSchema);
 const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', couponSchema);
 const Review = mongoose.models.Review || mongoose.model('Review', reviewSchema);
 const Warehouse = mongoose.models.Warehouse || mongoose.model('Warehouse', warehouseSchema);
+const Category = mongoose.models.Category || mongoose.model('Category', categorySchema);
 
 // ==========================================
 // Express App Setup
@@ -302,6 +313,54 @@ app.get('/api/v1/products/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
+// Product CRUD
+app.post('/api/v1/products', async (req, res) => {
+  try {
+    await connectDB();
+    const maxProduct = await Product.findOne({}, {}, { sort: { productId: -1 } });
+    const newId = (maxProduct?.productId || 0) + 1;
+    const slug = (req.body.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const categorySlug = (req.body.categoryName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const product = await Product.create({
+      ...req.body,
+      productId: newId,
+      slug: req.body.slug || slug,
+      categorySlug: req.body.categorySlug || categorySlug,
+      brand: req.body.brand || 'Shri Ramya',
+      stock: req.body.stock ?? 50,
+      rating: req.body.rating ?? 4.0,
+      reviewCount: 0,
+    });
+    const obj = product.toObject();
+    const { _id, __v, ...data } = obj;
+    res.status(201).json({ success: true, data: { ...data, id: data.productId } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.put('/api/v1/products/:id', async (req, res) => {
+  try {
+    await connectDB();
+    const { _id, __v, ...updates } = req.body;
+    if (updates.categoryName && !updates.categorySlug) {
+      updates.categorySlug = updates.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    }
+    const product = await Product.findOneAndUpdate(
+      { productId: Number(req.params.id) },
+      { $set: updates },
+      { new: true, projection: { _id: 0, __v: 0 } }
+    ).lean();
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.json({ success: true, data: { ...product, id: product.productId } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.delete('/api/v1/products/:id', async (req, res) => {
+  try {
+    await connectDB();
+    const result = await Product.findOneAndDelete({ productId: Number(req.params.id) });
+    if (!result) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.json({ success: true, message: 'Product deleted' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // ==========================================
 // CATEGORIES
 // ==========================================
@@ -318,6 +377,43 @@ app.get('/api/v1/categories/:slug', async (req, res) => {
     const products = await Product.find({ categorySlug: req.params.slug }, { _id: 0, __v: 0 }).lean();
     if (!products.length) return res.status(404).json({ success: false, message: 'Category not found' });
     res.json({ success: true, data: { slug: req.params.slug, name: products[0].categoryName, products: products.map(p => ({ ...p, id: p.productId })) } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Category CRUD
+app.post('/api/v1/categories', async (req, res) => {
+  try {
+    await connectDB();
+    const slug = req.body.slug || (req.body.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const existing = await Category.findOne({ slug });
+    if (existing) return res.status(400).json({ success: false, message: 'Category already exists' });
+    const cat = await Category.create({ ...req.body, slug });
+    const obj = cat.toObject(); const { _id, __v, ...data } = obj;
+    res.status(201).json({ success: true, data: { ...data, id: _id.toString() } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.put('/api/v1/categories/:id', async (req, res) => {
+  try {
+    await connectDB();
+    const { _id, __v, ...updates } = req.body;
+    if (updates.name && !updates.slug) {
+      updates.slug = updates.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+    // Try by slug first, then by MongoDB _id
+    let cat = await Category.findOneAndUpdate({ slug: req.params.id }, { $set: updates }, { new: true, projection: { __v: 0 } }).lean();
+    if (!cat) cat = await Category.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, projection: { __v: 0 } }).lean();
+    if (!cat) return res.status(404).json({ success: false, message: 'Category not found' });
+    const { _id: cid, ...data } = cat;
+    res.json({ success: true, data: { ...data, id: cid.toString() } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.delete('/api/v1/categories/:id', async (req, res) => {
+  try {
+    await connectDB();
+    let cat = await Category.findOneAndDelete({ slug: req.params.id });
+    if (!cat) cat = await Category.findByIdAndDelete(req.params.id);
+    if (!cat) return res.status(404).json({ success: false, message: 'Category not found' });
+    res.json({ success: true, message: 'Category deleted' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

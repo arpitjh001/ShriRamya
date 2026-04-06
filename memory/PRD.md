@@ -218,6 +218,14 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **GitHub remote**: Configured with user's PAT (read access confirmed, write pending permissions).
 - 100% frontend tests passed (test report: `/app/test_reports/iteration_4.json`)
 
+### April 6, 2026 - Product & Category CRUD Endpoints
+- **Product CRUD**: Added `POST /products` (auto-generates productId, slug), `PUT /products/:id`, `DELETE /products/:id`
+- **Category CRUD**: Added Category schema + `POST /categories`, `PUT /categories/:id`, `DELETE /categories/:id` (supports lookup by slug or MongoDB _id)
+- **Bug fix**: Added `GET /recommendations/:productId` route (was only query param, frontend calls path param)
+- **Files changed**: `/app/api/v1/index.js`
+- **Tested**: All 6 endpoints verified on production (create → update → delete for both products and categories)
+
+
 ### April 6, 2026 - P1/P2/P3 Feature Enhancements (Deployed to Production)
 
 #### P1 — Customer Experience
