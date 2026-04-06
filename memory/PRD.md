@@ -147,7 +147,24 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Order flow**: Full CRUD: create, confirm payment, list user orders, track, cancel.
 - 26/26 backend + 95% frontend tests passed (test report: `/app/test_reports/iteration_2.json`)
 
-### March 24, 2026 - Admin Dashboards, Blog CRUD, Recently Viewed
+### April 6, 2026 - Git Sync + Comprehensive API Testing
+- **Git repo synced**: Pulled latest code from `arpitjh001/ShriRamya.git` (main branch) and pushed all changes back
+- **Fixed /blog page crash**: Categories API returns strings but page expected objects with `.id`, `.name`, `.count`. Fixed `.toString()` on undefined crash.
+- **Comprehensive API test suite**: Created `/app/backend/tests/test_all_apis.py` covering 91 test cases across 12 categories:
+  - Authentication (7 tests): admin/customer login, register, duplicate check, token refresh
+  - Products (15 tests): list, pagination, sort, filter by category/price/featured, detail, 404
+  - Categories (3 tests): list, by slug, 404
+  - Search (3 tests): query, empty, no results
+  - Cart (9 tests): CRUD operations, add/remove/update/clear
+  - Coupons (3 tests): validate, invalid, below minimum
+  - Orders (12 tests): create, payment, status update, tracking, cancel, frontend alias
+  - Wishlist (8 tests): add, check, remove, alias endpoints
+  - Blogs (8 tests): CRUD, categories, stats, slug lookup
+  - User Profile (4 tests): get, update, verify persistence
+  - Admin (13 tests): analytics (overview/revenue/sales/products), warehouses, inventory, users, orders management
+  - Misc (6 tests): recommendations, reviews, shipment stubs
+- **Result: 91/91 PASSED (100%)**
+- **Data fixes**: Fixed products with null `salePrice` and null `price` fields in MongoDB
 - **Admin Dashboard APIs**: Added mock endpoints for `/admin/analytics/*` (overview, revenue, sales, products), `/admin/warehouses`, `/admin/inventory/low-stock`, admin order/shipment stubs
 - **Blog CRUD fixes**: Fixed `Plus` icon missing import in `BlogCreatePage.js` and `AdminBlogEditPage.js` (caused page crash). Fixed `tags` handling to accept both arrays and strings. Fixed categories widget to handle string array from API.
 - **Admin Blogs date fix**: `AdminBlogsPage.js` used snake_case fields (`published_at`, `created_at`) but mock data uses camelCase (`publishedAt`, `createdAt`). Fixed to support both formats.
