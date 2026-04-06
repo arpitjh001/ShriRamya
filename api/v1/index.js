@@ -135,7 +135,20 @@ app.post('/api/v1/auth/register', async (req, res) => {
 });
 
 app.get('/api/v1/auth/check-admin', (req, res) => {
-  res.json({ success: true, data: { capabilities: { edit_posts: true, publish_posts: true, edit_others_posts: true, delete_posts: true, manage_categories: true, moderate_comments: true } } });
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const role = (decoded.role || '').toLowerCase();
+    const roles = (decoded.roles || []).map(r => r.toLowerCase());
+    const isAdmin = role === 'admin' || roles.includes('admin');
+    res.json({ success: true, data: { is_admin: isAdmin, capabilities: { edit_posts: isAdmin, publish_posts: isAdmin, edit_others_posts: isAdmin, delete_posts: isAdmin, manage_categories: isAdmin, moderate_comments: isAdmin } } });
+  } catch (err) {
+    res.status(401).json({ success: false, message: 'Invalid token' });
+  }
 });
 
 app.post('/api/v1/auth/refresh-token', (req, res) => {

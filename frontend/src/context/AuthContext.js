@@ -162,10 +162,10 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, tenantId = 1) => {
     const response = await authAPI.login({ email, password, tenantId });
-    localStorage.setItem('token', response.data.access_token);
+    localStorage.setItem('token', response.data.token);
 
     // Decode token to get full user info
-    const decoded = decodeToken(response.data.access_token);
+    const decoded = decodeToken(response.data.token);
     const userData = {
       id: decoded.user_id || decoded.sub,
       email: decoded.email,
@@ -183,10 +183,10 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (data) => {
     const response = await authAPI.register(data);
-    localStorage.setItem('token', response.data.access_token);
+    localStorage.setItem('token', response.data.token);
 
     // Decode token to get full user info
-    const decoded = decodeToken(response.data.access_token);
+    const decoded = decodeToken(response.data.token);
     const userData = {
       id: decoded.user_id || decoded.sub,
       email: decoded.email,
