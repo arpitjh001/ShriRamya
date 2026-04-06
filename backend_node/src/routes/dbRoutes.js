@@ -452,6 +452,11 @@ router.get('/blogs', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
+
+router.get('/blogs/capabilities', (req, res) => {
+  res.json({ success: true, data: { can_create: true, can_edit: true, can_delete: true, can_publish: true } });
+});
+
 router.get('/blogs/categories', async (req, res) => {
   try {
     const cats = await Blog.aggregate([

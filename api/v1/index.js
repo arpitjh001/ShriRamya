@@ -359,6 +359,9 @@ app.post('/api/v1/orders/my/:orderId/cancel', async (req, res) => {
 app.get('/api/v1/blogs', async (req, res) => {
   try { await connectDB(); const { page = 1, per_page = 10, category, search, status } = req.query; const filter = {}; if (category) filter.categories = { $in: [category] }; if (search) filter.$or = [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }]; if (status) filter.status = status; const skip = (Number(page) - 1) * Number(per_page); const [posts, total] = await Promise.all([Blog.find(filter, { _id: 0, __v: 0 }).sort({ publishedAt: -1 }).skip(skip).limit(Number(per_page)).lean(), Blog.countDocuments(filter)]); res.json({ success: true, data: { posts, pagination: { current_page: Number(page), total_pages: Math.ceil(total / Number(per_page)), total } } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
+app.get('/api/v1/blogs/capabilities', (req, res) => {
+  res.json({ success: true, data: { can_create: true, can_edit: true, can_delete: true, can_publish: true } });
+});
 app.get('/api/v1/blogs/categories', async (req, res) => {
   try { await connectDB(); const cats = await Blog.aggregate([{ $unwind: '$categories' }, { $group: { _id: '$categories', count: { $sum: 1 } } }, { $project: { _id: 0, name: '$_id', id: '$_id', count: 1 } }]); res.json({ success: true, data: cats.length ? cats : ['Traditional Crafts', 'Style Guide', 'Silk Sarees', 'Sustainability', 'Handloom'] }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

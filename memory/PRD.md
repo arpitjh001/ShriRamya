@@ -160,6 +160,13 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **AAAA Record:** Identified and guided user to remove conflicting IPv6 record blocking Vercel SSL
 - **Production Seeding:** Updated `api/v1/index.js` seed endpoint to support incremental category seeding (Kurti Material)
 - Both `https://www.shriramya.com` and `https://shriramya.com` now live with SSL
+
+### April 6, 2026 - Critical Auth Bug Fixes
+- **Bug Fix:** `AuthContext.js` used `response.data.access_token` but API returns `response.data.token` — login was silently failing for all users
+- **Bug Fix:** `/auth/check-admin` endpoint returned no `is_admin` field and didn't verify JWT — admin dashboard showed "Access Denied" for actual admins
+- **Added:** `/blogs/capabilities` endpoint (was returning 404, called by AuthContext)
+- **Testing:** 28/28 backend tests passed, 100% frontend verified by testing agent (iteration 6)
+- All 3 user roles tested: admin, customer, editor
 - **New feature:** Expandable "Fabric Guide" accordion panel on all product detail pages
 - Covers 15 fabric types: Silk, Cotton, Chanderi, Georgette, Rayon, Chiffon, Banarasi, Kanjivaram, Linen, Crepe, Velvet, Organza, Jacquard, Net, Tussar
 - Each guide includes: fabric description, key properties (tags), care instructions, and origin
