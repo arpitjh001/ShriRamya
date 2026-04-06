@@ -217,3 +217,50 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Recently Viewed**: `RecentlyViewed.js` component using localStorage tracking, integrated into HomePage.
 - **GitHub remote**: Configured with user's PAT (read access confirmed, write pending permissions).
 - 100% frontend tests passed (test report: `/app/test_reports/iteration_4.json`)
+
+### April 6, 2026 - P1/P2/P3 Feature Enhancements (Deployed to Production)
+
+#### P1 — Customer Experience
+- **Wishlist "Move to Cart"**: WishlistPage now has "Move to Cart" button that adds item to cart AND removes from wishlist in one action
+- **Wishlist Count in Navbar**: Heart icon in NavIcons shows dynamic count badge (fetched from API on each page navigation)
+- **Product Reviews on Pages**: ProductDetailPage now fetches and displays MongoDB-backed reviews with star ratings, verified badges, and user comments
+- **Order Tracking Timeline**: AccountPage order detail now shows full status history timeline with timestamps and notes
+- **Shipping Address Display**: Expanded order view shows shipping address details
+
+#### P2 — Admin & Operations
+- **Admin Order Management**: Added tracking number input field in order detail modal; status flow buttons: Confirm → Ship (with tracking) → Deliver → Cancel
+- **Inventory Management**: AdminInventoryPage rewritten to use MongoDB endpoints; shows 55 products with stock levels, low stock badges, and "Adjust Stock" buttons; stock add/reduce via PATCH API
+- **Sales Analytics**: Added "Export CSV" button that downloads real sales data as CSV; revenue chart now supports date range filtering via query params
+- **Backend Endpoints Added**: `PATCH /admin/inventory/:productId/stock`, `GET /admin/inventory`, `GET /admin/analytics/export` (CSV), `GET /recommendations/:productId`
+
+#### P3 — Growth & SEO
+- **SEO Meta Tags**: Added `<SEOMeta>` component to HomePage, ProductsPage, and ProductDetailPage with dynamic og:title, og:description, og:image, twitter:card tags
+- **WhatsApp Share Button**: Green "Share on WhatsApp" button on every product detail page, pre-fills product name and price
+- **CI/CD**: Pending — will guide user to connect GitHub repo to Vercel for auto-deploy
+
+#### Testing
+- **Frontend Testing Agent**: 100% pass rate (iteration 7) — all 15 features verified on production
+- **Backend APIs**: All endpoints tested via curl on production
+- **Deployment**: `vercel --prod` successful, live at https://shriramya.com
+
+#### Files Changed
+- `/app/api/v1/index.js` — Added inventory CRUD, analytics export, recommendations/:productId
+- `/app/frontend/src/pages/ProductDetailPage.js` — Reviews, WhatsApp share, SEOMeta
+- `/app/frontend/src/pages/WishlistPage.js` — Move to Cart
+- `/app/frontend/src/pages/AccountPage.js` — Order tracking timeline + shipping address
+- `/app/frontend/src/pages/AdminOrdersPage.js` — Tracking number input
+- `/app/frontend/src/pages/AdminInventoryPage.js` — Rewritten for MongoDB
+- `/app/frontend/src/pages/AdminAnalyticsPage.js` — CSV export button
+- `/app/frontend/src/components/navbar/NavIcons.js` — Wishlist count badge
+- `/app/frontend/src/components/Navbar.js` — Wishlist count fetch + pass to NavIcons
+- `/app/frontend/src/pages/HomePage.js` — SEOMeta
+- `/app/frontend/src/pages/ProductsPage.js` — SEOMeta
+
+## Remaining Backlog
+- [ ] Integrate live Razorpay payment gateway (user must provide test/live keys)
+- [ ] CI/CD auto-deploy: Connect GitHub repo to Vercel project for automatic deployments on push
+- [ ] Redis caching for product filters
+- [ ] Daily DB backups
+- [ ] Remove dead MySQL code from backend_node/
+- [ ] Delete obsolete mock files (mockRoutes.js, productCatalog.js)
+
