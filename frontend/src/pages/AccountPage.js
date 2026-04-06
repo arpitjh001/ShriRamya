@@ -202,9 +202,39 @@ const AccountPage = () => {
                             </div>
                           ))}
                         </div>
+                        
+                        {/* Order Tracking Timeline */}
+                        {order.statusHistory?.length > 0 && (
+                          <div data-testid={`order-tracking-${order.orderId}`} className="mb-4 p-4 bg-muted/20 rounded-lg">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Order Tracking</h4>
+                            <div className="space-y-3">
+                              {order.statusHistory.map((step, i) => (
+                                <div key={i} className="flex items-start gap-3">
+                                  <div className={`mt-0.5 w-2.5 h-2.5 rounded-full shrink-0 ${i === 0 ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium capitalize">{step.status}</p>
+                                    <p className="text-xs text-muted-foreground">{step.note || ''}</p>
+                                    {step.timestamp && <p className="text-xs text-muted-foreground/60">{new Date(step.timestamp).toLocaleString('en-IN')}</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {order.trackingNumber && (
                           <p className="text-sm text-muted-foreground mb-3">Tracking: <span className="font-mono font-medium">{order.trackingNumber}</span></p>
                         )}
+                        
+                        {/* Shipping Address */}
+                        {order.shippingAddress && (
+                          <div className="mb-4 text-xs text-muted-foreground">
+                            <p className="font-medium text-foreground text-sm mb-1">Shipping Address</p>
+                            <p>{order.shippingAddress.name}, {order.shippingAddress.address}</p>
+                            <p>{order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}</p>
+                          </div>
+                        )}
+
                         <div className="flex gap-2">
                           {['pending', 'confirmed'].includes(order.status) && (
                             <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); cancelOrder(order.orderId); }} data-testid={`cancel-order-${order.orderId}`}>

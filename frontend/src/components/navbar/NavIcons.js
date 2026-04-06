@@ -14,7 +14,7 @@ import { Link } from 'react-router-dom';
  * High-end action icons with micro-interactions for the Navbar.
  * @param {NavIconsProps} props
  */
-const NavIcons = ({ cartCount, hasNotifications = false, onSearchClick, onAccountClick }) => {
+const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSearchClick, onAccountClick }) => {
   const iconVariants = {
     hover: { scale: 1.2, rotate: 5, transition: { type: "spring", stiffness: 400, damping: 10 } },
     tap: { scale: 0.9 }
@@ -53,8 +53,18 @@ const NavIcons = ({ cartCount, hasNotifications = false, onSearchClick, onAccoun
         </motion.button>
 
         <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
-          <Link to="/wishlist" className="text-charcoal hover:text-royal-maroon transition-colors" aria-label="Wishlist">
+          <Link to="/wishlist" className="relative text-charcoal hover:text-royal-maroon transition-colors" aria-label="Wishlist" data-testid="navbar-wishlist-icon">
             <Heart className="w-5 h-5 md:w-6 md:h-6" />
+            {wishlistCount > 0 && (
+              <motion.span
+                key={wishlistCount}
+                initial={{ scale: 0.2, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="absolute -top-2 -right-2 bg-royal-maroon text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
+              >
+                {wishlistCount}
+              </motion.span>
+            )}
           </Link>
         </motion.div>
       </div>

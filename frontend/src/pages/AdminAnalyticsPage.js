@@ -114,9 +114,26 @@ const AdminAnalyticsPage = () => {
               Sync Data
             </Button>
             
-            <Button className="bg-royal-gold text-charcoal shadow-gold-glow hover:bg-gold-mist">
+            <Button 
+              className="bg-royal-gold text-charcoal shadow-gold-glow hover:bg-gold-mist"
+              data-testid="export-csv-btn"
+              onClick={async () => {
+                try {
+                  const API_BASE = process.env.REACT_APP_BACKEND_URL;
+                  const res = await fetch(`${API_BASE}/api/v1/admin/analytics/export`);
+                  const blob = await res.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `shriramya_sales_${new Date().toISOString().split('T')[0]}.csv`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  toast.success('Sales report exported');
+                } catch (err) { toast.error('Export failed'); }
+              }}
+            >
               <Download className="mr-2 h-4 w-4" />
-              Export
+              Export CSV
             </Button>
           </div>
         </div>

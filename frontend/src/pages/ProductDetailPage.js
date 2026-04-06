@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productsAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
-import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles, ChevronDown, Layers } from 'lucide-react';
+import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles, ChevronDown, Layers, Star, MessageCircle, Share2 } from 'lucide-react';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
@@ -13,6 +13,7 @@ import TryOnModal from '../components/VirtualTryOn/TryOnModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { addToRecentlyViewed } from '../components/RecentlyViewed';
 import { getFabricGuide } from '../utils/fabricGuide';
+import SEOMeta from '../components/SEOMeta';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -20,6 +21,7 @@ const ProductDetailPage = () => {
   const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
+  const [reviews, setReviews] = useState({ reviews: [], average: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariation, setSelectedVariation] = useState(null);
@@ -45,6 +47,21 @@ const ProductDetailPage = () => {
         setProduct(productRes.data);
         setRecommendations(recsRes.data || []);
         addToRecentlyViewed(id);
+
+        // Fetch reviews
+        try {
+          const API_BASE = process.env.REACT_APP_BACKEND_URL;
+          const reviewRes = await fetch(`${API_BASE}/api/v1/reviews/product/${id}`);
+          const reviewData = await reviewRes.json();
+          if (reviewData.success) setReviews(reviewData.data);
+        } catch (e) { /* reviews optional */ }
+
+        // Update page title for SEO
+        if (productRes.data?.name) {
+          document.title = `${productRes.data.name} | ShriRamya`;
+          const metaDesc = document.querySelector('meta[name="description"]');
+          if (metaDesc) metaDesc.setAttribute('content', productRes.data.description?.slice(0, 160) || `Buy ${productRes.data.name} at ShriRamya`);
+        }
 
         // Fetch variant matrix
         try {
@@ -270,6 +287,13 @@ const ProductDetailPage = () => {
 
   return (
     <div className="bg-[#F7F3EC] min-h-screen">
+      <SEOMeta 
+        title={product?.name}
+        description={product?.description?.slice(0, 160) || `Buy ${product?.name} at ShriRamya - Premium Indian Handloom`}
+        image={product?.images?.[0] || product?.thumbnail}
+        url={`/products/${id}`}
+        type="product"
+      />
       {/* Breadcrumbs */}
       <nav className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pt-12 pb-6">
         <ol className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-charcoal/40">
@@ -492,6 +516,19 @@ const ProductDetailPage = () => {
                 </Button>
               </div>
               
+              {/* WhatsApp Share */}
+              <button
+                data-testid="whatsapp-share-btn"
+                onClick={() => {
+                  const url = window.location.href;
+                  const text = `Check out ${product.name} at Rs.${(product.salePrice || product.price).toLocaleString()} on ShriRamya!`;
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-sm font-semibold"
+              >
+                <Share2 className="w-4 h-4" /> Share on WhatsApp
+              </button>
+
               <div className="flex items-center justify-center gap-8 py-4 opacity-40 grayscale group-hover:grayscale-0 transition-all">
                 <img src="/images/visa.png" alt="Visa" className="h-4 object-contain" />
                 <img src="/images/mastercard.png" alt="Mastercard" className="h-4 object-contain" />
@@ -633,6 +670,52 @@ const ProductDetailPage = () => {
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
         <CraftStorySection product={product} />
       </div>
+
+      {/* Customer Reviews */}
+      {reviews.total > 0 && (
+        <section data-testid="reviews-section" className="bg-ivory py-16">
+          <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
+            <div className="flex items-center justify-between mb-10">
+              <div>
+                <h2 className="text-3xl font-heading tracking-tight">Customer Reviews</h2>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(s => (
+                      <Star key={s} className={`w-5 h-5 ${s <= Math.round(reviews.average) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                    ))}
+                  </div>
+                  <span className="text-lg font-semibold">{reviews.average}</span>
+                  <span className="text-muted-foreground">({reviews.total} reviews)</span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {reviews.reviews.slice(0, 6).map((review, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-white rounded-xl p-6 border border-charcoal/5 shadow-sm"
+                  data-testid={`review-${i}`}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex">
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} className={`w-4 h-4 ${s <= review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                      ))}
+                    </div>
+                    {review.verified && <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-medium">Verified</span>}
+                  </div>
+                  <p className="text-sm text-charcoal/80 mb-3 leading-relaxed">{review.comment}</p>
+                  <p className="text-xs text-muted-foreground font-medium">{review.user}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Recommendations */}
       {recommendations.length > 0 && (

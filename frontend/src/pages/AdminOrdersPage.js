@@ -319,20 +319,51 @@ const AdminOrdersPage = () => {
               )}
 
               {/* Quick Actions */}
-              <div className="flex gap-2 pt-4 border-t border-border">
+              <div className="space-y-4 pt-4 border-t border-border">
+                {/* Tracking Number */}
+                {['confirmed', 'shipped'].includes(selectedOrder.status) && (
+                  <div data-testid="tracking-section">
+                    <label className="text-xs text-muted-foreground block mb-1">Tracking Number</label>
+                    <div className="flex gap-2">
+                      <input
+                        data-testid="tracking-number-input"
+                        type="text"
+                        placeholder="Enter tracking number..."
+                        defaultValue={selectedOrder.trackingNumber || ''}
+                        id="tracking-input"
+                        className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                      />
+                      <Button size="sm" variant="outline"
+                        data-testid="save-tracking-btn"
+                        onClick={() => {
+                          const tn = document.getElementById('tracking-input').value;
+                          if (tn) updateOrderStatus(selectedOrder.orderId, selectedOrder.status, `Tracking: ${tn}`);
+                        }}
+                      >
+                        <Truck className="w-4 h-4 mr-1" /> Save
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
                 {selectedOrder.status === 'pending' && (
                   <Button onClick={() => { updateOrderStatus(selectedOrder.orderId, 'confirmed'); setShowDetail(false); }} disabled={updatingStatus}>
                     Confirm Order
                   </Button>
                 )}
                 {selectedOrder.status === 'confirmed' && (
-                  <Button onClick={() => { updateOrderStatus(selectedOrder.orderId, 'shipped'); setShowDetail(false); }} disabled={updatingStatus}>
-                    Mark as Shipped
+                  <Button onClick={() => {
+                    const tn = document.getElementById('tracking-input')?.value || '';
+                    updateOrderStatus(selectedOrder.orderId, 'shipped', tn ? `Tracking: ${tn}` : 'Shipped by admin');
+                    setShowDetail(false);
+                  }} disabled={updatingStatus}>
+                    <Truck className="w-4 h-4 mr-2" /> Mark as Shipped
                   </Button>
                 )}
                 {selectedOrder.status === 'shipped' && (
                   <Button onClick={() => { updateOrderStatus(selectedOrder.orderId, 'delivered'); setShowDetail(false); }} disabled={updatingStatus}>
-                    Mark as Delivered
+                    <CheckCircle className="w-4 h-4 mr-2" /> Mark as Delivered
                   </Button>
                 )}
                 {['pending', 'confirmed'].includes(selectedOrder.status) && (
@@ -340,6 +371,7 @@ const AdminOrdersPage = () => {
                     Cancel Order
                   </Button>
                 )}
+                </div>
               </div>
             </div>
           </motion.div>

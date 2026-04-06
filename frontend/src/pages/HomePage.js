@@ -7,6 +7,7 @@ import { productsAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import ProductCard from '../components/ProductCard';
 import RecentlyViewed from '../components/RecentlyViewed';
+import SEOMeta from '../components/SEOMeta';
 
 const featuredCollectionTiles = [
   {
@@ -136,6 +137,12 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-background selection:bg-accent/30">
+      <SEOMeta 
+        title="Premium Indian Handloom Sarees & Ethnic Wear"
+        description="Shop authentic Banarasi silk sarees, designer kurtis, and handcrafted ethnic wear at ShriRamya. Free shipping on orders above Rs 999."
+        url="/"
+        type="website"
+      />
       <section className="relative min-h-[90vh] overflow-hidden">
         <img
           src="/images/premium/homepage/wedding_couture.png"

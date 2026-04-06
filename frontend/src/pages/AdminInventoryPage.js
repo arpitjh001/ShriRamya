@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { productsAPI, warehouseAPI } from '../services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Button } from '../components/ui/button';
@@ -33,11 +32,11 @@ const AdminInventoryPage = () => {
   const [adjustmentQty, setAdjustmentQty] = useState(0);
   const [adjustmentType, setAdjustmentType] = useState('add');
 
+  const API_BASE = process.env.REACT_APP_BACKEND_URL;
+
   useEffect(() => {
-    // Check if user has Admin role (case-insensitive)
     const userRole = user?.role?.toLowerCase();
     const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
-    
     if (!user || (!userRoles.includes('admin') && userRole !== 'admin')) {
       toast.error('Access denied');
       navigate('/');
@@ -45,101 +44,46 @@ const AdminInventoryPage = () => {
     }
     loadInventory();
     loadWarehouses();
-    loadStockAlerts();
   }, [user]);
 
   const loadInventory = async () => {
     setLoading(true);
     try {
-      const response = await productsAPI.getAll({ per_page: 100 });
-      const products = response.products || response.data || [];
-      
-      // Flatten variants into inventory items
-      const inventoryItems = [];
-      products.forEach(product => {
-        if (product.variants && product.variants.length > 0) {
-          product.variants.forEach(variant => {
-            inventoryItems.push({
-              id: variant.id,
-              productId: product.id,
-              productName: product.name,
-              sku: variant.sku,
-              price: variant.price,
-              stock: variant.stock,
-              reservedStock: variant.reservedStock || 0,
-              availableStock: variant.stock - (variant.reservedStock || 0),
-              attributes: variant.attributes,
-              lowStockThreshold: variant.lowStockThreshold || 5,
-              isLowStock: variant.stock <= (variant.lowStockThreshold || 5)
-            });
-          });
-        } else {
-          // Product without variants
-          inventoryItems.push({
-            id: product.id,
-            productId: product.id,
-            productName: product.name,
-            sku: product.sku || `PROD-${product.id}`,
-            price: product.basePrice,
-            stock: product.stock || 0,
-            reservedStock: 0,
-            availableStock: product.stock || 0,
-            attributes: {},
-            lowStockThreshold: 5,
-            isLowStock: (product.stock || 0) <= 5
-          });
-        }
-      });
-      
-      setInventory(inventoryItems);
+      const res = await fetch(`${API_BASE}/api/v1/admin/inventory`);
+      const data = await res.json();
+      if (data.success) {
+        setInventory(data.data.products || []);
+        setStockAlerts(data.data.products.filter(p => p.isLowStock));
+      }
     } catch (error) {
       console.error('Failed to load inventory:', error);
       toast.error('Failed to load inventory');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const loadWarehouses = async () => {
     try {
-      const response = await warehouseAPI.getAll();
-      setWarehouses(response.data || []);
-    } catch (error) {
-      console.error('Failed to load warehouses:', error);
-    }
-  };
-
-  const loadStockAlerts = async () => {
-    try {
-      const response = await warehouseAPI.getLowStockAlerts({ threshold: 10 });
-      setStockAlerts(response.data || []);
-    } catch (error) {
-      console.error('Failed to load stock alerts:', error);
-    }
+      const res = await fetch(`${API_BASE}/api/v1/admin/warehouses`);
+      const data = await res.json();
+      setWarehouses(data.data || []);
+    } catch (error) { console.error('Failed to load warehouses:', error); }
   };
 
   const handleStockAdjustment = async () => {
-    if (!selectedVariant) return;
-
+    if (!selectedVariant || adjustmentQty <= 0) return;
     try {
-      const qty = adjustmentType === 'add' ? adjustmentQty : -adjustmentQty;
-      
-      // Update variant stock
-      await productsAPI.updateVariant(
-        selectedVariant.productId,
-        selectedVariant.id,
-        {
-          ...selectedVariant,
-          stock: selectedVariant.stock + qty
-        }
-      );
-
-      toast.success(`Stock ${adjustmentType === 'add' ? 'added' : 'reduced'} successfully`);
-      setAdjustmentModal(false);
-      loadInventory();
-    } catch (error) {
-      toast.error('Failed to update stock');
-    }
+      const res = await fetch(`${API_BASE}/api/v1/admin/inventory/${selectedVariant.productId}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adjustment: adjustmentQty, type: adjustmentType }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Stock ${adjustmentType === 'add' ? 'added' : 'reduced'}: ${data.data.name} now has ${data.data.stock} units`);
+        setAdjustmentModal(false);
+        loadInventory();
+      } else { toast.error(data.message); }
+    } catch (error) { toast.error('Failed to update stock'); }
   };
 
   const openAdjustmentModal = (variant) => {
@@ -150,18 +94,16 @@ const AdminInventoryPage = () => {
   };
 
   const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.sku?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesWarehouse = selectedWarehouse === 'all' || 
-                            item.warehouseId === selectedWarehouse;
-    return matchesSearch && matchesWarehouse;
+    const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.categoryName?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   const stats = {
     totalProducts: inventory.length,
     lowStock: inventory.filter(i => i.isLowStock).length,
     outOfStock: inventory.filter(i => i.stock === 0).length,
-    totalValue: inventory.reduce((sum, i) => sum + (i.price * i.stock), 0)
+    totalValue: inventory.reduce((sum, i) => sum + ((i.salePrice || i.price) * i.stock), 0)
   };
 
   return (
@@ -336,18 +278,17 @@ const AdminInventoryPage = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredInventory.map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.productId}>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">{item.productName}</div>
-                            {item.attributes?.color && (
-                              <div className="text-xs text-gray-500">
-                                {item.attributes.color} {item.attributes.size && `/ ${item.attributes.size}`}
-                              </div>
-                            )}
+                          <div className="flex items-center gap-3">
+                            {item.thumbnail && <img src={item.thumbnail} alt={item.name} className="w-10 h-10 rounded object-cover" />}
+                            <div>
+                              <div className="font-medium">{item.name}</div>
+                              <div className="text-xs text-gray-500">{item.categoryName}</div>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm">{item.sku}</TableCell>
+                        <TableCell className="font-mono text-sm">PROD-{item.productId}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Warehouse className="w-4 h-4 text-gray-400" />
@@ -355,8 +296,8 @@ const AdminInventoryPage = () => {
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">{item.stock}</TableCell>
-                        <TableCell>{item.reservedStock}</TableCell>
-                        <TableCell className="font-medium">{item.availableStock}</TableCell>
+                        <TableCell>0</TableCell>
+                        <TableCell className="font-medium">{item.stock}</TableCell>
                         <TableCell>
                           {item.stock === 0 ? (
                             <Badge variant="destructive">Out of Stock</Badge>
@@ -371,6 +312,7 @@ const AdminInventoryPage = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => openAdjustmentModal(item)}
+                            data-testid={`adjust-stock-${item.productId}`}
                           >
                             {item.stock === 0 ? (
                               <>

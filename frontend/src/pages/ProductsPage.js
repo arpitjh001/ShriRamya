@@ -7,6 +7,7 @@ import SortDropdown from '../components/SortDropdown';
 import MobileFilterDrawer from '../components/MobileFilterDrawer';
 import { Button } from '../components/ui/button';
 import { X, SlidersHorizontal } from 'lucide-react';
+import SEOMeta from '../components/SEOMeta';
 
 const PER_PAGE = 12;
 const ARRAY_FILTER_KEYS = ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve'];
@@ -203,6 +204,11 @@ const ProductsPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOMeta 
+        title={pageTitle || 'Shop All Products'}
+        description={`Browse ${totalProducts || ''} premium Indian handloom products at ShriRamya. Filter by fabric, color, occasion and more.`}
+        url="/products"
+      />
       {/* Sticky Header Bar */}
       <div className="border-b border-accent/10 bg-background/95 backdrop-blur-sm sticky top-0 z-30">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">

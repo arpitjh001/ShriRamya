@@ -27,12 +27,24 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [wishlistCount, setWishlistCount] = useState(0);
   
   // Scroll State
   const { scrollY } = useScroll();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+
+  // Fetch wishlist count
+  useEffect(() => {
+    if (!user) { setWishlistCount(0); return; }
+    const uid = user?.id || user?.userId || 'guest';
+    const API_BASE = process.env.REACT_APP_BACKEND_URL;
+    fetch(`${API_BASE}/api/v1/wishlist?userId=${uid}`)
+      .then(r => r.json())
+      .then(d => setWishlistCount((d.data || []).length))
+      .catch(() => {});
+  }, [user, location.pathname]);
 
   // Constants & Data
   const categories = useMemo(() => [
@@ -196,6 +208,7 @@ const Navbar = () => {
             <div className="flex items-center justify-end flex-shrink-0">
                <NavIcons 
                  cartCount={cartCount}
+                 wishlistCount={wishlistCount}
                  hasNotifications={user && isAdmin()}
                  onSearchClick={() => setIsSearchOpen(true)} 
                  onAccountClick={() => (user ? navigate('/account') : setIsAuthDialogOpen(true))}

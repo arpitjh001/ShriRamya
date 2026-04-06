@@ -505,8 +505,15 @@ app.get('/api/v1/admin/analytics/overview', async (req, res) => {
 app.get('/api/v1/admin/analytics/revenue', async (req, res) => {
   try {
     await connectDB();
+    const { startDate, endDate } = req.query;
+    const match = { paymentStatus: 'paid' };
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
     const pipeline = [
-      { $match: { paymentStatus: 'paid' } },
+      { $match: match },
       { $group: { _id: { $month: '$createdAt' }, revenue: { $sum: '$total' }, orders: { $sum: 1 } } },
       { $sort: { '_id': 1 } }
     ];
@@ -527,7 +534,38 @@ app.get('/api/v1/admin/warehouses', async (req, res) => {
   try { await connectDB(); const warehouses = await Warehouse.find({}, { _id: 0, __v: 0 }).lean(); res.json({ success: true, data: warehouses }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 app.get('/api/v1/admin/inventory/low-stock', async (req, res) => { try { await connectDB(); const items = await Product.find({ stock: { $lte: 10 } }, { _id: 0, productId: 1, name: 1, stock: 1, categoryName: 1, thumbnail: 1 }).limit(10).lean(); res.json({ success: true, data: items }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
+app.patch('/api/v1/admin/inventory/:productId/stock', async (req, res) => {
+  try {
+    await connectDB();
+    const { adjustment, type } = req.body;
+    const product = await Product.findOne({ productId: Number(req.params.productId) });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    const delta = type === 'add' ? Math.abs(adjustment) : -Math.abs(adjustment);
+    product.stock = Math.max(0, product.stock + delta);
+    await product.save();
+    res.json({ success: true, data: { productId: product.productId, name: product.name, stock: product.stock } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.get('/api/v1/admin/inventory', async (req, res) => {
+  try {
+    await connectDB();
+    const products = await Product.find({}, { _id: 0, __v: 0 }).sort({ stock: 1 }).lean();
+    const lowStock = products.filter(p => p.stock <= 10);
+    res.json({ success: true, data: { products: products.map(p => ({ ...p, id: p.productId, isLowStock: p.stock <= 10 })), lowStockCount: lowStock.length, totalProducts: products.length } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 app.get('/api/v1/admin/users', async (req, res) => { try { await connectDB(); const users = await mongoose.connection.db.collection('users').find({}, { projection: { password: 0 } }).toArray(); res.json({ success: true, data: users.map(u => { const { _id, ...r } = u; return { ...r, id: _id.toString() }; }) }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
+app.get('/api/v1/admin/analytics/export', async (req, res) => {
+  try {
+    await connectDB();
+    const orders = await Order.find({ paymentStatus: 'paid' }, { _id: 0, orderId: 1, total: 1, status: 1, createdAt: 1, 'shippingAddress.name': 1, 'shippingAddress.email': 1 }).sort({ createdAt: -1 }).lean();
+    const header = 'Order ID,Customer,Email,Total,Status,Date\n';
+    const rows = orders.map(o => `${o.orderId},"${o.shippingAddress?.name || ''}",${o.shippingAddress?.email || ''},${o.total},${o.status},${o.createdAt ? new Date(o.createdAt).toISOString().split('T')[0] : ''}`).join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=sales_report.csv');
+    res.send(header + rows);
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 app.get('/api/v1/admin/blogs/stats', async (req, res) => {
   try { await connectDB(); const [total, published, drafts] = await Promise.all([Blog.countDocuments(), Blog.countDocuments({ status: 'published' }), Blog.countDocuments({ status: 'draft' })]); const tv = (await Blog.aggregate([{ $group: { _id: null, total: { $sum: '$views' } } }]))[0]?.total || 0; res.json({ success: true, data: { total_posts: total, published, drafts, total_views: tv, total_comments: 20 } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -605,7 +643,8 @@ app.get('/api/v1/cart/coupon', async (req, res) => {
   try { await connectDB(); const sid = getSessionId(req); const cart = await Cart.findOne({ sessionId: sid }).lean(); res.json({ success: true, data: cart?.appliedCoupon || null }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-app.get('/api/v1/recommendations', async (req, res) => { try { await connectDB(); const p = await Product.find({}, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean(); res.json({ success: true, data: p.map(x => ({ ...x, id: x.productId })) }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
+app.get('/api/v1/recommendations/:productId', async (req, res) => { try { await connectDB(); const p = await Product.find({ productId: { $ne: Number(req.params.productId) } }, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean(); res.json({ success: true, data: p.map(x => ({ ...x, id: x.productId })) }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
+app.get('/api/v1/recommendations', async (req, res) => { try { await connectDB(); const exclude = Number(req.query.productId) || 0; const p = await Product.find(exclude ? { productId: { $ne: exclude } } : {}, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean(); res.json({ success: true, data: p.map(x => ({ ...x, id: x.productId })) }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
 
 // ==========================================
 // REVIEWS (MongoDB)

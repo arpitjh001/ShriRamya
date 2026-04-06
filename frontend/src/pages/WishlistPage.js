@@ -36,17 +36,19 @@ const WishlistPage = () => {
     } catch (err) { toast.error('Failed to remove'); }
   };
 
-  const addToCart = async (item) => {
+  const moveToCart = async (item) => {
     try {
       const sessionId = localStorage.getItem('sessionId') || 'session_' + Date.now();
       localStorage.setItem('sessionId', sessionId);
       await fetch(`${API_BASE}/api/v1/cart/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
-        body: JSON.stringify({ productId: item.productId, quantity: 1 }),
+        body: JSON.stringify({ productId: item.productId, name: item.name, price: item.price, salePrice: item.salePrice, thumbnail: item.thumbnail, quantity: 1 }),
       });
-      toast.success('Added to cart');
-    } catch (err) { toast.error('Failed to add to cart'); }
+      await fetch(`${API_BASE}/api/v1/wishlist/remove/${item.productId}?userId=${userId}`, { method: 'DELETE' });
+      setItems(prev => prev.filter(i => i.productId !== item.productId));
+      toast.success('Moved to cart');
+    } catch (err) { toast.error('Failed to move to cart'); }
   };
 
   return (
@@ -92,8 +94,8 @@ const WishlistPage = () => {
                       <span className="font-semibold">Rs.{(item.salePrice || item.price).toLocaleString()}</span>
                       {item.price > item.salePrice && <span className="text-xs text-muted-foreground line-through">Rs.{item.price.toLocaleString()}</span>}
                     </div>
-                    <Button size="sm" className="w-full" onClick={() => addToCart(item)} data-testid={`add-to-cart-${item.productId}`}>
-                      <ShoppingBag className="w-4 h-4 mr-2" /> Add to Cart
+                    <Button size="sm" className="w-full" onClick={() => moveToCart(item)} data-testid={`move-to-cart-${item.productId}`}>
+                      <ShoppingBag className="w-4 h-4 mr-2" /> Move to Cart
                     </Button>
                   </div>
                 </motion.div>
