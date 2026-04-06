@@ -118,6 +118,28 @@ const cartSchema = new mongoose.Schema({
   sessionId: { type: String, index: true },
   userId: String,
   items: [{ productId: Number, name: String, thumbnail: String, price: Number, salePrice: Number, quantity: { type: Number, default: 1 }, size: String, color: String }],
+  appliedCoupon: { type: mongoose.Schema.Types.Mixed, default: null },
+}, { timestamps: true });
+
+const couponSchema = new mongoose.Schema({
+  code: { type: String, unique: true, index: true },
+  description: String, type: { type: String, enum: ['percentage', 'flat'], default: 'percentage' },
+  value: Number, min_cart_value: { type: Number, default: 0 },
+  used_count: { type: Number, default: 0 }, usage_limit: { type: Number, default: 500 },
+  status: { type: String, default: 'active' }, expires_at: Date,
+}, { timestamps: true });
+
+const reviewSchema = new mongoose.Schema({
+  productId: { type: Number, index: true },
+  userId: String, user: String,
+  rating: { type: Number, min: 1, max: 5 }, comment: String,
+  verified: { type: Boolean, default: false },
+}, { timestamps: true });
+
+const warehouseSchema = new mongoose.Schema({
+  name: String, location: String,
+  capacity: Number, utilized: { type: Number, default: 0 },
+  status: { type: String, default: 'active' },
 }, { timestamps: true });
 
 const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
@@ -125,6 +147,9 @@ const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 const Blog = mongoose.models.Blog || mongoose.model('Blog', blogSchema);
 const Wishlist = mongoose.models.Wishlist || mongoose.model('Wishlist', wishlistSchema);
 const Cart = mongoose.models.Cart || mongoose.model('Cart', cartSchema);
+const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', couponSchema);
+const Review = mongoose.models.Review || mongoose.model('Review', reviewSchema);
+const Warehouse = mongoose.models.Warehouse || mongoose.model('Warehouse', warehouseSchema);
 
 // ==========================================
 // Express App Setup
@@ -477,14 +502,30 @@ app.put('/api/v1/users/profile', async (req, res) => {
 app.get('/api/v1/admin/analytics/overview', async (req, res) => {
   try { await connectDB(); const [totalOrders, totalProducts, totalUsers] = await Promise.all([Order.countDocuments(), Product.countDocuments(), mongoose.connection.db.collection('users').countDocuments()]); const rev = await Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$total' } } }]); const totalRevenue = rev[0]?.total || 0; res.json({ success: true, data: { total_revenue: totalRevenue || 485999, total_orders: totalOrders || 23, total_customers: totalUsers || 156, conversion_rate: 3.2, avg_order_value: totalOrders ? Math.round(totalRevenue / totalOrders) : 21130, revenue_growth: 12.5, orders_growth: 8.3, customers_growth: 15.2 } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
-app.get('/api/v1/admin/analytics/revenue', (req, res) => { const m = ['Jan','Feb','Mar','Apr','May','Jun']; res.json({ success: true, data: { chart: m.map((x, i) => ({ month: x, revenue: 120000 + i * 50000, orders: 5 + i * 3 })), total: 485999, growth: 12.5 } }); });
+app.get('/api/v1/admin/analytics/revenue', async (req, res) => {
+  try {
+    await connectDB();
+    const pipeline = [
+      { $match: { paymentStatus: 'paid' } },
+      { $group: { _id: { $month: '$createdAt' }, revenue: { $sum: '$total' }, orders: { $sum: 1 } } },
+      { $sort: { '_id': 1 } }
+    ];
+    const agg = await Order.aggregate(pipeline);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const chart = months.map((m, i) => { const d = agg.find(a => a._id === i + 1); return { month: m, revenue: d?.revenue || 0, orders: d?.orders || 0 }; });
+    const totalRev = agg.reduce((s, a) => s + a.revenue, 0);
+    res.json({ success: true, data: { chart, total: totalRev, growth: 12.5 } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 app.get('/api/v1/admin/analytics/sales', async (req, res) => {
   try { await connectDB(); const tp = await Product.find({}, { _id: 0 }).sort({ rating: -1 }).limit(5).lean(); res.json({ success: true, data: { top_products: tp.map(p => ({ id: p.productId, name: p.name, sold: Math.floor(Math.random() * 20 + 5), revenue: p.salePrice * Math.floor(Math.random() * 10 + 3) })), top_categories: [{ name: 'Silk Sarees', sold: 45, revenue: 980000 }, { name: 'Kurtas', sold: 67, revenue: 450000 }, { name: 'Lehengas', sold: 12, revenue: 720000 }] } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 app.get('/api/v1/admin/analytics/products', async (req, res) => {
   try { await connectDB(); const total = await Product.countDocuments(); const byCat = await Product.aggregate([{ $group: { _id: '$categoryName', count: { $sum: 1 } } }, { $project: { _id: 0, category: '$_id', count: 1 } }]); res.json({ success: true, data: { total, in_stock: total - 3, out_of_stock: 3, low_stock: 5, by_category: byCat } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
-app.get('/api/v1/admin/warehouses', (req, res) => { res.json({ success: true, data: [{ id: 1, name: 'Mumbai Warehouse', location: 'Mumbai, MH', capacity: 5000, utilized: 3200, status: 'active' }, { id: 2, name: 'Jaipur Warehouse', location: 'Jaipur, RJ', capacity: 3000, utilized: 1800, status: 'active' }] }); });
+app.get('/api/v1/admin/warehouses', async (req, res) => {
+  try { await connectDB(); const warehouses = await Warehouse.find({}, { _id: 0, __v: 0 }).lean(); res.json({ success: true, data: warehouses }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 app.get('/api/v1/admin/inventory/low-stock', async (req, res) => { try { await connectDB(); const items = await Product.find({ stock: { $lte: 10 } }, { _id: 0, productId: 1, name: 1, stock: 1, categoryName: 1, thumbnail: 1 }).limit(10).lean(); res.json({ success: true, data: items }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
 app.get('/api/v1/admin/users', async (req, res) => { try { await connectDB(); const users = await mongoose.connection.db.collection('users').find({}, { projection: { password: 0 } }).toArray(); res.json({ success: true, data: users.map(u => { const { _id, ...r } = u; return { ...r, id: _id.toString() }; }) }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
 app.get('/api/v1/admin/blogs/stats', async (req, res) => {
@@ -501,28 +542,86 @@ app.get('/api/v1/admin/orders/:orderId', async (req, res) => {
 });
 
 // ==========================================
-// COUPONS
+// COUPONS (MongoDB)
 // ==========================================
-const VERCEL_COUPONS = [
-  { id: 1, code: 'WELCOME10', description: '10% off on your first order', type: 'percentage', value: 10, min_cart_value: 500, used_count: 45, usage_limit: 500, status: 'active', expires_at: '2026-12-31T23:59:59' },
-  { id: 2, code: 'SILK20', description: '20% off on Silk products', type: 'percentage', value: 20, min_cart_value: 2000, used_count: 120, usage_limit: 300, status: 'active', expires_at: '2026-06-30T23:59:59' },
-  { id: 3, code: 'FESTIVE15', description: '15% off during festive season', type: 'percentage', value: 15, min_cart_value: 1000, used_count: 89, usage_limit: 200, status: 'active', expires_at: '2026-12-31T23:59:59' },
-  { id: 4, code: 'FLAT500', description: 'Flat Rs 500 off on orders above Rs 3000', type: 'flat', value: 500, min_cart_value: 3000, used_count: 33, usage_limit: 100, status: 'active', expires_at: '2026-09-30T23:59:59' },
-  { id: 5, code: 'NEWUSER25', description: '25% off for new users', type: 'percentage', value: 25, min_cart_value: 800, used_count: 200, usage_limit: 1000, status: 'active', expires_at: '2026-12-31T23:59:59' },
-];
-app.get('/api/v1/coupons', (req, res) => { res.json({ success: true, data: { coupons: VERCEL_COUPONS } }); });
-app.get('/api/v1/coupons/:id', (req, res) => { const c = VERCEL_COUPONS.find(x => x.id === parseInt(req.params.id)); if (!c) return res.status(404).json({ success: false, message: 'Not found' }); res.json({ success: true, data: c }); });
-app.post('/api/v1/coupons', (req, res) => { const nc = { id: VERCEL_COUPONS.length + 1, ...req.body, usage_count: 0, status: 'active' }; VERCEL_COUPONS.push(nc); res.json({ success: true, data: nc }); });
-app.put('/api/v1/coupons/:id', (req, res) => { const i = VERCEL_COUPONS.findIndex(x => x.id === parseInt(req.params.id)); if (i === -1) return res.status(404).json({ success: false, message: 'Not found' }); VERCEL_COUPONS[i] = { ...VERCEL_COUPONS[i], ...req.body }; res.json({ success: true, data: VERCEL_COUPONS[i] }); });
-app.delete('/api/v1/coupons/:id', (req, res) => { const i = VERCEL_COUPONS.findIndex(x => x.id === parseInt(req.params.id)); if (i === -1) return res.status(404).json({ success: false, message: 'Not found' }); VERCEL_COUPONS.splice(i, 1); res.json({ success: true, message: 'Deleted' }); });
+app.get('/api/v1/coupons', async (req, res) => {
+  try { await connectDB(); const coupons = await Coupon.find({}, { _id: 0, __v: 0 }).lean(); res.json({ success: true, data: { coupons } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.get('/api/v1/coupons/:id', async (req, res) => {
+  try { await connectDB(); const c = await Coupon.findById(req.params.id, { __v: 0 }).lean(); if (!c) return res.status(404).json({ success: false, message: 'Not found' }); const { _id, ...data } = c; res.json({ success: true, data: { ...data, id: _id.toString() } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.post('/api/v1/coupons', async (req, res) => {
+  try { await connectDB(); const nc = await Coupon.create({ ...req.body, code: req.body.code?.toUpperCase() }); const obj = nc.toObject(); const { _id, __v, ...data } = obj; res.json({ success: true, data: { ...data, id: _id.toString() } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.put('/api/v1/coupons/:id', async (req, res) => {
+  try { await connectDB(); const c = await Coupon.findByIdAndUpdate(req.params.id, req.body, { new: true, projection: { __v: 0 } }).lean(); if (!c) return res.status(404).json({ success: false, message: 'Not found' }); const { _id, ...data } = c; res.json({ success: true, data: { ...data, id: _id.toString() } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.delete('/api/v1/coupons/:id', async (req, res) => {
+  try { await connectDB(); const c = await Coupon.findByIdAndDelete(req.params.id); if (!c) return res.status(404).json({ success: false, message: 'Not found' }); res.json({ success: true, message: 'Deleted' }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 
 // ==========================================
-// MISC
+// COUPON VALIDATE (MongoDB)
 // ==========================================
-app.post('/api/v1/coupons/validate', (req, res) => { const { code, cartTotal } = req.body; const coupons = { WELCOME10: { discount: 10, type: 'percentage', minOrder: 500 }, SILK20: { discount: 20, type: 'percentage', minOrder: 2000 }, FESTIVE15: { discount: 15, type: 'percentage', minOrder: 1000 } }; const coupon = coupons[code?.toUpperCase()]; if (!coupon) return res.status(404).json({ success: false, message: 'Invalid coupon' }); if (cartTotal < coupon.minOrder) return res.status(400).json({ success: false, message: `Min order: Rs${coupon.minOrder}` }); res.json({ success: true, data: { code: code.toUpperCase(), discount: coupon.type === 'percentage' ? Math.round(cartTotal * coupon.discount / 100) : coupon.discount, type: coupon.type, value: coupon.discount } }); });
+app.post('/api/v1/coupons/validate', async (req, res) => {
+  try {
+    await connectDB();
+    const { code, cartTotal } = req.body;
+    const coupon = await Coupon.findOne({ code: code?.toUpperCase(), status: 'active' }).lean();
+    if (!coupon) return res.status(404).json({ success: false, message: 'Invalid coupon code' });
+    if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) return res.status(400).json({ success: false, message: 'Coupon has expired' });
+    if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) return res.status(400).json({ success: false, message: 'Coupon usage limit reached' });
+    if (cartTotal < coupon.min_cart_value) return res.status(400).json({ success: false, message: `Minimum order: Rs ${coupon.min_cart_value}` });
+    const discount = coupon.type === 'percentage' ? Math.round(cartTotal * coupon.value / 100) : coupon.value;
+    res.json({ success: true, data: { code: coupon.code, discount, type: coupon.type, value: coupon.value, description: coupon.description } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ==========================================
+// CART COUPON (MongoDB)
+// ==========================================
+app.post('/api/v1/cart/coupon/apply', async (req, res) => {
+  try {
+    await connectDB();
+    const sid = getSessionId(req);
+    const { couponCode } = req.body;
+    const coupon = await Coupon.findOne({ code: couponCode?.toUpperCase(), status: 'active' }).lean();
+    if (!coupon) return res.status(404).json({ success: false, message: 'Invalid coupon code' });
+    if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) return res.status(400).json({ success: false, message: 'Coupon has expired' });
+    const cart = await Cart.findOne({ sessionId: sid });
+    if (!cart || !cart.items.length) return res.status(400).json({ success: false, message: 'Cart is empty' });
+    const cartTotal = cart.items.reduce((s, i) => s + (i.salePrice || i.price) * i.quantity, 0);
+    if (cartTotal < coupon.min_cart_value) return res.status(400).json({ success: false, message: `Minimum order: Rs ${coupon.min_cart_value}` });
+    const discount = coupon.type === 'percentage' ? Math.round(cartTotal * coupon.value / 100) : coupon.value;
+    cart.appliedCoupon = { code: coupon.code, type: coupon.type, value: coupon.value, discount };
+    await cart.save();
+    res.json({ success: true, data: { code: coupon.code, discount, type: coupon.type, value: coupon.value, cartTotal, newTotal: cartTotal - discount } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.delete('/api/v1/cart/coupon/remove', async (req, res) => {
+  try { await connectDB(); const sid = getSessionId(req); await Cart.updateOne({ sessionId: sid }, { $unset: { appliedCoupon: '' } }); res.json({ success: true, message: 'Coupon removed' }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.get('/api/v1/cart/coupon', async (req, res) => {
+  try { await connectDB(); const sid = getSessionId(req); const cart = await Cart.findOne({ sessionId: sid }).lean(); res.json({ success: true, data: cart?.appliedCoupon || null }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 app.get('/api/v1/recommendations', async (req, res) => { try { await connectDB(); const p = await Product.find({}, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean(); res.json({ success: true, data: p.map(x => ({ ...x, id: x.productId })) }); } catch (e) { res.status(500).json({ success: false, message: e.message }); } });
-app.get('/api/v1/reviews/product/:productId', (req, res) => { res.json({ success: true, data: { reviews: [{ id: 1, user: 'Priya S.', rating: 5, comment: 'Beautiful fabric!', date: '2026-03-01' }, { id: 2, user: 'Anita M.', rating: 4, comment: 'Good quality.', date: '2026-02-28' }], average: 4.5, total: 2 } }); });
-app.post('/api/v1/reviews', (req, res) => { res.status(201).json({ success: true, message: 'Review submitted', data: { id: Date.now(), ...req.body } }); });
+
+// ==========================================
+// REVIEWS (MongoDB)
+// ==========================================
+app.get('/api/v1/reviews/product/:productId', async (req, res) => {
+  try {
+    await connectDB();
+    const productId = Number(req.params.productId);
+    const reviews = await Review.find({ productId }, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).lean();
+    const avg = reviews.length ? +(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : 0;
+    res.json({ success: true, data: { reviews: reviews.map((r, i) => ({ id: i + 1, ...r, date: r.createdAt })), average: avg, total: reviews.length } });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+app.post('/api/v1/reviews', async (req, res) => {
+  try { await connectDB(); const review = await Review.create(req.body); res.status(201).json({ success: true, message: 'Review submitted', data: review.toObject() }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 app.get('/api/v1/orders/admin/shipments', (req, res) => res.json({ success: true, data: { shipments: [], total: 0 } }));
 app.get('/api/v1/orders/admin/shipments/ready-to-ship', (req, res) => res.json({ success: true, data: [] }));
 app.get('/api/v1/orders/admin/shipments/pending', (req, res) => res.json({ success: true, data: [] }));
@@ -540,12 +639,46 @@ app.get('/api/v1/health', async (req, res) => {
 app.get('/api/v1/seed', async (req, res) => {
   try {
     await connectDB();
-    const results = { products: 0, users: 0, blogs: 0 };
+    const results = { products: 0, users: 0, blogs: 0, coupons: 0, reviews: 0, warehouses: 0 };
+
+    // Always seed coupons, reviews, warehouses if missing
+    const couponCount = await Coupon.countDocuments();
+    if (couponCount === 0) {
+      await Coupon.insertMany([
+        { code: 'WELCOME10', description: '10% off on your first order', type: 'percentage', value: 10, min_cart_value: 500, used_count: 45, usage_limit: 500, status: 'active', expires_at: new Date('2026-12-31') },
+        { code: 'SILK20', description: '20% off on Silk products', type: 'percentage', value: 20, min_cart_value: 2000, used_count: 120, usage_limit: 300, status: 'active', expires_at: new Date('2026-06-30') },
+        { code: 'FESTIVE15', description: '15% off during festive season', type: 'percentage', value: 15, min_cart_value: 1000, used_count: 89, usage_limit: 200, status: 'active', expires_at: new Date('2026-12-31') },
+        { code: 'FLAT500', description: 'Flat Rs 500 off on orders above Rs 3000', type: 'flat', value: 500, min_cart_value: 3000, used_count: 33, usage_limit: 100, status: 'active', expires_at: new Date('2026-09-30') },
+        { code: 'NEWUSER25', description: '25% off for new users', type: 'percentage', value: 25, min_cart_value: 800, used_count: 200, usage_limit: 1000, status: 'active', expires_at: new Date('2026-12-31') },
+      ], { ordered: false });
+      results.coupons = 5;
+    }
+    const warehouseCount = await Warehouse.countDocuments();
+    if (warehouseCount === 0) {
+      await Warehouse.insertMany([
+        { name: 'Mumbai Warehouse', location: 'Mumbai, MH', capacity: 5000, utilized: 3200, status: 'active' },
+        { name: 'Jaipur Warehouse', location: 'Jaipur, RJ', capacity: 3000, utilized: 1800, status: 'active' },
+      ]);
+      results.warehouses = 2;
+    }
+    const reviewCount = await Review.countDocuments();
+    if (reviewCount === 0) {
+      const reviewSeed = [];
+      const names = ['Priya S.', 'Anita M.', 'Deepika R.', 'Meera K.', 'Sunita P.', 'Kavita J.', 'Rashmi T.', 'Pooja D.'];
+      const comments = ['Beautiful fabric and excellent quality!', 'Exactly as shown. Very happy with the purchase.', 'Good quality, fast delivery.', 'Lovely saree, perfect for the occasion.', 'Slightly different shade but still beautiful.', 'Amazing craftsmanship. Worth every penny.', 'Soft texture, great drape. Highly recommended.', 'Color is vibrant. Received lots of compliments.'];
+      for (let pid = 1; pid <= 20; pid++) {
+        const numReviews = 2 + Math.floor(Math.random() * 3);
+        for (let j = 0; j < numReviews; j++) {
+          reviewSeed.push({ productId: pid, user: names[Math.floor(Math.random() * names.length)], rating: 3 + Math.floor(Math.random() * 3), comment: comments[Math.floor(Math.random() * comments.length)], verified: Math.random() > 0.3 });
+        }
+      }
+      await Review.insertMany(reviewSeed, { ordered: false });
+      results.reviews = reviewSeed.length;
+    }
 
     // Check if already seeded
     const existingProducts = await Product.countDocuments();
     if (existingProducts > 0) {
-      // Still check for kurti material products (added later)
       const kurtiCount = await Product.countDocuments({ categorySlug: 'kurti-material' });
       if (kurtiCount === 0) {
         const kurtiProducts = [
@@ -556,12 +689,11 @@ app.get('/api/v1/seed', async (req, res) => {
           { productId: 55, name: 'Chikankari Lucknowi Kurti Material - Ivory Elegance', slug: 'chikankari-lucknowi-kurti-material-ivory-elegance', description: 'Hand-embroidered Chikankari kurti material from Lucknow on fine cotton.', price: 2999, salePrice: 2499, discount: 17, categoryName: 'Kurti Material', categorySlug: 'kurti-material', fabric: 'Cotton', color: 'White', occasion: 'Festive', work: 'Chikankari', brand: 'Shri Ramya', images: ['https://images.unsplash.com/photo-1652722464455-ec026ef74703?w=800&q=80'], thumbnail: 'https://images.unsplash.com/photo-1652722464455-ec026ef74703?w=400&q=80', stock: 20, rating: 4.9, reviewCount: 67, tags: ['kurti-material', 'chikankari', 'lucknow'], sizes: ['2.5 Meters'], isNew: true, isFeatured: true },
         ];
         await Product.insertMany(kurtiProducts, { ordered: false });
-        return res.json({ success: true, message: 'Kurti Material products seeded', counts: { products: existingProducts + 5, blogs: await Blog.countDocuments(), users: await mongoose.connection.db.collection('users').countDocuments() } });
       }
-      return res.json({ success: true, message: 'Database already seeded', counts: { products: existingProducts, blogs: await Blog.countDocuments(), users: await mongoose.connection.db.collection('users').countDocuments() } });
+      return res.json({ success: true, message: 'Incremental seed complete', counts: { products: existingProducts, blogs: await Blog.countDocuments(), users: await mongoose.connection.db.collection('users').countDocuments(), coupons: results.coupons, reviews: results.reviews, warehouses: results.warehouses } });
     }
 
-    // Seed products
+    // Full seed - products
     const productData = require('../../backend_node/src/mock/productCatalog').productCatalog;
     const products = productData.map((p, i) => ({
       ...p, productId: p.id || i + 1,

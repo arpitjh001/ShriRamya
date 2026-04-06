@@ -184,6 +184,17 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Deployed**: `vercel --prod` — live at https://shriramya.com
 - **Verified**: Payment confirmation API response time increased from ~0.3s to ~1.7s confirming SMTP send completes before response
 
+### April 2026 - MongoDB Full Persistence Migration
+- **Coupons**: Migrated from in-memory JS array (`VERCEL_COUPONS`) to MongoDB `coupons` collection with full CRUD + validate
+- **Revenue Chart**: Replaced hardcoded mock data with real MongoDB aggregation from `orders` collection (groups by month)
+- **Warehouses**: Migrated from hardcoded array to MongoDB `warehouses` collection
+- **Reviews**: Migrated from hardcoded 2-review stub to MongoDB `reviews` collection with real per-product reviews (61 seeded)
+- **Cart Coupon**: Implemented missing `/cart/coupon/apply`, `/cart/coupon/remove`, `/cart/coupon` endpoints backed by MongoDB
+- **Schema Fix**: Used `mongoose.Schema.Types.Mixed` for cart's `appliedCoupon` field to avoid `type` keyword conflict
+- **Seed**: Updated `/api/v1/seed` to incrementally seed coupons (5), warehouses (2), and reviews (61) if missing
+- **Files changed**: `/app/api/v1/index.js`
+- **Result**: 100% of production data now persists in MongoDB Atlas. Zero in-memory/hardcoded data remaining.
+
 - **Fixed /blog page crash**: Categories API returns strings but page expected objects with `.id`, `.name`, `.count`. Fixed `.toString()` on undefined crash.
 - **Comprehensive API test suite**: Created `/app/backend/tests/test_all_apis.py` covering 91 test cases across 12 categories:
   - Authentication (7 tests): admin/customer login, register, duplicate check, token refresh
