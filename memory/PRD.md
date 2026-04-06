@@ -154,7 +154,12 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Seed script:** Updated `seed.js` to include Kurti Material products for future seeding consistency
 - 6/6 API verification tests passed (categories, products filter, category detail, search, product detail, total count)
 
-### April 6, 2026 - Fabric Guide Feature
+### April 6, 2026 - Domain SSL & Production Deployment
+- **SSL Enabled:** Fixed `vercel.json` catch-all rewrite that was blocking ACME challenge (`/.well-known/` path)
+- **Root cause:** `/((?!api/).*) -> /index.html` was intercepting SSL cert verification. Fixed to `/((?!api/|.well-known/).*)` 
+- **AAAA Record:** Identified and guided user to remove conflicting IPv6 record blocking Vercel SSL
+- **Production Seeding:** Updated `api/v1/index.js` seed endpoint to support incremental category seeding (Kurti Material)
+- Both `https://www.shriramya.com` and `https://shriramya.com` now live with SSL
 - **New feature:** Expandable "Fabric Guide" accordion panel on all product detail pages
 - Covers 15 fabric types: Silk, Cotton, Chanderi, Georgette, Rayon, Chiffon, Banarasi, Kanjivaram, Linen, Crepe, Velvet, Organza, Jacquard, Net, Tussar
 - Each guide includes: fabric description, key properties (tags), care instructions, and origin
