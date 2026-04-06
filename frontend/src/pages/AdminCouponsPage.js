@@ -50,7 +50,7 @@ const AdminCouponsPage = () => {
     setLoading(true);
     try {
       const response = await couponsAPI.getAll();
-      setCoupons(response.data?.coupons || []);
+      setCoupons(response.coupons || response.data?.coupons || []);
     } catch (error) {
       console.error('Failed to load coupons:', error);
       toast.error('Failed to load coupons');

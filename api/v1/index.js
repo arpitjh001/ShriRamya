@@ -464,6 +464,22 @@ app.get('/api/v1/admin/orders/:orderId', async (req, res) => {
 });
 
 // ==========================================
+// COUPONS
+// ==========================================
+const VERCEL_COUPONS = [
+  { id: 1, code: 'WELCOME10', description: '10% off on your first order', type: 'percentage', value: 10, min_cart_value: 500, used_count: 45, usage_limit: 500, status: 'active', expires_at: '2026-12-31T23:59:59' },
+  { id: 2, code: 'SILK20', description: '20% off on Silk products', type: 'percentage', value: 20, min_cart_value: 2000, used_count: 120, usage_limit: 300, status: 'active', expires_at: '2026-06-30T23:59:59' },
+  { id: 3, code: 'FESTIVE15', description: '15% off during festive season', type: 'percentage', value: 15, min_cart_value: 1000, used_count: 89, usage_limit: 200, status: 'active', expires_at: '2026-12-31T23:59:59' },
+  { id: 4, code: 'FLAT500', description: 'Flat Rs 500 off on orders above Rs 3000', type: 'flat', value: 500, min_cart_value: 3000, used_count: 33, usage_limit: 100, status: 'active', expires_at: '2026-09-30T23:59:59' },
+  { id: 5, code: 'NEWUSER25', description: '25% off for new users', type: 'percentage', value: 25, min_cart_value: 800, used_count: 200, usage_limit: 1000, status: 'active', expires_at: '2026-12-31T23:59:59' },
+];
+app.get('/api/v1/coupons', (req, res) => { res.json({ success: true, data: { coupons: VERCEL_COUPONS } }); });
+app.get('/api/v1/coupons/:id', (req, res) => { const c = VERCEL_COUPONS.find(x => x.id === parseInt(req.params.id)); if (!c) return res.status(404).json({ success: false, message: 'Not found' }); res.json({ success: true, data: c }); });
+app.post('/api/v1/coupons', (req, res) => { const nc = { id: VERCEL_COUPONS.length + 1, ...req.body, usage_count: 0, status: 'active' }; VERCEL_COUPONS.push(nc); res.json({ success: true, data: nc }); });
+app.put('/api/v1/coupons/:id', (req, res) => { const i = VERCEL_COUPONS.findIndex(x => x.id === parseInt(req.params.id)); if (i === -1) return res.status(404).json({ success: false, message: 'Not found' }); VERCEL_COUPONS[i] = { ...VERCEL_COUPONS[i], ...req.body }; res.json({ success: true, data: VERCEL_COUPONS[i] }); });
+app.delete('/api/v1/coupons/:id', (req, res) => { const i = VERCEL_COUPONS.findIndex(x => x.id === parseInt(req.params.id)); if (i === -1) return res.status(404).json({ success: false, message: 'Not found' }); VERCEL_COUPONS.splice(i, 1); res.json({ success: true, message: 'Deleted' }); });
+
+// ==========================================
 // MISC
 // ==========================================
 app.post('/api/v1/coupons/validate', (req, res) => { const { code, cartTotal } = req.body; const coupons = { WELCOME10: { discount: 10, type: 'percentage', minOrder: 500 }, SILK20: { discount: 20, type: 'percentage', minOrder: 2000 }, FESTIVE15: { discount: 15, type: 'percentage', minOrder: 1000 } }; const coupon = coupons[code?.toUpperCase()]; if (!coupon) return res.status(404).json({ success: false, message: 'Invalid coupon' }); if (cartTotal < coupon.minOrder) return res.status(400).json({ success: false, message: `Min order: Rs${coupon.minOrder}` }); res.json({ success: true, data: { code: code.toUpperCase(), discount: coupon.type === 'percentage' ? Math.round(cartTotal * coupon.discount / 100) : coupon.discount, type: coupon.type, value: coupon.discount } }); });

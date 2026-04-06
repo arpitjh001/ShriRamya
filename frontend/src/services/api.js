@@ -422,10 +422,11 @@ export const ordersAPI = {
 
   getAll: async () => {
     try {
-      return await api.get("/orders/admin/all");
+      const res = await api.get("/admin/orders");
+      return res.data || { orders: [] };
     } catch (err) {
       handleError(err);
-      return { data: [] };
+      return { orders: [] };
     }
   },
 
@@ -640,9 +641,11 @@ export const blogAPI = {
 export const couponsAPI = {
   getAll: async (params = {}) => {
     try {
-      return await api.get("/coupons", { params });
+      const res = await api.get("/coupons", { params });
+      return res.data || { coupons: [] };
     } catch (err) {
       handleError(err);
+      return { coupons: [] };
     }
   },
 

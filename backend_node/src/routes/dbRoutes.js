@@ -798,6 +798,47 @@ router.get('/orders/admin/shipments/pending', (req, res) => res.json({ success: 
 // ==========================================
 // COUPONS
 // ==========================================
+// ==========================================
+// COUPONS
+// ==========================================
+const MOCK_COUPONS = [
+  { id: 1, code: 'WELCOME10', description: '10% off on your first order', type: 'percentage', value: 10, min_cart_value: 500, used_count: 45, usage_limit: 500, status: 'active', expires_at: '2026-12-31T23:59:59' },
+  { id: 2, code: 'SILK20', description: '20% off on Silk products', type: 'percentage', value: 20, min_cart_value: 2000, used_count: 120, usage_limit: 300, status: 'active', expires_at: '2026-06-30T23:59:59' },
+  { id: 3, code: 'FESTIVE15', description: '15% off during festive season', type: 'percentage', value: 15, min_cart_value: 1000, used_count: 89, usage_limit: 200, status: 'active', expires_at: '2026-12-31T23:59:59' },
+  { id: 4, code: 'FLAT500', description: 'Flat Rs 500 off on orders above Rs 3000', type: 'flat', value: 500, min_cart_value: 3000, used_count: 33, usage_limit: 100, status: 'active', expires_at: '2026-09-30T23:59:59' },
+  { id: 5, code: 'NEWUSER25', description: '25% off for new users', type: 'percentage', value: 25, min_cart_value: 800, used_count: 200, usage_limit: 1000, status: 'active', expires_at: '2026-12-31T23:59:59' },
+];
+
+router.get('/coupons', (req, res) => {
+  res.json({ success: true, data: { coupons: MOCK_COUPONS } });
+});
+
+router.get('/coupons/:id', (req, res) => {
+  const coupon = MOCK_COUPONS.find(c => c.id === parseInt(req.params.id));
+  if (!coupon) return res.status(404).json({ success: false, message: 'Coupon not found' });
+  res.json({ success: true, data: coupon });
+});
+
+router.post('/coupons', (req, res) => {
+  const newCoupon = { id: MOCK_COUPONS.length + 1, ...req.body, usage_count: 0, status: 'active' };
+  MOCK_COUPONS.push(newCoupon);
+  res.json({ success: true, data: newCoupon });
+});
+
+router.put('/coupons/:id', (req, res) => {
+  const idx = MOCK_COUPONS.findIndex(c => c.id === parseInt(req.params.id));
+  if (idx === -1) return res.status(404).json({ success: false, message: 'Coupon not found' });
+  MOCK_COUPONS[idx] = { ...MOCK_COUPONS[idx], ...req.body };
+  res.json({ success: true, data: MOCK_COUPONS[idx] });
+});
+
+router.delete('/coupons/:id', (req, res) => {
+  const idx = MOCK_COUPONS.findIndex(c => c.id === parseInt(req.params.id));
+  if (idx === -1) return res.status(404).json({ success: false, message: 'Coupon not found' });
+  MOCK_COUPONS.splice(idx, 1);
+  res.json({ success: true, message: 'Coupon deleted' });
+});
+
 router.post('/coupons/validate', (req, res) => {
   const { code, cartTotal } = req.body;
   const coupons = { WELCOME10: { discount: 10, type: 'percentage', minOrder: 500 }, SILK20: { discount: 20, type: 'percentage', minOrder: 2000 }, FESTIVE15: { discount: 15, type: 'percentage', minOrder: 1000 } };

@@ -164,9 +164,11 @@ MySQL is not available in this preview environment, so mock data routes are used
 ### April 6, 2026 - Critical Auth Bug Fixes
 - **Bug Fix:** `AuthContext.js` used `response.data.access_token` but API returns `response.data.token` — login was silently failing for all users
 - **Bug Fix:** `/auth/check-admin` endpoint returned no `is_admin` field and didn't verify JWT — admin dashboard showed "Access Denied" for actual admins
+- **Bug Fix:** Admin Coupons tab — created MongoDB-backed CRUD endpoints with 5 starter coupons (WELCOME10, SILK20, FESTIVE15, FLAT500, NEWUSER25)
+- **Bug Fix:** Admin Orders tab — frontend was calling old MySQL endpoint (`/orders/admin/all`), switched to MongoDB endpoint (`/admin/orders`)
 - **Added:** `/blogs/capabilities` endpoint (was returning 404, called by AuthContext)
 - **Testing:** 28/28 backend tests passed, 100% frontend verified by testing agent (iteration 6)
-- All 3 user roles tested: admin, customer, editor
+- All admin dashboard tabs now functional: Products, Inventory, Coupons, Journal, Orders, Analytics
 - **New feature:** Expandable "Fabric Guide" accordion panel on all product detail pages
 - Covers 15 fabric types: Silk, Cotton, Chanderi, Georgette, Rayon, Chiffon, Banarasi, Kanjivaram, Linen, Crepe, Velvet, Organza, Jacquard, Net, Tussar
 - Each guide includes: fabric description, key properties (tags), care instructions, and origin
