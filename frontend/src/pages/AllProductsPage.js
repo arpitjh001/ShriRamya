@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { productsAPI } from '../services/api';
 import { formatPrice } from '../utils';
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8002';
+const BACKEND = process.env.REACT_APP_BACKEND_URL || '';
 
 const AllProductsPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
