@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');
 const { Product, Order, Blog, Wishlist, Cart } = require('../models');
+const { sendOrderConfirmation } = require('../services/emailService');
 
 // ==========================================
 // AUTH ENDPOINTS
@@ -358,6 +359,10 @@ router.post('/orders/:orderId/payment', async (req, res) => {
     order.razorpayPaymentId = req.body.razorpay_payment_id || 'pay_mock_' + Date.now();
     order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment confirmed' });
     await order.save();
+
+    // Send email notifications (async, don't block response)
+    sendOrderConfirmation(order.toObject()).catch(err => console.error('Email send failed:', err.message));
+
     res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: 'confirmed' } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

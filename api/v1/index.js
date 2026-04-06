@@ -1,6 +1,43 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
+
+// ==========================================
+// Email Service
+// ==========================================
+let emailTransporter = null;
+function getEmailTransporter() {
+  if (!emailTransporter && process.env.SMTP_PASS) {
+    emailTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: true,
+      auth: { user: process.env.SMTP_USER || 'orders@shriramya.com', pass: process.env.SMTP_PASS },
+    });
+  }
+  return emailTransporter;
+}
+function fmtPrice(a) { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(a || 0); }
+function buildOrderEmail(order, isAdmin) {
+  const addr = order.shippingAddress || {};
+  const itemsHtml = (order.items || []).map(i => `<tr><td style="padding:10px 8px;border-bottom:1px solid #f0e6d6;"><strong>${i.name}</strong>${i.size ? ' ('+i.size+')' : ''}</td><td style="padding:10px;text-align:center;border-bottom:1px solid #f0e6d6;">${i.quantity}</td><td style="padding:10px;text-align:right;border-bottom:1px solid #f0e6d6;">${fmtPrice((i.salePrice||i.price)*i.quantity)}</td></tr>`).join('');
+  if (isAdmin) {
+    return { subject: `New Order - ${order.orderId} (${fmtPrice(order.total)})`, html: `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;"><div style="background:#2d1810;padding:20px;text-align:center;"><h1 style="color:#f0e6d6;margin:0;font-size:20px;">NEW ORDER RECEIVED</h1></div><div style="padding:20px;"><table style="width:100%;font-size:14px;"><tr><td style="padding:6px;font-weight:700;">Order</td><td>${order.orderId}</td></tr><tr><td style="padding:6px;font-weight:700;">Customer</td><td>${order.userName||addr.name||'Guest'} (${order.userEmail||addr.email||'N/A'})</td></tr><tr><td style="padding:6px;font-weight:700;">Phone</td><td>${addr.phone||'N/A'}</td></tr><tr><td style="padding:6px;font-weight:700;">Total</td><td style="font-size:18px;font-weight:700;">${fmtPrice(order.total)}</td></tr><tr><td style="padding:6px;font-weight:700;">Payment</td><td>${order.paymentMethod==='cod'?'COD':'Online'} — ${order.paymentStatus}</td></tr><tr><td style="padding:6px;font-weight:700;">Address</td><td>${addr.address||''}, ${addr.city||''} ${addr.state||''} ${addr.pincode||''}</td></tr></table><h3 style="margin-top:16px;">Items</h3><table style="width:100%;border-collapse:collapse;">${itemsHtml}</table></div></div>` };
+  }
+  return { subject: `Order Confirmed - ${order.orderId} | Shri Ramya`, html: `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;background:#fffdf9;"><div style="background:linear-gradient(135deg,#2d1810,#5c3a28);padding:28px;text-align:center;"><h1 style="color:#f0e6d6;margin:0;font-size:26px;letter-spacing:3px;">SHRI RAMYA</h1><p style="color:#c4a882;margin:6px 0 0;font-size:11px;letter-spacing:2px;">HANDCRAFTED ETHNIC WEAR</p></div><div style="padding:28px;text-align:center;"><div style="width:50px;height:50px;background:#e8f5e9;border-radius:50%;margin:0 auto 12px;line-height:50px;font-size:24px;color:#4caf50;">&#10003;</div><h2 style="color:#2d1810;margin:0 0 6px;">Thank you for your order!</h2><p style="color:#8b7355;margin:0;font-size:14px;">Order ${order.orderId} has been confirmed.</p></div><div style="padding:0 28px;"><table style="width:100%;border-collapse:collapse;font-size:14px;"><thead><tr style="border-bottom:2px solid #2d1810;"><th style="padding:8px;text-align:left;font-size:11px;text-transform:uppercase;">Item</th><th style="padding:8px;text-align:center;font-size:11px;text-transform:uppercase;">Qty</th><th style="padding:8px;text-align:right;font-size:11px;text-transform:uppercase;">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table><div style="margin-top:16px;padding:14px;background:#faf6f0;border-radius:8px;"><table style="width:100%;font-size:14px;"><tr><td>Subtotal</td><td style="text-align:right;">${fmtPrice(order.subtotal)}</td></tr>${order.discount?`<tr><td style="color:#4caf50;">Discount</td><td style="text-align:right;color:#4caf50;">-${fmtPrice(order.discount)}</td></tr>`:''}<tr><td>Shipping</td><td style="text-align:right;">${order.shipping?fmtPrice(order.shipping):'Free'}</td></tr><tr style="border-top:2px solid #2d1810;"><td style="padding-top:10px;font-weight:700;font-size:16px;">Total</td><td style="text-align:right;padding-top:10px;font-weight:700;font-size:16px;">${fmtPrice(order.total)}</td></tr></table></div></div>${addr.name?`<div style="padding:20px 28px;"><h3 style="font-size:12px;text-transform:uppercase;letter-spacing:1px;">Shipping Address</h3><div style="background:#faf6f0;border-radius:8px;padding:14px;font-size:14px;line-height:1.6;"><strong>${addr.name}</strong><br/>${addr.address||''}${addr.city?', '+addr.city:''}${addr.state?' '+addr.state:''} ${addr.pincode||''}<br/>${addr.phone?'Phone: '+addr.phone:''}</div></div>`:''}<div style="background:#2d1810;padding:20px;text-align:center;"><p style="color:#c4a882;margin:0;font-size:12px;">Need help? Reply to this email | www.shriramya.com</p></div></div>` };
+}
+async function sendOrderEmails(order) {
+  const t = getEmailTransporter();
+  if (!t) return;
+  const smtpUser = process.env.SMTP_USER || 'orders@shriramya.com';
+  const adminEmail = process.env.ADMIN_EMAIL || 'orders@shriramya.com';
+  const customerEmail = order.userEmail || order.shippingAddress?.email;
+  const promises = [];
+  if (customerEmail) { const e = buildOrderEmail(order, false); promises.push(t.sendMail({ from: `"Shri Ramya" <${smtpUser}>`, to: customerEmail, ...e }).catch(err => console.error('Email to customer failed:', err.message))); }
+  const ae = buildOrderEmail(order, true); promises.push(t.sendMail({ from: `"Shri Ramya Orders" <${smtpUser}>`, to: adminEmail, ...ae }).catch(err => console.error('Email to admin failed:', err.message)));
+  await Promise.allSettled(promises);
+}
 
 // ==========================================
 // MongoDB Connection (singleton for serverless)
@@ -327,7 +364,7 @@ app.post('/api/v1/orders', async (req, res) => {
 });
 
 app.post('/api/v1/orders/:orderId/payment', async (req, res) => {
-  try { await connectDB(); const order = await Order.findOne({ orderId: req.params.orderId }); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); order.paymentStatus = 'paid'; order.status = 'confirmed'; order.razorpayPaymentId = req.body.razorpay_payment_id || 'pay_mock_' + Date.now(); order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment confirmed' }); await order.save(); res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: 'confirmed' } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+  try { await connectDB(); const order = await Order.findOne({ orderId: req.params.orderId }); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); order.paymentStatus = 'paid'; order.status = 'confirmed'; order.razorpayPaymentId = req.body.razorpay_payment_id || 'pay_mock_' + Date.now(); order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment confirmed' }); await order.save(); sendOrderEmails(order.toObject()).catch(err => console.error('Email failed:', err.message)); res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: 'confirmed' } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.get('/api/v1/orders', async (req, res) => {
