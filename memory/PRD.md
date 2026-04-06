@@ -153,6 +153,13 @@ MySQL is not available in this preview environment, so mock data routes are used
 - **Bug Fix:** Fixed CategoryPage crash (`/categories/slug/${slug}` → `/categories/${slug}`)
 - **Seed script:** Updated `seed.js` to include Kurti Material products for future seeding consistency
 - 6/6 API verification tests passed (categories, products filter, category detail, search, product detail, total count)
+
+### April 6, 2026 - Fabric Guide Feature
+- **New feature:** Expandable "Fabric Guide" accordion panel on all product detail pages
+- Covers 15 fabric types: Silk, Cotton, Chanderi, Georgette, Rayon, Chiffon, Banarasi, Kanjivaram, Linen, Crepe, Velvet, Organza, Jacquard, Net, Tussar
+- Each guide includes: fabric description, key properties (tags), care instructions, and origin
+- Falls back to a generic guide for unknown fabric types
+- **Files:** `/app/frontend/src/utils/fabricGuide.js` (data), `ProductDetailPage.js` (integration)
 - **Git repo synced**: Pulled latest code from `arpitjh001/ShriRamya.git` (main branch) and pushed all changes back
 - **Fixed /blog page crash**: Categories API returns strings but page expected objects with `.id`, `.name`, `.count`. Fixed `.toString()` on undefined crash.
 - **Comprehensive API test suite**: Created `/app/backend/tests/test_all_apis.py` covering 91 test cases across 12 categories:

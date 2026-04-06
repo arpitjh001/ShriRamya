@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productsAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
-import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles, ChevronDown, Layers } from 'lucide-react';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
@@ -12,6 +12,7 @@ import LuxuryBadge from '../components/LuxuryBadge';
 import TryOnModal from '../components/VirtualTryOn/TryOnModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { addToRecentlyViewed } from '../components/RecentlyViewed';
+import { getFabricGuide } from '../utils/fabricGuide';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -502,15 +503,27 @@ const ProductDetailPage = () => {
             <div className="border-t border-charcoal/10 pt-4 space-y-2 text-charcoal/80">
               {[
                 { id: 'description', title: 'Product Details', content: product.description },
+                ...(product.fabric ? [{
+                  id: 'fabric-guide',
+                  title: 'Fabric Guide',
+                  isFabricGuide: true,
+                }] : []),
                 { id: 'shipping', title: 'Shipping & Delivery', content: 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. We offer free shipping on prepaid orders over ₹999.' },
                 { id: 'return', title: 'Returns & Exchanges', content: 'This product is returnable within 14 days of delivery. Returns are not applicable on styles under Sale Section. Please ensure labels are intact.' }
-              ].map((item) => (
+              ].map((item) => {
+                const fabricGuide = item.isFabricGuide ? getFabricGuide(product.fabric) : null;
+
+                return (
                 <div key={item.id} className="group">
                   <button
                     onClick={() => toggleAccordion(item.id)}
+                    data-testid={`accordion-${item.id}`}
                     className="w-full py-4 flex items-center justify-between text-[11px] uppercase font-bold tracking-widest group-hover:text-charcoal"
                   >
-                    {item.title}
+                    <span className="flex items-center gap-2">
+                      {item.isFabricGuide && <Layers className="w-3.5 h-3.5 text-royal-maroon/60" />}
+                      {item.title}
+                    </span>
                     <motion.span animate={{ rotate: activeAccordion === item.id ? 180 : 0 }}>
                       <ChevronDown className="w-3 h-3" />
                     </motion.span>
@@ -523,14 +536,62 @@ const ProductDetailPage = () => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <p className="pb-6 text-sm leading-relaxed text-charcoal/60 font-medium">
-                          {item.content}
-                        </p>
+                        {item.isFabricGuide && fabricGuide ? (
+                          <div data-testid="fabric-guide-content" className="pb-6 space-y-5">
+                            {/* Fabric Name & Description */}
+                            <div>
+                              <span className="inline-block text-xs font-bold uppercase tracking-widest text-royal-maroon/70 bg-royal-maroon/5 px-3 py-1 rounded-full mb-3">
+                                {product.fabric}
+                              </span>
+                              <p className="text-sm leading-relaxed text-charcoal/60 font-medium">
+                                {fabricGuide.description}
+                              </p>
+                            </div>
+
+                            {/* Properties */}
+                            <div>
+                              <h4 className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 mb-2">Key Properties</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {fabricGuide.properties.map((prop, i) => (
+                                  <span key={i} className="text-xs font-medium text-charcoal/70 bg-charcoal/[0.03] border border-charcoal/8 px-3 py-1.5 rounded-lg">
+                                    {prop}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Care Instructions */}
+                            <div>
+                              <h4 className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 mb-2">Care Instructions</h4>
+                              <ul className="space-y-1.5">
+                                {fabricGuide.care.map((instruction, i) => (
+                                  <li key={i} className="text-sm text-charcoal/60 font-medium flex items-start gap-2">
+                                    <span className="w-1 h-1 rounded-full bg-royal-maroon/40 mt-2 flex-shrink-0" />
+                                    {instruction}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* Origin */}
+                            {fabricGuide.origin && (
+                              <div className="pt-2 border-t border-charcoal/5">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/30">Origin: </span>
+                                <span className="text-xs font-medium text-charcoal/50">{fabricGuide.origin}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="pb-6 text-sm leading-relaxed text-charcoal/60 font-medium">
+                            {item.content}
+                          </p>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Specs Grid */}
