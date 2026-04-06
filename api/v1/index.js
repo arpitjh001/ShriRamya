@@ -364,7 +364,7 @@ app.post('/api/v1/orders', async (req, res) => {
 });
 
 app.post('/api/v1/orders/:orderId/payment', async (req, res) => {
-  try { await connectDB(); const order = await Order.findOne({ orderId: req.params.orderId }); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); order.paymentStatus = 'paid'; order.status = 'confirmed'; order.razorpayPaymentId = req.body.razorpay_payment_id || 'pay_mock_' + Date.now(); order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment confirmed' }); await order.save(); sendOrderEmails(order.toObject()).catch(err => console.error('Email failed:', err.message)); res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: 'confirmed' } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+  try { await connectDB(); const order = await Order.findOne({ orderId: req.params.orderId }); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); order.paymentStatus = 'paid'; order.status = 'confirmed'; order.razorpayPaymentId = req.body.razorpay_payment_id || 'pay_mock_' + Date.now(); order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment confirmed' }); await order.save(); try { await sendOrderEmails(order.toObject()); } catch (emailErr) { console.error('Email failed:', emailErr.message); } res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: 'confirmed' } }); } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.get('/api/v1/orders', async (req, res) => {

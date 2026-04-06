@@ -113,7 +113,7 @@ MySQL is not available in this preview environment, so mock data routes are used
 
 ### P2 (Nice to Have)
 - [ ] Connect real Razorpay test keys (user to provide)
-- [ ] Email notifications on order placement
+- [x] Email notifications on order placement (April 2026)
 - [x] Added "Kurti Material" category with 5 products (April 2026)
 
 ## Environment Notes
@@ -175,6 +175,15 @@ MySQL is not available in this preview environment, so mock data routes are used
 - Falls back to a generic guide for unknown fabric types
 - **Files:** `/app/frontend/src/utils/fabricGuide.js` (data), `ProductDetailPage.js` (integration)
 - **Git repo synced**: Pulled latest code from `arpitjh001/ShriRamya.git` (main branch) and pushed all changes back
+
+### April 2026 - Email Notifications Deployed to Vercel
+- **Nodemailer + Hostinger SMTP**: Order confirmation emails sent to both customer and admin on payment confirmation
+- **Critical Fix**: Changed `sendOrderEmails()` from fire-and-forget to `await` — Vercel serverless functions freeze after `res.json()`, so async ops after response would never complete
+- **Dependency Fix**: Added `nodemailer` to root `package.json` (was only in `backend_node/package.json`, unreachable by Vercel serverless function at `api/v1/index.js`)
+- **Files changed**: `/app/api/v1/index.js` (await email before response), `/app/package.json` (added nodemailer dep)
+- **Deployed**: `vercel --prod` — live at https://shriramya.com
+- **Verified**: Payment confirmation API response time increased from ~0.3s to ~1.7s confirming SMTP send completes before response
+
 - **Fixed /blog page crash**: Categories API returns strings but page expected objects with `.id`, `.name`, `.count`. Fixed `.toString()` on undefined crash.
 - **Comprehensive API test suite**: Created `/app/backend/tests/test_all_apis.py` covering 91 test cases across 12 categories:
   - Authentication (7 tests): admin/customer login, register, duplicate check, token refresh
