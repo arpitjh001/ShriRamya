@@ -459,7 +459,61 @@ app.get('/api/v1/orders/admin/shipments/ready-to-ship', (req, res) => res.json({
 app.get('/api/v1/orders/admin/shipments/pending', (req, res) => res.json({ success: true, data: [] }));
 
 // Health check
-app.get('/api/v1/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/api/v1/health', async (req, res) => {
+  let dbStatus = 'disconnected';
+  try { await connectDB(); dbStatus = 'connected'; } catch (e) { dbStatus = e.message; }
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), db: dbStatus, env: { MONGODB_URI: process.env.MONGODB_URI ? 'set' : 'missing' } });
+});
+
+// ==========================================
+// DATABASE SEED ENDPOINT (one-time use)
+// ==========================================
+app.get('/api/v1/seed', async (req, res) => {
+  try {
+    await connectDB();
+    const results = { products: 0, users: 0, blogs: 0 };
+
+    // Check if already seeded
+    const existingProducts = await Product.countDocuments();
+    if (existingProducts > 0) {
+      return res.json({ success: true, message: 'Database already seeded', counts: { products: existingProducts, blogs: await Blog.countDocuments(), users: await mongoose.connection.db.collection('users').countDocuments() } });
+    }
+
+    // Seed products
+    const productData = require('../../backend_node/src/mock/productCatalog').productCatalog;
+    const products = productData.map((p, i) => ({
+      ...p, productId: p.id || i + 1,
+      categorySlug: (p.categoryName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      price: p.price || Math.round(p.salePrice * 100 / (100 - (p.discount || 1))),
+      color: p.color || 'Multi', work: p.work || 'Handwoven', brand: p.brand || 'Shri Ramya',
+      isFeatured: i < 8, isTrending: i >= 4 && i < 12, isNew: i >= (productData.length - 10),
+    }));
+    await Product.insertMany(products, { ordered: false });
+    results.products = products.length;
+
+    // Seed users
+    const db = mongoose.connection.db;
+    const adminHash = await bcrypt.hash('Admin@123', 8);
+    const customerHash = await bcrypt.hash('Test@123', 8);
+    await db.collection('users').insertMany([
+      { email: 'admin@shriramya.com', password: adminHash, name: 'Admin User', phone: '+91-9876543210', role: 'admin', is_active: true, shipping: { first_name: 'Admin', city: 'Jaipur', state: 'Rajasthan', postcode: '302001', country: 'India' }, created_at: new Date() },
+      { email: 'customer@test.com', password: customerHash, name: 'Test Customer', phone: '+91-9876543211', role: 'user', is_active: true, shipping: { address_1: '123 MG Road', city: 'Jaipur', state: 'Rajasthan', postcode: '302001', country: 'India' }, created_at: new Date() }
+    ]);
+    results.users = 2;
+
+    // Seed blogs
+    await Blog.insertMany([
+      { title: 'The Art of Sanganeri Printing', slug: 'art-of-sanganeri-printing', content: '<p>Sanganeri printing is a traditional form of hand block printing from Rajasthan.</p>', excerpt: 'Discover the centuries-old craft of Sanganeri block printing.', author: { id: 'admin', name: 'Shri Ramya Team' }, categories: ['Traditional Crafts', 'Silk Sarees'], tags: ['sanganeri', 'block-printing'], status: 'published', views: 245, commentsCount: 12, publishedAt: new Date('2026-03-01') },
+      { title: 'Styling Your Silk Saree for Every Occasion', slug: 'styling-silk-saree-occasions', content: '<p>A silk saree is a versatile garment for various occasions.</p>', excerpt: 'Learn how to style your silk saree.', author: { id: 'admin', name: 'Shri Ramya Team' }, categories: ['Style Guide'], tags: ['styling', 'silk-saree'], status: 'published', views: 189, commentsCount: 8, publishedAt: new Date('2026-03-10') },
+      { title: 'Sustainable Fashion: The Handloom Story', slug: 'sustainable-fashion-handloom', content: '<p>Handloom weaving is sustainable textile production.</p>', excerpt: 'How handloom supports artisan communities.', author: { id: 'admin', name: 'Shri Ramya Team' }, categories: ['Sustainability', 'Handloom'], tags: ['sustainability', 'handloom'], status: 'published', views: 0, publishedAt: new Date('2026-03-15') }
+    ]);
+    results.blogs = 3;
+
+    res.json({ success: true, message: 'Database seeded successfully!', data: results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message, stack: err.stack?.split('\n').slice(0,3) });
+  }
+});
 
 // 404 fallback
 app.use('/api', (req, res) => res.status(404).json({ success: false, message: 'Endpoint not found' }));
