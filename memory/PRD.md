@@ -120,10 +120,12 @@ MySQL is not available in this preview environment, so mock data routes are used
 - [ ] User account pages (order history, profile editing)
 
 ## Environment Notes
-- Backend: Node.js on port 8000, proxied through FastAPI on port 8001, managed by supervisor (node_backend)
-- Mock data layer active (MySQL/Redis unavailable)
-- Frontend: React/Vite on port 3000
-- GitHub Remote configured: https://github.com/arpitjh001/ShriRamya.git (read access confirmed, write pending token permissions)
+- **Development**: Node.js on port 8000, MongoDB local, managed by supervisor
+- **Production (Vercel)**: React static site + Express serverless function (`/api/v1/index.js`)
+  - Live URL: https://app-sigma-rouge-33.vercel.app
+  - Custom domain: www.shriramya.com (DNS configuration pending)
+  - Requires `MONGODB_URI` environment variable in Vercel dashboard
+- GitHub repo: https://github.com/arpitjh001/ShriRamya.git
 
 ## Bug Fixes Log
 ### March 2026 - Cart Page Thumbnail Fix
