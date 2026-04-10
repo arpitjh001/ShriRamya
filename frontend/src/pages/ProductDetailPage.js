@@ -551,7 +551,7 @@ const ProductDetailPage = () => {
                 { id: 'description', title: 'Product Details', content: product.description },
                 ...(product.fabric ? [{
                   id: 'fabric-guide',
-                  title: 'Fabric Guide',
+                  title: 'Material Guide',
                   isFabricGuide: true,
                 }] : []),
                 { id: 'shipping', title: 'Shipping & Delivery', content: 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. We offer free shipping on prepaid orders over ₹999.' },
