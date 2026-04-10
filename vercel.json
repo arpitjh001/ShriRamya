@@ -4,6 +4,17 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "cd backend_node && npm install --production && cd ../frontend && yarn install",
   "framework": null,
+  "env": {
+    "PORT": "8000",
+    "DB_NAME": "shriramya",
+    "JWT_SECRET": "@shriramya_prod_secret_2026",
+    "NODE_ENV": "production",
+    "REDIS_URL": "rediss://default:gQAAAAAAAV3qAAIncDJmMjk0NTEyN2ZmYWM0ZThjOTRmN2UyNDM0NjRiMTQyOHAyODk1Nzg@on-turkey-89578.upstash.io:6379",
+    "CORS_ORIGINS": "https://www.shriramya.com",
+    "PUBLIC_BASE_URL": "https://www.shriramya.com",
+    "COOKIE_SECURE": "true",
+    "SMS_PROVIDER": "twilio"
+  },
   "rewrites": [
     { "source": "/api/v1/(.*)", "destination": "/api/v1/index" },
     { "source": "/api/(.*)", "destination": "/api/v1/index" },
@@ -12,7 +23,7 @@
   "functions": {
     "api/v1/index.js": {
       "memory": 1024,
-      "maxDuration": 10,
+      "maxDuration": 60,
       "includeFiles": "backend_node/**"
     }
   },
