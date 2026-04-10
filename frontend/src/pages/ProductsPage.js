@@ -33,7 +33,7 @@ const ProductsPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const observer = useRef();
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const initialLoadDone = useRef(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Initialize from URL on mount
   useEffect(() => {
@@ -47,7 +47,7 @@ const ProductsPage = () => {
     const sort = searchParams.get('sort');
     if (sort) setSortBy(sort);
     if (Object.keys(initial).length > 0) setSelectedFilters(initial);
-    initialLoadDone.current = true;
+    setIsInitialized(true);
   }, []);
 
   // Sync to URL
@@ -107,17 +107,12 @@ const ProductsPage = () => {
 
   // Re-fetch on filter/sort change
   useEffect(() => {
-    if (!initialLoadDone.current) return;
+    if (!isInitialized) return;
     setPage(1);
     setHasMore(true);
     fetchProducts(1, true);
     syncToURL(selectedFilters, sortBy);
-  }, [selectedFilters, sortBy]);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchProducts(1, true);
-  }, []);
+  }, [selectedFilters, sortBy, isInitialized]);
 
   // Pagination
   useEffect(() => {
