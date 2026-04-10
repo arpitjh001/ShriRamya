@@ -336,8 +336,8 @@ class CatalogReadService {
     const workFilters = this.normalizeListValue(query.work).map((entry) => entry.toLowerCase());
     const brandFilters = this.normalizeListValue(query.brand).map((entry) => entry.toLowerCase());
     const searchQuery = String(query.search || query.q || '').trim().toLowerCase();
-    const minPrice = query.min_price ?? query.minPrice;
-    const maxPrice = query.max_price ?? query.maxPrice;
+    const minPrice = query.min_price ?? query.minPrice ?? query.price_min ?? query.priceMin;
+    const maxPrice = query.max_price ?? query.maxPrice ?? query.price_max ?? query.priceMax;
     const discount = query.discount != null ? Number(query.discount) : null;
     const rating = query.rating != null ? Number(query.rating) : null;
     const inStock = query.in_stock === true || query.in_stock === 'true';
