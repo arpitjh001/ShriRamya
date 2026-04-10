@@ -39,7 +39,9 @@ test.describe('Product Flow', () => {
       await page.waitForTimeout(2000);
       
       // Verify URL changed or products filtered
-      expect(page.url()).toContain('category') || expect(page.url()).not.toEqual('http://localhost:8080/products');
+      const url = page.url();
+      const isFiltered = url.includes('category') || url !== 'http://localhost:8080/products';
+      expect(isFiltered).toBeTruthy();
     }
   });
 
@@ -114,6 +116,6 @@ test.describe('Product Flow', () => {
     const notFound = page.locator('text=/not found/i, text=/404/i');
     const redirected = page.url() !== 'http://localhost:8080/products/999999';
     
-    expect(notFound.isVisible() || redirected).toBeTruthy();
+    expect(await notFound.isVisible() || redirected).toBeTruthy();
   });
 });

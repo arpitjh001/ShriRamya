@@ -37,7 +37,10 @@ test.describe('Homepage & Navigation', () => {
     if (await accountIcon.isVisible()) {
       await accountIcon.click();
       // Should either go to account page or show login dialog
-      await expect(page).toHaveURL(/.*account.*/).or(page.locator('[class*="auth-dialog"]')).toBeTruthy();
+      const url = page.url();
+      if (!url.includes('account')) {
+        await expect(page.locator('[class*="auth-dialog"]')).toBeVisible();
+      }
     }
   });
 

@@ -25,7 +25,8 @@ test.describe('API Endpoints Verification', () => {
       expect(data.success).toBeTruthy();
       expect(data.data).toHaveProperty('products');
       // Check for pagination structure (either format is acceptable)
-      expect(data.data).toHaveProperty('total').or(data.data).toHaveProperty('pagination');
+      const hasPagination = data.data.hasOwnProperty('total') || data.data.hasOwnProperty('pagination') || data.data.hasOwnProperty('total_pages');
+      expect(hasPagination).toBeTruthy();
     });
 
     test('GET /categories - should return categories list', async ({ request }) => {

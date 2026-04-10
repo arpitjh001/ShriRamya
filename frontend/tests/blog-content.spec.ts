@@ -39,7 +39,9 @@ test.describe('Blog & Content Pages', () => {
       await page.waitForTimeout(1000);
       
       // URL should change or posts should filter
-      expect(page.url()).toContain('category') || expect(page.url()).not.toEqual('http://localhost:8080/blog');
+      const url = page.url();
+      const isFiltered = url.includes('category') || url !== 'http://localhost:8080/blog';
+      expect(isFiltered).toBeTruthy();
     }
   });
 
