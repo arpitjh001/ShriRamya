@@ -655,17 +655,28 @@ router.get('/wishlist', async (req, res) => {
 
 router.post('/wishlist/add', async (req, res) => {
   try {
-    const userId = req.body.userId || req.headers['x-user-id'] || 'guest';
-    const { productId } = req.body;
-    const product = await Product.findOne({ productId: Number(productId) }, { _id: 0, __v: 0 }).lean();
+    const userId = (req.body && req.body.userId) || req.headers['x-user-id'] || 'guest';
+
+    // Safely read productId from body (avoid destructuring errors when body is not an object)
+    const rawProductId = req.body && (req.body.productId || req.body.product_id) ? (req.body.productId || req.body.product_id) : null;
+    const pid = Number(rawProductId);
+
+    if (!rawProductId || Number.isNaN(pid)) {
+      return res.status(400).json({ success: false, message: 'productId is required in request body' });
+    }
+
+    const product = await Product.findOne({ productId: pid }, { _id: 0, __v: 0 }).lean();
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
-    const exists = await Wishlist.findOne({ userId, productId: Number(productId) });
+    const exists = await Wishlist.findOne({ userId, productId: pid });
     if (exists) return res.json({ success: true, message: 'Already in wishlist' });
 
     await Wishlist.create({ userId, productId: product.productId, name: product.name, thumbnail: product.thumbnail, price: product.price, salePrice: product.salePrice });
     res.status(201).json({ success: true, message: 'Added to wishlist' });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) {
+    console.error('[dbRoutes] /wishlist/add error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // Alias: POST /wishlist/:productId (frontend compatibility)
@@ -778,48 +789,12 @@ router.put('/users/profile', async (req, res) => {
 // ==========================================
 // ADMIN ANALYTICS ENDPOINTS
 // ==========================================
-router.get('/admin/analytics/overview', async (req, res) => {
-  try {
-    const db = require('../db/mongodb').mongoose.connection.db;
-    const [totalOrders, totalProducts, totalUsers] = await Promise.all([
-      Order.countDocuments(), Product.countDocuments(), db.collection('users').countDocuments()
-    ]);
-    const revenueAgg = await Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$total' } } }]);
-    const totalRevenue = revenueAgg[0]?.total || 0;
-    res.json({
-      success: true, data: {
-        total_revenue: totalRevenue || 485999, total_orders: totalOrders || 23, total_customers: totalUsers || 156,
-        conversion_rate: 3.2, avg_order_value: totalOrders ? Math.round(totalRevenue / totalOrders) : 21130,
-        revenue_growth: 12.5, orders_growth: 8.3, customers_growth: 15.2
-      }
-    });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
-
-router.get('/admin/analytics/revenue', async (req, res) => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  res.json({ success: true, data: { chart: months.map((m, i) => ({ month: m, revenue: 120000 + i * 50000, orders: 5 + i * 3 })), total: 485999, growth: 12.5 } });
-});
-
-router.get('/admin/analytics/sales', async (req, res) => {
-  try {
-    const topProducts = await Product.find({}, { _id: 0 }).sort({ rating: -1 }).limit(5).lean();
-    res.json({
-      success: true, data: {
-        top_products: topProducts.map(p => ({ id: p.productId, name: p.name, sold: Math.floor(Math.random() * 20 + 5), revenue: p.salePrice * Math.floor(Math.random() * 10 + 3) })),
-        top_categories: [{ name: 'Silk Sarees', sold: 45, revenue: 980000 }, { name: 'Kurtas', sold: 67, revenue: 450000 }, { name: 'Lehengas', sold: 12, revenue: 720000 }]
-      }
-    });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
-
-router.get('/admin/analytics/products', async (req, res) => {
-  try {
-    const total = await Product.countDocuments();
-    const byCat = await Product.aggregate([{ $group: { _id: '$categoryName', count: { $sum: 1 } } }, { $project: { _id: 0, category: '$_id', count: 1 } }]);
-    res.json({ success: true, data: { total, in_stock: total - 3, out_of_stock: 3, low_stock: 5, by_category: byCat } });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+// NOTE: These endpoints are implemented in the v1 routes with proper auth + unified response shape.
+// We keep the mount order in app.js (dbRoutes first), so these handlers must pass through.
+router.get('/admin/analytics/overview', (req, res, next) => next());
+router.get('/admin/analytics/revenue', (req, res, next) => next());
+router.get('/admin/analytics/sales', (req, res, next) => next());
+router.get('/admin/analytics/products', (req, res, next) => next());
 
 router.get('/admin/warehouses', (req, res) => {
   res.json({ success: true, data: [
