@@ -112,11 +112,10 @@ class ProductMongoRepository {
   }
 
   async deleteProduct(id, tenantId = 1) {
-    const result = await Product.updateOne(
-      this.buildProductQuery(id, tenantId),
-      { $set: { is_deleted: true, deleted_at: new Date() } }
+    const result = await Product.deleteOne(
+      this.buildProductQuery(id, tenantId)
     );
-    return result.modifiedCount > 0;
+    return result.deletedCount > 0;
   }
 
   async addVariant(productId, variantData) {
