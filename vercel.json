@@ -8,11 +8,14 @@
     "PORT": "8000",
     "DB_NAME": "shriramya",
     "NODE_ENV": "production",
+    "MONGO_URL": "mongodb+srv://arpitjh001:DpyoKp8in9QBhoqW@shriramya-cluster.wwimqmj.mongodb.net/?appName=ShriRamya-Cluster",
+    "JWT_SECRET": "shriramya_production_secret_2026",
     "REDIS_URL": "rediss://default:gQAAAAAAAV3qAAIncDJmMjk0NTEyN2ZmYWM0ZThjOTRmN2UyNDM0NjRiMTQyOHAyODk1Nzg@on-turkey-89578.upstash.io:6379",
     "CORS_ORIGINS": "https://www.shriramya.com",
     "PUBLIC_BASE_URL": "https://www.shriramya.com",
     "COOKIE_SECURE": "true",
-    "SMS_PROVIDER": "twilio"
+    "SMS_PROVIDER": "twilio",
+    "REACT_APP_BACKEND_URL": "https://www.shriramya.com"
   },
   "rewrites": [
     { "source": "/api/v1/(.*)", "destination": "/api/v1/index" },
