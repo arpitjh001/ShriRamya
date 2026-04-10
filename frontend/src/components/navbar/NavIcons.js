@@ -15,34 +15,37 @@ import { Link } from 'react-router-dom';
  * @param {NavIconsProps} props
  */
 const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSearchClick, onAccountClick }) => {
+  const actionIconClass = "relative inline-flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-full border border-charcoal/15 bg-ivory/90 text-charcoal shadow-[0_5px_16px_rgba(31,31,31,0.12)] hover:border-royal-maroon/35 hover:bg-white hover:text-royal-maroon hover:shadow-[0_8px_22px_rgba(106,30,45,0.18)] transition-all";
+  const iconClass = "w-5 h-5 md:w-6 md:h-6 text-charcoal stroke-[2.5] group-hover:text-royal-maroon";
+
   const iconVariants = {
     hover: { scale: 1.2, rotate: 5, transition: { type: "spring", stiffness: 400, damping: 10 } },
     tap: { scale: 0.9 }
   };
 
   return (
-    <div className="flex items-center gap-4 md:gap-6">
+    <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
       <motion.button
         variants={iconVariants}
         whileHover="hover"
         whileTap="tap"
         onClick={onSearchClick}
-        className="text-charcoal hover:text-royal-maroon transition-colors"
+        className={actionIconClass}
         aria-label="Search"
       >
-        <Search className="w-5 h-5 md:w-6 md:h-6" />
+        <Search className={`${iconClass} text-charcoal`} strokeWidth={2.6} />
       </motion.button>
 
-      <div className="hidden sm:flex items-center gap-4 md:gap-6">
+      <div className="hidden sm:flex items-center gap-2 md:gap-4">
         <motion.button 
           variants={iconVariants} 
           whileHover="hover" 
           whileTap="tap" 
           onClick={onAccountClick}
-          className="relative text-charcoal hover:text-royal-maroon transition-colors"
+          className={actionIconClass}
           aria-label="Account"
         >
-          <User className="w-5 h-5 md:w-6 md:h-6" />
+          <User className={`${iconClass} text-charcoal`} strokeWidth={2.6} />
           {hasNotifications && (
             <motion.span
               initial={{ scale: 0 }}
@@ -52,31 +55,32 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
           )}
         </motion.button>
 
-        <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
-          <Link to="/wishlist" className="relative text-charcoal hover:text-royal-maroon transition-colors" aria-label="Wishlist" data-testid="navbar-wishlist-icon">
-            <Heart className="w-5 h-5 md:w-6 md:h-6" />
-            {wishlistCount > 0 && (
-              <motion.span
-                key={wishlistCount}
-                initial={{ scale: 0.2, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="absolute -top-2 -right-2 bg-royal-maroon text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
-              >
-                {wishlistCount}
-              </motion.span>
-            )}
-          </Link>
-        </motion.div>
       </div>
 
+      <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
+        <Link to="/wishlist" className={actionIconClass} aria-label="Wishlist" data-testid="navbar-wishlist-icon">
+          <Heart className={`${iconClass} text-charcoal`} strokeWidth={2.7} />
+          {wishlistCount > 0 && (
+            <motion.span
+              key={wishlistCount}
+              initial={{ scale: 0.2, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="absolute -top-2 -right-2 bg-royal-maroon text-white text-[10px] font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 shadow-md ring-2 ring-ivory"
+            >
+              {wishlistCount}
+            </motion.span>
+          )}
+        </Link>
+      </motion.div>
+
       <motion.div variants={iconVariants} whileHover="hover" whileTap="tap" className="relative group">
-        <Link to="/cart" className="text-charcoal group-hover:text-royal-maroon transition-colors" aria-label="Cart">
-          <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" />
+        <Link to="/cart" className={actionIconClass} aria-label="Cart">
+          <ShoppingBag className={`${iconClass} text-charcoal`} strokeWidth={2.7} />
           <motion.span
             key={cartCount}
             initial={{ scale: 0.2, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="absolute -top-2 -right-2 bg-royal-maroon text-white text-[10px] font-bold w-4.5 h-4.5 min-w-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
+            className="absolute -top-2 -right-2 bg-royal-maroon text-white text-[10px] font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 shadow-md ring-2 ring-ivory"
           >
             {cartCount}
           </motion.span>

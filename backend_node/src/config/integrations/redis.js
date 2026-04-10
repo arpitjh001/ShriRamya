@@ -9,7 +9,8 @@ let redisAvailable = false;
  */
 const initRedis = () => {
     try {
-        redis = new Redis(config.redis.url, {
+        // Enable TLS for rediss:// URLs
+        const options = {
             maxRetriesPerRequest: 3,
             retryStrategy(times) {
                 if (times > 3) {
@@ -21,7 +22,15 @@ const initRedis = () => {
             },
             connectTimeout: 5000,
             lazyConnect: true,
-        });
+        };
+
+        // Enable TLS when using rediss:// protocol
+        if (config.redis.url && config.redis.url.startsWith('rediss://')) {
+            options.tls = {};
+            console.info('[Redis] TLS enabled for secure connection');
+        }
+
+        redis = new Redis(config.redis.url, options);
 
         redis.on('connect', () => {
             console.info('[Redis] Connected successfully');
