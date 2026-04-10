@@ -7,7 +7,7 @@
  * 4. Update product threshold and verify update works
  */
 
-const fetch = require('node-fetch');
+const fetch = global.fetch; // Use built-in fetch available in Node 18+
 
 // Configuration
 const API_BASE = process.env.API_URL || 'http://localhost:5000/api/v1';

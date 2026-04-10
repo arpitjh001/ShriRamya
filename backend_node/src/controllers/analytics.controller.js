@@ -12,7 +12,8 @@ const { successResponse } = require('../utils/response');
  */
 const getSalesAnalytics = async (req, res, next) => {
   try {
-    const result = await analyticsService.getSalesAnalytics(req.query);
+    const params = { ...req.query, tenant_id: req.user.tenant_id };
+    const result = await analyticsService.getSalesAnalytics(params);
     return successResponse(res, result);
   } catch (error) {
     console.error('Analytics error (sales):', error.message);
@@ -32,7 +33,8 @@ const getSalesAnalytics = async (req, res, next) => {
  */
 const getProductAnalytics = async (req, res, next) => {
   try {
-    const result = await analyticsService.getProductAnalytics(req.query);
+    const params = { ...req.query, tenant_id: req.user.tenant_id };
+    const result = await analyticsService.getProductAnalytics(params);
     return successResponse(res, result);
   } catch (error) {
     console.error('Analytics error (products):', error.message);
@@ -51,7 +53,8 @@ const getProductAnalytics = async (req, res, next) => {
  */
 const getRevenueAnalytics = async (req, res, next) => {
   try {
-    const result = await analyticsService.getRevenueAnalytics(req.query);
+    const params = { ...req.query, tenant_id: req.user.tenant_id };
+    const result = await analyticsService.getRevenueAnalytics(params);
     return successResponse(res, result);
   } catch (error) {
     console.error('Analytics error (revenue):', error.message);
@@ -71,7 +74,7 @@ const getRevenueAnalytics = async (req, res, next) => {
  */
 const getDashboardOverview = async (req, res, next) => {
   try {
-    const result = await analyticsService.getDashboardOverview();
+    const result = await analyticsService.getDashboardOverview({ tenant_id: req.user.tenant_id });
     return successResponse(res, result);
   } catch (error) {
     console.error('Analytics error (overview):', error.message);

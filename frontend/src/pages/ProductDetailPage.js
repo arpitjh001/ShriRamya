@@ -122,11 +122,12 @@ const ProductDetailPage = () => {
   const updateVariantStock = (color, size) => {
     const variant = variantMatrix.find(v => v.color === color && v.size === size);
     if (variant) {
+      const threshold = variant.lowStockThreshold || product.lowStockThreshold || 5;
       setVariantStock({
         stock: variant.stock,
         isOutOfStock: variant.stock === 0,
-        isLowStock: variant.stock > 0 && variant.stock <= 5,
-        stockStatus: variant.stock === 0 ? 'out_of_stock' : variant.stock <= 5 ? 'low_stock' : 'in_stock'
+        isLowStock: variant.stock > 0 && variant.stock <= threshold,
+        stockStatus: variant.stock === 0 ? 'out_of_stock' : variant.stock <= threshold ? 'low_stock' : 'in_stock'
       });
     } else {
       setVariantStock(null);

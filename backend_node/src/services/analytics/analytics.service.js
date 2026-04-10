@@ -51,10 +51,14 @@ class AnalyticsService {
         break;
     }
 
+    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+
     const aggregation = await Order.aggregate([
       {
         $match: {
-          status: { $in: ['paid', 'processing', 'shipped', 'delivered'] },
+          ...tenantFilter,
+          status: { $in: validStatuses },
           created_at: { $gte: startDate, $lte: endDate }
         }
       },
@@ -91,7 +95,7 @@ class AnalyticsService {
     // Cache for 5 minutes
     if (redis) {
       try {
-        await redis.setex(cacheKey, 300, JSON.stringify(result));
+        await redis.set(cacheKey, JSON.stringify(result), { ex: 300 });
       } catch (err) {
         console.error('Redis cache error:', err.message);
       }
@@ -147,9 +151,12 @@ class AnalyticsService {
         break;
     }
 
+    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+
     // This is a complex query in MongoDB. We'll simplify for now.
     // In a production app, we'd use the ProductPerformance collection.
     const performanceData = await ProductPerformance.find({
+      ...tenantFilter,
       date: { $gte: startDate.toISOString().split('T')[0], $lte: endDate.toISOString().split('T')[0] }
     }).populate('productId');
 
@@ -205,7 +212,7 @@ class AnalyticsService {
 
     if (redis) {
       try {
-        await redis.setex(cacheKey, 300, JSON.stringify(result));
+        await redis.set(cacheKey, JSON.stringify(result), { ex: 300 });
       } catch (err) {
         console.error('Redis cache error:', err.message);
       }
@@ -238,10 +245,14 @@ class AnalyticsService {
     const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
     const endDate = end_date ? new Date(end_date) : now;
 
+    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+
     // Get metrics
     const metricsAggregation = await Order.aggregate([
       {
         $match: {
+          ...tenantFilter,
           created_at: { $gte: startDate, $lte: endDate }
         }
       },
@@ -251,7 +262,7 @@ class AnalyticsService {
           totalOrders: { $sum: 1 },
           grossRevenue: { $sum: "$total_amount" },
           refunds: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, "$total_amount", 0] } },
-          netRevenue: { $sum: { $cond: [{ $in: ["$status", ["paid", "processing", "shipped", "delivered"]] }, "$total_amount", 0] } },
+          netRevenue: { $sum: { $cond: [{ $in: ["$status", validStatuses] }, "$total_amount", 0] } },
           avgOrderValue: { $avg: "$total_amount" }
         }
       }
@@ -259,11 +270,11 @@ class AnalyticsService {
 
     const metrics = metricsAggregation[0] || { totalOrders: 0, grossRevenue: 0, refunds: 0, netRevenue: 0, avgOrderValue: 0 };
 
-    // Get by payment method
     const byPaymentMethod = await Order.aggregate([
       {
         $match: {
-          status: { $in: ["paid", "processing", "shipped", "delivered"] },
+          ...tenantFilter,
+          status: { $in: validStatuses },
           created_at: { $gte: startDate, $lte: endDate }
         }
       },
@@ -288,7 +299,8 @@ class AnalyticsService {
     const dailyTrend = await Order.aggregate([
       {
         $match: {
-          status: { $in: ["paid", "processing", "shipped", "delivered"] },
+          ...tenantFilter,
+          status: { $in: validStatuses },
           created_at: { $gte: startDate, $lte: endDate }
         }
       },
@@ -326,7 +338,7 @@ class AnalyticsService {
 
     if (redis) {
       try {
-        await redis.setex(cacheKey, 300, JSON.stringify(result));
+        await redis.set(cacheKey, JSON.stringify(result), { ex: 300 });
       } catch (err) {
         console.error('Redis cache error:', err.message);
       }
@@ -338,8 +350,9 @@ class AnalyticsService {
   /**
    * Get dashboard overview
    */
-  async getDashboardOverview() {
-    const cacheKey = 'analytics:dashboard:overview';
+  async getDashboardOverview(params = {}) {
+    const tenantId = params.tenant_id || 1;
+    const cacheKey = `analytics:dashboard:overview:${tenantId}`;
 
     if (redis) {
       try {
@@ -352,6 +365,9 @@ class AnalyticsService {
       }
     }
 
+    const tenantFilter = { tenant_id: parseInt(tenantId) };
+    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     
@@ -363,7 +379,8 @@ class AnalyticsService {
     const todayStats = await Order.aggregate([
       {
         $match: {
-          status: { $in: ['paid', 'processing', 'shipped', 'delivered'] },
+          ...tenantFilter,
+          status: { $in: validStatuses },
           created_at: { $gte: todayStart }
         }
       },
@@ -380,7 +397,8 @@ class AnalyticsService {
     const monthStats = await Order.aggregate([
       {
         $match: {
-          status: { $in: ['paid', 'processing', 'shipped', 'delivered'] },
+          ...tenantFilter,
+          status: { $in: validStatuses },
           created_at: { $gte: monthStart }
         }
       },
@@ -394,9 +412,10 @@ class AnalyticsService {
     ]);
 
     // Counts
-    const productCount = await Product.countDocuments({ status: { $in: ['published', 'publish'] } });
-    const customerCount = await User.countDocuments({ role: { $in: ['user', 'customer'] } });
+    const productCount = await Product.countDocuments({ ...tenantFilter, status: { $in: ['published', 'publish'] } });
+    const customerCount = await User.countDocuments({ role: { $in: ['user', 'customer'] } }); // Users are currently global but roles distinguish
     const lowStockCount = await Product.countDocuments({ 
+        ...tenantFilter,
         $or: [
             { stock: { $lte: 10 } },
             { "variants.stock": { $lte: 10 } }
@@ -421,7 +440,7 @@ class AnalyticsService {
 
     if (redis) {
       try {
-        await redis.setex(cacheKey, 300, JSON.stringify(result));
+        await redis.set(cacheKey, JSON.stringify(result), { ex: 300 });
       } catch (err) {
         console.error('Redis cache error:', err.message);
       }
@@ -507,6 +526,32 @@ class AnalyticsService {
     // This method would be complex to fully refactor without proper event tracking.
     // Simplified placeholder implementation.
     return { productId, success: true };
+  }
+
+  /**
+   * Get legacy order analytics (consolidated)
+   */
+  async getOrderAnalytics(params = {}) {
+    const tenantId = params.tenant_id || params.tenantId;
+    const filter = tenantId ? { tenant_id: parseInt(tenantId) } : {};
+    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+
+    const totalOrders = await Order.countDocuments(filter);
+    const revenueResult = await Order.aggregate([
+      { $match: { ...filter, status: { $in: validStatuses } } },
+      { $group: { _id: null, total: { $sum: '$total_amount' } } }
+    ]);
+
+    const byStatus = await Order.aggregate([
+      { $match: filter },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    return {
+      totalOrders,
+      totalRevenue: revenueResult.length > 0 ? revenueResult[0].total : 0,
+      ordersByStatus: byStatus
+    };
   }
 
   /**

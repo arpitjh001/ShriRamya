@@ -237,7 +237,10 @@ const HomePage = () => {
 
       {/* Featured Collections / Luxury Showcase */}
       <section id="luxury-collection" className="luxury-section px-6 md:px-12 lg:px-20 py-32 relative">
-        <div className="absolute top-0 right-0 w-1/3 h-full bg-accent/5 -z-10 blur-3xl opacity-30 transform translate-x-1/2" />
+        {/* Clip decorative glow so it never creates horizontal page overflow (hides navbar icons on mobile/Chrome). */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute top-0 right-0 h-full w-1/3 translate-x-1/2 bg-accent/5 blur-3xl opacity-30" />
+        </div>
         <div className="mb-16 flex items-end justify-between gap-8 border-b border-charcoal/5 pb-8">
           <div className="max-w-2xl">
             <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">Featured Collections</p>

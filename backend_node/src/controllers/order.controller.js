@@ -287,25 +287,9 @@ const updateOrderStatus = async (req, res, next) => {
  */
 const getOrderAnalytics = async (req, res, next) => {
     try {
-        const { tenantId } = req.query;
-        const filter = tenantId ? { tenantId } : {};
-
-        const totalOrders = await Order.countDocuments(filter);
-        const revenueResult = await Order.aggregate([
-            { $match: { ...filter, status: { $ne: 'cancelled' } } },
-            { $group: { _id: null, total: { $sum: '$grandTotal' } } }
-        ]);
-
-        const byStatus = await Order.aggregate([
-            { $match: filter },
-            { $group: { _id: '$status', count: { $sum: 1 } } }
-        ]);
-
-        return successResponse(res, {
-            totalOrders,
-            totalRevenue: revenueResult.length > 0 ? revenueResult[0].total : 0,
-            ordersByStatus: byStatus
-        });
+        const tenantId = req.query.tenantId || req.user.tenant_id;
+        const result = await analyticsService.getOrderAnalytics({ tenant_id: tenantId });
+        return successResponse(res, result);
     } catch (error) {
         next(error);
     }
