@@ -48,6 +48,7 @@ const productSchema = new mongoose.Schema(
       values: [String]
     }],
     variants: [productVariantSchema],
+    lowStockThreshold: { type: Number, default: 5, min: 0, max: 10000 },
     metadata: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
     metaTitle: { type: String, trim: true },
     metaDescription: { type: String, trim: true },

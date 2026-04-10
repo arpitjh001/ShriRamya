@@ -974,13 +974,35 @@ const AdminProductsPage = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Package className="w-5 h-5" style={{ color: '#6366f1' }} />
-                  <Label className="text-base" style={{ color: '#e2e8f0' }}>Variant Inventory (Color × Size)</Label>
+                  <Label className="text-base" style={{ color: '#e2e8f0' }}>Inventory Management</Label>
                 </div>
                 {productForm.variants?.length > 0 && (
                   <Badge variant="default" className="bg-green-600">
                     {productForm.variants.length} variants | {getTotalStock()} total stock
                   </Badge>
                 )}
+              </div>
+
+              {/* Low Stock Threshold Input */}
+              <div className="mb-6 p-4 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.3)', border: '1px solid' }}>
+                <Label style={{ color: '#e2e8f0' }} className="block mb-2">Low Stock Threshold</Label>
+                <p className="text-xs text-gray-400 mb-3">Set the minimum stock quantity before a product is marked as low stock. This applies to all variants.</p>
+                <Input
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={productForm.lowStockThreshold}
+                  onChange={(e) => setProductForm({ ...productForm, lowStockThreshold: parseInt(e.target.value) || 5 })}
+                  placeholder="5"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                  className="max-w-xs"
+                />
+                <p className="text-xs text-indigo-400 mt-2">Current threshold: <strong>{productForm.lowStockThreshold || 5} units</strong></p>
+              </div>
+
+              {/* Variant Grid Section */}
+              <div className="mb-4">
+                <Label className="text-sm mb-2 block" style={{ color: '#e2e8f0' }}>Variant Inventory (Color × Size)</Label>
               </div>
 
               {/* Variant Grid Input Component */}

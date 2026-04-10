@@ -196,6 +196,11 @@ class ProductService {
         : null;
     }
 
+    // Normalize lowStockThreshold
+    if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'lowStockThreshold')) {
+      normalizedProductData.lowStockThreshold = Math.max(0, parseInt(normalizedProductData.lowStockThreshold || 5, 10)) || 5;
+    }
+
     if (Array.isArray(normalizedProductData.variants)) {
       normalizedProductData.variants = normalizedProductData.variants.map((variant) => this.normalizeVariantForPersistence(variant));
     }
