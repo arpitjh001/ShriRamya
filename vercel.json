@@ -7,7 +7,6 @@
   "env": {
     "PORT": "8000",
     "DB_NAME": "shriramya",
-    "JWT_SECRET": "@shriramya_prod_secret_2026",
     "NODE_ENV": "production",
     "REDIS_URL": "rediss://default:gQAAAAAAAV3qAAIncDJmMjk0NTEyN2ZmYWM0ZThjOTRmN2UyNDM0NjRiMTQyOHAyODk1Nzg@on-turkey-89578.upstash.io:6379",
     "CORS_ORIGINS": "https://www.shriramya.com",
