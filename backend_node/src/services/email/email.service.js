@@ -1,246 +1,169 @@
 /**
  * Email Service
- * Handles sending emails via SMTP
+ * Handles sending emails using templates and logging
  */
 
+const { EmailTemplate, EmailLog } = require('../../models');
 const nodemailer = require('nodemailer');
-const { mysqlPool } = require('../../config/db');
 const config = require('../../config/config');
 
 class EmailService {
-  constructor() {
-    this.transporter = null;
-    this._initializeTransporter();
-  }
-
-  /**
-   * Initialize SMTP transporter
-   */
-  _initializeTransporter() {
-    if (config.smtp.host && config.smtp.user) {
-      this.transporter = nodemailer.createTransport({
-        host: config.smtp.host,
-        port: config.smtp.port || 587,
-        secure: config.smtp.port === 465,
-        auth: {
-          user: config.smtp.user,
-          pass: config.smtp.pass
+    constructor() {
+        if (config.email && config.email.smtp && config.email.smtp.host) {
+            this.transporter = nodemailer.createTransport(config.email.smtp);
+        } else {
+            console.warn('Email service SMTP not configured');
+            this.transporter = null;
         }
-      });
-      console.log('[Email] SMTP transporter initialized');
-    } else {
-      console.log('[Email] SMTP not configured, emails will be logged only');
-    }
-  }
-
-  /**
-   * Send email
-   */
-  async sendEmail(to, subject, html, text = null) {
-    if (!this.transporter) {
-      console.log('[Email] Would send to:', to);
-      console.log('[Email] Subject:', subject);
-      console.log('[Email] HTML:', html);
-      return { success: true, messageId: 'logged-only' };
     }
 
-    try {
-      const info = await this.transporter.sendMail({
-        from: `"ShriRamya" <${config.smtp.user}>`,
-        to,
-        subject,
-        text: text || html.replace(/<[^>]*>/g, ''),
-        html
-      });
+    /**
+     * Send an email using a template
+     */
+    async sendEmailWithTemplate(options) {
+        const { templateName, recipient, data, tenantId = 'default' } = options;
 
-      console.log('[Email] Message sent:', info.messageId);
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('[Email] Error sending email:', error.message);
-      throw error;
-    }
-  }
+        try {
+            // Get template
+            const template = await EmailTemplate.findOne({
+                name: templateName,
+                isActive: true,
+                tenantId
+            });
 
-  /**
-   * Get email template from database
-   */
-  async _getEmailTemplate(eventType) {
-    const [rows] = await mysqlPool.query(
-      'SELECT * FROM email_templates WHERE event_type = ? AND is_active = TRUE',
-      [eventType]
-    );
+            if (!template) {
+                console.warn(`Email template ${templateName} not found for tenant ${tenantId}, using default rendering`);
+            }
 
-    if (rows.length === 0) {
-      return null;
-    }
+            // Render template (or use defaults if missing)
+            const subject = template ? this._renderTemplate(template.subject, data) : options.subject || 'Notification';
+            const html = template ? this._renderTemplate(template.bodyHtml, data) : options.body || '';
+            const text = template && template.bodyText ? this._renderTemplate(template.bodyText, data) : '';
 
-    return rows[0];
-  }
+            if (this.transporter) {
+                const info = await this.transporter.sendMail({
+                    from: config.email.from,
+                    to: recipient,
+                    subject,
+                    text,
+                    html
+                });
 
-  /**
-   * Render template with variables
-   */
-  _renderTemplate(template, data) {
-    let subject = template.subject;
-    let html = template.body_html;
-    let text = template.body_text;
+                // Log successful email
+                await EmailLog.create({
+                    recipient,
+                    subject,
+                    templateName,
+                    status: 'sent',
+                    tenantId,
+                    metadata: { messageId: info.messageId }
+                });
 
-    // Replace variables
-    for (const [key, value] of Object.entries(data)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      subject = subject.replace(regex, value);
-      html = html.replace(regex, value);
-      if (text) {
-        text = text.replace(regex, value);
-      }
-    }
+                return true;
+            } else {
+                console.log(`[Email-Log-Only] To: ${recipient}, Subject: ${subject}`);
+                await EmailLog.create({
+                    recipient,
+                    subject,
+                    templateName,
+                    status: 'sent',
+                    tenantId,
+                    metadata: { messageId: 'logged-only' }
+                });
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to send email:', error);
 
-    return { subject, html, text };
-  }
+            // Log failed email
+            await EmailLog.create({
+                recipient: recipient || 'unknown',
+                subject: 'Failed Email',
+                templateName,
+                status: 'failed',
+                error: error.message,
+                tenantId
+            });
 
-  /**
-   * Send order confirmation email
-   */
-  async sendOrderConfirmation(email, orderData) {
-    const template = await this._getEmailTemplate('order_placed');
-    
-    if (!template) {
-      console.error('[Email] Template not found: order_placed');
-      return { success: false, error: 'Template not found' };
-    }
-
-    const { subject, html, text } = this._renderTemplate(template, {
-      customer_name: orderData.customerName || 'Valued Customer',
-      order_id: orderData.orderId,
-      total: orderData.total,
-      order_date: new Date(orderData.createdAt).toLocaleDateString()
-    });
-
-    return this.sendEmail(email, subject, html, text);
-  }
-
-  /**
-   * Send shipping notification
-   */
-  async sendShippingNotification(email, trackingData) {
-    const template = await this._getEmailTemplate('order_shipped');
-    
-    if (!template) {
-      console.error('[Email] Template not found: order_shipped');
-      return { success: false, error: 'Template not found' };
+            return false;
+        }
     }
 
-    const { subject, html, text } = this._renderTemplate(template, {
-      customer_name: trackingData.customerName || 'Valued Customer',
-      order_id: trackingData.orderId,
-      tracking_number: trackingData.trackingNumber,
-      expected_delivery: trackingData.expectedDelivery || 'Soon'
-    });
-
-    return this.sendEmail(email, subject, html, text);
-  }
-
-  /**
-   * Send delivery confirmation
-   */
-  async sendDeliveryConfirmation(email, orderData) {
-    const template = await this._getEmailTemplate('order_delivered');
-    
-    if (!template) {
-      console.error('[Email] Template not found: order_delivered');
-      return { success: false, error: 'Template not found' };
+    /**
+     * Render template string with data
+     */
+    _renderTemplate(templateString, data) {
+        if (!templateString) return '';
+        return templateString.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+            const value = data[key.trim()];
+            return value !== undefined ? value : match;
+        });
     }
 
-    const { subject, html, text } = this._renderTemplate(template, {
-      customer_name: orderData.customerName || 'Valued Customer',
-      order_id: orderData.orderId
-    });
+    /**
+     * Get email logs for admin
+     */
+    async getEmailLogs(params = {}) {
+        const { status, limit = 20, page = 1, tenantId } = params;
+        const filter = {};
+        if (status) filter.status = status;
+        if (tenantId) filter.tenantId = tenantId;
 
-    return this.sendEmail(email, subject, html, text);
-  }
+        const skip = (page - 1) * limit;
 
-  /**
-   * Send refund notification
-   */
-  async sendRefundNotification(email, refundData) {
-    const template = await this._getEmailTemplate('refund_processed');
-    
-    if (!template) {
-      console.error('[Email] Template not found: refund_processed');
-      return { success: false, error: 'Template not found' };
+        const logs = await EmailLog.find(filter)
+            .sort({ created_at: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const count = await EmailLog.countDocuments(filter);
+
+        return {
+            logs,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
+            totalResults: count
+        };
     }
 
-    const { subject, html, text } = this._renderTemplate(template, {
-      customer_name: refundData.customerName || 'Valued Customer',
-      order_id: refundData.orderId,
-      refund_amount: refundData.refundAmount
-    });
-
-    return this.sendEmail(email, subject, html, text);
-  }
-
-  /**
-   * Send low stock alert to admin
-   */
-  async sendLowStockAlert(adminEmail, productName, currentStock) {
-    const template = await this._getEmailTemplate('low_stock_alert');
-    
-    if (!template) {
-      console.error('[Email] Template not found: low_stock_alert');
-      return { success: false, error: 'Template not found' };
+    // Legacy method wrappers for compatibility
+    async sendOrderConfirmation(email, orderData) {
+        return this.sendEmailWithTemplate({
+            templateName: 'order_placed',
+            recipient: email,
+            data: {
+                customer_name: orderData.customerName || 'Valued Customer',
+                order_id: orderData.orderId,
+                total: orderData.total,
+                order_date: new Date(orderData.createdAt).toLocaleDateString()
+            }
+        });
     }
 
-    const { subject, html, text } = this._renderTemplate(template, {
-      product_name: productName,
-      current_stock: currentStock
-    });
+    async sendShippingNotification(email, trackingData) {
+        return this.sendEmailWithTemplate({
+            templateName: 'order_shipped',
+            recipient: email,
+            data: {
+                customer_name: trackingData.customerName || 'Valued Customer',
+                order_id: trackingData.orderId,
+                tracking_number: trackingData.trackingNumber,
+                expected_delivery: trackingData.expectedDelivery || 'Soon'
+            }
+        });
+    }
 
-    return this.sendEmail(adminEmail, subject, html, text);
-  }
-
-  /**
-   * Send password reset email
-   */
-  async sendPasswordReset(email, resetToken, userName) {
-    const resetUrl = `${config.publicBaseUrl}/reset-password?token=${resetToken}`;
-    
-    const html = `
-      <html>
-        <body>
-          <h1>Password Reset Request</h1>
-          <p>Hi ${userName || 'there'},</p>
-          <p>You requested a password reset. Click the link below to reset your password:</p>
-          <p><a href="${resetUrl}">${resetUrl}</a></p>
-          <p>This link will expire in 1 hour.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-        </body>
-      </html>
-    `;
-
-    const text = `Password Reset Request\n\nHi,\n\nYou requested a password reset. Visit this link to reset your password:\n${resetUrl}\n\nThis link will expire in 1 hour.`;
-
-    return this.sendEmail(email, 'Password Reset Request', html, text);
-  }
-
-  /**
-   * Send welcome email
-   */
-  async sendWelcomeEmail(email, userName) {
-    const html = `
-      <html>
-        <body>
-          <h1>Welcome to ShriRamya!</h1>
-          <p>Hi ${userName || 'there'},</p>
-          <p>Thank you for joining us. We're excited to have you on board!</p>
-          <p>Start exploring our amazing products and enjoy your shopping experience.</p>
-        </body>
-      </html>
-    `;
-
-    const text = `Welcome to ShriRamya!\n\nHi,\n\nThank you for joining us. We're excited to have you on board!`;
-
-    return this.sendEmail(email, 'Welcome to ShriRamya!', html, text);
-  }
+    async sendPasswordReset(email, resetToken, userName) {
+        const resetUrl = `${config.publicBaseUrl}/reset-password?token=${resetToken}`;
+        return this.sendEmailWithTemplate({
+            templateName: 'password_reset',
+            recipient: email,
+            data: {
+                user_name: userName || 'there',
+                reset_url: resetUrl
+            }
+        });
+    }
 }
 
 module.exports = new EmailService();

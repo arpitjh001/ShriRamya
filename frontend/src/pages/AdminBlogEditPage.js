@@ -51,6 +51,7 @@ const AdminBlogEditPage = () => {
             try {
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('category', 'blogs');
                 const response = await blogAPI.api.post('/upload/image', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
@@ -175,6 +176,7 @@ const AdminBlogEditPage = () => {
             for (const file of files) {
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('category', 'blogs');
                 const res = await blogAPI.api.post('/upload/image', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });

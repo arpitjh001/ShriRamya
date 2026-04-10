@@ -52,7 +52,7 @@ const MobileNav = ({ isOpen, onClose, categories = [], recentItems = [] }) => {
                 <img
                   src="/logo.png"
                   alt="Shri Ramya"
-                  className="h-10 md:h-12"
+                  className="h-14 md:h-16"
                 />
               </Link>
               <button 

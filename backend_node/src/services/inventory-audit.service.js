@@ -1,60 +1,40 @@
-const { mysqlPool } = require('../config/db');
+const { InventoryAuditLog, Product } = require('../models');
+const mongoose = require('mongoose');
 
 /**
  * Inventory Audit Log Service
- * Tracks all inventory changes for compliance, analytics, and debugging
+ * Tracks all inventory changes using MongoDB
  */
 class InventoryAuditService {
   /**
    * Log an inventory change
    * @param {Object} data - Audit log data
-   * @returns {Promise<number>} Created audit log ID
+   * @returns {Promise<Object>} Created audit log document
    */
   async logInventoryChange(data) {
-    const connection = await mysqlPool.getConnection();
     try {
-      await connection.beginTransaction();
+      const auditLog = await InventoryAuditLog.create({
+        variantId: data.variantId,
+        productId: data.productId,
+        changeType: data.changeType,
+        oldStockLevel: data.oldStockLevel,
+        newStockLevel: data.newStockLevel,
+        quantityChanged: data.quantityChanged,
+        referenceType: data.referenceType || null,
+        referenceId: data.referenceId || null,
+        userId: data.userId || null,
+        notes: data.notes || null
+      });
 
-      const [result] = await connection.query(
-        `INSERT INTO inventory_audit_log (
-          variant_id, product_id, change_type,
-          old_stock_level, new_stock_level, quantity_changed,
-          reference_type, reference_id, user_id, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          data.variantId,
-          data.productId,
-          data.changeType,
-          data.oldStockLevel,
-          data.newStockLevel,
-          data.quantityChanged,
-          data.referenceType || null,
-          data.referenceId || null,
-          data.userId || null,
-          data.notes || null
-        ]
-      );
-
-      await connection.commit();
-      return result.insertId;
+      return auditLog;
     } catch (error) {
-      await connection.rollback();
+      console.error('[InventoryAuditService] logInventoryChange error:', error.message);
       throw error;
-    } finally {
-      connection.release();
     }
   }
 
   /**
    * Log stock reduction due to sale
-   * @param {number} variantId - Variant ID
-   * @param {number} productId - Product ID
-   * @param {number} oldStock - Old stock level
-   * @param {number} newStock - New stock level
-   * @param {number} quantity - Quantity sold
-   * @param {number} orderId - Order ID
-   * @param {number} userId - User ID (optional)
-   * @returns {Promise<number>} Audit log ID
    */
   async logSale(variantId, productId, oldStock, newStock, quantity, orderId, userId = null) {
     return this.logInventoryChange({
@@ -73,14 +53,6 @@ class InventoryAuditService {
 
   /**
    * Log stock increase due to restock
-   * @param {number} variantId - Variant ID
-   * @param {number} productId - Product ID
-   * @param {number} oldStock - Old stock level
-   * @param {number} newStock - New stock level
-   * @param {number} quantity - Quantity added
-   * @param {number} userId - User ID who performed restock
-   * @param {string} notes - Additional notes
-   * @returns {Promise<number>} Audit log ID
    */
   async logRestock(variantId, productId, oldStock, newStock, quantity, userId, notes = '') {
     return this.logInventoryChange({
@@ -99,14 +71,6 @@ class InventoryAuditService {
 
   /**
    * Log stock return
-   * @param {number} variantId - Variant ID
-   * @param {number} productId - Product ID
-   * @param {number} oldStock - Old stock level
-   * @param {number} newStock - New stock level
-   * @param {number} quantity - Quantity returned
-   * @param {number} orderId - Original order ID
-   * @param {number} userId - User ID
-   * @returns {Promise<number>} Audit log ID
    */
   async logReturn(variantId, productId, oldStock, newStock, quantity, orderId, userId = null) {
     return this.logInventoryChange({
@@ -125,13 +89,6 @@ class InventoryAuditService {
 
   /**
    * Log manual stock adjustment
-   * @param {number} variantId - Variant ID
-   * @param {number} productId - Product ID
-   * @param {number} oldStock - Old stock level
-   * @param {number} newStock - New stock level
-   * @param {number} userId - User ID who made adjustment
-   * @param {string} notes - Reason for adjustment
-   * @returns {Promise<number>} Audit log ID
    */
   async logAdjustment(variantId, productId, oldStock, newStock, userId, notes) {
     const quantityChanged = newStock - oldStock;
@@ -151,11 +108,6 @@ class InventoryAuditService {
 
   /**
    * Log stock reservation
-   * @param {number} variantId - Variant ID
-   * @param {number} productId - Product ID
-   * @param {number} quantity - Quantity reserved
-   * @param {string} sessionId - Cart/Session ID
-   * @returns {Promise<number>} Audit log ID
    */
   async logReservation(variantId, productId, quantity, sessionId) {
     return this.logInventoryChange({
@@ -173,115 +125,105 @@ class InventoryAuditService {
 
   /**
    * Get audit logs for a variant
-   * @param {number} variantId - Variant ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} Audit logs
    */
   async getVariantAuditLogs(variantId, options = {}) {
-    const limit = options.limit || 50;
-    const offset = (options.page || 1) * limit - limit;
+    const limit = parseInt(options.limit) || 50;
+    const page = parseInt(options.page) || 1;
+    const skip = (page - 1) * limit;
 
-    const [rows] = await mysqlPool.query(
-      `SELECT al.*, p.name as product_name, pv.sku, pv.color, pv.size
-       FROM inventory_audit_log al
-       INNER JOIN product_variants pv ON al.variant_id = pv.id
-       INNER JOIN products p ON al.product_id = p.id
-       WHERE al.variant_id = ?
-       ORDER BY al.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [variantId, limit, offset]
-    );
+    const logs = await InventoryAuditLog.find({ variantId })
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('productId', 'name')
+      .lean();
 
-    return rows;
+    return logs;
   }
 
   /**
-   * Get audit logs for a product (all variants)
-   * @param {number} productId - Product ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} Audit logs
+   * Get audit logs for a product
    */
   async getProductAuditLogs(productId, options = {}) {
-    const limit = options.limit || 50;
-    const offset = (options.page || 1) * limit - limit;
+    const limit = parseInt(options.limit) || 50;
+    const page = parseInt(options.page) || 1;
+    const skip = (page - 1) * limit;
 
-    const [rows] = await mysqlPool.query(
-      `SELECT al.*, pv.sku, pv.color, pv.size
-       FROM inventory_audit_log al
-       INNER JOIN product_variants pv ON al.variant_id = pv.id
-       WHERE al.product_id = ?
-       ORDER BY al.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [productId, limit, offset]
-    );
+    const logs = await InventoryAuditLog.find({ productId })
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
-    return rows;
+    return logs;
   }
 
   /**
-   * Get inventory change summary for a date range
-   * @param {Date} startDate - Start date
-   * @param {Date} endDate - End date
-   * @param {number} productId - Optional product filter
-   * @returns {Promise<Object>} Summary statistics
+   * Get inventory change summary
    */
   async getInventorySummary(startDate, endDate, productId = null) {
-    const params = [startDate, endDate];
-    let productFilter = '';
+    const query = {
+      created_at: { $gte: new Date(startDate), $lte: new Date(endDate) }
+    };
 
     if (productId) {
-      productFilter = ' AND product_id = ?';
-      params.push(productId);
+      query.productId = productId;
     }
 
-    const [rows] = await mysqlPool.query(
-      `SELECT
-        change_type,
-        COUNT(*) as transaction_count,
-        SUM(quantity_changed) as total_quantity_changed,
-        AVG(quantity_changed) as avg_quantity
-       FROM inventory_audit_log
-       WHERE created_at BETWEEN ? AND ?${productFilter}
-       GROUP BY change_type
-       ORDER BY transaction_count DESC`,
-      params
-    );
+    const summary = await InventoryAuditLog.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$changeType',
+          transaction_count: { $sum: 1 },
+          total_quantity_changed: { $sum: '$quantityChanged' },
+          avg_quantity: { $avg: '$quantityChanged' }
+        }
+      },
+      {
+        $project: {
+          change_type: '$_id',
+          transaction_count: 1,
+          total_quantity_changed: 1,
+          avg_quantity: 1,
+          _id: 0
+        }
+      },
+      { $sort: { transaction_count: -1 } }
+    ]);
 
-    return rows;
+    return summary;
   }
 
   /**
-   * Get low stock alerts based on reorder level
-   * @returns {Promise<Array>} Low stock variants
+   * Get low stock alerts
    */
   async getLowStockAlerts() {
-    const [rows] = await mysqlPool.query(`
-      SELECT
-        pv.id as variant_id,
-        pv.sku,
-        pv.color,
-        pv.size,
-        p.id as product_id,
-        p.name as product_name,
-        vi.stock_level,
-        vi.low_stock_threshold,
-        vi.reorder_level,
-        vi.reorder_quantity,
-        CASE
-          WHEN vi.stock_level = 0 THEN 'out_of_stock'
-          WHEN vi.stock_level <= vi.low_stock_threshold THEN 'low_stock'
-          WHEN vi.stock_level <= vi.reorder_level THEN 'needs_reorder'
-          ELSE 'in_stock'
-        END as stock_status
-      FROM product_variants pv
-      INNER JOIN products p ON pv.product_id = p.id
-      INNER JOIN variant_inventory vi ON pv.id = vi.variant_id
-      WHERE vi.stock_level <= vi.reorder_level
-        AND (p.deleted_at IS NULL OR p.deleted_at = 0)
-      ORDER BY vi.stock_level ASC, p.name, pv.color, pv.size
-    `);
+    // This logic is better handled in InventoryService or via a more complex aggregation
+    // For now, return products with low stock variants
+    const products = await Product.find({
+      'variants.stock': { $lte: 5 }, // Default threshold
+      is_deleted: { $ne: true }
+    }).lean();
 
-    return rows;
+    const alerts = [];
+    products.forEach(p => {
+      p.variants.forEach(v => {
+        if (v.stock <= (v.lowStockThreshold || 5)) {
+          alerts.push({
+            variant_id: v._id,
+            sku: v.sku,
+            product_id: p._id,
+            product_name: p.name,
+            stock_level: v.stock,
+            low_stock_threshold: v.lowStockThreshold || 5,
+            stock_status: v.stock === 0 ? 'out_of_stock' : 'low_stock'
+          });
+        }
+      });
+    });
+
+    return alerts;
   }
 }
 

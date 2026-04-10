@@ -1,143 +1,285 @@
-const { mysqlPool } = require('../config/db');
+const Product = require('../models/product.model');
+const redis = require('../config/integrations/redis');
+const { inventoryAuditService } = require('./inventory-audit.service');
 
-/**
- * Inventory Service
- * Handles inventory and stock level operations
- */
 class InventoryService {
-  /**
-   * Get low stock items
-   * @param {number} threshold - Stock level threshold
-   * @returns {Promise<Array>} Low stock items
-   */
-  async getLowStockItems(threshold = 10) {
-    try {
-      // Check if variant_inventory table exists
-      const [tables] = await mysqlPool.query(`
-        SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES 
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'variant_inventory'
-      `);
+  async clearProductListCache() {
+    if (!redis) return;
 
-      if (tables.length === 0) {
-        // Fallback: return variants with low stock from product_variants
-        const [variants] = await mysqlPool.query(`
-          SELECT 
-            pv.id,
-            pv.sku,
-            pv.product_id,
-            p.name as product_name,
-            pv.price,
-            pv.stock as stock_level,
-            pv.low_stock_threshold,
-            pv.created_at,
-            pv.updated_at
-          FROM product_variants pv
-          INNER JOIN products p ON pv.product_id = p.id
-          WHERE pv.stock IS NULL OR pv.stock <= ?
-          ORDER BY pv.stock ASC
-        `, [threshold]);
-        return variants;
+    try {
+      const keys = await redis.keys('api:products:list:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (error) {
+      console.error('[InventoryService] clearProductListCache error:', error.message);
+    }
+  }
+
+  normalizeAttributes(attributes) {
+    if (!attributes) return {};
+    if (attributes instanceof Map) {
+      return Object.fromEntries(attributes.entries());
+    }
+    return { ...attributes };
+  }
+
+  getVariantValue(variant, key) {
+    const attributes = this.normalizeAttributes(variant?.attributes);
+    return attributes[key] || attributes[key.toLowerCase()] || attributes[key.charAt(0).toUpperCase() + key.slice(1)] || variant?.[key] || null;
+  }
+
+  normalizeCategories(categories = []) {
+    return categories
+      .map((category) => {
+        if (!category) return null;
+        const id = category.id || category._id;
+        return {
+          id: id?.toString() || null,
+          _id: id?.toString() || null,
+          name: category.name || '',
+          slug: category.slug || '',
+        };
+      })
+      .filter(Boolean);
+  }
+
+  getThumbnail(product, variant = null) {
+    if (variant?.image) return variant.image;
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images[0];
+    }
+    return product.thumbnail || product.image || null;
+  }
+
+  getProductTotalStock(product) {
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      return product.variants.reduce((sum, variant) => sum + (Number(variant.stock || 0) || 0), 0);
+    }
+    return Number(product.stock || 0) || 0;
+  }
+
+  mapInventoryItem(product, variant = null) {
+    const categories = this.normalizeCategories(product.categories || []);
+    const categoryNames = categories.map((category) => category.name).join(', ') || product.categoryName || '';
+    const price = Number(variant?.price || product.basePrice || product.price || 0) || 0;
+    const stock = Number(variant?.stock ?? product.stock ?? 0) || 0;
+    const lowStockThreshold = Number(variant?.lowStockThreshold || 5) || 5;
+    const color = variant ? (this.getVariantValue(variant, 'color') || '') : '';
+    const size = variant ? (this.getVariantValue(variant, 'size') || '') : '';
+    const productId = product._id?.toString() || String(product.productId || '');
+    const variantId = variant?._id?.toString() || product._id?.toString() || null;
+
+    return {
+      id: variantId,
+      variantId,
+      productId,
+      product_id: productId,
+      productName: product.name || '',
+      product_name: product.name || '',
+      sku: variant?.sku || product.sku || '',
+      thumbnail: this.getThumbnail(product, variant),
+      categories,
+      categoryNames,
+      categoryName: categoryNames,
+      color,
+      size,
+      price,
+      stock,
+      stock_level: stock,
+      stock_quantity: stock,
+      lowStockThreshold,
+      low_stock_threshold: lowStockThreshold,
+      stockStatus: stock === 0 ? 'out_of_stock' : stock <= lowStockThreshold ? 'low_stock' : 'in_stock',
+      stock_status: stock === 0 ? 'out_of_stock' : stock <= lowStockThreshold ? 'low_stock' : 'in_stock',
+      isLowStock: stock > 0 && stock <= lowStockThreshold,
+      isOutOfStock: stock === 0,
+      lastSaleChannel: variant?.lastSaleChannel || null,
+      soldOffline: variant?.lastSaleChannel === 'offline',
+      soldOfflineAt: variant?.soldOfflineAt || null,
+      offlineSoldQuantity: Number(variant?.offlineSoldQuantity || 0) || 0,
+      productTotalStock: this.getProductTotalStock(product),
+      product_total_stock: this.getProductTotalStock(product),
+    };
+  }
+
+  async getAllInventoryItems(tenantId = 1) {
+    const products = await Product.find({
+      tenant_id: Number(tenantId) || 1,
+      is_deleted: { $ne: true },
+    }).populate('categories').lean();
+    const items = [];
+
+    products.forEach((product) => {
+      if (Array.isArray(product.variants) && product.variants.length > 0) {
+        product.variants.forEach((variant) => {
+          items.push(this.mapInventoryItem(product, variant));
+        });
+        return;
       }
 
-      // Use variant_inventory table
-      const [items] = await mysqlPool.query(`
-        SELECT 
-          pv.id,
-          pv.sku,
-          pv.product_id,
-          p.name as product_name,
-          pv.price,
-          vi.stock_level,
-          vi.low_stock_threshold,
-          pv.created_at,
-          pv.updated_at
-        FROM product_variants pv
-        INNER JOIN products p ON pv.product_id = p.id
-        LEFT JOIN variant_inventory vi ON pv.id = vi.variant_id
-        WHERE vi.stock_level IS NULL OR vi.stock_level <= ?
-        ORDER BY vi.stock_level ASC
-      `, [threshold]);
+      items.push(this.mapInventoryItem(product));
+    });
 
-      return items;
+    return items;
+  }
+
+  async getLowStockItems(threshold = 10, tenantId = 1) {
+    try {
+      const inventoryItems = await this.getAllInventoryItems(tenantId);
+      return inventoryItems.filter((item) => item.stock <= Math.max(item.lowStockThreshold || 0, threshold));
     } catch (error) {
       console.error('[InventoryService] getLowStockItems error:', error.message);
       throw error;
     }
   }
 
-  /**
-   * Get stock levels for all variants
-   * @returns {Promise<Array>} Stock levels
-   */
-  async getStockLevels() {
+  async getStockLevels(tenantId = 1) {
     try {
-      const [levels] = await mysqlPool.query(`
-        SELECT 
-          pv.id,
-          pv.sku,
-          pv.product_id,
-          p.name as product_name,
-          COALESCE(pv.stock, 0) as stock_level,
-          COALESCE(pv.low_stock_threshold, 5) as low_stock_threshold,
-          CASE 
-            WHEN pv.stock IS NULL THEN 'unknown'
-            WHEN pv.stock = 0 THEN 'out_of_stock'
-            WHEN pv.stock <= pv.low_stock_threshold THEN 'low_stock'
-            ELSE 'in_stock'
-          END as stock_status
-        FROM product_variants pv
-        INNER JOIN products p ON pv.product_id = p.id
-        ORDER BY pv.product_id, pv.sku
-      `);
-
-      return levels;
+      return this.getAllInventoryItems(tenantId);
     } catch (error) {
       console.error('[InventoryService] getStockLevels error:', error.message);
       throw error;
     }
   }
 
-  /**
-   * Update stock level for a variant
-   * @param {number} variantId - Variant ID
-   * @param {number} stockLevel - New stock level
-   * @param {number} lowStockThreshold - Low stock threshold
-   * @returns {Promise<Object>} Updated stock info
-   */
-  async updateStockLevel(variantId, stockLevel, lowStockThreshold = 5) {
+  async updateStockLevel(id, stockLevel, lowStockThreshold = 5, tenantId = 1) {
     try {
-      // Update product_variants directly
-      await mysqlPool.query(
-        `UPDATE product_variants 
-         SET stock = ?, low_stock_threshold = ? 
-         WHERE id = ?`,
-        [stockLevel, lowStockThreshold, variantId]
-      );
+      let product = await Product.findOneAndUpdate(
+        { 'variants._id': id, tenant_id: Number(tenantId) || 1 },
+        {
+          $set: {
+            'variants.$.stock': stockLevel,
+            'variants.$.lowStockThreshold': lowStockThreshold,
+          },
+        },
+        { new: true }
+      ).populate('categories').lean();
 
-      // Fetch updated record
-      const [updated] = await mysqlPool.query(
-        `SELECT 
-          pv.id,
-          pv.sku,
-          p.name as product_name,
-          pv.stock as stock_level,
-          pv.low_stock_threshold,
-          CASE 
-            WHEN pv.stock = 0 THEN 'out_of_stock'
-            WHEN pv.stock <= pv.low_stock_threshold THEN 'low_stock'
-            ELSE 'in_stock'
-          END as stock_status
-        FROM product_variants pv
-        INNER JOIN products p ON pv.product_id = p.id
-        WHERE pv.id = ?`,
-        [variantId]
-      );
+      if (product) {
+        const variant = (product.variants || []).find((entry) => entry._id?.toString() === id.toString());
+        return this.mapInventoryItem(product, variant);
+      }
 
-      return updated[0];
+      product = await Product.findOneAndUpdate(
+        { _id: id, tenant_id: Number(tenantId) || 1 },
+        { $set: { stock: stockLevel } },
+        { new: true }
+      ).populate('categories').lean();
+
+      if (product) {
+        return this.mapInventoryItem(product);
+      }
+
+      throw new Error('Item not found');
     } catch (error) {
       console.error('[InventoryService] updateStockLevel error:', error.message);
       throw error;
     }
+  }
+
+  async recordOfflineSale(data, tenantId = 1) {
+    const variantId = data.variantId || data.id;
+    const quantity = Number(data.quantity || 1) || 1;
+    const salePrice = data.salePrice == null || data.salePrice === ''
+      ? null
+      : Number(data.salePrice);
+
+    if (!variantId) {
+      const error = new Error('variantId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      const error = new Error('quantity must be a whole number greater than 0');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (salePrice != null && (Number.isNaN(salePrice) || salePrice < 0)) {
+      const error = new Error('salePrice must be a positive number');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const product = await Product.findOne({
+      tenant_id: Number(tenantId) || 1,
+      'variants._id': variantId,
+      is_deleted: { $ne: true },
+    });
+
+    if (!product) {
+      const error = new Error('Variant not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const variant = product.variants.id(variantId);
+    const oldStock = Number(variant?.stock || 0) || 0;
+
+    if (oldStock < quantity) {
+      const error = new Error(`Insufficient stock. Available: ${oldStock}`);
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const soldAt = data.soldAt ? new Date(data.soldAt) : new Date();
+    if (Number.isNaN(soldAt.getTime())) {
+      const error = new Error('soldAt must be a valid date');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    variant.stock = oldStock - quantity;
+    variant.lastSaleChannel = 'offline';
+    variant.soldOfflineAt = soldAt;
+    variant.offlineSoldQuantity = (Number(variant.offlineSoldQuantity || 0) || 0) + quantity;
+
+    await product.save();
+
+    const referenceId = `offline-${product._id}-${variant._id}-${soldAt.getTime()}`;
+    const noteParts = [
+      `Sold offline: ${quantity} unit(s)`,
+      salePrice == null ? null : `sale price Rs.${salePrice}`,
+      data.paymentMethod ? `payment: ${data.paymentMethod}` : null,
+      data.customerName ? `customer: ${data.customerName}` : null,
+      data.notes || null,
+    ].filter(Boolean);
+
+    await inventoryAuditService.logInventoryChange({
+      variantId,
+      productId: product._id,
+      changeType: 'sale',
+      oldStockLevel: oldStock,
+      newStockLevel: variant.stock,
+      quantityChanged: -quantity,
+      referenceType: 'offline_sale',
+      referenceId,
+      userId: data.userId || null,
+      notes: noteParts.join(' | '),
+    });
+
+    await this.clearProductListCache();
+
+    const refreshed = await Product.findById(product._id).populate('categories').lean();
+    const refreshedVariant = (refreshed.variants || []).find((entry) => entry._id?.toString() === variantId.toString());
+
+    return {
+      item: this.mapInventoryItem(refreshed, refreshedVariant),
+      sale: {
+        referenceId,
+        productId: product._id.toString(),
+        variantId: variantId.toString(),
+        quantity,
+        salePrice,
+        paymentMethod: data.paymentMethod || null,
+        soldAt: soldAt.toISOString(),
+        oldStockLevel: oldStock,
+        newStockLevel: variant.stock,
+        markedBy: data.userId || null,
+      },
+    };
   }
 }
 

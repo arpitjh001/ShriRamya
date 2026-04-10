@@ -4,12 +4,10 @@
  */
 
 const httpStatus = require('http-status');
-const orderStateMachine = require('../services/orderStateMachine.service');
+const { Order, Payment } = require('../models');
 const orderEventService = require('../services/events/orderEvent.service');
 const RazorpayGateway = require('../services/payments/RazorpayGateway');
 const StripeGateway = require('../services/payments/StripeGateway');
-const { successResponse } = require('../utils/response');
-const { mysqlPool } = require('../config/db');
 
 /**
  * Handle Razorpay Webhook
@@ -46,19 +44,11 @@ const handleRazorpayWebhook = async (req, res, next) => {
         // Handle different event types
         switch (event) {
             case 'payment.captured':
-                await handleRazorpayPaymentCaptured(payload_data.payment.entity);
+            case 'order.paid':
+                await handleRazorpayPaymentStatus(payload_data.payment.entity, 'completed');
                 break;
             case 'payment.failed':
-                await handleRazorpayPaymentFailed(payload_data.payment.entity);
-                break;
-            case 'order.paid':
-                await handleRazorpayOrderPaid(payload_data.payment.entity);
-                break;
-            case 'refund.created':
-                await handleRazorpayRefundCreated(payload_data.refund.entity);
-                break;
-            case 'refund.processed':
-                await handleRazorpayRefundProcessed(payload_data.refund.entity);
+                await handleRazorpayPaymentStatus(payload_data.payment.entity, 'failed');
                 break;
             default:
                 console.log(`Unhandled Razorpay event: ${event}`);
@@ -85,15 +75,9 @@ const handleStripeWebhook = async (req, res, next) => {
         const signature = req.headers['stripe-signature'];
         const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-        if (!signature) {
-            return res.status(httpStatus.BAD_REQUEST).json({
-                success: false,
-                message: 'Missing webhook signature'
-            });
-        }
-
-        // Verify webhook signature
-        const verification = new StripeGateway().verifyWebhookSignature(
+        // Verify webhook signature (using gateway service)
+        const stripeGateway = new StripeGateway();
+        const verification = stripeGateway.verifyWebhookSignature(
             JSON.stringify(body),
             signature,
             endpointSecret
@@ -109,22 +93,17 @@ const handleStripeWebhook = async (req, res, next) => {
         const event = verification.event;
         console.log(`Stripe webhook received: ${event.type}`);
 
-        // Handle different event types
         switch (event.type) {
             case 'payment_intent.succeeded':
-                await handleStripePaymentSucceeded(event.data.object);
+                await handleStripePaymentStatus(event.data.object, 'completed');
                 break;
             case 'payment_intent.payment_failed':
-                await handleStripePaymentFailed(event.data.object);
-                break;
-            case 'charge.refunded':
-                await handleStripeRefund(event.data.object);
+                await handleStripePaymentStatus(event.data.object, 'failed');
                 break;
             default:
                 console.log(`Unhandled Stripe event: ${event.type}`);
         }
 
-        // Acknowledge webhook
         res.status(httpStatus.OK).json({
             success: true,
             message: 'Webhook received'
@@ -136,283 +115,98 @@ const handleStripeWebhook = async (req, res, next) => {
 };
 
 /**
- * Handle Razorpay payment captured
+ * Handle Razorpay payment status
  */
-async function handleRazorpayPaymentCaptured(payment) {
+async function handleRazorpayPaymentStatus(payment, status) {
+    const orderId = payment.notes?.orderId;
+    if (!orderId) return;
+
     try {
-        const orderId = payment.notes?.orderId;
-        if (!orderId) {
-            console.warn('Razorpay payment missing orderId in notes');
-            return;
+        const order = await Order.findById(orderId);
+        if (!order) return;
+
+        if (status === 'completed') {
+            order.paymentStatus = 'paid';
+            order.status = 'processing';
+            await order.save();
+        } else if (status === 'failed') {
+            order.paymentStatus = 'failed';
+            await order.save();
         }
 
-        // Update order status
-        await orderStateMachine.transitionStatus(parseInt(orderId), 'paid', {
-            userType: 'system'
-        });
-
-        // Update payment record
-        await mysqlPool.query(
-            `UPDATE payments 
-            SET status = 'completed', 
-                transaction_id = ?, 
-                paid_at = NOW(),
-                gateway_response = ?
-            WHERE order_id = ?`,
-            [payment.id, JSON.stringify(payment), parseInt(orderId)]
-        );
-
-        // Log event
-        await orderEventService.logEvent(
-            parseInt(orderId),
-            'payment_success',
-            `Payment of ₹${payment.amount / 100} received via Razorpay`,
-            {
-                paymentId: payment.id,
-                amount: payment.amount / 100,
-                method: payment.method
+        // Update Payment record
+        await Payment.findOneAndUpdate(
+            { orderId: order._id },
+            { 
+                $set: { 
+                    status, 
+                    transactionId: payment.id,
+                    paidAt: status === 'completed' ? new Date() : null,
+                    gatewayResponse: payment,
+                    amount: payment.amount / 100
+                } 
             },
-            null,
-            'system'
-        );
-
-        console.log(`Razorpay payment captured for order ${orderId}`);
-    } catch (error) {
-        console.error('Error handling Razorpay payment captured:', error);
-        throw error;
-    }
-}
-
-/**
- * Handle Razorpay payment failed
- */
-async function handleRazorpayPaymentFailed(payment) {
-    try {
-        const orderId = payment.notes?.orderId;
-        if (!orderId) return;
-
-        // Update order status
-        await orderStateMachine.transitionStatus(parseInt(orderId), 'payment_failed', {
-            userType: 'system'
-        });
-
-        // Log event
-        await orderEventService.logEvent(
-            parseInt(orderId),
-            'payment_failed',
-            `Payment failed: ${payment.error_description || 'Unknown error'}`,
-            { paymentId: payment.id },
-            null,
-            'system'
-        );
-
-        console.log(`Razorpay payment failed for order ${orderId}`);
-    } catch (error) {
-        console.error('Error handling Razorpay payment failed:', error);
-    }
-}
-
-/**
- * Handle Razorpay order paid
- */
-async function handleRazorpayOrderPaid(payment) {
-    // Similar to payment.captured
-    await handleRazorpayPaymentCaptured(payment);
-}
-
-/**
- * Handle Razorpay refund created
- */
-async function handleRazorpayRefundCreated(refund) {
-    try {
-        const paymentId = refund.payment_id;
-        
-        // Find order from payment
-        const [payments] = await mysqlPool.query(
-            'SELECT order_id FROM payments WHERE transaction_id = ?',
-            [paymentId]
-        );
-
-        if (payments.length === 0) return;
-
-        const orderId = payments[0].order_id;
-
-        // Update refund record
-        await mysqlPool.query(
-            `UPDATE refunds 
-            SET status = 'approved', 
-                refund_transaction_id = ?,
-                updated_at = NOW()
-            WHERE order_id = ? AND amount = ?`,
-            [refund.id, orderId, refund.amount / 100]
-        );
-
-        console.log(`Razorpay refund created for order ${orderId}`);
-    } catch (error) {
-        console.error('Error handling Razorpay refund created:', error);
-    }
-}
-
-/**
- * Handle Razorpay refund processed
- */
-async function handleRazorpayRefundProcessed(refund) {
-    try {
-        const paymentId = refund.payment_id;
-        
-        const [payments] = await mysqlPool.query(
-            'SELECT order_id FROM payments WHERE transaction_id = ?',
-            [paymentId]
-        );
-
-        if (payments.length === 0) return;
-
-        const orderId = payments[0].order_id;
-
-        // Update refund record
-        await mysqlPool.query(
-            `UPDATE refunds 
-            SET status = 'completed', 
-                processed_at = NOW()
-            WHERE order_id = ? AND refund_transaction_id = ?`,
-            [orderId, refund.id]
+            { upsert: true, new: true }
         );
 
         // Log event
         await orderEventService.logEvent(
-            orderId,
-            'refund_completed',
-            `Refund of ₹${refund.amount / 100} processed`,
-            { refundId: refund.id },
+            order._id,
+            status === 'completed' ? 'payment_success' : 'payment_failed',
+            `Payment ${status} via Razorpay`,
+            { paymentId: payment.id, amount: payment.amount / 100 },
             null,
             'system'
         );
-
-        console.log(`Razorpay refund processed for order ${orderId}`);
     } catch (error) {
-        console.error('Error handling Razorpay refund processed:', error);
+        console.error('Error handling Razorpay payment status:', error);
     }
 }
 
 /**
- * Handle Stripe payment succeeded
+ * Handle Stripe payment status
  */
-async function handleStripePaymentSucceeded(paymentIntent) {
+async function handleStripePaymentStatus(paymentIntent, status) {
+    const orderId = paymentIntent.metadata?.orderId;
+    if (!orderId) return;
+
     try {
-        const orderId = paymentIntent.metadata?.orderId;
-        if (!orderId) {
-            console.warn('Stripe payment missing orderId in metadata');
-            return;
+        const order = await Order.findById(orderId);
+        if (!order) return;
+
+        if (status === 'completed') {
+            order.paymentStatus = 'paid';
+            order.status = 'processing';
+            await order.save();
+        } else if (status === 'failed') {
+            order.paymentStatus = 'failed';
+            await order.save();
         }
 
-        // Update order status
-        await orderStateMachine.transitionStatus(parseInt(orderId), 'paid', {
-            userType: 'system'
-        });
-
-        // Update payment record
-        await mysqlPool.query(
-            `UPDATE payments 
-            SET status = 'completed', 
-                transaction_id = ?, 
-                paid_at = NOW(),
-                gateway_response = ?
-            WHERE order_id = ?`,
-            [paymentIntent.id, JSON.stringify(paymentIntent), parseInt(orderId)]
-        );
-
-        // Log event
-        await orderEventService.logEvent(
-            parseInt(orderId),
-            'payment_success',
-            `Payment of $${paymentIntent.amount / 100} received via Stripe`,
-            {
-                paymentId: paymentIntent.id,
-                amount: paymentIntent.amount / 100,
-                currency: paymentIntent.currency
+        await Payment.findOneAndUpdate(
+            { orderId: order._id },
+            { 
+                $set: { 
+                    status, 
+                    transactionId: paymentIntent.id,
+                    paidAt: status === 'completed' ? new Date() : null,
+                    gatewayResponse: paymentIntent,
+                    amount: paymentIntent.amount / 100
+                } 
             },
-            null,
-            'system'
+            { upsert: true, new: true }
         );
 
-        console.log(`Stripe payment succeeded for order ${orderId}`);
-    } catch (error) {
-        console.error('Error handling Stripe payment succeeded:', error);
-        throw error;
-    }
-}
-
-/**
- * Handle Stripe payment failed
- */
-async function handleStripePaymentFailed(paymentIntent) {
-    try {
-        const orderId = paymentIntent.metadata?.orderId;
-        if (!orderId) return;
-
-        // Update order status
-        await orderStateMachine.transitionStatus(parseInt(orderId), 'payment_failed', {
-            userType: 'system'
-        });
-
-        // Log event
         await orderEventService.logEvent(
-            parseInt(orderId),
-            'payment_failed',
-            'Payment failed via Stripe',
-            { paymentId: paymentIntent.id },
+            order._id,
+            status === 'completed' ? 'payment_success' : 'payment_failed',
+            `Payment ${status} via Stripe`,
+            { paymentId: paymentIntent.id, amount: paymentIntent.amount / 100 },
             null,
             'system'
         );
-
-        console.log(`Stripe payment failed for order ${orderId}`);
     } catch (error) {
-        console.error('Error handling Stripe payment failed:', error);
-    }
-}
-
-/**
- * Handle Stripe refund
- */
-async function handleStripeRefund(charge) {
-    try {
-        const paymentIntentId = charge.payment_intent;
-        
-        const [payments] = await mysqlPool.query(
-            'SELECT order_id FROM payments WHERE transaction_id = ?',
-            [paymentIntentId]
-        );
-
-        if (payments.length === 0) return;
-
-        const orderId = payments[0].order_id;
-        const refund = charge.refunds?.data?.[0];
-
-        if (!refund) return;
-
-        // Update refund record
-        await mysqlPool.query(
-            `UPDATE refunds 
-            SET status = 'completed', 
-                refund_transaction_id = ?,
-                processed_at = NOW()
-            WHERE order_id = ? AND refund_transaction_id = ?`,
-            [refund.id, orderId, refund.id]
-        );
-
-        // Log event
-        await orderEventService.logEvent(
-            orderId,
-            'refund_completed',
-            `Refund of $${refund.amount / 100} processed via Stripe`,
-            { refundId: refund.id },
-            null,
-            'system'
-        );
-
-        console.log(`Stripe refund processed for order ${orderId}`);
-    } catch (error) {
-        console.error('Error handling Stripe refund:', error);
+        console.error('Error handling Stripe payment status:', error);
     }
 }
 

@@ -1,10 +1,6 @@
-/**
- * Tenant Service
- * Handles multi-tenant operations
- */
-
-const { Tenant, TenantSettingsService, UserRoleService, Role } = require('../models/rbac.model');
-const { mysqlPool } = require('../config/db');
+const { Role, UserRoleService, Tenant, TenantSettingsService } = require('../models/rbac.model');
+const { User } = require('../models');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 class TenantService {
@@ -12,10 +8,7 @@ class TenantService {
      * Create a new tenant with owner user
      */
     async createTenant(data) {
-        const connection = await mysqlPool.getConnection();
         try {
-            await connection.beginTransaction();
-
             const {
                 name,
                 domain,
@@ -25,75 +18,72 @@ class TenantService {
                 settings = {}
             } = data;
 
-            // 1. Create the tenant
-            const tenantId = await Tenant.create({
+            // 1. Create the tenant in MongoDB
+            const tenant = await Tenant.create({
                 name,
                 domain,
-                ownerUserId: null, // Will update after creating user
                 status: 'active',
-                settings
+                settings: settings
             });
 
-            // 2. Create owner user in mysql_users (for RBAC)
-            // Note: Actual authentication still happens via MongoDB
-            const hashedPassword = await bcrypt.hash(ownerPassword, 8);
+            // 2. Find or Create owner user in MongoDB
+            let owner = await User.findOne({ email: ownerEmail });
             
-            // First check if email exists
-            const [existingUsers] = await connection.query(
-                'SELECT id FROM mysql_users WHERE email = ?',
-                [ownerEmail]
-            );
-
-            let ownerUserId;
-            if (existingUsers.length > 0) {
-                ownerUserId = existingUsers[0].id;
+            if (!owner) {
+                const hashedPassword = await bcrypt.hash(ownerPassword, 8);
+                owner = await User.create({
+                    email: ownerEmail,
+                    name: ownerName,
+                    password: hashedPassword,
+                    tenant_id: tenant._id,
+                    role: 'admin',
+                    roles: ['Admin']
+                });
             } else {
-                const [userResult] = await connection.query(
-                    'INSERT INTO mysql_users (email, name, tenant_id) VALUES (?, ?, ?)',
-                    [ownerEmail, ownerName, tenantId]
-                );
-                ownerUserId = userResult.insertId;
+                // Update existing user with tenant info if needed
+                owner.tenant_id = tenant._id;
+                if (!owner.roles.includes('Admin')) {
+                    owner.roles.push('Admin');
+                }
+                await owner.save();
             }
 
-            // 3. Update tenant with owner_user_id
-            await connection.query(
-                'UPDATE tenants SET owner_user_id = ? WHERE id = ?',
-                [ownerUserId, tenantId]
-            );
+            // 3. Update tenant with ownerUserId
+            await Tenant.findByIdAndUpdate(tenant._id, {
+                $set: { ownerUserId: owner._id }
+            });
 
-            // 4. Assign Admin role to owner
-            const adminRole = await Role.findByName('Admin');
-            if (adminRole) {
-                await UserRoleService.assignRoleToUser(ownerUserId, adminRole.id, tenantId);
+            // 4. Ensure Admin role exists for this tenant
+            let adminRole = await Role.findByName('Admin');
+            if (!adminRole) {
+                // System roles are usually global, but we can ensure it here
+                await Role.create({
+                    name: 'Admin',
+                    description: 'Full administrative access',
+                    tenantId: tenant._id,
+                    isSystemRole: true
+                });
             }
 
-            // 5. Create default tenant settings
-            await TenantSettingsService.setSetting(tenantId, 'store_info', {
-                name,
-                currency: 'INR',
-                timezone: 'Asia/Kolkata'
-            });
-
-            await TenantSettingsService.setSetting(tenantId, 'feature_flags', {
-                enable_reviews: true,
-                enable_coupons: true,
-                enable_blog: true
-            });
-
-            await connection.commit();
+            // 5. Setup default settings if not provided
+            if (!settings.store_info) {
+                await TenantSettingsService.setSetting(tenant._id, 'store_info', {
+                    name,
+                    currency: 'INR',
+                    timezone: 'Asia/Kolkata'
+                });
+            }
 
             return {
-                id: tenantId,
+                id: tenant._id,
                 name,
                 domain,
-                ownerUserId,
+                ownerUserId: owner._id,
                 ownerEmail
             };
         } catch (error) {
-            await connection.rollback();
+            console.error('[TenantService] createTenant error:', error.message);
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
@@ -156,15 +146,15 @@ class TenantService {
     /**
      * Assign role to user in tenant
      */
-    async assignRoleToUser(userId, roleId, tenantId) {
-        return UserRoleService.assignRoleToUser(userId, roleId, tenantId);
+    async assignRoleToUser(userId, roleName, tenantId) {
+        return UserRoleService.assignRoleToUser(userId, roleName, tenantId);
     }
 
     /**
      * Remove role from user in tenant
      */
-    async removeRoleFromUser(userId, roleId, tenantId) {
-        return UserRoleService.removeRoleFromUser(userId, roleId, tenantId);
+    async removeRoleFromUser(userId, roleName, tenantId) {
+        return UserRoleService.removeRoleFromUser(userId, roleName, tenantId);
     }
 }
 

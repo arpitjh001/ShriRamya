@@ -8,8 +8,8 @@ const { successResponse } = require('../utils/response');
 const getLowStockItems = async (req, res, next) => {
   try {
     const threshold = parseInt(req.query.threshold) || 10;
-    
-    const lowStockItems = await inventoryService.getLowStockItems(threshold);
+    const tenantId = req.tenantId || req.user?.tenantId || 1;
+    const lowStockItems = await inventoryService.getLowStockItems(threshold, tenantId);
     
     return successResponse(res, lowStockItems, 'Low stock items retrieved successfully');
   } catch (error) {
@@ -23,7 +23,8 @@ const getLowStockItems = async (req, res, next) => {
  */
 const getStockLevels = async (req, res, next) => {
   try {
-    const stockLevels = await inventoryService.getStockLevels();
+    const tenantId = req.tenantId || req.user?.tenantId || 1;
+    const stockLevels = await inventoryService.getStockLevels(tenantId);
     
     return successResponse(res, stockLevels, 'Stock levels retrieved successfully');
   } catch (error) {
@@ -39,10 +40,28 @@ const updateStockLevel = async (req, res, next) => {
   try {
     const { variantId } = req.params;
     const { stockLevel, lowStockThreshold } = req.body;
-    
-    const updated = await inventoryService.updateStockLevel(variantId, stockLevel, lowStockThreshold);
+    const tenantId = req.tenantId || req.user?.tenantId || 1;
+    const updated = await inventoryService.updateStockLevel(variantId, stockLevel, lowStockThreshold, tenantId);
     
     return successResponse(res, updated, 'Stock level updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Record an admin-only offline sale for a variant
+ * @route POST /api/v1/admin/inventory/offline-sale
+ */
+const recordOfflineSale = async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || req.user?.tenantId || 1;
+    const result = await inventoryService.recordOfflineSale({
+      ...req.body,
+      userId: req.user?.id,
+    }, tenantId);
+
+    return successResponse(res, result, 'Product marked as sold offline and inventory updated');
   } catch (error) {
     next(error);
   }
@@ -52,4 +71,5 @@ module.exports = {
   getLowStockItems,
   getStockLevels,
   updateStockLevel,
+  recordOfflineSale,
 };

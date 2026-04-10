@@ -207,7 +207,6 @@ const ProductDetailPage = () => {
       let variation = null;
 
       if (hasVariants && (selectedColor || selectedSize)) {
-        // Use variant matrix system
         variation = {
           variantId: selectedVariation?.id,
           color: selectedColor || null,
@@ -215,19 +214,19 @@ const ProductDetailPage = () => {
           stock: variantStock?.stock || product.totalStock || 0
         };
       } else if (selectedVariation) {
-        // Legacy variant system
         variation = selectedVariation;
       }
-      // If no variants, variation stays null - product will be added without variant
 
       await addToCart(product.id, 1, variation);
       toast.success('Added to cart!');
+      return true;
     } catch (error) {
       if (error.response?.data?.code === 'INSUFFICIENT_STOCK') {
         toast.error(`Only ${error.response?.data?.availableStock} items available`);
       } else {
         toast.error('Failed to add to cart');
       }
+      return false;
     }
   };
 
@@ -510,6 +509,12 @@ const ProductDetailPage = () => {
                 <Button
                   variant="outline"
                   size="lg"
+                  onClick={async () => {
+                    const added = await handleAddToCart();
+                    if (added) {
+                      navigate('/checkout');
+                    }
+                  }}
                   className="flex-1 h-16 rounded-2xl border-charcoal/10 hover:border-charcoal bg-white transition-all text-sm uppercase font-bold tracking-widest"
                 >
                   Buy Now

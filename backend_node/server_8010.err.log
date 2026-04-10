@@ -1,0 +1,153 @@
+=8010 : The term '=8010' is not recognized as the name of a cmdlet, function, script file, or operable program. Check 
+the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ ='8010'; ='http://localhost:8010'; Set-Location 'C:\Users\Lenovo\shri ...
++ ~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (=8010:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+=http://localhost:8010 : The term '=http://localhost:8010' is not recognized as the name of a cmdlet, function, script 
+file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct 
+and try again.
+At line:1 char:10
++ ='8010'; ='http://localhost:8010'; Set-Location 'C:\Users\Lenovo\shri ...
++          ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (=http://localhost:8010:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+Email service SMTP not configured
+(node:16864) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16864) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:16864) [MONGOOSE] Warning: Duplicate schema index on {"domain":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:16864) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in analytics: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in analytics: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in email: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in notifications: 
+[Queue] Error in analytics: 
+[Queue] Error in email: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in analytics: 
+[Queue] Error in image-processing: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in analytics: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in email: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in analytics: 
+[Queue] Error in image-processing: 
+[Queue] Error in notifications: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in analytics: 
+[Queue] Error in image-processing: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in analytics: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in email: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in analytics: 
+[Queue] Error in analytics: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in notifications: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in email: 
+[Queue] Error in analytics: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 
+[Queue] Error in analytics: 
+[Queue] Error in notifications: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in stock-alerts: 
+[Queue] Error in notifications: 
+[Queue] Error in analytics: 
+[Queue] Error in email: 
+[Queue] Error in analytics: 
+[Queue] Error in image-processing: 
+[Queue] Error in email: 
+[Queue] Error in image-processing: 

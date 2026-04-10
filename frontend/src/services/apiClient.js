@@ -11,17 +11,10 @@
  */
 
 import axios from 'axios';
+import { getBackendBaseUrl } from '../utils/apiBase';
 
 // Configuration
-let API_BASE_URL = process.env.REACT_APP_BACKEND_URL
-  ? process.env.REACT_APP_BACKEND_URL.replace(/\/$/, '')
-  : '';
-
-// When running behind nginx in Docker, the browser can't resolve container
-// hostnames like `backend:8000`. Use relative URLs instead.
-if (API_BASE_URL && (API_BASE_URL.includes('backend:8000') || API_BASE_URL.includes('localhost:8000'))) {
-  API_BASE_URL = '';
-}
+const API_BASE_URL = getBackendBaseUrl();
 
 const API_VERSION = '/api/v1';
 

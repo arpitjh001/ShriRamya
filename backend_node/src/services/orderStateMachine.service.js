@@ -1,15 +1,9 @@
-/**
- * Order State Machine Service
- * Implements strict order lifecycle management similar to Shopify/Magento
- */
-
-const { mysqlPool } = require('../config/db');
+const Order = require('../models/order.model');
+const orderMongoRepository = require('../repositories/order.mongo.repository');
 const orderEventService = require('./events/orderEvent.service');
 const { variantInventoryService } = require('./variant-inventory.service');
+const mongoose = require('mongoose');
 
-/**
- * Order Status Constants
- */
 const ORDER_STATUS = {
     PENDING_PAYMENT: 'pending_payment',
     PAYMENT_FAILED: 'payment_failed',
@@ -21,9 +15,6 @@ const ORDER_STATUS = {
     REFUNDED: 'refunded'
 };
 
-/**
- * Payment Status Constants
- */
 const PAYMENT_STATUS = {
     PENDING: 'pending',
     PAID: 'paid',
@@ -31,9 +22,6 @@ const PAYMENT_STATUS = {
     REFUNDED: 'refunded'
 };
 
-/**
- * Fulfillment Status Constants
- */
 const FULFILLMENT_STATUS = {
     UNFULFILLED: 'unfulfilled',
     PROCESSING: 'processing',
@@ -41,40 +29,17 @@ const FULFILLMENT_STATUS = {
     DELIVERED: 'delivered'
 };
 
-/**
- * Valid State Transitions
- * Defines which status can transition to which
- */
 const VALID_TRANSITIONS = {
-    [ORDER_STATUS.PENDING_PAYMENT]: [
-        ORDER_STATUS.PAID,
-        ORDER_STATUS.PAYMENT_FAILED,
-        ORDER_STATUS.CANCELLED
-    ],
-    [ORDER_STATUS.PAYMENT_FAILED]: [
-        ORDER_STATUS.PENDING_PAYMENT,
-        ORDER_STATUS.CANCELLED
-    ],
-    [ORDER_STATUS.PAID]: [
-        ORDER_STATUS.PROCESSING,
-        ORDER_STATUS.CANCELLED,
-        ORDER_STATUS.REFUNDED
-    ],
-    [ORDER_STATUS.PROCESSING]: [
-        ORDER_STATUS.SHIPPED,
-        ORDER_STATUS.CANCELLED
-    ],
-    [ORDER_STATUS.SHIPPED]: [
-        ORDER_STATUS.DELIVERED
-    ],
+    [ORDER_STATUS.PENDING_PAYMENT]: [ORDER_STATUS.PAID, ORDER_STATUS.PAYMENT_FAILED, ORDER_STATUS.CANCELLED],
+    [ORDER_STATUS.PAYMENT_FAILED]: [ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.CANCELLED],
+    [ORDER_STATUS.PAID]: [ORDER_STATUS.PROCESSING, ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED],
+    [ORDER_STATUS.PROCESSING]: [ORDER_STATUS.SHIPPED, ORDER_STATUS.CANCELLED],
+    [ORDER_STATUS.SHIPPED]: [ORDER_STATUS.DELIVERED],
     [ORDER_STATUS.DELIVERED]: [],
     [ORDER_STATUS.CANCELLED]: [],
     [ORDER_STATUS.REFUNDED]: []
 };
 
-/**
- * Status Change Descriptions
- */
 const STATUS_DESCRIPTIONS = {
     [ORDER_STATUS.PENDING_PAYMENT]: 'Order created, awaiting payment',
     [ORDER_STATUS.PAYMENT_FAILED]: 'Payment attempt failed',
@@ -87,192 +52,83 @@ const STATUS_DESCRIPTIONS = {
 };
 
 class OrderStateMachine {
-    /**
-     * Check if a status transition is valid
-     * @param {string} currentStatus - Current order status
-     * @param {string} newStatus - Desired new status
-     * @returns {boolean}
-     */
     isValidTransition(currentStatus, newStatus) {
-        if (!VALID_TRANSITIONS[currentStatus]) {
-            return false;
-        }
+        if (!VALID_TRANSITIONS[currentStatus]) return false;
         return VALID_TRANSITIONS[currentStatus].includes(newStatus);
     }
 
-    /**
-     * Get allowed transitions for a status
-     * @param {string} status - Current order status
-     * @returns {string[]}
-     */
     getAllowedTransitions(status) {
         return VALID_TRANSITIONS[status] || [];
     }
 
-    /**
-     * Get order by ID
-     * @param {number} orderId - Order ID
-     * @returns {Promise<Object|null>}
-     */
     async getOrder(orderId) {
-        const [rows] = await mysqlPool.query(
-            'SELECT * FROM orders WHERE id = ?',
-            [orderId]
-        );
-        return rows.length > 0 ? rows[0] : null;
+        return await orderMongoRepository.getOrder(orderId);
     }
 
-    /**
-     * Transition order to a new status
-     * @param {number} orderId - Order ID
-     * @param {string} newStatus - New status
-     * @param {Object} options - Options (userId, userType, reason, metadata)
-     * @returns {Promise<Object>}
-     */
     async transitionStatus(orderId, newStatus, options = {}) {
-        const connection = await mysqlPool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
-
-            // Get current order
-            const [rows] = await connection.query(
-                'SELECT * FROM orders WHERE id = ? FOR UPDATE',
-                [orderId]
-            );
-
-            if (rows.length === 0) {
-                const error = new Error('Order not found');
-                error.statusCode = 404;
-                throw error;
-            }
-
-            const order = rows[0];
-            const currentStatus = order.status;
-
-            // Validate transition
-            if (!this.isValidTransition(currentStatus, newStatus)) {
-                const allowedTransitions = this.getAllowedTransitions(currentStatus);
-                const error = new Error(
-                    `Invalid status transition from ${currentStatus} to ${newStatus}. ` +
-                    `Allowed transitions: ${allowedTransitions.join(', ') || 'none'}`
-                );
-                error.statusCode = 400;
-                throw error;
-            }
-
-            // Prepare update fields
-            const updateFields = ['status = ?', 'updated_at = NOW()'];
-            const updateValues = [newStatus];
-
-            // Add timestamp fields based on status
-            const timestampMap = {
-                [ORDER_STATUS.PAID]: 'paid_at',
-                [ORDER_STATUS.SHIPPED]: 'shipped_at',
-                [ORDER_STATUS.DELIVERED]: 'delivered_at',
-                [ORDER_STATUS.CANCELLED]: 'cancelled_at'
-            };
-
-            if (timestampMap[newStatus]) {
-                updateFields.push(`${timestampMap[newStatus]} = NOW()`);
-            }
-
-            // Clear cancelled_at if order is being restored
-            if (newStatus !== ORDER_STATUS.CANCELLED && order.cancelled_at) {
-                updateFields.push('cancelled_at = NULL');
-            }
-
-            // Execute status update
-            updateValues.push(orderId);
-            await connection.query(
-                `UPDATE orders SET ${updateFields.join(', ')} WHERE id = ?`,
-                updateValues
-            );
-
-            // Update payment status if needed
-            if (newStatus === ORDER_STATUS.PAID) {
-                await connection.query(
-                    'UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?',
-                    [PAYMENT_STATUS.PAID, orderId]
-                );
-
-                // Reduce variant stock when order is paid
-                try {
-                    await reduceOrderStock(orderId, connection);
-                } catch (stockError) {
-                    console.error('[OrderStateMachine] Failed to reduce stock for order:', orderId, stockError.message);
-                    // Don't fail the order, but log the error
-                }
-            } else if (newStatus === ORDER_STATUS.REFUNDED) {
-                await connection.query(
-                    'UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?',
-                    [PAYMENT_STATUS.REFUNDED, orderId]
-                );
-            }
-
-            // Update fulfillment status if needed
-            const fulfillmentMap = {
-                [ORDER_STATUS.PROCESSING]: FULFILLMENT_STATUS.PROCESSING,
-                [ORDER_STATUS.SHIPPED]: FULFILLMENT_STATUS.SHIPPED,
-                [ORDER_STATUS.DELIVERED]: FULFILLMENT_STATUS.DELIVERED,
-                [ORDER_STATUS.CANCELLED]: FULFILLMENT_STATUS.UNFULFILLED
-            };
-
-            if (fulfillmentMap[newStatus]) {
-                await connection.query(
-                    'UPDATE orders SET fulfillment_status = ?, updated_at = NOW() WHERE id = ?',
-                    [fulfillmentMap[newStatus], orderId]
-                );
-            }
-
-            // Record status history
-            await connection.query(
-                `INSERT INTO order_status_history 
-                (order_id, old_status, new_status, status_type, changed_by, changed_by_type, reason)
-                VALUES (?, ?, ?, 'order', ?, ?, ?)`,
-                [
-                    orderId,
-                    currentStatus,
-                    newStatus,
-                    options.userId || null,
-                    options.userType || 'system',
-                    options.reason || null
-                ]
-            );
-
-            // Create order event
-            const eventType = this.getEventTypeForStatus(newStatus);
-            await orderEventService.logEvent(
-                orderId,
-                eventType,
-                STATUS_DESCRIPTIONS[newStatus],
-                {
-                    oldStatus: currentStatus,
-                    newStatus,
-                    ...options.metadata
-                },
-                options.userId,
-                options.userType || 'system',
-                connection
-            );
-
-            await connection.commit();
-
-            // Return updated order
-            return await this.getOrder(orderId);
-        } catch (error) {
-            await connection.rollback();
+        const order = await Order.findById(orderId);
+        if (!order) {
+            const error = new Error('Order not found');
+            error.statusCode = 404;
             throw error;
-        } finally {
-            connection.release();
         }
+
+        const currentStatus = order.status;
+        if (!this.isValidTransition(currentStatus, newStatus)) {
+            const error = new Error(`Invalid status transition from ${currentStatus} to ${newStatus}`);
+            error.statusCode = 400;
+            throw error;
+        }
+
+        order.status = newStatus;
+        
+        const timestampMap = {
+            [ORDER_STATUS.PAID]: 'paid_at',
+            [ORDER_STATUS.SHIPPED]: 'shipped_at',
+            [ORDER_STATUS.DELIVERED]: 'delivered_at',
+            [ORDER_STATUS.CANCELLED]: 'cancelled_at'
+        };
+        if (timestampMap[newStatus]) order[timestampMap[newStatus]] = new Date();
+
+        if (newStatus === ORDER_STATUS.PAID) {
+            order.payment_status = PAYMENT_STATUS.PAID;
+            await this.reduceOrderStock(order);
+        } else if (newStatus === ORDER_STATUS.REFUNDED) {
+            order.payment_status = PAYMENT_STATUS.REFUNDED;
+        }
+
+        const fulfillmentMap = {
+            [ORDER_STATUS.PROCESSING]: FULFILLMENT_STATUS.PROCESSING,
+            [ORDER_STATUS.SHIPPED]: FULFILLMENT_STATUS.SHIPPED,
+            [ORDER_STATUS.DELIVERED]: FULFILLMENT_STATUS.DELIVERED,
+            [ORDER_STATUS.CANCELLED]: FULFILLMENT_STATUS.UNFULFILLED
+        };
+        if (fulfillmentMap[newStatus]) order.fulfillment_status = fulfillmentMap[newStatus];
+
+        const historyEntry = {
+            old_status: currentStatus,
+            new_status: newStatus,
+            status_type: 'order',
+            changed_by: options.userId || null,
+            changed_by_type: options.userType || 'system',
+            reason: options.reason || null
+        };
+        order.status_history.push(historyEntry);
+
+        await order.save();
+        
+        await orderEventService.logEvent(
+            orderId,
+            this.getEventTypeForStatus(newStatus),
+            STATUS_DESCRIPTIONS[newStatus],
+            { oldStatus: currentStatus, newStatus, ...options.metadata },
+            options.userId,
+            options.userType || 'system'
+        );
+
+        return order;
     }
 
-    /**
-     * Get event type for status
-     * @param {string} status - Order status
-     * @returns {string}
-     */
     getEventTypeForStatus(status) {
         const eventMap = {
             [ORDER_STATUS.PENDING_PAYMENT]: 'order_created',
@@ -287,276 +143,18 @@ class OrderStateMachine {
         return eventMap[status] || 'order_updated';
     }
 
-    /**
-     * Transition payment status
-     * @param {number} orderId - Order ID
-     * @param {string} newStatus - New payment status
-     * @param {Object} options - Options
-     * @returns {Promise<Object>}
-     */
-    async transitionPaymentStatus(orderId, newStatus, options = {}) {
-        const connection = await mysqlPool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
-
-            const [rows] = await connection.query(
-                'SELECT * FROM orders WHERE id = ? FOR UPDATE',
-                [orderId]
-            );
-
-            if (rows.length === 0) {
-                const error = new Error('Order not found');
-                error.statusCode = 404;
-                throw error;
+    async reduceOrderStock(order) {
+        for (const item of order.items) {
+            if (item.variantId) {
+                await variantInventoryService.reduceStock(item.variantId, item.quantity);
             }
-
-            const order = rows[0];
-
-            // Validate payment status transition
-            const validPaymentTransitions = {
-                [PAYMENT_STATUS.PENDING]: [PAYMENT_STATUS.PAID, PAYMENT_STATUS.FAILED],
-                [PAYMENT_STATUS.PAID]: [PAYMENT_STATUS.REFUNDED],
-                [PAYMENT_STATUS.FAILED]: [PAYMENT_STATUS.PENDING],
-                [PAYMENT_STATUS.REFUNDED]: []
-            };
-
-            if (!validPaymentTransitions[order.payment_status]?.includes(newStatus)) {
-                const error = new Error(`Invalid payment status transition`);
-                error.statusCode = 400;
-                throw error;
-            }
-
-            await connection.query(
-                'UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?',
-                [newStatus, orderId]
-            );
-
-            // Record in history
-            await connection.query(
-                `INSERT INTO order_status_history 
-                (order_id, old_status, new_status, status_type, changed_by, changed_by_type, reason)
-                VALUES (?, ?, ?, 'payment', ?, ?, ?)`,
-                [
-                    orderId,
-                    order.payment_status,
-                    newStatus,
-                    options.userId || null,
-                    options.userType || 'system',
-                    options.reason || null
-                ]
-            );
-
-            // Log event
-            const eventType = newStatus === PAYMENT_STATUS.PAID ? 'payment_success' :
-                             newStatus === PAYMENT_STATUS.FAILED ? 'payment_failed' :
-                             newStatus === PAYMENT_STATUS.REFUNDED ? 'order_refunded' : 'payment_updated';
-            
-            await orderEventService.logEvent(
-                orderId,
-                eventType,
-                `Payment status changed to ${newStatus}`,
-                { oldStatus: order.payment_status, newStatus },
-                options.userId,
-                options.userType || 'system',
-                connection
-            );
-
-            await connection.commit();
-            return await this.getOrder(orderId);
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
-            connection.release();
         }
     }
 
-    /**
-     * Transition fulfillment status
-     * @param {number} orderId - Order ID
-     * @param {string} newStatus - New fulfillment status
-     * @param {Object} options - Options
-     * @returns {Promise<Object>}
-     */
-    async transitionFulfillmentStatus(orderId, newStatus, options = {}) {
-        const connection = await mysqlPool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
-
-            const [rows] = await connection.query(
-                'SELECT * FROM orders WHERE id = ? FOR UPDATE',
-                [orderId]
-            );
-
-            if (rows.length === 0) {
-                const error = new Error('Order not found');
-                error.statusCode = 404;
-                throw error;
-            }
-
-            const order = rows[0];
-
-            // Validate fulfillment status transition
-            const validFulfillmentTransitions = {
-                [FULFILLMENT_STATUS.UNFULFILLED]: [FULFILLMENT_STATUS.PROCESSING, FULFILLMENT_STATUS.SHIPPED],
-                [FULFILLMENT_STATUS.PROCESSING]: [FULFILLMENT_STATUS.SHIPPED],
-                [FULFILLMENT_STATUS.SHIPPED]: [FULFILLMENT_STATUS.DELIVERED],
-                [FULFILLMENT_STATUS.DELIVERED]: []
-            };
-
-            if (!validFulfillmentTransitions[order.fulfillment_status]?.includes(newStatus)) {
-                const error = new Error(`Invalid fulfillment status transition`);
-                error.statusCode = 400;
-                throw error;
-            }
-
-            const updateFields = ['fulfillment_status = ?', 'updated_at = NOW()'];
-            const updateValues = [newStatus];
-
-            if (newStatus === FULFILLMENT_STATUS.DELIVERED) {
-                updateFields.push('delivered_at = NOW()');
-                // Also update order status to delivered
-                updateFields.unshift('status = ?');
-                updateValues.unshift(ORDER_STATUS.DELIVERED);
-            }
-
-            updateValues.push(orderId);
-            await connection.query(
-                `UPDATE orders SET ${updateFields.join(', ')} WHERE id = ?`,
-                updateValues
-            );
-
-            // Record in history
-            await connection.query(
-                `INSERT INTO order_status_history 
-                (order_id, old_status, new_status, status_type, changed_by, changed_by_type, reason)
-                VALUES (?, ?, ?, 'fulfillment', ?, ?, ?)`,
-                [
-                    orderId,
-                    order.fulfillment_status,
-                    newStatus,
-                    options.userId || null,
-                    options.userType || 'system',
-                    options.reason || null
-                ]
-            );
-
-            // Log event
-            const eventType = newStatus === FULFILLMENT_STATUS.SHIPPED ? 'order_shipped' :
-                             newStatus === FULFILLMENT_STATUS.DELIVERED ? 'order_delivered' : 'fulfillment_updated';
-            
-            await orderEventService.logEvent(
-                orderId,
-                eventType,
-                `Fulfillment status changed to ${newStatus}`,
-                { oldStatus: order.fulfillment_status, newStatus },
-                options.userId,
-                options.userType || 'system',
-                connection
-            );
-
-            await connection.commit();
-            return await this.getOrder(orderId);
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
-            connection.release();
-        }
-    }
-
-    /**
-     * Cancel order (with validation)
-     * @param {number} orderId - Order ID
-     * @param {Object} options - Options (userId, reason)
-     * @returns {Promise<Object>}
-     */
     async cancelOrder(orderId, options = {}) {
         const order = await this.getOrder(orderId);
-        
-        if (!order) {
-            const error = new Error('Order not found');
-            error.statusCode = 404;
-            throw error;
-        }
-
-        // Check if order can be cancelled
-        const cancellableStatuses = [
-            ORDER_STATUS.PENDING_PAYMENT,
-            ORDER_STATUS.PAYMENT_FAILED,
-            ORDER_STATUS.PAID,
-            ORDER_STATUS.PROCESSING
-        ];
-
-        if (!cancellableStatuses.includes(order.status)) {
-            const error = new Error(
-                `Order cannot be cancelled in ${order.status} status. ` +
-                `Only orders in ${cancellableStatuses.join(', ')} can be cancelled.`
-            );
-            error.statusCode = 400;
-            throw error;
-        }
-
-        return await this.transitionStatus(orderId, ORDER_STATUS.CANCELLED, {
-            ...options,
-            reason: options.reason || 'Customer requested cancellation'
-        });
-    }
-}
-
-/**
- * Reduce stock for all items in an order
- * Called when order is marked as PAID
- * @param {number} orderId - Order ID
- * @param {object} connection - MySQL connection
- */
-async function reduceOrderStock(orderId, connection) {
-    try {
-        // Get all order items with variant information
-        const [items] = await connection.query(
-            `SELECT oi.id, oi.variant_id, oi.quantity, oi.variant_attributes,
-                    pv.color, pv.size, pv.stock_quantity, pv.version
-             FROM order_items oi
-             LEFT JOIN product_variants pv ON oi.variant_id = pv.id
-             WHERE oi.order_id = ?`,
-            [orderId]
-        );
-
-        if (items.length === 0) {
-            return; // No items to process
-        }
-
-        // Reduce stock for each item
-        for (const item of items) {
-            if (item.variant_id) {
-                // Use the variant inventory service for stock reduction with optimistic locking
-                const result = await variantInventoryService.reduceStock(
-                    item.variant_id,
-                    item.quantity,
-                    item.version // Use version for optimistic locking
-                );
-
-                if (!result.success) {
-                    console.error(
-                        `[OrderStateMachine] Stock reduction failed for variant ${item.variant_id}:`,
-                        result.error
-                    );
-
-                    // If stock reduction fails, we should potentially cancel the order
-                    // For now, just log the error
-                } else {
-                    console.log(
-                        `[OrderStateMachine] Stock reduced for variant ${item.variant_id} (${item.color || 'N/A'} ${item.size || 'N/A'}):`,
-                        `-${item.quantity}, new stock: ${result.newStock}`
-                    );
-                }
-            }
-        }
-    } catch (error) {
-        console.error('[OrderStateMachine] reduceOrderStock error:', error.message);
-        throw error;
+        if (!order) throw new Error('Order not found');
+        return await this.transitionStatus(orderId, ORDER_STATUS.CANCELLED, options);
     }
 }
 

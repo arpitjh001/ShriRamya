@@ -8,7 +8,7 @@ const validate = require('../../middlewares/validate');
 const blogValidation = require('../../validations/blog.validation');
 const router = express.Router();
 const blogController = require('../../controllers/blog.controller');
-const { auth, requireRole, ensureTenantIsolation, optionalTenantIsolation } = require('../../middlewares/authRBAC');
+const { auth, requireRole, ensureTenantIsolation, optionalAuth, optionalTenantIsolation } = require('../../middlewares/authRBAC');
 
 /**
  * @route   GET /api/v1/blogs
@@ -41,11 +41,22 @@ router.get('/tags',
 );
 
 /**
+ * @route   GET /api/v1/blogs/categories
+ * @desc    Get blog categories/collections
+ * @access  Public
+ */
+router.get('/categories',
+    optionalTenantIsolation,
+    blogController.getCategories
+);
+
+/**
  * @route   GET /api/v1/blogs/capabilities
  * @desc    Get blog editing capabilities
  * @access  Public (Guest), Authenticated (Author/Admin)
  */
 router.get('/capabilities',
+    optionalAuth,
     blogController.getCapabilities
 );
 

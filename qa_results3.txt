@@ -1,0 +1,135 @@
+╔══════════════════════════════════════════════╗
+║  ShriRamya QA Test Suite - Full Run          ║
+╚══════════════════════════════════════════════╝
+
+Cleaned previous test data
+
+═══ PHASE 1: SEEDING TEST DATA ═══
+
+[Redis] DEL skipped - Redis unavailable
+  Created category: QA_TEST_Saree (id=30)
+[Redis] DEL skipped - Redis unavailable
+  Created category: QA_TEST_Kurta (id=31)
+[Redis] DEL skipped - Redis unavailable
+  Created category: QA_TEST_Suits (id=32)
+  Created 9 subcategory groups
+  Created 45 subcategory values
+[Redis] DEL skipped - Redis unavailable
+
+═══ PHASE 2: CATEGORY API TESTS ═══
+
+[Redis] GET skipped - Redis unavailable
+[Redis] SET skipped - Redis unavailable
+  ✅ getAllCategories returns array
+  ✅ getAllCategories returns at least 3 categories
+  ✅ getAllCategories includes subcategoryGroups
+  ✅ getCategoryById returns category
+  ✅ getCategoryById returns correct name
+  ✅ getCategoryById includes subcategoryGroups
+  ✅ getCategoryById has 3 subcategory groups
+  ✅ getCategoryBySlug returns category
+  ✅ getCategoryBySlug returns correct category
+  ✅ getCategoryBySlug includes subcategoryGroups
+[Redis] DEL skipped - Redis unavailable
+  ✅ updateCategory updates description
+  ✅ getCategoryById returns null for non-existent ID
+
+═══ PHASE 3: SUBCATEGORY API TESTS (CRITICAL) ═══
+
+  ✅ getGroupsByCategoryId returns array
+  ✅ getGroupsByCategoryId returns 3 groups
+  ✅ Group "Fabric" has values array
+  ✅ Group "Fabric" has 5 values
+  ✅ Group "Occasion" has values array
+  ✅ Group "Occasion" has 5 values
+  ✅ Group "Pattern" has values array
+  ✅ Group "Pattern" has 5 values
+  ✅ Has Fabric group
+  ✅ Has Occasion group
+  ✅ Has Pattern group
+  ✅ createGroup rejects duplicate slug
+  ✅ updateGroup changes name
+  ✅ getValuesByGroupId returns array
+  ✅ getValuesByGroupId returns 5 values
+  ✅ createValue returns ID
+  ✅ createValue has correct name
+  ✅ updateValue changes name
+  ✅ deleteValue returns true
+  ✅ deleteValue actually removes the value
+
+  --- Cascade Delete Tests ---
+  ✅ Cascade delete removes value 1
+  ✅ Cascade delete removes value 2
+
+  --- Product-Subcategory Linking Tests ---
+  ✅ setProductSubcategoryValues links 3 values
+  ✅ getProductIdsBySubcategoryValues returns correct product
+  ✅ Replacing subcategory values works
+  ✅ Clearing subcategory values works
+  ✅ Setting empty values does not throw
+
+═══ PHASE 4: EDGE CASE TESTS ═══
+
+  ✅ getGroupsByCategoryId returns empty for non-existent category
+  ✅ getValuesByGroupId returns empty for non-existent group
+  ✅ getGroupById returns null for non-existent
+  ✅ getValueById returns null for non-existent
+  ✅ deleteGroup returns false for non-existent
+  ✅ deleteValue returns false for non-existent
+  ✅ updateGroup returns false for non-existent
+  ✅ updateValue returns false for non-existent
+  ✅ Slug generation handles special characters
+  ✅ getProductSubcategoryValues returns array even when empty
+  ✅ getProductIdsBySubcategoryValues returns empty for no values
+
+═══ PHASE 5: DATA INTEGRITY TESTS ═══
+
+  ✅ Group "Fabric" has correct category_id
+  ✅ Value "Chiffon" has correct group_id
+  ✅ Value "Cotton" has correct group_id
+  ✅ Value "Georgette" has correct group_id
+  ✅ Value "Linen" has correct group_id
+  ✅ Value "Silk" has correct group_id
+  ✅ Group "Occasion" has correct category_id
+  ✅ Value "Casual" has correct group_id
+  ✅ Value "Festival" has correct group_id
+  ✅ Value "Office" has correct group_id
+  ✅ Value "Party" has correct group_id
+  ✅ Value "Wedding" has correct group_id
+  ✅ Group "Pattern" has correct category_id
+  ✅ Value "Block Print" has correct group_id
+  ✅ Value "Embroidered" has correct group_id
+  ✅ Value "Plain" has correct group_id
+  ✅ Value "Printed" has correct group_id
+  ✅ Value "Tie-Dye" has correct group_id
+  ✅ No orphan subcategory values exist
+  ✅ No orphan subcategory groups exist
+  ✅ Unique constraint on group (category_id, slug) enforced
+
+═══ PHASE 6: HTTP API ENDPOINT TESTS ═══
+
+  ✅ GET /categories returns 200
+  ✅ GET /categories has success=true
+  ✅ GET /categories returns array data
+    DEBUG GET /categories/30: status=404, body={"success":false,"message":"Category not found"}
+  ❌ GET /categories/:id returns 200
+  ❌ GET /categories/:id returns correct category
+  ❌ GET /categories/:id includes subcategoryGroups
+  ✅ GET /categories/:id/subcategories returns 200
+  ✅ GET /categories/:id/subcategories returns array
+  ✅ GET /categories/:id/subcategories has groups
+  ✅ Subcategory groups contain values array
+  ✅ GET /categories/999999 returns 404
+  ✅ GET /products returns 200
+  ✅ GET /search returns 200
+  ✅ Products pagination endpoint works
+Cleaned previous test data
+
+╔══════════════════════════════════════════════╗
+║  RESULTS: 82 passed, 3 failed
+╚══════════════════════════════════════════════╝
+
+❌ FAILED TESTS:
+  - GET /categories/:id returns 200
+  - GET /categories/:id returns correct category
+  - GET /categories/:id includes subcategoryGroups

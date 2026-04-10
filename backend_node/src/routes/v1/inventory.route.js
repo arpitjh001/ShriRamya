@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../../middlewares/auth');
-const { requireRole } = require('../../middlewares/authRBAC');
+const { auth, requireRole, ensureTenantIsolation } = require('../../middlewares/authRBAC');
 const inventoryController = require('../../controllers/inventory.controller');
 
 /**
@@ -12,6 +11,7 @@ const inventoryController = require('../../controllers/inventory.controller');
 router.get('/low-stock',
   auth,
   requireRole('Admin', 'Editor'),
+  ensureTenantIsolation,
   inventoryController.getLowStockItems
 );
 
@@ -23,7 +23,20 @@ router.get('/low-stock',
 router.get('/stock-levels',
   auth,
   requireRole('Admin', 'Editor'),
+  ensureTenantIsolation,
   inventoryController.getStockLevels
+);
+
+/**
+ * @route   POST /api/v1/admin/inventory/offline-sale
+ * @desc    Mark a variant as sold offline and reduce inventory
+ * @access  Private (Admin only)
+ */
+router.post('/offline-sale',
+  auth,
+  requireRole('Admin'),
+  ensureTenantIsolation,
+  inventoryController.recordOfflineSale
 );
 
 /**
@@ -34,6 +47,7 @@ router.get('/stock-levels',
 router.put('/:variantId',
   auth,
   requireRole('Admin'),
+  ensureTenantIsolation,
   inventoryController.updateStockLevel
 );
 

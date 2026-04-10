@@ -3,8 +3,7 @@
  * Handles order activity logging and event dispatching
  */
 
-const { mysqlPool } = require('../../config/db');
-const emailService = require('../email/orderEmail.service');
+const { OrderEvent, Order } = require('../../models');
 
 /**
  * Event Types
@@ -64,93 +63,62 @@ function getEventCategory(eventType) {
 class OrderEventService {
     /**
      * Log an order event
-     * @param {number} orderId - Order ID
-     * @param {string} eventType - Event type
-     * @param {string} description - Event description
-     * @param {Object} metadata - Additional metadata (JSON)
-     * @param {number} userId - User ID who triggered the event
-     * @param {string} userType - User type (customer, admin, system)
-     * @param {Object} connection - Optional DB connection for transactions
-     * @returns {Promise<number>} Event ID
      */
-    async logEvent(orderId, eventType, description, metadata = {}, userId = null, userType = 'system', connection = null) {
-        const executor = connection || mysqlPool;
-        
-        const eventCategory = getEventCategory(eventType);
-        
-        const [result] = await executor.query(
-            `INSERT INTO order_events 
-            (order_id, event_type, event_category, description, metadata, user_id, user_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [
+    async logEvent(orderId, eventType, description, metadata = {}, userId = null, userType = 'system') {
+        try {
+            const eventCategory = getEventCategory(eventType);
+            
+            const event = await OrderEvent.create({
                 orderId,
                 eventType,
                 eventCategory,
                 description,
-                JSON.stringify(metadata),
+                metadata,
                 userId,
                 userType
-            ]
-        );
-
-        // Dispatch event to email service (non-blocking)
-        this._dispatchEvent(orderId, eventType, metadata).catch(err => {
-            console.error(`Error dispatching event ${eventType}:`, err.message);
-        });
-
-        return result.insertId;
+            });
+            return event;
+        } catch (error) {
+            console.error('Failed to log order event:', error);
+            return null;
+        }
     }
 
     /**
      * Get events for an order
-     * @param {number} orderId - Order ID
-     * @param {Object} options - Options (limit, offset, eventType)
-     * @returns {Promise<Object[]>}
      */
     async getOrderEvents(orderId, options = {}) {
-        const { limit = 50, offset = 0, eventType = null } = options;
-        
-        let query = `
-            SELECT * FROM order_events 
-            WHERE order_id = ?
-        `;
-        const params = [orderId];
+        const { limit = 50, page = 1, eventType = null } = options;
+        const skip = (page - 1) * limit;
 
+        const filter = { orderId };
         if (eventType) {
-            query += ' AND event_type = ?';
-            params.push(eventType);
+            filter.eventType = eventType;
         }
 
-        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
-
-        const [rows] = await mysqlPool.query(query, params);
-        
-        return rows.map(row => ({
-            ...row,
-            metadata: row.metadata ? JSON.parse(row.metadata) : {}
-        }));
+        return await OrderEvent.find(filter)
+            .sort({ created_at: -1 })
+            .skip(skip)
+            .limit(limit);
     }
 
     /**
      * Get order timeline (formatted events)
-     * @param {number} orderId - Order ID
-     * @returns {Promise<Object[]>}
      */
     async getOrderTimeline(orderId) {
         const events = await this.getOrderEvents(orderId, { limit: 100 });
         
         return events.map(event => ({
-            id: event.id,
-            eventType: event.event_type,
-            category: event.event_category,
+            id: event._id,
+            eventType: event.eventType,
+            category: event.eventCategory,
             description: event.description,
             metadata: event.metadata,
-            userId: event.user_id,
-            userType: event.user_type,
+            userId: event.userId,
+            userType: event.userType,
             createdAt: event.created_at,
-            icon: this._getEventIcon(event.event_type),
-            color: this._getEventColor(event.event_category)
+            icon: this._getEventIcon(event.eventType),
+            color: this._getEventColor(event.eventCategory)
         }));
     }
 
@@ -188,68 +156,32 @@ class OrderEventService {
     }
 
     /**
-     * Dispatch event to handlers (email, notifications, etc.)
-     */
-    async _dispatchEvent(orderId, eventType, metadata) {
-        // Get order details
-        const [orderRows] = await mysqlPool.query(
-            `SELECT o.*, u.email as customer_email 
-            FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
-            WHERE o.id = ?`,
-            [orderId]
-        );
-
-        if (orderRows.length === 0) return;
-        
-        const order = orderRows[0];
-
-        // Handle email notifications based on event type
-        switch (eventType) {
-            case EVENT_TYPES.ORDER_CREATED:
-                await emailService.sendOrderConfirmation(order);
-                break;
-            case EVENT_TYPES.PAYMENT_SUCCESS:
-                await emailService.sendPaymentConfirmation(order);
-                break;
-            case EVENT_TYPES.ORDER_SHIPPED:
-                await emailService.sendShipmentNotification(order, metadata);
-                break;
-            case EVENT_TYPES.ORDER_DELIVERED:
-                await emailService.sendDeliveryConfirmation(order);
-                break;
-            case EVENT_TYPES.ORDER_CANCELLED:
-                await emailService.sendOrderCancellation(order);
-                break;
-            case EVENT_TYPES.REFUND_COMPLETED:
-                await emailService.sendRefundConfirmation(order, metadata);
-                break;
-        }
-    }
-
-    /**
-     * Get order statistics by event type
-     * @param {Date} startDate - Start date
-     * @param {Date} endDate - End date
-     * @returns {Promise<Object>}
+     * Get event statistics
      */
     async getEventStats(startDate, endDate) {
-        const [rows] = await mysqlPool.query(
-            `SELECT 
-                event_type,
-                COUNT(*) as count,
-                DATE(created_at) as date
-            FROM order_events
-            WHERE created_at BETWEEN ? AND ?
-            GROUP BY event_type, DATE(created_at)
-            ORDER BY date DESC, count DESC`,
-            [startDate, endDate]
-        );
-
-        return rows;
+        return await OrderEvent.aggregate([
+            {
+                $match: {
+                    created_at: { $gte: new Date(startDate), $lte: new Date(endDate) }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        eventType: '$eventType',
+                        date: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { '_id.date': -1, count: -1 }
+            }
+        ]);
     }
 }
 
-module.exports = new OrderEventService();
+const service = new OrderEventService();
+module.exports = service;
 module.exports.EVENT_TYPES = EVENT_TYPES;
 module.exports.EVENT_CATEGORIES = EVENT_CATEGORIES;

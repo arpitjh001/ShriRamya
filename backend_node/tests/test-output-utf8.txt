@@ -1,0 +1,4 @@
+﻿
+> shriramya-node-backend@2.0.0 test
+> jest --config jest.config.js --runInBand --forceExit tests/product-subcategory.test.js
+

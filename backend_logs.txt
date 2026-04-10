@@ -1,0 +1,24 @@
+backend-1  | [Email] SMTP not configured, emails will be logged only
+backend-1  | [36mINFO [0m [2026-03-25T05:21:31.251Z]  Server initializing {
+backend-1  |   "env": "development",
+backend-1  |   "port": 8000,
+backend-1  |   "environment": "development",
+backend-1  |   "service": "shriramya-backend",
+backend-1  |   "version": "2.0.0"
+backend-1  | }
+backend-1  | [36mINFO [0m [2026-03-25T05:21:32.061Z]  Swagger documentation enabled {
+backend-1  |   "path": "/api/docs",
+backend-1  |   "environment": "development",
+backend-1  |   "service": "shriramya-backend",
+backend-1  |   "version": "2.0.0"
+backend-1  | }
+backend-1  | (node:7) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+backend-1  | (Use `node --trace-warnings ...` to show where the warning was created)
+backend-1  | MongoDB connected: mongodb://mongodb:27017/shriramya
+backend-1  | Products already seeded: 50 found
+backend-1  | Users already seeded: 2 found
+backend-1  | Blogs already seeded: 3 found
+backend-1  | Database seeding complete!
+backend-1  | Background job queues initialized
+backend-1  | Server running on port 8000
+backend-1  | Environment: development

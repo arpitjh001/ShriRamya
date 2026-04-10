@@ -1,5 +1,6 @@
-const cartRepository = require('../repositories/cart.sql.repository');
-const { mysqlPool } = require('../config/db');
+const cartRepository = require('../repositories/cart.mongo.repository');
+const Product = require('../models/product.model');
+const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 class CartService {
@@ -38,68 +39,54 @@ class CartService {
 
     /**
      * Validate variant exists and get its details
-     * @param {number} variantId - Variant ID
+     * @param {string} variantId - Variant ID
      * @returns {Promise<object>} Variant details
      * @throws {Error} If variant not found
      */
     async validateVariant(variantId) {
-        const [rows] = await mysqlPool.query(
-            `SELECT 
-                pv.*,
-                p.id AS product_id,
-                p.name AS product_name,
-                p.status AS product_status,
-                vi.stock_level,
-                vi.low_stock_threshold
-             FROM product_variants pv
-             INNER JOIN products p ON p.id = pv.product_id
-             LEFT JOIN variant_inventory vi ON vi.variant_id = pv.id
-             WHERE pv.id = ?`,
-            [variantId]
-        );
+        const product = await Product.findOne({ 'variants._id': variantId });
 
-        if (rows.length === 0) {
+        if (!product) {
             const error = new Error('Variant not found');
             error.statusCode = 404;
             throw error;
         }
 
-        const variant = rows[0];
+        const variant = product.variants.id(variantId);
 
-        if (variant.product_status !== 'published') {
+        if (product.status !== 'published' && product.status !== 'publish') {
             const error = new Error('Product is not available for purchase');
             error.statusCode = 400;
             throw error;
         }
 
-        return variant;
+        return {
+            ...variant.toObject(),
+            product_id: product._id,
+            product_name: product.name,
+            product_status: product.status
+        };
     }
 
     /**
      * Validate stock availability
-     * @param {number} variantId - Variant ID
+     * @param {string} variantId - Variant ID
      * @param {number} requestedQuantity - Quantity requested
      * @param {number} currentQuantityInCart - Current quantity in cart (if updating)
      * @returns {Promise<void>}
      * @throws {Error} If insufficient stock
      */
     async validateStock(variantId, requestedQuantity, currentQuantityInCart = 0) {
-        const [rows] = await mysqlPool.query(
-            `SELECT vi.stock_level, vi.low_stock_threshold, pv.price
-             FROM product_variants pv
-             INNER JOIN variant_inventory vi ON vi.variant_id = pv.id
-             WHERE pv.id = ?`,
-            [variantId]
-        );
+        const product = await Product.findOne({ 'variants._id': variantId });
 
-        if (rows.length === 0) {
+        if (!product) {
             const error = new Error('Variant inventory not found');
             error.statusCode = 404;
             throw error;
         }
 
-        const inventory = rows[0];
-        const availableStock = inventory.stock_level || 0;
+        const variant = product.variants.id(variantId);
+        const availableStock = variant.stock || 0;
         const netQuantityNeeded = requestedQuantity - currentQuantityInCart;
 
         if (netQuantityNeeded > 0 && availableStock < netQuantityNeeded) {
@@ -113,8 +100,8 @@ class CartService {
 
         return {
             stockLevel: availableStock,
-            lowStockThreshold: inventory.low_stock_threshold || 5,
-            price: Number(inventory.price),
+            lowStockThreshold: variant.lowStockThreshold || 5,
+            price: Number(variant.price),
         };
     }
 
@@ -123,15 +110,12 @@ class CartService {
      * @param {object} data - Add to cart data
      * @param {string|null} data.userId - User ID
      * @param {string|null} data.sessionId - Session ID
-     * @param {number} data.variantId - Variant ID
+     * @param {string} data.variantId - Variant ID
      * @param {number} data.quantity - Quantity
      * @returns {Promise<object>} Updated cart
      */
     async addToCart({ userId, sessionId, variantId, quantity }) {
-        const connection = await mysqlPool.getConnection();
         try {
-            await connection.beginTransaction();
-
             // Validate variant exists
             const variant = await this.validateVariant(variantId);
             
@@ -139,7 +123,7 @@ class CartService {
             let cart = await this.getOrCreateCart(userId, sessionId);
             
             // Check if item already in cart
-            const existingItem = await this._getCartItemByVariantRaw(cart.id, variantId, connection);
+            const existingItem = (cart.items || []).find(item => item.variantId.toString() === variantId.toString());
             const currentQuantity = existingItem ? existingItem.quantity : 0;
             
             // Validate stock
@@ -149,145 +133,103 @@ class CartService {
             const effectivePrice = this._calculateEffectivePrice(variant);
             
             // Add or update item
-            await connection.query(
-                `INSERT INTO cart_items (cart_id, variant_id, quantity, price_snapshot)
-                 VALUES (?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE
-                    quantity = quantity + VALUES(quantity),
-                    price_snapshot = VALUES(price_snapshot)`,
-                [cart.id, variantId, quantity, effectivePrice]
-            );
-            
-            await connection.commit();
+            await cartRepository.addItem(cart._id, variantId, quantity, effectivePrice);
             
             // Fetch complete cart with items
-            const updatedCart = await cartRepository.getCartWithItems(cart.id);
+            const updatedCart = await cartRepository.getCartWithItems(cart._id);
             return this._formatCartResponse(updatedCart);
         } catch (error) {
-            await connection.rollback();
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
     /**
      * Update cart item quantity
      * @param {object} data - Update data
-     * @param {number} data.cartItemId - Cart item ID
+     * @param {string} data.cartId - Cart ID
+     * @param {string} data.cartItemId - Cart item ID
      * @param {number} data.quantity - New quantity
      * @param {string|null} data.userId - User ID (for ownership check)
      * @returns {Promise<object>} Updated cart
      */
-    async updateCartItem({ cartItemId, quantity, userId = null }) {
-        const connection = await mysqlPool.getConnection();
+    async updateCartItem({ cartId, cartItemId, quantity, userId = null }) {
         try {
-            await connection.beginTransaction();
+            // Get cart
+            const cart = await cartRepository.getCartById(cartId);
+            if (!cart) {
+                const error = new Error('Cart not found');
+                error.statusCode = 404;
+                throw error;
+            }
             
-            // Get cart item
-            const cartItem = await cartRepository.getCartItemById(cartItemId);
-            
+            // Verify ownership if user ID provided
+            if (userId && cart.userId && cart.userId.toString() !== userId.toString()) {
+                const error = new Error('Unauthorized to modify this cart item');
+                error.statusCode = 403;
+                throw error;
+            }
+
+            const cartItem = cart.items.id(cartItemId);
             if (!cartItem) {
                 const error = new Error('Cart item not found');
                 error.statusCode = 404;
                 throw error;
             }
             
-            // Verify ownership if user ID provided
-            if (userId) {
-                const cart = await cartRepository.getCartById(cartItem.cart_id);
-                if (cart.user_id !== userId) {
-                    const error = new Error('Unauthorized to modify this cart item');
-                    error.statusCode = 403;
-                    throw error;
-                }
-            }
-            
             // Validate stock if increasing quantity
             if (quantity > cartItem.quantity) {
-                await this.validateStock(cartItem.variant_id, quantity, cartItem.quantity);
+                await this.validateStock(cartItem.variantId, quantity, cartItem.quantity);
             }
             
             // Update or remove item
-            const updated = await cartRepository.updateItemQuantity(cartItemId, quantity);
-            
-            if (!updated) {
-                const error = new Error('Failed to update cart item');
-                error.statusCode = 500;
-                throw error;
-            }
-            
-            await connection.commit();
+            await cartRepository.updateItemQuantity(cartId, cartItemId, quantity);
             
             // Fetch complete cart
-            const updatedCart = await cartRepository.getCartWithItems(cartItem.cart_id);
+            const updatedCart = await cartRepository.getCartWithItems(cartId);
             return this._formatCartResponse(updatedCart);
         } catch (error) {
-            await connection.rollback();
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
     /**
      * Remove item from cart
      * @param {object} data - Remove data
-     * @param {number} data.cartItemId - Cart item ID
+     * @param {string} data.cartId - Cart ID
+     * @param {string} data.cartItemId - Cart item ID
      * @param {string|null} data.userId - User ID (for ownership check)
      * @returns {Promise<object>} Updated cart
      */
-    async removeCartItem({ cartItemId, userId = null }) {
-        const connection = await mysqlPool.getConnection();
+    async removeCartItem({ cartId, cartItemId, userId = null }) {
         try {
-            await connection.beginTransaction();
-            
-            // Get cart item
-            const cartItem = await cartRepository.getCartItemById(cartItemId);
-            
-            if (!cartItem) {
-                const error = new Error('Cart item not found');
+            const cart = await cartRepository.getCartById(cartId);
+            if (!cart) {
+                const error = new Error('Cart not found');
                 error.statusCode = 404;
                 throw error;
             }
             
             // Verify ownership if user ID provided
-            if (userId) {
-                const cart = await cartRepository.getCartById(cartItem.cart_id);
-                if (cart.user_id !== userId) {
-                    const error = new Error('Unauthorized to modify this cart item');
-                    error.statusCode = 403;
-                    throw error;
-                }
-            }
-            
-            const cartId = cartItem.cart_id;
-            
-            // Remove item
-            const removed = await cartRepository.removeItem(cartItemId);
-            
-            if (!removed) {
-                const error = new Error('Failed to remove cart item');
-                error.statusCode = 500;
+            if (userId && cart.userId && cart.userId.toString() !== userId.toString()) {
+                const error = new Error('Unauthorized to modify this cart item');
+                error.statusCode = 403;
                 throw error;
             }
             
-            await connection.commit();
+            // Remove item
+            await cartRepository.removeItem(cartId, cartItemId);
             
             // Fetch complete cart
             const updatedCart = await cartRepository.getCartWithItems(cartId);
             return this._formatCartResponse(updatedCart);
         } catch (error) {
-            await connection.rollback();
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
     /**
      * Get cart with items
-     * @param {number} cartId - Cart ID
+     * @param {string} cartId - Cart ID
      * @returns {Promise<object>} Formatted cart
      */
     async getCart(cartId) {
@@ -304,15 +246,13 @@ class CartService {
 
     /**
      * Clear cart
-     * @param {number} cartId - Cart ID
-     * @param {string|null} userId - User ID (for ownership check)
+     * @param {object} data
+     * @param {string} data.cartId - Cart ID
+     * @param {string|null} data.userId - User ID (for ownership check)
      * @returns {Promise<object>} Empty cart
      */
     async clearCart({ cartId, userId = null }) {
-        const connection = await mysqlPool.getConnection();
         try {
-            await connection.beginTransaction();
-            
             // Get cart
             const cart = await cartRepository.getCartById(cartId);
             
@@ -323,7 +263,7 @@ class CartService {
             }
             
             // Verify ownership if user ID provided
-            if (userId && cart.user_id !== userId) {
+            if (userId && cart.userId && cart.userId.toString() !== userId.toString()) {
                 const error = new Error('Unauthorized to clear this cart');
                 error.statusCode = 403;
                 throw error;
@@ -332,16 +272,11 @@ class CartService {
             // Clear items
             await cartRepository.clearCart(cartId);
             
-            await connection.commit();
-            
             // Return empty cart
             const updatedCart = await cartRepository.getCartWithItems(cartId);
             return this._formatCartResponse(updatedCart);
         } catch (error) {
-            await connection.rollback();
             throw error;
-        } finally {
-            connection.release();
         }
     }
 
@@ -382,31 +317,10 @@ class CartService {
      * @returns {number} Effective price
      */
     _getEffectivePriceFromItem(item) {
-        // Use price_snapshot if available (price at add-to-cart time)
         if (item.priceSnapshot) {
             return Number(item.priceSnapshot);
         }
-        
-        // Fallback to variant price
-        const price = Number(item.variantPrice || 0);
-        const discountPrice = item.discountPrice != null ? Number(item.discountPrice) : null;
-        
-        if (discountPrice == null || discountPrice <= 0 || discountPrice >= price) {
-            return price;
-        }
-        
-        const now = Date.now();
-        const start = item.discountStart ? new Date(item.discountStart).getTime() : null;
-        const end = item.discountEnd ? new Date(item.discountEnd).getTime() : null;
-        
-        if ((start !== null && Number.isNaN(start)) || (end !== null && Number.isNaN(end))) {
-            return price;
-        }
-        
-        const withinStart = start === null || now >= start;
-        const withinEnd = end === null || now <= end;
-        
-        return withinStart && withinEnd ? discountPrice : price;
+        return Number(item.variantPrice || 0);
     }
 
     /**
@@ -416,15 +330,15 @@ class CartService {
      */
     _calculateEffectivePrice(variant) {
         const price = Number(variant.price || 0);
-        const discountPrice = variant.discount_price != null ? Number(variant.discount_price) : null;
+        const discountPrice = variant.discountPrice != null ? Number(variant.discountPrice) : null;
         
         if (discountPrice == null || discountPrice <= 0 || discountPrice >= price) {
             return price;
         }
         
         const now = Date.now();
-        const start = variant.discount_start ? new Date(variant.discount_start).getTime() : null;
-        const end = variant.discount_end ? new Date(variant.discount_end).getTime() : null;
+        const start = variant.discountStart ? new Date(variant.discountStart).getTime() : null;
+        const end = variant.discountEnd ? new Date(variant.discountEnd).getTime() : null;
         
         if ((start !== null && Number.isNaN(start)) || (end !== null && Number.isNaN(end))) {
             return price;
@@ -449,32 +363,17 @@ class CartService {
         const totals = this.calculateCartTotals(cart);
 
         return {
-            id: cart.id,
-            userId: cart.user_id,
-            sessionId: cart.session_id,
+            id: cart._id,
+            userId: cart.userId,
+            sessionId: cart.sessionId,
             status: cart.status,
-            createdAt: cart.created_at,
-            updatedAt: cart.updated_at,
+            createdAt: cart.created_at || cart.createdAt,
+            updatedAt: cart.updated_at || cart.updatedAt,
             items: cart.items || [],
             subtotal: totals.subtotal,
             itemCount: totals.itemCount,
             totalItems: totals.totalItems,
         };
-    }
-
-    /**
-     * Get cart item by variant (raw query for transaction use)
-     * @param {number} cartId - Cart ID
-     * @param {number} variantId - Variant ID
-     * @param {object} connection - MySQL connection
-     * @returns {Promise<object|null>} Cart item
-     */
-    async _getCartItemByVariantRaw(cartId, variantId, connection) {
-        const [rows] = await connection.query(
-            `SELECT * FROM cart_items WHERE cart_id = ? AND variant_id = ?`,
-            [cartId, variantId]
-        );
-        return rows.length > 0 ? rows[0] : null;
     }
 }
 

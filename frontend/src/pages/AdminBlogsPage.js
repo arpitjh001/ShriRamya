@@ -43,11 +43,13 @@ const AdminBlogsPage = () => {
         fetchAnalytics();
     }, [capabilities, navigate, authLoading, user]);
 
-    const fetchData = async () => {
+    const fetchData = async (overrides = {}) => {
         setLoading(true);
         try {
-            const params = filterStatus !== 'all' ? { status: filterStatus } : {};
-            if (searchQuery) params.search = searchQuery;
+            const status = overrides.status ?? filterStatus;
+            const search = overrides.search ?? searchQuery;
+            const params = { status: status === 'all' ? 'all' : status };
+            if (search) params.search = search;
 
             const response = await blogAPI.getPosts(params);
             setPosts(response.data.posts || []);
@@ -144,14 +146,17 @@ const AdminBlogsPage = () => {
                         className="w-full pl-10 pr-4 py-2 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && fetchData()}
+                        onKeyDown={(e) => e.key === 'Enter' && fetchData({ search: e.currentTarget.value })}
                     />
                 </div>
                 <div className="flex gap-4 overflow-x-auto pb-2 sm:pb-0">
                     {['all', 'draft', 'review', 'published', 'archived'].map((s) => (
                         <button
                             key={s}
-                            onClick={() => { setFilterStatus(s); fetchData(); }}
+                            onClick={() => {
+                                setFilterStatus(s);
+                                fetchData({ status: s });
+                            }}
                             className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all whitespace-nowrap ${filterStatus === s
                                     ? 'bg-primary text-primary-foreground border-primary shadow-md'
                                     : 'bg-background text-muted-foreground border-border hover:border-primary/50'

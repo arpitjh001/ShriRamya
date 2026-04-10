@@ -19,7 +19,7 @@ const createPost = {
 
 const updatePost = {
   params: Joi.object().keys({
-    postId: Joi.number().integer().required(),
+    post_id: Joi.string().required(),
   }),
   body: Joi.object().keys({
     title: Joi.string().max(200).optional(),
@@ -38,7 +38,7 @@ const updatePost = {
 
 const postId = {
   params: Joi.object().keys({
-    postId: Joi.number().integer().required(),
+    post_id: Joi.string().required(),
   }),
 };
 
@@ -50,21 +50,25 @@ const postSlug = {
 
 const addComment = {
   params: Joi.object().keys({
-    postId: Joi.number().integer().required(),
+    post_id: Joi.string().required(),
   }),
-  body: Joi.object().keys({
-    content: Joi.string().required().max(1000),
-    parentId: Joi.number().integer().allow(null).optional(),
-  }),
+  body: Joi.object()
+    .keys({
+      content: Joi.string().max(1000).optional(),
+      comment: Joi.string().max(1000).optional(),
+      parentId: Joi.number().integer().allow(null).optional(),
+    })
+    .or('content', 'comment'),
 };
 
 const getPosts = {
   query: Joi.object().keys({
     page: Joi.number().integer().min(1).default(1),
     per_page: Joi.number().integer().min(1).max(100).default(20),
+    perPage: Joi.number().integer().min(1).max(100).optional(),
     category: Joi.string().allow('', null).optional(),
     tag: Joi.string().allow('', null).optional(),
-    status: Joi.string().valid('draft', 'published', 'archived').optional(),
+    status: Joi.string().valid('all', 'draft', 'review', 'published', 'archived').optional(),
     search: Joi.string().allow('').optional(),
     author: Joi.number().integer().optional(),
   }),

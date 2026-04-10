@@ -1,19 +1,12 @@
 import axios from "axios";
 import { transformWooProducts, transformWooProduct } from "../utils/productTransformer";
+import { getBackendBaseUrl } from "../utils/apiBase";
 
 /* =========================
    Environment Validation
 ========================= */
 
-let BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
-
-// Inside the Docker container network, BACKEND_URL might be defined as backend:8000
-// or localhost:8000 if built with defaults. The browser cannot resolve these
-// directly in many cases, so we map them to relative URLs which NGINX reverse 
-// proxies to the container correctly.
-if (BACKEND_URL && (BACKEND_URL.includes("backend:8000") || BACKEND_URL.includes("localhost:8000"))) {
-  BACKEND_URL = "";
-}
+const BACKEND_URL = getBackendBaseUrl();
 
 const API = `${BACKEND_URL}/api/v1`;
 
@@ -123,20 +116,31 @@ export const productsAPI = {
     try {
       const res = await api.get("/products", { params });
 
-      const rawProducts = res.data.products || res.data || [];
+      const rawProducts = res.data.products || res.data.items || res.data || [];
       const transformedData = Array.isArray(rawProducts)
         ? transformWooProducts(rawProducts)
         : [];
+      const pagination = res.data.pagination || (
+        res.data.total != null
+          ? {
+              current_page: res.data.page || 1,
+              total_pages: Math.max(Math.ceil((res.data.total || 0) / (res.data.perPage || params.per_page || 20)), 1),
+              total: res.data.total || 0,
+              per_page: res.data.perPage || params.per_page || 20,
+            }
+          : {}
+      );
+      const filters = res.data.filters || res.data.filterMetadata || {};
 
       return {
         ...res,
         data: transformedData,
         products: rawProducts,
-        filters: res.data.filters || {},
-        pagination: res.data.pagination || {},
+        filters,
+        pagination,
         sortOptions: res.data.sortOptions || [],
         appliedFilters: res.data.appliedFilters || {},
-        totalProducts: res.data.totalProducts || transformedData.length
+        totalProducts: res.data.totalProducts || res.data.total || transformedData.length
       };
     } catch (err) {
       handleError(err);
@@ -715,6 +719,46 @@ export const warehouseAPI = {
   }
 };
 
+export const inventoryAPI = {
+  getStockLevels: async () => {
+    try {
+      const response = await api.get("/admin/inventory/stock-levels");
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (err) {
+      handleError(err);
+      return [];
+    }
+  },
+
+  getLowStockItems: async (params = {}) => {
+    try {
+      const response = await api.get("/admin/inventory/low-stock", { params });
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (err) {
+      handleError(err);
+      return [];
+    }
+  },
+
+  updateStockLevel: async (variantId, data) => {
+    try {
+      return await api.put(`/admin/inventory/${variantId}`, data);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  recordOfflineSale: async (data) => {
+    try {
+      return await api.post("/admin/inventory/offline-sale", data);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  }
+};
+
 /* =========================
    ADMIN - ANALYTICS APIs
 ========================= */
@@ -861,18 +905,17 @@ export const categoriesAPI = {
   getAll: async () => {
     try {
       const response = await api.get("/categories");
-      // Handle different response structures
-      return response.data.data || response.data;
+      return Array.isArray(response.data) ? response.data : (response.data.categories || []);
     } catch (err) {
       handleError(err);
-      return { categories: [] };
+      return [];
     }
   },
 
   getById: async (id) => {
     try {
       const response = await api.get(`/categories/${id}`);
-      return response.data.data || response.data;
+      return response.data || null;
     } catch (err) {
       handleError(err);
       return null;
@@ -882,7 +925,7 @@ export const categoriesAPI = {
   getBySlug: async (slug) => {
     try {
       const response = await api.get(`/categories/slug/${slug}`);
-      return response.data.data || response.data;
+      return response.data || null;
     } catch (err) {
       handleError(err);
       return null;
@@ -892,7 +935,7 @@ export const categoriesAPI = {
   create: async (data) => {
     try {
       const response = await api.post("/categories", data);
-      return response.data.data || response.data;
+      return response.data || null;
     } catch (err) {
       handleError(err);
       throw err;
@@ -902,7 +945,7 @@ export const categoriesAPI = {
   update: async (id, data) => {
     try {
       const response = await api.put(`/categories/${id}`, data);
-      return response.data.data || response.data;
+      return response.data || null;
     } catch (err) {
       handleError(err);
       throw err;
@@ -913,7 +956,7 @@ export const categoriesAPI = {
     try {
       const response = await api.delete(`/categories/${id}`);
       // For delete operations, return success status
-      return { success: true, ...response.data };
+      return { success: true, ...(response.data || {}) };
     } catch (err) {
       handleError(err);
       throw err;

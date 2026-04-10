@@ -2,16 +2,38 @@ const dotenv = require('dotenv');
 const Joi = require('joi');
 dotenv.config();
 
+const buildMongoConnectionUrl = (envVars) => {
+  const fullMongoUri = envVars.MONGODB_URI;
+  if (fullMongoUri) {
+    return fullMongoUri;
+  }
+
+  const baseMongoUrl = envVars.MONGO_URL;
+  if (!baseMongoUrl) {
+    return null;
+  }
+
+  const dbName = envVars.DB_NAME;
+  if (!dbName) {
+    return baseMongoUrl;
+  }
+
+  if (baseMongoUrl.includes('?')) {
+    const [baseWithoutQuery, queryString] = baseMongoUrl.split('?');
+    const normalizedBase = baseWithoutQuery.endsWith('/') ? baseWithoutQuery : `${baseWithoutQuery}/`;
+    return `${normalizedBase}${dbName}?${queryString}`;
+  }
+
+  const normalizedBase = baseMongoUrl.endsWith('/') ? baseMongoUrl : `${baseMongoUrl}/`;
+  return `${normalizedBase}${dbName}`;
+};
+
 const envVarsSchema = Joi.object()
   .keys({
     PORT: Joi.number().default(8000),
-    MONGO_URL: Joi.string().required().description('Mongo DB url'),
-    DB_NAME: Joi.string().required(),
-    MYSQL_HOST: Joi.string().required(),
-    MYSQL_PORT: Joi.number().default(3306),
-    MYSQL_USER: Joi.string().required(),
-    MYSQL_PASSWORD: Joi.string().required(),
-    MYSQL_DATABASE: Joi.string().required(),
+    MONGO_URL: Joi.string().allow('', null).description('Mongo DB base url'),
+    MONGODB_URI: Joi.string().allow('', null).description('Full Mongo DB connection uri'),
+    DB_NAME: Joi.string().allow('', null),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
     CORS_ORIGINS: Joi.string().default('*'),
     PUBLIC_BASE_URL: Joi.string().default('http://localhost:8000'),
@@ -38,18 +60,17 @@ if (error) {
   throw new Error(`Config validation error: ${error.message}`);
 }
 
+const mongoConnectionUrl = buildMongoConnectionUrl(envVars);
+
+if (!mongoConnectionUrl) {
+  throw new Error('Config validation error: either "MONGO_URL" or "MONGODB_URI" is required');
+}
+
 module.exports = {
   env: process.env.NODE_ENV || 'development',
   port: envVars.PORT,
   mongoose: {
-    url: envVars.MONGO_URL + (envVars.MONGO_URL.endsWith('/') ? '' : '/') + envVars.DB_NAME,
-  },
-  mysql: {
-    host: envVars.MYSQL_HOST,
-    port: envVars.MYSQL_PORT,
-    user: envVars.MYSQL_USER,
-    password: envVars.MYSQL_PASSWORD,
-    database: envVars.MYSQL_DATABASE
+    url: mongoConnectionUrl,
   },
   jwt: {
     secret: envVars.JWT_SECRET,
@@ -60,6 +81,7 @@ module.exports = {
     secure: envVars.COOKIE_SECURE === 'true',
   },
   cors: envVars.CORS_ORIGINS,
+  frontendUrl: envVars.CORS_ORIGINS === '*' ? '*' : envVars.CORS_ORIGINS.split(',')[0].trim(),
   publicBaseUrl: envVars.PUBLIC_BASE_URL,
   redis: {
     url: envVars.REDIS_URL,

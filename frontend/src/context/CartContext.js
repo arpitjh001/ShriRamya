@@ -52,14 +52,12 @@ export const CartProvider = ({ children }) => {
       const payload = { quantity };
       
       if (variation && variation.variantId) {
-        // New pattern: productId + variation object
-        payload.productId = Number(productIdOrVariantId);
-        payload.variantId = Number(variation.variantId);
+        payload.productId = productIdOrVariantId;
+        payload.variantId = variation.variantId;
         if (variation.color) payload.color = variation.color;
         if (variation.size) payload.size = variation.size;
       } else {
-        // Product without specific variant — just productId
-        payload.productId = Number(productIdOrVariantId);
+        payload.productId = productIdOrVariantId;
       }
 
       const response = await cartAPI.add(payload, storedSessionId);

@@ -6,6 +6,46 @@
 const imageService = require('../services/images/imageOptimization.service');
 const { successResponse } = require('../utils/response');
 const httpStatus = require('http-status');
+const config = require('../config/config');
+
+const rewriteOrigin = (value, fromOrigin, toOrigin) => {
+  if (typeof value === 'string') {
+    return value.startsWith(fromOrigin) ? `${toOrigin}${value.slice(fromOrigin.length)}` : value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => rewriteOrigin(entry, fromOrigin, toOrigin));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, rewriteOrigin(entry, fromOrigin, toOrigin)])
+    );
+  }
+
+  return value;
+};
+
+const normalizeUploadUrls = (result, req) => {
+  if (!result || config.cdnBaseUrl) {
+    return result;
+  }
+
+  const requestOrigin = `${req.protocol}://${req.get('host')}`;
+
+  let configuredOrigin = null;
+  try {
+    configuredOrigin = new URL(config.publicBaseUrl).origin;
+  } catch (error) {
+    configuredOrigin = null;
+  }
+
+  if (!configuredOrigin || configuredOrigin === requestOrigin) {
+    return result;
+  }
+
+  return rewriteOrigin(result, configuredOrigin, requestOrigin);
+};
 
 /**
  * Upload single image with optimization
@@ -23,7 +63,7 @@ const uploadImage = async (req, res, next) => {
     }
 
     const category = req.body.category || 'products';
-    const result = await imageService.processImage(file, category);
+    const result = normalizeUploadUrls(await imageService.processImage(file, category), req);
 
     return successResponse(res, result, 'Image uploaded and optimized successfully', httpStatus.CREATED);
   } catch (error) {
@@ -44,7 +84,7 @@ const uploadMultipleImages = async (req, res, next) => {
     }
 
     const category = req.body.category || 'products';
-    const results = await imageService.processMultipleImages(req.files, category);
+    const results = normalizeUploadUrls(await imageService.processMultipleImages(req.files, category), req);
 
     return successResponse(res, results, 'Images uploaded and optimized successfully', httpStatus.CREATED);
   } catch (error) {

@@ -1,10 +1,14 @@
 const httpStatus = require('http-status');
 const { successResponse } = require('../utils/response');
 const categoryService = require('../services/category.service');
+const catalogReadService = require('../services/catalog-read.service');
 
 const createCategory = async (req, res, next) => {
     try {
-        const category = await categoryService.createCategory(req.body);
+        const category = await categoryService.createCategory({
+            ...req.body,
+            tenant_id: req.tenantId || req.user?.tenantId || 1,
+        });
         return successResponse(res, category, 'Category created successfully', httpStatus.CREATED);
     } catch (error) {
         next(error);
@@ -13,7 +17,12 @@ const createCategory = async (req, res, next) => {
 
 const getCategoryById = async (req, res, next) => {
     try {
-        const category = await categoryService.getCategoryById(req.params.categoryId);
+        const tenantId = req.tenantId || req.user?.tenantId || 1;
+        const category = await catalogReadService.getCategory(req.params.categoryId, {
+            tenantId,
+            user: req.user || null,
+            includeProducts: true,
+        });
         if (!category) {
             const ApiError = require('../utils/ApiError');
             throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
@@ -26,7 +35,12 @@ const getCategoryById = async (req, res, next) => {
 
 const getCategoryBySlug = async (req, res, next) => {
     try {
-        const category = await categoryService.getCategoryBySlug(req.params.slug);
+        const tenantId = req.tenantId || req.user?.tenantId || 1;
+        const category = await catalogReadService.getCategory(req.params.slug, {
+            tenantId,
+            user: req.user || null,
+            includeProducts: true,
+        });
         if (!category) {
             const ApiError = require('../utils/ApiError');
             throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
@@ -39,7 +53,11 @@ const getCategoryBySlug = async (req, res, next) => {
 
 const getAllCategories = async (req, res, next) => {
     try {
-        const categories = await categoryService.getAllCategories();
+        const tenantId = req.tenantId || req.user?.tenantId || 1;
+        const categories = await catalogReadService.listCategories({
+            tenantId,
+            user: req.user || null,
+        });
         return successResponse(res, categories);
     } catch (error) {
         next(error);

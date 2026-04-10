@@ -1,0 +1,824 @@
+[Email] SMTP transporter initialized
+[36mINFO [0m [2026-03-25T11:08:41.677Z]  Server initializing {
+  "env": "development",
+  "port": 8000,
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:08:42.430Z]  Swagger documentation enabled {
+  "path": "/api/docs",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+MongoDB connected: mongodb://localhost:27017/shriramya
+Products already seeded: 50 found
+Users already seeded: 2 found
+Blogs already seeded: 3 found
+Database seeding complete!
+Background job queues initialized
+Cart reservation expiration cron initialized
+Server running on port 8000
+Environment: development
+[36mINFO [0m [2026-03-25T11:08:48.276Z]  [ReservationCron] Scheduled cleanup job (every 5 minutes) {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-03-25T11:09:11.713Z] [8985dcdb-51a0-4617-bfba-b77298318e9b] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7920",
+  "ip": "::1",
+  "requestId": "8985dcdb-51a0-4617-bfba-b77298318e9b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[ProductController] Cache miss for products: api:products:list:eyJwYWdlIjoxLCJwZXJfcGFnZSI6MjAs:1:public (tenant: 1)
+[36mINFO [0m [2026-03-25T11:09:11.755Z] [8985dcdb-51a0-4617-bfba-b77298318e9b] API Request Completed {
+  "method": "GET",
+  "path": "/",
+  "statusCode": 200,
+  "duration": "45ms",
+  "requestId": "8985dcdb-51a0-4617-bfba-b77298318e9b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products [32m200[0m 38.384 ms - 4696[0m
+[36mINFO [0m [2026-03-25T11:10:03.982Z] [8985dcdb-51a0-4617-bfba-b77298318e9b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-03-25T11:10:05.836Z] [517f51ce-8e4c-4433-abbc-b75d7ddcfa9f] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/auth/login",
+  "query": {},
+  "params": {},
+  "ip": "::1",
+  "requestId": "517f51ce-8e4c-4433-abbc-b75d7ddcfa9f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[AuthController] Updating existing role mapping for admin@shriramya.com
+[36mINFO [0m [2026-03-25T11:10:06.107Z] [517f51ce-8e4c-4433-abbc-b75d7ddcfa9f] API Request Completed {
+  "method": "POST",
+  "path": "/login",
+  "statusCode": 200,
+  "duration": "270ms",
+  "requestId": "517f51ce-8e4c-4433-abbc-b75d7ddcfa9f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/auth/login [32m200[0m 268.514 ms - 601[0m
+[90mDEBUG[0m [2026-03-25T11:10:06.122Z] [a25a0f07-fade-449e-b7cc-8313e88f74e2] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "ip": "::1",
+  "requestId": "a25a0f07-fade-449e-b7cc-8313e88f74e2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/categories [0m-[0m - ms - -[0m
+[90mDEBUG[0m [2026-03-25T11:11:59.663Z] [6353023e-8402-4fc7-b92a-364462aaa5de] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/auth/login",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7920",
+  "ip": "::1",
+  "requestId": "6353023e-8402-4fc7-b92a-364462aaa5de",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[AuthController] Updating existing role mapping for admin@shriramya.com
+[36mINFO [0m [2026-03-25T11:11:59.912Z] [6353023e-8402-4fc7-b92a-364462aaa5de] API Request Completed {
+  "method": "POST",
+  "path": "/login",
+  "statusCode": 200,
+  "duration": "249ms",
+  "requestId": "6353023e-8402-4fc7-b92a-364462aaa5de",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/auth/login [32m200[0m 247.159 ms - 601[0m
+[36mINFO [0m [2026-03-25T11:14:59.955Z] [6353023e-8402-4fc7-b92a-364462aaa5de] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:15:04.553Z] [6353023e-8402-4fc7-b92a-364462aaa5de] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:15:19.628Z] [6353023e-8402-4fc7-b92a-364462aaa5de] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-03-25T11:22:57.173Z] [41d89aa3-2c7c-413d-a77a-5c71bfa016c8] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/auth/login",
+  "query": {},
+  "params": {},
+  "ip": "::1",
+  "requestId": "41d89aa3-2c7c-413d-a77a-5c71bfa016c8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[AuthController] Updating existing role mapping for admin@shriramya.com
+[36mINFO [0m [2026-03-25T11:22:57.441Z] [41d89aa3-2c7c-413d-a77a-5c71bfa016c8] API Request Completed {
+  "method": "POST",
+  "path": "/login",
+  "statusCode": 200,
+  "duration": "267ms",
+  "requestId": "41d89aa3-2c7c-413d-a77a-5c71bfa016c8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/auth/login [32m200[0m 215.415 ms - 601[0m
+[90mDEBUG[0m [2026-03-25T11:22:57.462Z] [34ef385b-4687-4e3d-88f1-34ba49164b12] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "ip": "::1",
+  "requestId": "34ef385b-4687-4e3d-88f1-34ba49164b12",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/categories [0m-[0m - ms - -[0m
+[36mINFO [0m [2026-03-25T11:25:00.073Z] [34ef385b-4687-4e3d-88f1-34ba49164b12] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-03-25T11:26:55.844Z] [21669c1c-39b4-40ce-960a-caafb3296e71] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7920",
+  "ip": "::1",
+  "requestId": "21669c1c-39b4-40ce-960a-caafb3296e71",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:26:55.893Z] [21669c1c-39b4-40ce-960a-caafb3296e71] API Request Completed {
+  "method": "GET",
+  "path": "/",
+  "statusCode": 200,
+  "duration": "50ms",
+  "requestId": "21669c1c-39b4-40ce-960a-caafb3296e71",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/categories [32m200[0m 48.342 ms - 24168[0m
+[36mINFO [0m [2026-03-25T11:29:59.739Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:30:04.169Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:30:19.216Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:35:00.022Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:35:05.076Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:35:20.111Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:40:00.034Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:40:05.058Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:40:20.087Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:45:00.021Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:45:05.047Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:45:20.076Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:50:00.027Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:50:05.063Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:50:20.079Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:55:00.030Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:55:05.057Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T11:55:20.081Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:00:00.066Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:00:05.143Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:00:20.165Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:05:00.016Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:05:05.047Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:05:20.075Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:10:00.069Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:10:05.138Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:10:20.212Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:15:00.067Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:15:05.138Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:15:20.210Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:20:00.074Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:20:05.091Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:20:20.167Z] [21669c1c-39b4-40ce-960a-caafb3296e71] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-03-25T12:22:42.475Z] [60ba4498-48fd-4065-8065-e409f0e4facd] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/auth/login",
+  "query": {},
+  "params": {},
+  "ip": "::1",
+  "requestId": "60ba4498-48fd-4065-8065-e409f0e4facd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[AuthController] Updating existing role mapping for admin@shriramya.com
+[36mINFO [0m [2026-03-25T12:22:42.780Z] [60ba4498-48fd-4065-8065-e409f0e4facd] API Request Completed {
+  "method": "POST",
+  "path": "/login",
+  "statusCode": 200,
+  "duration": "307ms",
+  "requestId": "60ba4498-48fd-4065-8065-e409f0e4facd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/auth/login [32m200[0m 303.241 ms - 601[0m
+[90mDEBUG[0m [2026-03-25T12:22:42.798Z] [3086c45b-829d-4624-90a5-6511af97144b] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "ip": "::1",
+  "requestId": "3086c45b-829d-4624-90a5-6511af97144b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/categories [0m-[0m - ms - -[0m
+[36mINFO [0m [2026-03-25T12:25:00.061Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:25:05.135Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:25:20.161Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:30:00.068Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:30:05.083Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:30:20.162Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:35:00.015Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:35:05.033Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:35:20.111Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:40:00.074Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:40:05.138Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:40:20.164Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:45:00.068Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:45:05.140Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:45:20.224Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:50:00.022Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:50:05.049Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:50:20.086Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:55:00.087Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:55:05.162Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T12:55:20.236Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:00:00.023Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:00:05.044Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:00:20.060Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:10:00.017Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:10:05.026Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:10:20.045Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:15:00.008Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:15:05.011Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:15:20.025Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:24:59.986Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:25:05.021Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:25:20.057Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:35:00.043Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:35:05.048Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:35:20.114Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:50:00.058Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:50:05.065Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T13:50:20.130Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:00:00.003Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:00:05.010Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:00:20.037Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:14:59.998Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:15:04.995Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:15:20.016Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:24:59.996Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:25:05.038Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:25:20.067Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:29:59.992Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:30:04.991Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:30:20.005Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:49:59.993Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:50:04.984Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T14:50:20.001Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:00:00.011Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:00:05.009Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:00:20.039Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:04:59.996Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:05:04.983Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:35:00.012Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:35:04.999Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T15:35:20.024Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:00:00.016Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:00:05.042Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:00:20.056Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:05:00.017Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:05:05.037Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:05:20.040Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:10:00.037Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:10:05.055Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:10:20.065Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:35:00.033Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:35:05.043Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:35:20.036Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:40:00.032Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:40:05.056Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:40:20.053Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:50:00.079Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:50:05.144Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T16:50:20.192Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T17:10:00.011Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T17:10:05.097Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T17:10:20.148Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T17:30:00.039Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T17:30:05.082Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-03-25T17:30:20.051Z] [3086c45b-829d-4624-90a5-6511af97144b] [ReservationCron] Starting cleanup job {
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}

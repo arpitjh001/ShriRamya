@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import api, { productsAPI } from '../services/api';
+import { categoriesAPI, productsAPI } from '../services/api';
 
 const CategoryPage = () => {
     const { slug } = useParams();
@@ -17,8 +17,8 @@ const CategoryPage = () => {
             setLoading(true);
             try {
                 // Fetch category details
-                const catRes = await api.get(`/categories/${slug}`);
-                setCategory(catRes.data);
+                const categoryData = await categoriesAPI.getBySlug(slug);
+                setCategory(categoryData);
 
                 // Fetch products for this category using the consolidated productsAPI
                 const prodRes = await productsAPI.getAll({ category: slug, per_page: 100 });
@@ -27,7 +27,7 @@ const CategoryPage = () => {
                 setSortedProducts(fetchedProducts);
 
                 // Update document title for SEO
-                document.title = `${catRes.data.name} | ShriRamya`;
+                document.title = `${categoryData.name} | ShriRamya`;
 
                 // Set meta description
                 let metaDesc = document.querySelector('meta[name="description"]');
@@ -36,7 +36,7 @@ const CategoryPage = () => {
                     metaDesc.name = 'description';
                     document.head.appendChild(metaDesc);
                 }
-                metaDesc.content = catRes.data.description || `Explore our high-quality ${catRes.data.name} collection at ShriRamya.`;
+                metaDesc.content = categoryData.description || `Explore our high-quality ${categoryData.name} collection at ShriRamya.`;
 
             } catch (err) {
                 console.error(err);

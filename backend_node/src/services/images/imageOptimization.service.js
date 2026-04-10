@@ -2,6 +2,10 @@
  * Image Optimization Service
  * Handles image upload, resize, thumbnail generation, and compression
  * Uses Sharp for image processing
+ * 
+ * NOTE: In Vercel/serverless environments, images are stored in MongoDB for persistence.
+ *       For local development, images are saved to /uploads/images directory.
+ *       For production, configure AWS S3 or CDN_BASE_URL environment variable.
  */
 
 const sharp = require('sharp');
@@ -9,6 +13,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const config = require('../../config/config');
+const Image = require('../../models/images.model');
 
 // Image sizes configuration
 const IMAGE_SIZES = {
@@ -28,10 +33,22 @@ const QUALITY_SETTINGS = {
 
 class ImageOptimizationService {
   constructor() {
-    this.uploadDir = path.join(process.cwd(), 'uploads', 'images');
+    // Check if running in Vercel (serverless environment)
+    this.isVercel = !!process.env.VERCEL || !!process.env.VERCEL_ENV;
+    
+    // Use /tmp for Vercel (temporary), or uploads/images for local development
+    if (this.isVercel) {
+      this.uploadDir = '/tmp/uploads/images';
+      this.useDatabase = true;
+      console.log('[ImageService] Running in Vercel environment, using MongoDB for image storage');
+    } else {
+      this.uploadDir = path.join(process.cwd(), 'uploads', 'images');
+      this.useDatabase = false;
+    }
+    
     this.cdnBaseUrl = config.cdnBaseUrl || config.publicBaseUrl || 'http://localhost:8000';
     
-    // Ensure upload directory exists
+    // Ensure upload directory exists (for local development)
     this._ensureUploadDirectory();
   }
 
@@ -39,18 +56,21 @@ class ImageOptimizationService {
    * Ensure upload directory exists
    */
   async _ensureUploadDirectory() {
+    if (this.isVercel) return; // Skip for serverless
+    
     try {
       await fs.mkdir(this.uploadDir, { recursive: true });
     } catch (error) {
-      console.error('Error creating upload directory:', error.message);
+      console.error('[ImageService] Error creating upload directory:', error.message);
+      // Don't throw - continue anyway; writes may still work
     }
   }
 
   /**
-   * Process uploaded image
+   * Process uploaded image and store (either filesystem or database)
    * @param {Object} file - Multer file object
    * @param {String} category - Image category (products, banners, etc.)
-   * @returns {Object} Processed image URLs
+   * @returns {Object} Processed image URLs and metadata
    */
   async processImage(file, category = 'products') {
     const imageId = uuidv4();
@@ -68,35 +88,61 @@ class ImageOptimizationService {
     const outputExt = outputFormat === 'gif' ? '.gif' : '.webp';
 
     const results = {};
+    const processedImages = {}; // Store processed image buffers for database storage
 
     // Process each size
     for (const [sizeName, sizeConfig] of Object.entries(IMAGE_SIZES)) {
       if (sizeName === 'original') {
         // Store original
         const originalPath = path.join(this.uploadDir, `${baseName}_orig${outputExt}`);
-        await this._processAndSaveImage(file.buffer, originalPath, null, null, QUALITY_SETTINGS.original, outputFormat);
-        results.original = this._generateUrl(`${baseName}_orig${outputExt}`);
+        const originalBuffer = await this._processImage(file.buffer, null, null, QUALITY_SETTINGS.original, outputFormat);
+        processedImages.original = originalBuffer;
+        await this._saveImage(originalPath, originalBuffer);
+        results.original = this._generateUrl(imageId, 'original', outputExt);
       } else {
         // Generate resized versions
         const sizedPath = path.join(this.uploadDir, `${baseName}${sizeConfig.suffix}${outputExt}`);
-        await this._processAndSaveImage(
-          file.buffer,
-          sizedPath,
-          sizeConfig.width,
-          sizeConfig.height,
-          QUALITY_SETTINGS[sizeName],
-          outputFormat
-        );
-        results[sizeName] = this._generateUrl(`${baseName}${sizeConfig.suffix}${outputExt}`);
+        const sizedBuffer = await this._processImage(file.buffer, sizeConfig.width, sizeConfig.height, QUALITY_SETTINGS[sizeName], outputFormat);
+        processedImages[sizeName] = sizedBuffer;
+        await this._saveImage(sizedPath, sizedBuffer);
+        results[sizeName] = this._generateUrl(imageId, sizeName, outputExt);
+      }
+    }
+
+    // If using database storage, save to MongoDB
+    if (this.useDatabase && Image) {
+      try {
+        const imageDoc = new Image({
+          imageId,
+          category,
+          originalName: file.originalname,
+          images: {
+            thumbnail: processedImages.thumbnail?.toString('base64') || null,
+            medium: processedImages.medium?.toString('base64') || null,
+            large: processedImages.large?.toString('base64') || null,
+            original: processedImages.original?.toString('base64') || null
+          },
+          urls: results,
+          metadata: {
+            format: outputFormat,
+            sizes: Object.keys(IMAGE_SIZES),
+            fileSize: file.size
+          }
+        });
+        await imageDoc.save();
+        console.log(`[ImageService] Image metadata saved to MongoDB: ${imageId}`);
+      } catch (dbError) {
+        console.warn('[ImageService] Warning: Could not save image metadata to MongoDB:', dbError.message);
+        // Continue anyway - image processing succeeded
       }
     }
 
     // Generate CDN URLs
     results.cdn = {
-      thumbnail: this._generateCdnUrl(`${baseName}${IMAGE_SIZES.thumbnail.suffix}${outputExt}`),
-      medium: this._generateCdnUrl(`${baseName}${IMAGE_SIZES.medium.suffix}${outputExt}`),
-      large: this._generateCdnUrl(`${baseName}${IMAGE_SIZES.large.suffix}${outputExt}`),
-      original: this._generateCdnUrl(`${baseName}_orig${outputExt}`)
+      thumbnail: this._generateCdnUrl(imageId, 'thumbnail', outputExt),
+      medium: this._generateCdnUrl(imageId, 'medium', outputExt),
+      large: this._generateCdnUrl(imageId, 'large', outputExt),
+      original: this._generateCdnUrl(imageId, 'original', outputExt)
     };
 
     // Store metadata
@@ -112,10 +158,11 @@ class ImageOptimizationService {
     return results;
   }
 
+
   /**
-   * Process and save image
+   * Process image buffer and return processed buffer
    */
-  async _processAndSaveImage(buffer, outputPath, width, height, quality, format) {
+  async _processImage(buffer, width, height, quality, format) {
     let pipeline = sharp(buffer);
 
     // Get metadata
@@ -139,26 +186,72 @@ class ImageOptimizationService {
     }
     // GIF stays as is
 
-    // Save the processed image
-    await pipeline.toFile(outputPath);
+    // Return processed buffer
+    return await pipeline.toBuffer();
+  }
+
+  /**
+   * Save image buffer to filesystem
+   * Handles errors gracefully in serverless environments
+   */
+  async _saveImage(outputPath, imageBuffer) {
+    if (this.isVercel) {
+      // Skip filesystem write in serverless - images are in MongoDB
+      return;
+    }
+
+    try {
+      await fs.writeFile(outputPath, imageBuffer);
+      console.log(`[ImageService] Image saved to ${outputPath}`);
+    } catch (error) {
+      console.warn(`[ImageService] Warning: Could not save image to ${outputPath}:`, error.message);
+      // Don't throw - image processing succeeded, just storage failed
+    }
   }
 
   /**
    * Generate local URL
    */
-  _generateUrl(filename) {
-    return `${this.cdnBaseUrl}/uploads/images/${filename}`;
+  _generateUrl(imageId, sizeName, ext) {
+    return `${this.cdnBaseUrl}/api/v1/images/${imageId}/${sizeName}${ext}`;
   }
 
   /**
    * Generate CDN URL
    */
-  _generateCdnUrl(filename) {
+  _generateCdnUrl(imageId, sizeName, ext) {
     // If CDN is configured, use CDN URL
     if (config.cdnBaseUrl && config.cdnBaseUrl !== this.cdnBaseUrl) {
-      return `${config.cdnBaseUrl}/uploads/images/${filename}`;
+      return `${config.cdnBaseUrl}/api/v1/images/${imageId}/${sizeName}${ext}`;
     }
-    return this._generateUrl(filename);
+    return this._generateUrl(imageId, sizeName, ext);
+  }
+
+  /**
+   * Get image by ID and size (from database or filesystem)
+   */
+  async getImage(imageId, sizeName = 'original') {
+    if (this.useDatabase && Image) {
+      try {
+        const imageDoc = await Image.findOne({ imageId });
+        if (!imageDoc) {
+          return null;
+        }
+        
+        const base64Data = imageDoc.images[sizeName];
+        if (!base64Data) {
+          return null;
+        }
+        
+        return Buffer.from(base64Data, 'base64');
+      } catch (error) {
+        console.error('[ImageService] Error retrieving image from database:', error.message);
+        return null;
+      }
+    }
+    
+    // Fallback to filesystem
+    return null;
   }
 
   /**

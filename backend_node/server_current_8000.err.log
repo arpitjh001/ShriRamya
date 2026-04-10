@@ -1,0 +1,51 @@
+Email service SMTP not configured
+(node:19636) [MONGOOSE] Warning: `isNew` is a reserved schema pathname and may break some functionality. You are allowed to use it, but use at your own risk. To disable this warning pass `suppressReservedKeysWarning` as a schema option.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19636) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:19636) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:19636) [MONGOOSE] Warning: Duplicate schema index on {"orderId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:19636) [MONGOOSE] Warning: Duplicate schema index on {"domain":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:19636) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+[33mWARN [0m [2026-04-09T18:13:06.350Z] [bbbdcc33-5e16-4019-96cf-3045995b08b5] API Request Completed {
+  "method": "POST",
+  "path": "/coupon/apply",
+  "statusCode": 400,
+  "duration": "96ms",
+  "requestId": "bbbdcc33-5e16-4019-96cf-3045995b08b5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Queue] Error in email: Reached the max retries per request limit (which is 20). Refer to "maxRetriesPerRequest" option for details.
+[Queue] Error in notifications: Reached the max retries per request limit (which is 20). Refer to "maxRetriesPerRequest" option for details.
+[Queue] Error in analytics: Reached the max retries per request limit (which is 20). Refer to "maxRetriesPerRequest" option for details.
+[Queue] Error in image-processing: Reached the max retries per request limit (which is 20). Refer to "maxRetriesPerRequest" option for details.
+[Queue] Error in stock-alerts: Reached the max retries per request limit (which is 20). Refer to "maxRetriesPerRequest" option for details.
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+[Redis] GET skipped - Redis unavailable
+Email: Failed to send to customer: Invalid login: 535-5.7.8 Username and Password not accepted. For more information, go to
+535 5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-2b2d4f3ab3dsm1985195ad.74 - gsmtp
+Email: Failed to send to admin: Invalid login: 535-5.7.8 Username and Password not accepted. For more information, go to
+535 5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-2b2d4dae29esm2323985ad.10 - gsmtp

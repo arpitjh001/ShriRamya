@@ -31,6 +31,13 @@ const AdminProductsPage = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  const getCategoryIdentifier = (category) => {
+    const rawIdentifier = category?._id ?? category?.id ?? category?.slug ?? null;
+    return rawIdentifier == null ? null : String(rawIdentifier);
+  };
+
+  const isPersistedObjectId = (value) => /^[0-9a-fA-F]{24}$/.test(String(value || ''));
+
   // State
   const [activeTab, setActiveTab] = useState('products');
   const [loading, setLoading] = useState(true);
@@ -145,7 +152,17 @@ const AdminProductsPage = () => {
       const categoriesData = Array.isArray(response)
         ? response
         : (response?.categories || []);
-      setCategories(categoriesData);
+      const normalizedCategories = categoriesData
+        .map((category) => {
+          const id = getCategoryIdentifier(category);
+          if (!id) return null;
+          return {
+            ...category,
+            id,
+          };
+        })
+        .filter(Boolean);
+      setCategories(normalizedCategories);
     } catch (error) {
       console.error('Failed to load categories:', error);
       setCategories([]);
@@ -171,7 +188,9 @@ const AdminProductsPage = () => {
           size: v.attributes?.size || v.size || '',
           color: v.attributes?.color || v.color || ''
         })) || [],
-        categories: product.categories?.map(c => c.id.toString()) || [],
+        categories: (product.categories || [])
+          .map((category) => getCategoryIdentifier(category))
+          .filter(Boolean),
         discountPrice: product.variants?.[0]?.discountPrice?.toString() || '',
         totalStock: totalStock.toString(),
         lowStockThreshold: product.variants?.[0]?.lowStockThreshold?.toString() || '5',
@@ -211,19 +230,26 @@ const AdminProductsPage = () => {
       // Format variants with proper structure
       // All variants share the same product SKU
       const cleanVariants = (productForm.variants || []).map(v => {
-        return {
-          id: v.id,
+        const variantPayload = {
           sku: productSku, // All variants share product SKU
           price: parseFloat(v.price) || parseFloat(productForm.basePrice) || 0,
           discountPrice: (productForm.discountPrice !== '' && productForm.discountPrice !== null) ? parseFloat(productForm.discountPrice) : null,
           stock: parseInt(v.stock, 10) || 0,
           image: v.image || '',
+          color: v.color || '',
+          size: v.size || '',
           attributes: {
             size: v.size || '',
             color: v.color || ''
           },
           lowStockThreshold: parseInt(v.lowStockThreshold || productForm.lowStockThreshold, 10) || 5
         };
+
+        if (isPersistedObjectId(v.id)) {
+          variantPayload.id = v.id;
+        }
+
+        return variantPayload;
       });
 
       const productData = {
@@ -324,16 +350,28 @@ const AdminProductsPage = () => {
     }
 
     try {
+      const wasProductModalOpen = showProductModal;
+      let savedCategory = null;
       if (editingCategory) {
-        await categoriesAPI.update(editingCategory.id, categoryForm);
+        savedCategory = await categoriesAPI.update(editingCategory.id, categoryForm);
         toast.success('Category updated successfully');
       } else {
-        await categoriesAPI.create(categoryForm);
+        savedCategory = await categoriesAPI.create(categoryForm);
         toast.success('Category created successfully');
       }
 
       setShowCategoryModal(false);
       await loadCategories();
+
+      const savedCategoryId = getCategoryIdentifier(savedCategory);
+      if (wasProductModalOpen && savedCategoryId && !editingCategory) {
+        setProductForm((prev) => ({
+          ...prev,
+          categories: prev.categories.includes(savedCategoryId)
+            ? prev.categories
+            : [...prev.categories, savedCategoryId]
+        }));
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save category');
     }
@@ -864,14 +902,14 @@ const AdminProductsPage = () => {
                     <label className="flex items-center gap-2 cursor-pointer flex-1" style={{ color: '#e2e8f0' }}>
                       <input
                         type="checkbox"
-                        checked={productForm.categories?.includes(category.id.toString())}
+                        checked={productForm.categories?.includes(category.id)}
                         onChange={(e) => {
                           const isChecked = e.target.checked;
                           setProductForm(prev => ({
                             ...prev,
                             categories: isChecked
-                              ? [...(prev.categories || []), category.id.toString()]
-                              : (prev.categories || []).filter(id => id !== category.id.toString())
+                              ? [...(prev.categories || []), category.id]
+                              : (prev.categories || []).filter(id => id !== category.id)
                           }));
                         }}
                         className="w-4 h-4 rounded border-gray-600 text-indigo-500 focus:ring-indigo-500"
@@ -911,7 +949,7 @@ const AdminProductsPage = () => {
               {productForm.categories?.length > 0 && (
                 <div className="flex gap-1 mt-2 flex-wrap">
                   {productForm.categories.map(catId => {
-                    const cat = categories.find(c => c.id.toString() === catId);
+                    const cat = categories.find(c => c.id === catId);
                     return cat ? (
                       <Badge key={catId} variant="secondary" className="gap-1">
                         {cat.name}

@@ -1,431 +1,249 @@
-/**
- * Native Blog Service (Multi-Tenant)
- * For tenant-specific blog content
- */
-
-const { mysqlPool } = require('../config/db');
+const { Blog } = require('../models');
 const redis = require('../config/integrations/redis');
+const mongoose = require('mongoose');
 
 const CACHE_TTL = 600; // 10 minutes
 
 class BlogService {
+    toStringId(value) {
+        return value == null ? null : String(value);
+    }
+
+    calculateReadingTime(content = '') {
+        const plainText = String(content).replace(/<[^>]*>/g, ' ');
+        const words = plainText.trim().split(/\s+/).filter(Boolean).length;
+        return Math.max(Math.ceil(words / 200), 1);
+    }
+
+    normalizePostPayload(data = {}) {
+        const featuredImage = data.featuredImage || data.featured_image || data.image || '';
+        const seoTitle = data.seoTitle || data.seo_title || data.meta_title || '';
+        const seoDescription = data.seoDescription || data.seo_description || data.meta_description || '';
+        const authorName = data.authorName || data.author_name || data.author?.name || 'Shri Ramya Team';
+
+        return {
+            ...data,
+            slug: String(data.slug || '')
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)/g, ''),
+            featuredImage,
+            images: Array.isArray(data.images) ? data.images.filter(Boolean) : [],
+            seoTitle,
+            seoDescription,
+            tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
+            categories: Array.isArray(data.categories) ? data.categories.filter(Boolean) : [],
+            author: data.author || {
+                id: this.toStringId(data.authorId),
+                name: authorName
+            }
+        };
+    }
+
+    formatPost(post) {
+        if (!post) return post;
+        const source = post.toObject ? post.toObject() : { ...post };
+        const id = this.toStringId(source._id || source.id);
+        const featuredImage = source.featuredImage || source.featured_image || source.image || '';
+        const createdAt = source.createdAt || source.created_at || null;
+        const updatedAt = source.updatedAt || source.updated_at || null;
+        const publishedAt = source.publishedAt || source.published_at || null;
+        const readingTime = source.readingTime || source.reading_time || this.calculateReadingTime(source.content);
+
+        return {
+            ...source,
+            id,
+            _id: id,
+            image: featuredImage,
+            featuredImage,
+            featured_image: featuredImage,
+            images: Array.isArray(source.images) ? source.images : [],
+            seoTitle: source.seoTitle || '',
+            seo_title: source.seoTitle || '',
+            seoDescription: source.seoDescription || '',
+            seo_description: source.seoDescription || '',
+            author_name: source.author?.name || source.author_name || 'Shri Ramya Team',
+            view_count: source.views || 0,
+            readingTime,
+            reading_time: readingTime,
+            createdAt,
+            created_at: createdAt,
+            updatedAt,
+            updated_at: updatedAt,
+            publishedAt,
+            published_at: publishedAt,
+        };
+    }
+
     /**
-     * Get all blog posts for a tenant
+     * Get all blog posts
      */
     async getAllPosts(params = {}, tenantId = 1) {
-        const { page = 1, perPage = 10, status = 'published', category, tag, search } = params;
-        const skip = (parseInt(page) - 1) * parseInt(perPage);
-        const limit = parseInt(perPage);
+        const { page = 1, perPage, per_page, status = 'published', category, tag, search } = params;
+        const limit = parseInt(perPage || per_page || 10);
+        const skip = (parseInt(page) - 1) * limit;
 
-        let query = `
-            SELECT b.*, u.name as author_name, u.email as author_email,
-            (SELECT GROUP_CONCAT(cat.name) FROM categories cat
-             JOIN blog_category_mapping bcm ON cat.id = bcm.category_id
-             WHERE bcm.blog_id = b.id) as categories,
-            (SELECT GROUP_CONCAT(t.name) FROM blog_tags t
-             JOIN blog_tag_mapping btm ON t.id = btm.tag_id
-             WHERE btm.blog_id = b.id) as tags
-            FROM blogs b
-            LEFT JOIN mysql_users u ON b.author_id = u.id
-            WHERE b.tenant_id = ?
-        `;
-        const queryParams = [tenantId];
-
-        if (status) {
-            query += ` AND b.status = ?`;
-            queryParams.push(status);
+        const query = {};
+        if (status && status !== 'all') {
+            query.status = status;
         }
 
-        if (category) {
-            query += ` AND b.id IN (SELECT blog_id FROM blog_category_mapping WHERE category_id = ?)`;
-            queryParams.push(category);
-        }
-
-        if (tag) {
-            query += ` AND b.id IN (SELECT blog_id FROM blog_tag_mapping WHERE tag_id = ?)`;
-            queryParams.push(tag);
-        }
-
+        if (category) query.categories = category;
+        if (tag) query.tags = tag;
         if (search) {
-            query += ` AND MATCH(b.title, b.content) AGAINST(? IN NATURAL LANGUAGE MODE)`;
-            queryParams.push(search);
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { content: { $regex: search, $options: 'i' } }
+            ];
         }
 
-        query += ` ORDER BY b.published_at DESC, b.created_at DESC LIMIT ? OFFSET ?`;
-        queryParams.push(limit, skip);
+        const posts = await Blog.find(query)
+            .sort({ publishedAt: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
 
-        const [posts] = await mysqlPool.query(query, queryParams);
+        const total = await Blog.countDocuments(query);
 
-        const [totalRows] = await mysqlPool.query(
-            `SELECT COUNT(*) as count FROM blogs WHERE tenant_id = ? AND status = ?`,
-            [tenantId, status]
-        );
-
-        const result = {
-            posts: posts.map(p => {
-                let images = [];
-                if (p.images) {
-                    try {
-                        images = typeof p.images === 'string' ? JSON.parse(p.images) : p.images;
-                    } catch (e) {
-                        images = [];
-                    }
-                }
-                return {
-                    ...p,
-                    images,
-                    categories: p.categories ? p.categories.split(',') : [],
-                    tags: p.tags ? p.tags.split(',') : []
-                };
-            }),
+        return {
+            posts: posts.map((post) => this.formatPost(post)),
             pagination: {
-                total: totalRows[0].count,
-                current_page: parseInt(page),
-                total_pages: Math.ceil(totalRows[0].count / limit),
+                total,
+                current_page: parseInt(page) || 1,
+                total_pages: Math.ceil(total / limit) || 1,
                 per_page: limit
             }
         };
-
-        return result;
     }
 
-    /**
-     * Get a single blog post by ID
-     */
-    async getPostById(id, tenantId = 1) {
-        const cacheKey = `blog:${tenantId}:${id}`;
-
-        // Try cache first
-        if (redis) {
-            try {
-                const cached = await redis.get(cacheKey);
-                if (cached) {
-                    return JSON.parse(cached);
-                }
-            } catch (err) {
-                console.error('[BlogService] Redis cache error:', err.message);
-            }
-        }
-
-        const [posts] = await mysqlPool.query(
-            `SELECT b.*, u.name as author_name, u.email as author_email
-             FROM blogs b
-             LEFT JOIN mysql_users u ON b.author_id = u.id
-             WHERE b.id = ? AND b.tenant_id = ?`,
-            [id, tenantId]
-        );
-
-        if (posts.length === 0) {
-            return null;
-        }
-
-        const post = { ...posts[0] };
-        if (post.images) {
-            try {
-                post.images = typeof post.images === 'string' ? JSON.parse(post.images) : post.images;
-            } catch (e) {
-                post.images = [];
-            }
-        } else {
-            post.images = [];
-        }
-
-        // Cache result
-        if (redis) {
-            try {
-                await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(post));
-            } catch (err) {
-                console.error('[BlogService] Redis cache error:', err.message);
-            }
-        }
-
-        return post;
+    async getPostById(id) {
+        const post = await Blog.findById(id).lean();
+        return this.formatPost(post);
     }
 
-    /**
-     * Get a single blog post by slug
-     */
-    async getPostBySlug(slug, tenantId = 1) {
-        const [posts] = await mysqlPool.query(
-            `SELECT b.*, u.name as author_name, u.email as author_email,
-            (SELECT GROUP_CONCAT(cat.name) FROM categories cat
-             JOIN blog_category_mapping bcm ON cat.id = bcm.category_id
-             WHERE bcm.blog_id = b.id) as categories,
-            (SELECT GROUP_CONCAT(t.name) FROM blog_tags t
-             JOIN blog_tag_mapping btm ON t.id = btm.tag_id
-             WHERE btm.blog_id = b.id) as tags
-            FROM blogs b
-            LEFT JOIN mysql_users u ON b.author_id = u.id
-            WHERE b.slug = ? AND b.tenant_id = ?`,
-            [slug, tenantId]
-        );
-
-        if (posts.length === 0) return null;
-
-        const post = posts[0];
-        let images = [];
-        if (post.images) {
-            try {
-                images = typeof post.images === 'string' ? JSON.parse(post.images) : post.images;
-            } catch (e) {
-                images = [];
-            }
-        }
-        return {
-            ...post,
-            images,
-            categories: post.categories ? post.categories.split(',') : [],
-            tags: post.tags ? post.tags.split(',') : []
-        };
+    async getPostBySlug(slug) {
+        const post = await Blog.findOne({ slug }).lean();
+        return this.formatPost(post);
     }
 
-    /**
-     * Get related posts
-     */
-    async getRelatedPosts(postId, tenantId = 1, limit = 3) {
-        const [posts] = await mysqlPool.query(
-            `SELECT b.id, b.title, b.slug, b.featured_image, b.published_at
-             FROM blogs b
-             JOIN blog_category_mapping bcm ON b.id = bcm.blog_id
-             WHERE bcm.category_id IN (SELECT category_id FROM blog_category_mapping WHERE blog_id = ?)
-             AND b.id != ? AND b.status = 'published' AND b.tenant_id = ?
-             GROUP BY b.id
-             ORDER BY b.published_at DESC
-             LIMIT ?`,
-            [postId, postId, tenantId, limit]
-        );
-        return posts;
+    async getRelatedPosts(postId, limit = 3) {
+        const post = await Blog.findById(postId);
+        if (!post) return [];
+
+        const posts = await Blog.find({
+            _id: { $ne: postId },
+            categories: { $in: post.categories },
+            status: 'published'
+        }).limit(limit).lean();
+        return posts.map((relatedPost) => this.formatPost(relatedPost));
     }
 
-    /**
-     * Tags management
-     */
     async getAllTags() {
-        const [tags] = await mysqlPool.query('SELECT * FROM blog_tags ORDER BY name ASC');
+        const tags = await Blog.distinct('tags');
         return tags;
     }
 
-    /**
-     * Comments management
-     */
-    async addComment(blogId, commentData) {
-        const { userId, comment, mysqlUserId } = commentData;
-        const [result] = await mysqlPool.query(
-            'INSERT INTO blog_comments (blog_id, user_id, mysql_user_id, comment) VALUES (?, ?, ?, ?)',
-            [blogId, userId, mysqlUserId || null, comment]
-        );
-        return result.insertId;
+    async getAllCategories() {
+        const categories = await Blog.aggregate([
+            { $unwind: '$categories' },
+            {
+                $group: {
+                    _id: '$categories',
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        return categories.map((entry) => ({
+            id: entry._id,
+            name: entry._id,
+            count: entry.count
+        }));
     }
 
-    async getComments(blogId, status = 'approved') {
-        const [comments] = await mysqlPool.query(
-            `SELECT c.*, u.name as author_name 
-             FROM blog_comments c
-             LEFT JOIN mysql_users u ON c.mysql_user_id = u.id
-             WHERE c.blog_id = ? AND c.status = ?
-             ORDER BY c.created_at DESC`,
-            [blogId, status]
-        );
-        return comments;
+    async createPost(data) {
+        const normalizedData = this.normalizePostPayload(data);
+        const post = new Blog({
+            ...normalizedData,
+            publishedAt: normalizedData.status === 'published' ? new Date() : null
+        });
+        await post.save();
+        return this.formatPost(post);
     }
 
-    async updateCommentStatus(commentId, status) {
-        await mysqlPool.query('UPDATE blog_comments SET status = ? WHERE id = ?', [status, commentId]);
+    async updatePost(id, data) {
+        const updateData = { ...data };
+
+        if (data.slug != null) {
+            updateData.slug = String(data.slug)
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)/g, '');
+        }
+
+        if (data.featuredImage || data.featured_image || data.image) {
+            updateData.featuredImage = data.featuredImage || data.featured_image || data.image;
+        }
+        if (data.seoTitle || data.seo_title || data.meta_title) {
+            updateData.seoTitle = data.seoTitle || data.seo_title || data.meta_title;
+        }
+        if (data.seoDescription || data.seo_description || data.meta_description) {
+            updateData.seoDescription = data.seoDescription || data.seo_description || data.meta_description;
+        }
+        if (Array.isArray(data.images)) {
+            updateData.images = data.images.filter(Boolean);
+        }
+        if (Array.isArray(data.tags)) {
+            updateData.tags = data.tags.filter(Boolean);
+        }
+        if (Array.isArray(data.categories)) {
+            updateData.categories = data.categories.filter(Boolean);
+        }
+
+        delete updateData.featured_image;
+        delete updateData.image;
+        delete updateData.seo_title;
+        delete updateData.meta_title;
+        delete updateData.seo_description;
+        delete updateData.meta_description;
+
+        if (data.status === 'published') {
+            updateData.publishedAt = new Date();
+        }
+        const post = await Blog.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+        return this.formatPost(post);
     }
 
-    /**
-     * Analytics
-     */
-    async getAnalytics(tenantId = 1) {
-        const [topPosts] = await mysqlPool.query(
-            `SELECT id, title, view_count, slug FROM blogs 
-             WHERE tenant_id = ? AND status = 'published' 
-             ORDER BY view_count DESC LIMIT 5`,
-            [tenantId]
-        );
-
-        const [monthlyStats] = await mysqlPool.query(
-            `SELECT DATE_FORMAT(published_at, '%Y-%m') as month, COUNT(*) as count, SUM(view_count) as views
-             FROM blogs 
-             WHERE tenant_id = ? AND status = 'published'
-             GROUP BY month ORDER BY month DESC LIMIT 6`,
-            [tenantId]
-        );
-
-        return { topPosts, monthlyStats };
-    }
-
-    /**
-     * Create a new blog post
-     */
-    async createPost(data, tenantId = 1) {
-        const {
-            title,
-            slug,
-            content,
-            excerpt,
-            featuredImage,
-            images,
-            authorId,
-            status = 'draft',
-            publishedAt,
-            seoTitle,
-            seoDescription,
-            metaTitle, // Backward compatibility
-            metaDescription // Backward compatibility
-        } = data;
-
-        const [result] = await mysqlPool.query(
-            `INSERT INTO blogs (
-                tenant_id, title, slug, content, excerpt, featured_image, images,
-                author_id, status, published_at, seo_title, seo_description
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                tenantId,
-                title,
-                slug,
-                content || '',
-                excerpt || '',
-                featuredImage || null,
-                images ? JSON.stringify(images) : null,
-                authorId,
-                status,
-                publishedAt || (status === 'published' ? new Date() : null),
-                seoTitle || metaTitle || null,
-                seoDescription || metaDescription || null
-            ]
-        );
-
-        await this.clearCache(tenantId);
-
-        return this.getPostById(result.insertId, tenantId);
-    }
-
-    /**
-     * Update a blog post
-     */
-    async updatePost(id, data, tenantId = 1) {
-        // First verify the post belongs to this tenant
-        const existingPost = await this.getPostById(id, tenantId);
-        if (!existingPost) {
-            const error = new Error('Blog post not found');
-            error.statusCode = 404;
-            throw error;
-        }
-
-        const fields = [];
-        const values = [];
-
-        if (data.title !== undefined) {
-            fields.push('title = ?');
-            values.push(data.title);
-        }
-        if (data.slug !== undefined) {
-            fields.push('slug = ?');
-            values.push(data.slug);
-        }
-        if (data.content !== undefined) {
-            fields.push('content = ?');
-            values.push(data.content);
-        }
-        if (data.excerpt !== undefined) {
-            fields.push('excerpt = ?');
-            values.push(data.excerpt);
-        }
-        if (data.featuredImage !== undefined) {
-            fields.push('featured_image = ?');
-            values.push(data.featuredImage);
-        }
-        if (data.images !== undefined) {
-            fields.push('images = ?');
-            values.push(data.images ? JSON.stringify(data.images) : null);
-        }
-        if (data.status !== undefined) {
-            fields.push('status = ?');
-            values.push(data.status);
-            // Auto-set published_at when publishing
-            if (data.status === 'published' && !existingPost.published_at) {
-                fields.push('published_at = ?');
-                values.push(new Date());
-            }
-        }
-        if (data.publishedAt !== undefined) {
-            fields.push('published_at = ?');
-            values.push(data.publishedAt);
-        }
-        if (data.seoTitle !== undefined || data.metaTitle !== undefined) {
-            fields.push('seo_title = ?');
-            values.push(data.seoTitle || data.metaTitle);
-        }
-        if (data.seoDescription !== undefined || data.metaDescription !== undefined) {
-            fields.push('seo_description = ?');
-            values.push(data.seoDescription || data.metaDescription);
-        }
-
-        if (fields.length === 0) {
-            return existingPost;
-        }
-
-        values.push(id, tenantId);
-        await mysqlPool.query(
-            `UPDATE blogs SET ${fields.join(', ')} WHERE id = ? AND tenant_id = ?`,
-            values
-        );
-
-        await this.clearCache(tenantId);
-
-        return this.getPostById(id, tenantId);
-    }
-
-    /**
-     * Delete a blog post
-     */
-    async deletePost(id, tenantId = 1) {
-        const existingPost = await this.getPostById(id, tenantId);
-        if (!existingPost) {
-            const error = new Error('Blog post not found');
-            error.statusCode = 404;
-            throw error;
-        }
-
-        await mysqlPool.query(
-            'DELETE FROM blogs WHERE id = ? AND tenant_id = ?',
-            [id, tenantId]
-        );
-
-        await this.clearCache(tenantId);
-
+    async deletePost(id) {
+        await Blog.findByIdAndDelete(id);
         return { id, deleted: true };
     }
 
-    /**
-     * Clear blog cache
-     */
-    async clearCache(tenantId) {
-        if (redis) {
-            try {
-                const keys = await redis.keys(`blogs:${tenantId}:*`);
-                if (keys.length > 0) {
-                    await redis.del(...keys);
-                }
-                const singleKeys = await redis.keys(`blog:${tenantId}:*`);
-                if (singleKeys.length > 0) {
-                    await redis.del(...singleKeys);
-                }
-            } catch (err) {
-                console.error('[BlogService] Redis cache clear error:', err.message);
-            }
-        }
+    async incrementViewCount(id) {
+        await Blog.findByIdAndUpdate(id, { $inc: { views: 1 } });
     }
 
-    /**
-     * Increment view count
-     */
-    async incrementViewCount(id, tenantId = 1) {
-        await mysqlPool.query(
-            'UPDATE blogs SET view_count = view_count + 1 WHERE id = ? AND tenant_id = ?',
-            [id, tenantId]
-        );
+    async getAnalytics() {
+        const [totalPosts, publishedPosts, draftPosts, archivedPosts, totalViewsResult] = await Promise.all([
+            Blog.countDocuments(),
+            Blog.countDocuments({ status: 'published' }),
+            Blog.countDocuments({ status: 'draft' }),
+            Blog.countDocuments({ status: 'archived' }),
+            Blog.aggregate([
+                { $group: { _id: null, totalViews: { $sum: '$views' } } }
+            ])
+        ]);
+
+        return {
+            total_posts: totalPosts,
+            published_posts: publishedPosts,
+            draft_posts: draftPosts,
+            archived_posts: archivedPosts,
+            total_views: totalViewsResult[0]?.totalViews || 0
+        };
     }
 }
 

@@ -178,7 +178,7 @@ const AdminDashboardPage = () => {
         setLoading(true);
         try {
             const catData = await categoriesAPI.getAll();
-            setCategories(catData.categories || []);
+            setCategories(Array.isArray(catData) ? catData : (catData?.categories || []));
         } catch { toast.error('Failed to load categories'); }
         setLoading(false);
     };

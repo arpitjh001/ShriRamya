@@ -3,8 +3,30 @@ import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 
+const normalizeBackendUrl = (value, mode) => {
+    const trimmed = typeof value === 'string' ? value.trim().replace(/\/$/, '') : '';
+
+    if (!trimmed) {
+        return '';
+    }
+
+    const lowerValue = trimmed.toLowerCase();
+    const pointsToLocalApi =
+        lowerValue.includes('backend:8000') ||
+        lowerValue.includes('localhost:8000') ||
+        lowerValue.includes('127.0.0.1:8000');
+
+    if (pointsToLocalApi && mode === 'production') {
+        return '';
+    }
+
+    return trimmed;
+};
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
+    const backendUrl = normalizeBackendUrl(env.REACT_APP_BACKEND_URL, mode);
+
     return {
         resolve: {
             alias: {
@@ -87,7 +109,7 @@ export default defineConfig(({ mode }) => {
             target: 'esnext',
         },
         define: {
-            'process.env.REACT_APP_BACKEND_URL': JSON.stringify(env.REACT_APP_BACKEND_URL),
+            'process.env.REACT_APP_BACKEND_URL': JSON.stringify(backendUrl),
             'process.env.PUBLIC_URL': JSON.stringify('')
         }
     };

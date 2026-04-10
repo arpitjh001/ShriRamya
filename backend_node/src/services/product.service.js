@@ -1,8 +1,17 @@
-const mysqlProductRepository = require('../repositories/product.sql.repository');
+const mongoose = require('mongoose');
+const mongoProductRepository = require('../repositories/product.mongo.repository');
 const categoryService = require('./category.service');
 const searchService = require('./search/search.service');
 
 class ProductService {
+  normalizeIdentifier(value) {
+    if (value == null) return null;
+    if (typeof value === 'object' && typeof value.toString === 'function') {
+      return value.toString();
+    }
+    return String(value);
+  }
+
   toIsoDateOrNull(value) {
     if (!value) return null;
     const date = value instanceof Date ? value : new Date(value);
@@ -33,17 +42,34 @@ class ProductService {
   }
 
   formatVariantForResponse(variant) {
+    const source = variant && typeof variant.toObject === 'function'
+      ? variant.toObject()
+      : (variant && variant._doc ? { ...variant._doc } : variant);
+    const attributes = source?.attributes instanceof Map
+      ? Object.fromEntries(source.attributes.entries())
+      : (source?.attributes || {});
+    const color = attributes.color || attributes.Color || source?.color || null;
+    const size = attributes.size || attributes.Size || source?.size || null;
+
     const normalizedVariant = {
-      id: variant.id,
-      sku: variant.sku,
-      price: Number(variant.price || 0),
-      discountPrice: variant.discountPrice != null ? Number(variant.discountPrice) : null,
-      discountStart: this.toIsoDateOrNull(variant.discountStart),
-      discountEnd: this.toIsoDateOrNull(variant.discountEnd),
-      stock: Number(variant.stock || 0),
-      attributes: variant.attributes || {},
-      image: variant.image || null,
-      lowStockThreshold: variant.lowStockThreshold != null ? Number(variant.lowStockThreshold) : 5,
+      id: this.normalizeIdentifier(source?.id || source?._id),
+      sku: source?.sku,
+      price: Number(source?.price || 0),
+      discountPrice: source?.discountPrice != null ? Number(source.discountPrice) : null,
+      discountStart: this.toIsoDateOrNull(source?.discountStart),
+      discountEnd: this.toIsoDateOrNull(source?.discountEnd),
+      stock: Number(source?.stock || 0),
+      attributes: {
+        ...attributes,
+        color,
+        size,
+        Color: attributes.Color || color || '',
+        Size: attributes.Size || size || '',
+      },
+      image: source?.image || null,
+      lowStockThreshold: source?.lowStockThreshold != null ? Number(source.lowStockThreshold) : 5,
+      color,
+      size,
     };
 
     return {
@@ -55,15 +81,22 @@ class ProductService {
   formatProductForResponse(product) {
     if (!product) return product;
 
-    const basePriceValue = product.basePrice ?? product.base_price ?? product.price ?? 0;
+    const source = typeof product.toObject === 'function'
+      ? product.toObject({ flattenMaps: true })
+      : (product._doc ? { ...product._doc } : { ...product });
+
+    const basePriceValue = source.basePrice ?? source.base_price ?? source.price ?? 0;
+    const categoryId = source.categoryId ?? source.category_id ?? null;
 
     return {
-      ...product,
+      ...source,
+      id: this.normalizeIdentifier(source.id || source._id || source.productId),
+      _id: this.normalizeIdentifier(source._id),
       basePrice: Number(basePriceValue || 0),
-      categoryId: product.categoryId ?? product.category_id ?? null,
-      categories: product.categories || [],
-      variants: Array.isArray(product.variants)
-        ? product.variants.map((variant) => this.formatVariantForResponse(variant))
+      categoryId: this.normalizeIdentifier(categoryId),
+      categories: source.categories || [],
+      variants: Array.isArray(source.variants)
+        ? source.variants.map((variant) => this.formatVariantForResponse(variant))
         : [],
     };
   }
@@ -97,23 +130,90 @@ class ProductService {
     }
   }
 
+  normalizeVariantForPersistence(variant = {}) {
+    const source = { ...variant };
+    const variantId = source.id || source._id;
+    const attributes = source.attributes instanceof Map
+      ? Object.fromEntries(source.attributes.entries())
+      : { ...(source.attributes || {}) };
+    const color = source.color || attributes.color || attributes.Color || '';
+    const size = source.size || attributes.size || attributes.Size || '';
+
+    delete source.id;
+    delete source._id;
+    delete source.stock_quantity;
+
+    const normalizedVariant = {
+      ...source,
+      sku: source.sku || '',
+      price: Number(source.price || 0) || 0,
+      discountPrice: source.discountPrice === '' || source.discountPrice == null
+        ? null
+        : (Number(source.discountPrice) || null),
+      stock: Number(source.stock ?? source.stock_quantity ?? 0) || 0,
+      lowStockThreshold: Number(source.lowStockThreshold || 5) || 5,
+      color,
+      size,
+      attributes: {
+        ...attributes,
+        color,
+        size,
+        Color: attributes.Color || color || '',
+        Size: attributes.Size || size || '',
+      },
+      image: source.image || null,
+    };
+
+    if (source.discountStart) {
+      normalizedVariant.discountStart = source.discountStart;
+    }
+    if (source.discountEnd) {
+      normalizedVariant.discountEnd = source.discountEnd;
+    }
+
+    if (variantId && mongoose.Types.ObjectId.isValid(String(variantId))) {
+      normalizedVariant._id = String(variantId);
+    }
+
+    return normalizedVariant;
+  }
+
+  normalizeProductData(productData = {}) {
+    const normalizedProductData = { ...productData };
+
+    if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'categories')) {
+      const categories = Array.isArray(normalizedProductData.categories)
+        ? normalizedProductData.categories
+        : [normalizedProductData.categories];
+      normalizedProductData.categories = categories
+        .map((categoryId) => this.normalizeIdentifier(categoryId))
+        .filter(Boolean);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'categoryId')) {
+      normalizedProductData.categoryId = normalizedProductData.categoryId
+        ? this.normalizeIdentifier(normalizedProductData.categoryId)
+        : null;
+    }
+
+    if (Array.isArray(normalizedProductData.variants)) {
+      normalizedProductData.variants = normalizedProductData.variants.map((variant) => this.normalizeVariantForPersistence(variant));
+    }
+
+    return normalizedProductData;
+  }
+
   /**
    * Create a new product with its attributes and optional variants
    */
   async createProduct(productData, tenantId = 1) {
     try {
       console.log(`[ProductService] Creating native product: ${productData.name} for tenant: ${tenantId}`);
+      productData = this.normalizeProductData(productData);
       await this._ensureDefaultCategory(productData);
-      const productId = await mysqlProductRepository.createProduct(productData, tenantId);
+      const productId = await mongoProductRepository.createProduct(productData, tenantId);
 
-      // If variants are provided during creation, add them
-      if (productData.variants && Array.isArray(productData.variants)) {
-        for (const variant of productData.variants) {
-          await mysqlProductRepository.addVariant(productId, variant);
-        }
-      }
-
-      const product = await mysqlProductRepository.getProduct(productId);
+      const product = await mongoProductRepository.getProduct(productId, tenantId);
 
       // Update search index
       try {
@@ -136,8 +236,8 @@ class ProductService {
     try {
       console.log(`[ProductService] Adding variant to product ${productId}: ${variantData.sku}`);
 
-      const variantId = await mysqlProductRepository.addVariant(productId, variantData);
-      const variant = await mysqlProductRepository.getVariantById(productId, variantId);
+      const variantId = await mongoProductRepository.addVariant(productId, this.normalizeVariantForPersistence(variantData));
+      const variant = await mongoProductRepository.getVariantById(productId, variantId);
       return this.formatVariantForResponse(variant);
     } catch (error) {
       console.error('[ProductService] addVariant failed:', error.message);
@@ -151,7 +251,7 @@ class ProductService {
   async updateVariant(productId, variantId, variantData) {
     try {
       console.log(`[ProductService] Updating variant ${variantId} for product ${productId}`);
-      const updatedVariant = await mysqlProductRepository.updateVariant(productId, variantId, variantData);
+      const updatedVariant = await mongoProductRepository.updateVariant(productId, variantId, this.normalizeVariantForPersistence(variantData));
       return this.formatVariantForResponse(updatedVariant);
     } catch (error) {
       console.error('[ProductService] updateVariant failed:', error.message);
@@ -165,13 +265,13 @@ class ProductService {
   async deleteVariant(productId, variantId) {
     try {
       console.log(`[ProductService] Deleting variant ${variantId} for product ${productId}`);
-      const deleted = await mysqlProductRepository.deleteVariant(productId, variantId);
+      const deleted = await mongoProductRepository.deleteVariant(productId, variantId);
       if (!deleted) {
         const error = new Error('Variant not found');
         error.statusCode = 404;
         throw error;
       }
-      return { productId: Number(productId), variantId: Number(variantId), deleted: true };
+      return { productId: this.normalizeIdentifier(productId), variantId: this.normalizeIdentifier(variantId), deleted: true };
     } catch (error) {
       console.error('[ProductService] deleteVariant failed:', error.message);
       throw error;
@@ -183,7 +283,7 @@ class ProductService {
    */
   async getProductById(id, tenantId = 1) {
     try {
-      const product = await mysqlProductRepository.getProduct(id, tenantId);
+      const product = await mongoProductRepository.getProduct(id, tenantId);
       if (!product) {
         const error = new Error('Product not found');
         error.statusCode = 404;
@@ -205,7 +305,7 @@ class ProductService {
         page: parseInt(params.page || 1, 10),
         perPage: parseInt(params.per_page || 20, 10),
       };
-      const result = await mysqlProductRepository.listProducts(params, options, tenantId);
+      const result = await mongoProductRepository.listProducts(params, options, tenantId);
       return {
         ...result,
         products: Array.isArray(result.products)
@@ -224,9 +324,10 @@ class ProductService {
   async updateProduct(id, updateData, tenantId = 1) {
     try {
       console.log(`[ProductService] Updating native product: ${id} for tenant: ${tenantId}`);
+      updateData = this.normalizeProductData(updateData);
       await this._ensureDefaultCategory(updateData, true);
 
-      const product = await mysqlProductRepository.getProduct(id, tenantId);
+      const product = await mongoProductRepository.getProduct(id, tenantId);
       if (!product) {
         const error = new Error('Product not found');
         error.statusCode = 404;
@@ -234,7 +335,7 @@ class ProductService {
       }
 
       // Repository now handles base fields, attributes, AND variants sync in one transaction
-      await mysqlProductRepository.updateProduct(id, updateData, tenantId);
+      await mongoProductRepository.updateProduct(id, updateData, tenantId);
 
       // Update search index
       try {
@@ -243,7 +344,7 @@ class ProductService {
         console.error(`[ProductService] Failed to update search index for product ${id}:`, searchError.message);
       }
 
-      const updatedProduct = await mysqlProductRepository.getProduct(id);
+      const updatedProduct = await mongoProductRepository.getProduct(id, tenantId);
       return this.formatProductForResponse(updatedProduct);
     } catch (error) {
       console.error('[ProductService] updateProduct failed:', error.message);
@@ -256,9 +357,9 @@ class ProductService {
    */
   async deleteProduct(id, tenantId = 1) {
     try {
-      const success = await mysqlProductRepository.deleteProduct(id, tenantId);
+      const success = await mongoProductRepository.deleteProduct(id, tenantId);
       if (!success) throw new Error('Product not found or already deleted');
-      return { id, deleted: true };
+      return { id: this.normalizeIdentifier(id), deleted: true };
     } catch (error) {
       console.error('[ProductService] deleteProduct failed:', error.message);
       throw error;
@@ -279,7 +380,7 @@ class ProductService {
   /**
    * Assign categories to a product
    */
-  async assignCategoriesToProduct(productId, categoryIds) {
+  async assignCategoriesToProduct(productId, categoryIds, tenantId = 1) {
     try {
       // Validate that all categories exist
       for (const categoryId of categoryIds) {
@@ -292,8 +393,8 @@ class ProductService {
       }
 
       // Assign categories to product
-      const result = await mysqlProductRepository.assignCategoriesToProduct(productId, categoryIds);
-      return { productId: Number(productId), categoryIds: categoryIds.map(Number), assigned: true };
+      await mongoProductRepository.assignCategoriesToProduct(productId, categoryIds, tenantId);
+      return { productId: this.normalizeIdentifier(productId), categoryIds: categoryIds.map((id) => this.normalizeIdentifier(id)), assigned: true };
     } catch (error) {
       console.error('[ProductService] assignCategoriesToProduct failed:', error.message);
       throw error;
@@ -303,10 +404,17 @@ class ProductService {
   /**
    * Get categories assigned to a product
    */
-  async getProductCategories(productId) {
+  async getProductCategories(productId, tenantId = 1) {
     try {
-      const categories = await mysqlProductRepository.getProductCategories(productId);
-      return categories;
+      const categories = await mongoProductRepository.getProductCategories(productId, tenantId);
+      return categories.map((category) => ({
+        id: this.normalizeIdentifier(category.id || category._id),
+        _id: this.normalizeIdentifier(category._id || category.id),
+        name: category.name,
+        slug: category.slug,
+        description: category.description || '',
+        image: category.image || null,
+      }));
     } catch (error) {
       console.error('[ProductService] getProductCategories failed:', error.message);
       throw error;
@@ -316,15 +424,15 @@ class ProductService {
   /**
    * Remove a category from a product
    */
-  async removeCategoryFromProduct(productId, categoryId) {
+  async removeCategoryFromProduct(productId, categoryId, tenantId = 1) {
     try {
-      const result = await mysqlProductRepository.removeCategoryFromProduct(productId, categoryId);
+      const result = await mongoProductRepository.removeCategoryFromProduct(productId, categoryId, tenantId);
       if (!result) {
         const error = new Error('Category not assigned to product');
         error.statusCode = 404;
         throw error;
       }
-      return { productId: Number(productId), categoryId: Number(categoryId), removed: true };
+      return { productId: this.normalizeIdentifier(productId), categoryId: this.normalizeIdentifier(categoryId), removed: true };
     } catch (error) {
       console.error('[ProductService] removeCategoryFromProduct failed:', error.message);
       throw error;

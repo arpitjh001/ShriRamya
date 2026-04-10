@@ -40,7 +40,7 @@ const CartPage = () => {
 
     try {
       const sessionId = getSessionId();
-      await cartAPI.updateQuantity(item.productId || item.id, newQuantity, sessionId);
+      await cartAPI.updateQuantity(item.cartItemId || item.id, newQuantity, sessionId);
       await fetchCart();
 
       if (newQuantity === 0) {
@@ -73,7 +73,7 @@ const CartPage = () => {
 
     try {
       const sessionId = getSessionId();
-      await cartAPI.remove(item.productId || item.id, sessionId);
+      await cartAPI.remove(item.cartItemId || item.id, sessionId);
       await fetchCart();
       toast.success('Item removed from cart');
     } catch (error) {

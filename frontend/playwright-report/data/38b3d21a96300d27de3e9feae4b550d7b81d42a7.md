@@ -1,0 +1,176 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - paragraph [ref=e7]: FREE SHIPPING ON ORDERS OVER ₹5000
+    - navigation [ref=e8]:
+      - generic [ref=e10]:
+        - link "Shri Ramya" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - img "Shri Ramya" [ref=e13]
+        - generic [ref=e14]:
+          - button "Women" [ref=e15] [cursor=pointer]: Women
+          - button "Luxury" [ref=e16] [cursor=pointer]: Luxury
+          - button "Regional" [ref=e17] [cursor=pointer]: Regional
+          - button "Lifestyle" [ref=e18] [cursor=pointer]: Lifestyle
+          - button "Jewellery" [ref=e19] [cursor=pointer]: Jewellery
+          - link "Journal" [ref=e20] [cursor=pointer]:
+            - /url: /blog
+            - text: Journal
+        - generic [ref=e22]:
+          - button "Search" [ref=e23] [cursor=pointer]:
+            - img [ref=e24]
+          - button "Account" [ref=e27] [cursor=pointer]:
+            - img [ref=e28]
+          - link "Wishlist" [ref=e32] [cursor=pointer]:
+            - /url: /wishlist
+            - img [ref=e33]
+          - link "Cart" [ref=e36] [cursor=pointer]:
+            - /url: /cart
+            - img [ref=e37]
+            - generic [ref=e40]: "1"
+  - main [ref=e41]:
+    - generic [ref=e43]:
+      - link "Back to bag" [ref=e44] [cursor=pointer]:
+        - /url: /cart
+        - img [ref=e45]
+        - text: Back to bag
+      - heading "Checkout" [level=1] [ref=e47]
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - heading "Contact" [level=2] [ref=e52]
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - text: Email *
+                - textbox "Email *" [ref=e55]: test-e2e@example.com
+              - generic [ref=e56]:
+                - text: Phone *
+                - textbox "Phone *" [ref=e57]:
+                  - /placeholder: "+91"
+                  - text: "9876543210"
+          - generic [ref=e58]:
+            - heading "Shipping Address" [level=2] [ref=e59]
+            - generic [ref=e60]:
+              - generic [ref=e61]:
+                - text: Full Name *
+                - textbox "Full Name *" [ref=e62]: Playwright E2E Tester
+              - generic [ref=e63]:
+                - text: Address Line 1 *
+                - textbox "Address Line 1 *" [ref=e64]: 123 Test automation Lane
+              - generic [ref=e65]:
+                - text: Address Line 2
+                - textbox "Address Line 2" [ref=e66]
+              - generic [ref=e67]:
+                - generic [ref=e68]:
+                  - text: City *
+                  - textbox "City *" [ref=e69]: Testing City
+                - generic [ref=e70]:
+                  - text: State *
+                  - textbox "State *" [ref=e71]: Testing State
+                - generic [ref=e72]:
+                  - text: Pincode *
+                  - textbox "Pincode *" [ref=e73]: "123456"
+              - generic [ref=e74]:
+                - text: Order Notes (optional)
+                - textbox "Order Notes (optional)" [ref=e75]:
+                  - /placeholder: Any special instructions
+                  - text: This is an automated test order
+        - generic [ref=e77]:
+          - heading "Order Summary" [level=3] [ref=e78]
+          - generic [ref=e80]:
+            - img "Cotton Kurti" [ref=e81]
+            - generic [ref=e82]:
+              - paragraph [ref=e83]: Cotton Kurti
+              - paragraph [ref=e84]: "Qty: 1"
+              - paragraph [ref=e85]: ₹1,100
+          - generic [ref=e86]:
+            - generic [ref=e87]:
+              - generic [ref=e88]: Subtotal (1 items)
+              - generic [ref=e89]: ₹1,100
+            - generic [ref=e90]:
+              - generic [ref=e91]: Shipping
+              - generic [ref=e92]: Free
+            - generic [ref=e93]:
+              - generic [ref=e94]: Total
+              - generic [ref=e95]: ₹1,100
+          - button "Pay ₹1,100" [ref=e96] [cursor=pointer]:
+            - img
+            - text: Pay ₹1,100
+          - generic [ref=e97]:
+            - img [ref=e98]
+            - generic [ref=e101]: Secured by Razorpay
+  - contentinfo [ref=e102]:
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - link "Shri Ramya" [ref=e108] [cursor=pointer]:
+            - /url: /
+            - img "Shri Ramya" [ref=e109]
+          - paragraph [ref=e110]: House of handcrafted Indian attire curated for weddings, festivities, and timeless celebrations.
+          - generic [ref=e111]:
+            - link [ref=e112] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e113]
+            - link [ref=e115] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e116]
+            - link [ref=e119] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e120]
+        - generic [ref=e122]:
+          - heading "Shop Collections" [level=4] [ref=e123]
+          - list [ref=e124]:
+            - listitem [ref=e125]:
+              - link "Sarees" [ref=e126] [cursor=pointer]:
+                - /url: /products?category=Sarees
+            - listitem [ref=e127]:
+              - link "Lehengas" [ref=e128] [cursor=pointer]:
+                - /url: /products?category=Lehengas
+            - listitem [ref=e129]:
+              - link "Suits" [ref=e130] [cursor=pointer]:
+                - /url: /products?category=Suits
+            - listitem [ref=e131]:
+              - link "Dupattas" [ref=e132] [cursor=pointer]:
+                - /url: /products?category=Dupattas
+            - listitem [ref=e133]:
+              - link "Lookbook" [ref=e134] [cursor=pointer]:
+                - /url: /lookbook
+        - generic [ref=e135]:
+          - heading "Guest Relations" [level=4] [ref=e136]
+          - list [ref=e137]:
+            - listitem [ref=e138]:
+              - link "Our Heritage" [ref=e139] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e140]:
+              - link "Track Your Order" [ref=e141] [cursor=pointer]:
+                - /url: /track-order
+            - listitem [ref=e142]:
+              - link "Artisanal Care Guide" [ref=e143] [cursor=pointer]:
+                - /url: /fabric-care
+            - listitem [ref=e144]:
+              - link "Visit Our Studio" [ref=e145] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e146]:
+              - link "The Heritage Blog" [ref=e147] [cursor=pointer]:
+                - /url: /blog
+        - generic [ref=e148]:
+          - heading "Stay Connected" [level=4] [ref=e149]
+          - list [ref=e150]:
+            - listitem [ref=e151]:
+              - img [ref=e152]
+              - generic [ref=e155]: The Royal Studio, 123 Ethnic Street, Jaipur, Rajasthan 302001
+            - listitem [ref=e156]:
+              - img [ref=e157]
+              - generic [ref=e159]: +91 98765 43210
+            - listitem [ref=e160]:
+              - img [ref=e161]
+              - generic [ref=e164]: concierge@shriramya.com
+      - paragraph [ref=e166]: © 2026 Shri Ramya. Handcrafted in India.
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e167]:
+        - img [ref=e169]
+        - generic [ref=e172]: Column 'user_id' cannot be null
+```

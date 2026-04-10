@@ -1,9 +1,71 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const config = require('../config/config');
 const { Product, Order, Blog, Wishlist, Cart } = require('../models');
 const { sendOrderConfirmation } = require('../services/emailService');
+const catalogReadService = require('../services/catalog-read.service');
+const storefrontCheckoutService = require('../services/storefront-checkout.service');
+const auth = require('../middlewares/auth');
+const { optionalAuth } = require('../middlewares/authRBAC');
+
+const isAdminOrEditor = (user) => {
+  if (!user) return false;
+
+  const role = String(user.role || '').toLowerCase();
+  const roles = Array.isArray(user.roles) ? user.roles.map((entry) => String(entry).toLowerCase()) : [];
+
+  return role === 'admin' || role === 'editor' || roles.includes('admin') || roles.includes('editor');
+};
+
+const normalizeTenantId = (value) => {
+  const numericTenantId = Number(value);
+  return Number.isInteger(numericTenantId) && numericTenantId > 0 ? numericTenantId : 1;
+};
+
+const getRequestTenantId = (req) => normalizeTenantId(
+  req.user?.tenantId ||
+  req.user?.tenant_id ||
+  req.headers['x-tenant-id'] ||
+  1
+);
+
+const buildProductLookup = (identifier) => {
+  if (identifier == null) {
+    return null;
+  }
+
+  const stringIdentifier = String(identifier).trim();
+
+  if (mongoose.Types.ObjectId.isValid(stringIdentifier)) {
+    return { _id: new mongoose.Types.ObjectId(stringIdentifier) };
+  }
+
+  if (/^\d+$/.test(stringIdentifier)) {
+    return { productId: Number(stringIdentifier) };
+  }
+
+  return { slug: stringIdentifier };
+};
+
+const PUBLIC_PRODUCT_STATUS_FILTER = {
+  $or: [
+    { status: { $exists: false } },
+    { status: 'published' },
+    { status: 'publish' },
+  ],
+};
+
+const isPubliclyVisibleProduct = (product) => {
+  if (!product || !product.status) return true;
+  return ['published', 'publish'].includes(String(product.status).toLowerCase());
+};
+
+const isPublishedBlogStatus = (status) => String(status || '').toLowerCase() === 'published';
+
+router.use('/admin', auth(['admin']));
+router.use('/orders/admin', auth(['admin']));
 
 // ==========================================
 // AUTH ENDPOINTS
@@ -21,12 +83,23 @@ router.post('/auth/login', async (req, res) => {
 
     const userId = user._id.toString();
     const isAdmin = user.role === 'admin';
+    const tenantId = normalizeTenantId(user.tenantId || user.tenant_id || 1);
     const token = jwt.sign(
-      { sub: userId, user_id: userId, email: user.email, name: user.name, role: user.role, roles: [user.role], permissions: isAdmin ? ['all'] : ['read', 'write_own'], tenant_id: 'shriramya', tenantId: 'shriramya' },
+      { sub: userId, user_id: userId, email: user.email, name: user.name, role: user.role, roles: [user.role], permissions: isAdmin ? ['all'] : ['read', 'write_own'], tenant_id: tenantId, tenantId },
       config.jwt.secret,
       { expiresIn: '24h' }
     );
-    res.json({ success: true, data: { user: { id: userId, userId, email: user.email, name: user.name, phone: user.phone, role: user.role, roles: [user.role] }, token, refreshToken: 'refresh_' + token.slice(-20) } });
+    const refreshToken = 'refresh_' + token.slice(-20);
+    res.json({
+      success: true,
+      data: {
+        user: { id: userId, userId, email: user.email, name: user.name, phone: user.phone, role: user.role, roles: [user.role], tenantId },
+        token,
+        access_token: token,
+        refreshToken,
+        refresh_token: refreshToken,
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -48,11 +121,18 @@ router.post('/auth/register', async (req, res) => {
     const userId = result.insertedId.toString();
 
     const token = jwt.sign(
-      { sub: userId, user_id: userId, email, name, role: 'user', roles: ['user'], permissions: ['read', 'write_own'], tenantId: 'shriramya' },
+      { sub: userId, user_id: userId, email, name, role: 'user', roles: ['user'], permissions: ['read', 'write_own'], tenant_id: 1, tenantId: 1 },
       config.jwt.secret,
       { expiresIn: '24h' }
     );
-    res.status(201).json({ success: true, data: { user: { id: userId, userId, email, name, phone, role: 'user' }, token } });
+    res.status(201).json({
+      success: true,
+      data: {
+        user: { id: userId, userId, email, name, phone, role: 'user', tenantId: 1 },
+        token,
+        access_token: token,
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -83,69 +163,20 @@ router.post('/auth/refresh-token', (req, res) => {
 // ==========================================
 // PRODUCTS ENDPOINTS
 // ==========================================
-router.get('/products', async (req, res) => {
+router.get('/products', optionalAuth, async (req, res) => {
   try {
-    const { page = 1, limit = 20, sort, category, search, minPrice, maxPrice, fabric, color, occasion, work, brand, size, discount, rating, isNew, isTrending } = req.query;
-    const filter = {};
-    let sortObj = { createdAt: -1 };
-
-    if (category) {
-      if (category === 'most-desired') {
-        sortObj = { rating: -1 };
-      } else {
-        filter.categorySlug = { $regex: new RegExp(category, 'i') };
+    const data = await catalogReadService.listProducts(
+      {
+        ...req.query,
+        per_page: req.query.per_page || req.query.limit || 20,
+      },
+      {
+        tenantId: getRequestTenantId(req),
+        user: req.user || null,
       }
-    }
-    if (search) filter.$or = [{ name: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }, { tags: { $regex: search, $options: 'i' } }];
-    if (minPrice || maxPrice) { filter.salePrice = {}; if (minPrice) filter.salePrice.$gte = Number(minPrice); if (maxPrice) filter.salePrice.$lte = Number(maxPrice); }
-    if (fabric) filter.fabric = { $in: fabric.split(',') };
-    if (color) filter.color = { $in: color.split(',') };
-    if (occasion) filter.occasion = { $in: occasion.split(',') };
-    if (work) filter.work = { $in: work.split(',') };
-    if (brand) filter.brand = { $in: brand.split(',') };
-    if (size) filter.sizes = { $in: size.split(',') };
-    if (discount) filter.discount = { $gte: Number(discount) };
-    if (rating) filter.rating = { $gte: Number(rating) };
-    if (isNew === 'true') filter.isNew = true;
-    if (isTrending === 'true') filter.isTrending = true;
-    if (req.query.featured === 'true') filter.isFeatured = true;
+    );
 
-    if (sort === 'price_asc') sortObj = { salePrice: 1 };
-    else if (sort === 'price_desc') sortObj = { salePrice: -1 };
-    else if (sort === 'newest') sortObj = { createdAt: -1 };
-    else if (sort === 'rating') sortObj = { rating: -1 };
-    else if (sort === 'name_asc') sortObj = { name: 1 };
-    else if (sort === 'discount') sortObj = { discount: -1 };
-
-    const skip = (Number(page) - 1) * Number(limit);
-    const [products, total] = await Promise.all([
-      Product.find(filter, { _id: 0, __v: 0 }).sort(sortObj).skip(skip).limit(Number(limit)).lean(),
-      Product.countDocuments(filter)
-    ]);
-
-    // Build filter metadata
-    const allProducts = await Product.find({}, { fabric: 1, color: 1, occasion: 1, work: 1, brand: 1, sizes: 1, salePrice: 1, discount: 1, _id: 0 }).lean();
-    const fabricCounts = {}, colorCounts = {}, occasionCounts = {}, workCounts = {}, brandCounts = {}, sizeCounts = {};
-    let priceMin = Infinity, priceMax = 0;
-    allProducts.forEach(p => {
-      if (p.fabric) fabricCounts[p.fabric] = (fabricCounts[p.fabric] || 0) + 1;
-      if (p.color) colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
-      if (p.occasion) occasionCounts[p.occasion] = (occasionCounts[p.occasion] || 0) + 1;
-      if (p.work) workCounts[p.work] = (workCounts[p.work] || 0) + 1;
-      if (p.brand) brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1;
-      if (p.sizes) p.sizes.forEach(s => { sizeCounts[s] = (sizeCounts[s] || 0) + 1; });
-      if (p.salePrice < priceMin) priceMin = p.salePrice;
-      if (p.salePrice > priceMax) priceMax = p.salePrice;
-    });
-
-    res.json({
-      success: true,
-      data: {
-        products: products.map(p => ({ ...p, id: p.productId })),
-        pagination: { current_page: Number(page), total_pages: Math.ceil(total / Number(limit)), total, per_page: Number(limit) },
-        filterMetadata: { fabrics: fabricCounts, colors: colorCounts, occasions: occasionCounts, works: workCounts, brands: brandCounts, sizes: sizeCounts, priceRange: { min: priceMin === Infinity ? 0 : priceMin, max: priceMax } }
-      }
-    });
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -157,235 +188,284 @@ router.get('/products/filter', async (req, res) => {
   router.handle(req, res);
 });
 
-router.get('/products/featured', async (req, res) => {
+router.get('/products/featured', optionalAuth, async (req, res) => {
   try {
-    const products = await Product.find({ isFeatured: true }, { _id: 0, __v: 0 }).limit(8).lean();
-    res.json({ success: true, data: products.map(p => ({ ...p, id: p.productId })) });
+    const filter = { isFeatured: true };
+    if (!isAdminOrEditor(req.user)) {
+      filter.$and = [PUBLIC_PRODUCT_STATUS_FILTER];
+    }
+    const products = await Product.find(filter, { __v: 0 }).limit(8).lean();
+    res.json({ success: true, data: products.map(p => ({ ...p, id: p._id?.toString() || String(p.productId || '') })) });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/products/trending', async (req, res) => {
+router.get('/products/trending', optionalAuth, async (req, res) => {
   try {
-    const products = await Product.find({ isTrending: true }, { _id: 0, __v: 0 }).limit(8).lean();
-    res.json({ success: true, data: products.map(p => ({ ...p, id: p.productId })) });
+    const filter = { isTrending: true };
+    if (!isAdminOrEditor(req.user)) {
+      filter.$and = [PUBLIC_PRODUCT_STATUS_FILTER];
+    }
+    const products = await Product.find(filter, { __v: 0 }).limit(8).lean();
+    res.json({ success: true, data: products.map(p => ({ ...p, id: p._id?.toString() || String(p.productId || '') })) });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/products/new-arrivals', async (req, res) => {
+router.get('/products/new-arrivals', optionalAuth, async (req, res) => {
   try {
-    const products = await Product.find({ isNew: true }, { _id: 0, __v: 0 }).limit(8).lean();
-    res.json({ success: true, data: products.map(p => ({ ...p, id: p.productId })) });
+    const filter = { isNew: true };
+    if (!isAdminOrEditor(req.user)) {
+      filter.$and = [PUBLIC_PRODUCT_STATUS_FILTER];
+    }
+    const products = await Product.find(filter, { __v: 0 }).limit(8).lean();
+    res.json({ success: true, data: products.map(p => ({ ...p, id: p._id?.toString() || String(p.productId || '') })) });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/products/:id', async (req, res) => {
+router.get('/products/:id', optionalAuth, async (req, res) => {
   try {
-    const product = await Product.findOne({ productId: Number(req.params.id) }, { _id: 0, __v: 0 }).lean();
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
-    const related = await Product.find({ categorySlug: product.categorySlug, productId: { $ne: product.productId } }, { _id: 0, __v: 0 }).limit(4).lean();
-    res.json({ success: true, data: { ...product, id: product.productId, relatedProducts: related.map(r => ({ ...r, id: r.productId })) } });
+    const product = await catalogReadService.getProduct(req.params.id, {
+      tenantId: getRequestTenantId(req),
+      user: req.user || null,
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    res.json({ success: true, data: product });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // ==========================================
 // CATEGORIES
 // ==========================================
-router.get('/categories', async (req, res) => {
+router.get('/categories', optionalAuth, async (req, res) => {
   try {
-    const cats = await Product.aggregate([
-      { $group: { _id: '$categorySlug', name: { $first: '$categoryName' }, count: { $sum: 1 }, image: { $first: '$thumbnail' } } },
-      { $project: { _id: 0, id: '$_id', slug: '$_id', name: 1, count: 1, image: 1 } },
-      { $sort: { name: 1 } }
-    ]);
-    res.json({ success: true, data: cats });
+    const categories = await catalogReadService.listCategories({
+      tenantId: getRequestTenantId(req),
+      user: req.user || null,
+    });
+    res.json({ success: true, data: categories });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/categories/:slug', async (req, res) => {
+router.get('/categories/slug/:slug', optionalAuth, async (req, res) => {
   try {
-    const products = await Product.find({ categorySlug: req.params.slug }, { _id: 0, __v: 0 }).lean();
-    if (!products.length) return res.status(404).json({ success: false, message: 'Category not found' });
-    res.json({ success: true, data: { slug: req.params.slug, name: products[0].categoryName, products: products.map(p => ({ ...p, id: p.productId })) } });
+    const category = await catalogReadService.getCategory(req.params.slug, {
+      tenantId: getRequestTenantId(req),
+      user: req.user || null,
+      includeProducts: true,
+    });
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    res.json({ success: true, data: category });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.get('/categories/:identifier', optionalAuth, async (req, res) => {
+  try {
+    const category = await catalogReadService.getCategory(req.params.identifier, {
+      tenantId: getRequestTenantId(req),
+      user: req.user || null,
+      includeProducts: true,
+    });
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    res.json({ success: true, data: category });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // ==========================================
 // SEARCH
 // ==========================================
-router.get('/search', async (req, res) => {
+router.get('/search', optionalAuth, async (req, res) => {
   try {
     const { q = '', limit = 10 } = req.query;
     if (!q) return res.json({ success: true, data: { products: [], suggestions: [] } });
-    const products = await Product.find({ $or: [{ name: { $regex: q, $options: 'i' } }, { description: { $regex: q, $options: 'i' } }, { tags: { $regex: q, $options: 'i' } }, { categoryName: { $regex: q, $options: 'i' } }] }, { _id: 0, __v: 0 }).limit(Number(limit)).lean();
-    res.json({ success: true, data: { products: products.map(p => ({ ...p, id: p.productId })), suggestions: products.slice(0, 5).map(p => p.name) } });
+    const query = {
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+        { tags: { $regex: q, $options: 'i' } },
+        { categoryName: { $regex: q, $options: 'i' } },
+      ],
+    };
+
+    if (!isAdminOrEditor(req.user)) {
+      query.$and = [PUBLIC_PRODUCT_STATUS_FILTER];
+    }
+
+    const products = await Product.find(query, { __v: 0 }).limit(Number(limit)).lean();
+    res.json({ success: true, data: { products: products.map(p => ({ ...p, id: p._id?.toString() || p.productId })), suggestions: products.slice(0, 5).map(p => p.name) } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // ==========================================
 // CART ENDPOINTS
 // ==========================================
-const getSessionId = (req) => req.headers['x-session-id'] || req.query.sessionId || 'default_session';
+const getSessionId = (req) => req.headers['x-session-id'] || req.query.sessionId || req.query.session_id || storefrontCheckoutService.generateSessionId();
 
 router.get('/cart', async (req, res) => {
   try {
     const sessionId = getSessionId(req);
-    let cart = await Cart.findOne({ sessionId }, { _id: 0, __v: 0 }).lean();
-    if (!cart) cart = { sessionId, items: [] };
-    const subtotal = cart.items.reduce((sum, i) => sum + (i.salePrice || i.price) * i.quantity, 0);
-    const shipping = subtotal > 5000 ? 0 : 99;
-    res.json({ success: true, data: { ...cart, subtotal, shipping, total: subtotal + shipping, itemCount: cart.items.reduce((s, i) => s + i.quantity, 0) } });
+    const cart = await storefrontCheckoutService.getCart(sessionId);
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, data: cart });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.post('/cart/add', async (req, res) => {
   try {
     const sessionId = getSessionId(req);
-    const { productId, quantity = 1, size, color } = req.body;
-    const product = await Product.findOne({ productId: Number(productId) }, { _id: 0, __v: 0 }).lean();
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    const cart = await storefrontCheckoutService.addToCart({
+      sessionId,
+      productId: req.body.productId,
+      variantId: req.body.variantId,
+      quantity: req.body.quantity,
+      size: req.body.size,
+      color: req.body.color,
+    });
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, message: 'Added to cart', data: cart });
+  } catch (err) {
+    const statusCode = err.statusCode || (err.code === 'INSUFFICIENT_STOCK' ? 409 : 500);
+    res.status(statusCode).json({
+      success: false,
+      message: err.message,
+      ...(err.code ? { code: err.code } : {}),
+      ...(err.availableStock != null ? { availableStock: err.availableStock } : {}),
+    });
+  }
+});
 
-    let cart = await Cart.findOne({ sessionId });
-    if (!cart) cart = new Cart({ sessionId, items: [] });
+router.put('/cart/item/:itemId', async (req, res) => {
+  try {
+    const sessionId = getSessionId(req);
+    const cart = await storefrontCheckoutService.updateCartItem({
+      sessionId,
+      itemId: req.params.itemId,
+      quantity: req.body.quantity,
+    });
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, data: cart });
+  } catch (err) {
+    const statusCode = err.statusCode || (err.code === 'INSUFFICIENT_STOCK' ? 409 : 500);
+    res.status(statusCode).json({
+      success: false,
+      message: err.message,
+      ...(err.code ? { code: err.code } : {}),
+      ...(err.availableStock != null ? { availableStock: err.availableStock } : {}),
+    });
+  }
+});
 
-    const existIdx = cart.items.findIndex(i => i.productId === Number(productId) && i.size === (size || '') && i.color === (color || ''));
-    if (existIdx >= 0) {
-      cart.items[existIdx].quantity += Number(quantity);
-    } else {
-      cart.items.push({ productId: product.productId, name: product.name, thumbnail: product.thumbnail, price: product.price, salePrice: product.salePrice, quantity: Number(quantity), size: size || product.sizes?.[0] || '', color: color || product.color || '' });
-    }
-    await cart.save();
-    const subtotal = cart.items.reduce((sum, i) => sum + (i.salePrice || i.price) * i.quantity, 0);
-    res.json({ success: true, message: 'Added to cart', data: { items: cart.items, subtotal, itemCount: cart.items.reduce((s, i) => s + i.quantity, 0) } });
+router.delete('/cart/item/:itemId', async (req, res) => {
+  try {
+    const sessionId = getSessionId(req);
+    const cart = await storefrontCheckoutService.removeCartItem({
+      sessionId,
+      itemId: req.params.itemId,
+    });
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, message: 'Removed from cart', data: cart });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.put('/cart/update', async (req, res) => {
   try {
     const sessionId = getSessionId(req);
-    const { productId, quantity } = req.body;
-    const cart = await Cart.findOne({ sessionId });
-    if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
-    const item = cart.items.find(i => i.productId === Number(productId));
-    if (item) {
-      if (quantity <= 0) cart.items = cart.items.filter(i => i.productId !== Number(productId));
-      else item.quantity = Number(quantity);
-    }
-    await cart.save();
-    res.json({ success: true, data: { items: cart.items } });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+    const cart = await storefrontCheckoutService.updateCartItem({
+      sessionId,
+      itemId: req.body.itemId || req.body.cartItemId,
+      quantity: req.body.quantity,
+    });
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, data: cart });
+  } catch (err) {
+    const statusCode = err.statusCode || (err.code === 'INSUFFICIENT_STOCK' ? 409 : 500);
+    res.status(statusCode).json({
+      success: false,
+      message: err.message,
+      ...(err.code ? { code: err.code } : {}),
+      ...(err.availableStock != null ? { availableStock: err.availableStock } : {}),
+    });
+  }
 });
 
 router.delete('/cart/remove/:productId', async (req, res) => {
   try {
     const sessionId = getSessionId(req);
-    const cart = await Cart.findOne({ sessionId });
-    if (cart) {
-      cart.items = cart.items.filter(i => i.productId !== Number(req.params.productId));
-      await cart.save();
-    }
-    res.json({ success: true, message: 'Removed from cart' });
+    const cart = await storefrontCheckoutService.removeCartItem({
+      sessionId,
+      itemId: req.params.productId,
+    });
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, message: 'Removed from cart', data: cart });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.delete('/cart/clear', async (req, res) => {
   try {
     const sessionId = getSessionId(req);
-    await Cart.deleteOne({ sessionId });
-    res.json({ success: true, message: 'Cart cleared' });
+    const cart = await storefrontCheckoutService.clearCart(sessionId);
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, message: 'Cart cleared', data: cart });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.delete('/cart', async (req, res) => {
+  try {
+    const sessionId = getSessionId(req);
+    const cart = await storefrontCheckoutService.clearCart(sessionId);
+    res.setHeader('x-session-id', sessionId);
+    res.json({ success: true, message: 'Cart cleared', data: cart });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // ==========================================
 // ORDERS ENDPOINTS
 // ==========================================
-router.get('/orders/my', async (req, res) => {
+router.get('/orders/my', auth(), async (req, res) => {
   try {
-    const userId = req.query.userId || req.headers['x-user-id'] || 'customer_001';
-    const orders = await Order.find({ userId }, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).lean();
-    res.json({ success: true, data: { orders } });
+    const userId = req.user?.user_id || req.user?.sub;
+    const data = await storefrontCheckoutService.getOrders({ userId, page: 1, limit: 100 });
+    res.json({ success: true, data: { orders: data.orders } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.post('/orders', async (req, res) => {
+router.post('/orders', optionalAuth, async (req, res) => {
   try {
-    const { items, shippingAddress, couponCode, paymentMethod = 'razorpay', subtotal, discount = 0, shipping = 0, tax = 0, total } = req.body;
-    const orderId = 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
-    const razorpayOrderId = 'order_' + Date.now();
-
-    // Enrich items with product data
-    const enrichedItems = [];
-    for (const item of items) {
-      const product = await Product.findOne({ productId: Number(item.productId) }, { _id: 0, __v: 0 }).lean();
-      enrichedItems.push({
-        productId: Number(item.productId),
-        name: item.name || product?.name || 'Unknown',
-        thumbnail: item.thumbnail || product?.thumbnail || '',
-        price: item.price || product?.price || 0,
-        salePrice: item.salePrice || product?.salePrice || item.price || 0,
-        quantity: item.quantity || 1,
-        size: item.size || '',
-        color: item.color || '',
-      });
-    }
-
-    const calcSubtotal = subtotal || enrichedItems.reduce((s, i) => s + (i.salePrice || i.price) * i.quantity, 0);
-    const calcTotal = total || (calcSubtotal - discount + shipping + tax);
-
-    const order = await Order.create({
-      orderId, userId: req.body.userId || 'guest', userEmail: req.body.email || shippingAddress?.email || '',
-      userName: req.body.name || shippingAddress?.name || '',
-      items: enrichedItems, shippingAddress, couponCode, paymentMethod,
-      subtotal: calcSubtotal, discount, shipping, tax, total: calcTotal,
-      status: 'pending', paymentStatus: 'pending', razorpayOrderId,
-      statusHistory: [{ status: 'pending', timestamp: new Date(), note: 'Order created' }]
+    const data = await storefrontCheckoutService.createOrder(req.body, {
+      user: req.user || null,
+      tenantId: getRequestTenantId(req),
     });
-
-    res.status(201).json({
-      success: true, data: {
-        orderId, razorpayOrderId, amount: calcTotal, currency: 'INR',
-        key: config.razorpay?.keyId || 'rzp_test_mock_key',
-        prefill: { name: shippingAddress?.name, email: shippingAddress?.email, contact: shippingAddress?.phone }
-      }
-    });
+    res.status(201).json({ success: true, data });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.post('/orders/:orderId/payment', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    order.paymentStatus = 'paid';
-    order.status = 'confirmed';
-    order.razorpayPaymentId = req.body.razorpay_payment_id || 'pay_mock_' + Date.now();
-    order.statusHistory.push({ status: 'confirmed', timestamp: new Date(), note: 'Payment confirmed' });
-    await order.save();
-
-    // Send email notifications (async, don't block response)
-    sendOrderConfirmation(order.toObject()).catch(err => console.error('Email send failed:', err.message));
-
-    res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: 'confirmed' } });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+    const order = await storefrontCheckoutService.confirmPayment(req.params.orderId, req.body);
+    res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: order.status, paymentStatus: order.paymentStatus } });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      message: err.message,
+      ...(err.code ? { code: err.code } : {}),
+      ...(err.availableStock != null ? { availableStock: err.availableStock } : {}),
+    });
+  }
 });
 
 router.get('/orders', async (req, res) => {
   try {
-    const { userId, status, page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
-    const filter = {};
-    if (userId) filter.userId = userId;
-    if (status) filter.status = status;
-    const skip = (Number(page) - 1) * Number(limit);
-    const sortObj = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
-    const [orders, total] = await Promise.all([
-      Order.find(filter, { _id: 0, __v: 0 }).sort(sortObj).skip(skip).limit(Number(limit)).lean(),
-      Order.countDocuments(filter)
-    ]);
-    res.json({ success: true, data: { orders, pagination: { current_page: Number(page), total_pages: Math.ceil(total / Number(limit)), total } } });
+    const data = await storefrontCheckoutService.getOrders(req.query);
+    res.json({ success: true, data });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.get('/orders/:orderId', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId }, { _id: 0, __v: 0 }).lean();
+    const order = await storefrontCheckoutService.getOrderByOrderId(req.params.orderId);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     res.json({ success: true, data: order });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -393,27 +473,17 @@ router.get('/orders/:orderId', async (req, res) => {
 
 router.put('/orders/:orderId/status', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    const { status, note } = req.body;
-    order.status = status;
-    order.statusHistory.push({ status, timestamp: new Date(), note: note || `Status updated to ${status}` });
-    if (status === 'shipped' && req.body.trackingNumber) {
-      order.trackingNumber = req.body.trackingNumber;
-      order.trackingUrl = req.body.trackingUrl || '';
-    }
-    await order.save();
+    const order = await storefrontCheckoutService.updateOrderStatus(req.params.orderId, req.body);
     res.json({ success: true, data: { orderId: order.orderId, status: order.status } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.put('/orders/:orderId/cancel', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    order.status = 'cancelled';
-    order.statusHistory.push({ status: 'cancelled', timestamp: new Date(), note: req.body.reason || 'Cancelled by user' });
-    await order.save();
+    const order = await storefrontCheckoutService.updateOrderStatus(req.params.orderId, {
+      status: 'cancelled',
+      note: req.body.reason || 'Cancelled by user',
+    });
     res.json({ success: true, data: { orderId: order.orderId, status: 'cancelled' } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -421,45 +491,76 @@ router.put('/orders/:orderId/cancel', async (req, res) => {
 // Alias: POST /orders/my/:orderId/cancel (frontend compatibility)
 router.post('/orders/my/:orderId/cancel', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    order.status = 'cancelled';
-    order.statusHistory.push({ status: 'cancelled', timestamp: new Date(), note: req.body.reason || 'Cancelled by user' });
-    await order.save();
+    const order = await storefrontCheckoutService.updateOrderStatus(req.params.orderId, {
+      status: 'cancelled',
+      note: req.body.reason || 'Cancelled by user',
+    });
     res.json({ success: true, data: { orderId: order.orderId, status: 'cancelled' } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.get('/orders/:orderId/tracking', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId }, { _id: 0, orderId: 1, status: 1, trackingNumber: 1, trackingUrl: 1, statusHistory: 1 }).lean();
+    const order = await storefrontCheckoutService.getOrderByOrderId(req.params.orderId);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    res.json({ success: true, data: order });
+    res.json({
+      success: true,
+      data: {
+        orderId: order.orderId,
+        status: order.status,
+        trackingNumber: order.trackingNumber || '',
+        trackingUrl: order.trackingUrl || '',
+        statusHistory: order.statusHistory || [],
+      },
+    });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // ==========================================
 // BLOG ENDPOINTS
 // ==========================================
-router.get('/blogs', async (req, res) => {
+router.get('/blogs', optionalAuth, async (req, res) => {
   try {
     const { page = 1, per_page = 10, category, search, status } = req.query;
     const filter = {};
+    const privileged = isAdminOrEditor(req.user);
     if (category) filter.categories = { $in: [category] };
     if (search) filter.$or = [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }];
-    if (status) filter.status = status;
+    if (privileged && status) {
+      filter.status = status;
+    } else {
+      filter.status = 'published';
+    }
     const skip = (Number(page) - 1) * Number(per_page);
     const [posts, total] = await Promise.all([
-      Blog.find(filter, { _id: 0, __v: 0 }).sort({ publishedAt: -1, createdAt: -1 }).skip(skip).limit(Number(per_page)).lean(),
+      Blog.find(filter, { __v: 0 }).sort({ publishedAt: -1, createdAt: -1 }).skip(skip).limit(Number(per_page)).lean(),
       Blog.countDocuments(filter)
     ]);
-    res.json({ success: true, data: { posts, pagination: { current_page: Number(page), total_pages: Math.ceil(total / Number(per_page)), total } } });
+    res.json({
+      success: true,
+      data: {
+        posts: posts.map((post) => ({ ...post, id: post._id?.toString() || post.slug })),
+        pagination: { current_page: Number(page), total_pages: Math.ceil(total / Number(per_page)), total }
+      }
+    });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 
-router.get('/blogs/capabilities', (req, res) => {
-  res.json({ success: true, data: { can_create: true, can_edit: true, can_delete: true, can_publish: true } });
+router.get('/blogs/capabilities', optionalAuth, (req, res) => {
+  const isAdmin = String(req.user?.role || '').toLowerCase() === 'admin';
+  const isEditor = String(req.user?.role || '').toLowerCase() === 'editor';
+  res.json({
+    success: true,
+    data: {
+      capabilities: {
+        edit_posts: isAdmin || isEditor,
+        publish_posts: isAdmin || isEditor,
+        edit_others_posts: isAdmin,
+        delete_posts: isAdmin,
+      }
+    }
+  });
 });
 
 router.get('/blogs/categories', async (req, res) => {
@@ -483,47 +584,60 @@ router.get('/blogs/stats', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.post('/blogs', async (req, res) => {
+router.post('/blogs', auth(['admin', 'editor']), async (req, res) => {
   try {
     const { title, slug, content, excerpt, status = 'draft', categories = [], tags = [], featuredImage, seoTitle, seoDescription } = req.body;
     const blogSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const blog = await Blog.create({
       title, slug: blogSlug, content, excerpt,
-      author: { id: 'admin_001', name: 'Admin' },
+      author: { id: req.user?.user_id || req.user?.sub || 'unknown', name: req.user?.name || 'Admin' },
       categories: Array.isArray(categories) ? categories : [],
       tags: Array.isArray(tags) ? tags : (tags || '').split(',').map(t => t.trim()).filter(Boolean),
       status, featuredImage, seoTitle, seoDescription,
       publishedAt: status === 'published' ? new Date() : null,
     });
     const blogData = blog.toObject();
-    delete blogData._id; delete blogData.__v;
-    res.status(201).json({ success: true, data: { ...blogData, id: blogData._id || blogSlug }, message: 'Blog post created successfully' });
+    const blogId = blogData._id?.toString();
+    delete blogData.__v;
+    res.status(201).json({ success: true, data: { ...blogData, id: blogId || blogSlug }, message: 'Blog post created successfully' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/blogs/:idOrSlug', async (req, res) => {
+router.get('/blogs/:idOrSlug', optionalAuth, async (req, res) => {
   try {
     const blog = await Blog.findOne({ $or: [{ slug: req.params.idOrSlug }, { _id: req.params.idOrSlug.match(/^[0-9a-fA-F]{24}$/) ? req.params.idOrSlug : undefined }] }, { __v: 0 }).lean();
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
+    if (!isAdminOrEditor(req.user) && !isPublishedBlogStatus(blog.status)) {
+      return res.status(404).json({ success: false, message: 'Blog not found' });
+    }
     const { _id, ...data } = blog;
     res.json({ success: true, data: { ...data, id: _id.toString() } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.put('/blogs/:idOrSlug', async (req, res) => {
+router.put('/blogs/:idOrSlug', auth(['admin', 'editor']), async (req, res) => {
   try {
-    const blog = await Blog.findOne({ $or: [{ slug: req.params.idOrSlug }] });
+    const lookup = [{ slug: req.params.idOrSlug }];
+    if (req.params.idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
+      lookup.push({ _id: req.params.idOrSlug });
+    }
+    const blog = await Blog.findOne({ $or: lookup });
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
     Object.assign(blog, req.body, { updatedAt: new Date() });
     if (req.body.status === 'published' && !blog.publishedAt) blog.publishedAt = new Date();
     await blog.save();
-    res.json({ success: true, data: blog, message: 'Blog updated' });
+    const blogData = blog.toObject();
+    res.json({ success: true, data: { ...blogData, id: blogData._id?.toString() || blog.slug }, message: 'Blog updated' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.delete('/blogs/:idOrSlug', async (req, res) => {
+router.delete('/blogs/:idOrSlug', auth(['admin']), async (req, res) => {
   try {
-    await Blog.deleteOne({ $or: [{ slug: req.params.idOrSlug }] });
+    const lookup = [{ slug: req.params.idOrSlug }];
+    if (req.params.idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
+      lookup.push({ _id: req.params.idOrSlug });
+    }
+    await Blog.deleteOne({ $or: lookup });
     res.json({ success: true, message: 'Blog deleted' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -734,32 +848,13 @@ router.get('/admin/users', async (req, res) => {
 // Admin orders
 router.get('/admin/orders', async (req, res) => {
   try {
-    const { status, page = 1, limit = 20, search, dateFrom, dateTo, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
-    const filter = {};
-    if (status && status !== 'all') filter.status = status;
-    if (search) filter.$or = [{ orderId: { $regex: search, $options: 'i' } }, { userName: { $regex: search, $options: 'i' } }, { userEmail: { $regex: search, $options: 'i' } }];
-    if (dateFrom || dateTo) {
-      filter.createdAt = {};
-      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
-      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
-    }
-    const skip = (Number(page) - 1) * Number(limit);
-    const [orders, total] = await Promise.all([
-      Order.find(filter, { _id: 0, __v: 0 }).sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 }).skip(skip).limit(Number(limit)).lean(),
-      Order.countDocuments(filter)
-    ]);
-
-    // Stats
-    const [totalOrders, pending, confirmed, shipped, delivered, cancelled] = await Promise.all([
-      Order.countDocuments(), Order.countDocuments({ status: 'pending' }), Order.countDocuments({ status: 'confirmed' }),
-      Order.countDocuments({ status: 'shipped' }), Order.countDocuments({ status: 'delivered' }), Order.countDocuments({ status: 'cancelled' })
-    ]);
-    const revenueAgg = await Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$total' } } }]);
-
+    const data = await storefrontCheckoutService.getOrders(req.query);
+    const stats = await storefrontCheckoutService.getOrderStats();
     res.json({
       success: true, data: {
-        orders, pagination: { current_page: Number(page), total_pages: Math.ceil(total / Number(limit)), total },
-        stats: { total: totalOrders, pending, confirmed, shipped, delivered, cancelled, revenue: revenueAgg[0]?.total || 0 }
+        orders: data.orders,
+        pagination: data.pagination,
+        stats,
       }
     });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -767,20 +862,14 @@ router.get('/admin/orders', async (req, res) => {
 
 router.patch('/admin/orders/:orderId/status', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    const { status, note, trackingNumber, trackingUrl } = req.body;
-    order.status = status;
-    order.statusHistory.push({ status, timestamp: new Date(), note: note || `Status changed to ${status}` });
-    if (trackingNumber) { order.trackingNumber = trackingNumber; order.trackingUrl = trackingUrl || ''; }
-    await order.save();
-    res.json({ success: true, data: order.toObject() });
+    const order = await storefrontCheckoutService.updateOrderStatus(req.params.orderId, req.body);
+    res.json({ success: true, data: order });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.get('/admin/orders/:orderId', async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId }, { _id: 0, __v: 0 }).lean();
+    const order = await storefrontCheckoutService.getOrderByOrderId(req.params.orderId);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     res.json({ success: true, data: order });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -816,6 +905,27 @@ const MOCK_COUPONS = [
 
 router.get('/coupons', (req, res) => {
   res.json({ success: true, data: { coupons: MOCK_COUPONS } });
+});
+
+router.get('/coupons/validate/:code', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const coupon = MOCK_COUPONS.find((entry) => entry.code === code && entry.status === 'active');
+
+  if (!coupon) {
+    return res.status(404).json({ success: false, message: 'Invalid coupon code' });
+  }
+
+  return res.json({
+    success: true,
+    data: {
+      valid: true,
+      code: coupon.code,
+      type: coupon.type,
+      value: coupon.value,
+      description: coupon.description,
+      min_cart_value: coupon.min_cart_value || 0,
+    },
+  });
 });
 
 router.get('/coupons/:id', (req, res) => {
@@ -857,42 +967,35 @@ router.post('/coupons/validate', (req, res) => {
 // ==========================================
 // RECOMMENDATIONS
 // ==========================================
-router.get('/recommendations', async (req, res) => {
+router.get('/recommendations', optionalAuth, async (req, res) => {
   try {
-    const products = await Product.find({}, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean();
-    res.json({ success: true, data: products.map(p => ({ ...p, id: p.productId })) });
+    const data = await catalogReadService.listProducts(
+      { sort: 'rating', per_page: 8 },
+      { tenantId: getRequestTenantId(req), user: req.user || null }
+    );
+    res.json({ success: true, data: data.products });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // Recommendations for specific product (related products)
-router.get('/recommendations/:productId', async (req, res) => {
+router.get('/recommendations/:productId', optionalAuth, async (req, res) => {
   try {
-    const productId = Number(req.params.productId);
-    const product = await Product.findOne({ productId }, { categorySlug: 1 }).lean();
-    let products;
-    if (product?.categorySlug) {
-      // Get related products from same category
-      products = await Product.find({ categorySlug: product.categorySlug, productId: { $ne: productId } }, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean();
-    } else {
-      // Fallback to top rated products
-      products = await Product.find({ productId: { $ne: productId } }, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean();
-    }
-    res.json({ success: true, data: products.map(p => ({ ...p, id: p.productId })) });
+    const product = await catalogReadService.getProduct(req.params.productId, {
+      tenantId: getRequestTenantId(req),
+      user: req.user || null,
+    });
+    res.json({ success: true, data: product?.relatedProducts || [] });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // Also handle /products/:id/recommendations for frontend compatibility
-router.get('/products/:id/recommendations', async (req, res) => {
+router.get('/products/:id/recommendations', optionalAuth, async (req, res) => {
   try {
-    const productId = Number(req.params.id);
-    const product = await Product.findOne({ productId }, { categorySlug: 1 }).lean();
-    let products;
-    if (product?.categorySlug) {
-      products = await Product.find({ categorySlug: product.categorySlug, productId: { $ne: productId } }, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean();
-    } else {
-      products = await Product.find({ productId: { $ne: productId } }, { _id: 0, __v: 0 }).sort({ rating: -1 }).limit(8).lean();
-    }
-    res.json({ success: true, data: products.map(p => ({ ...p, id: p.productId })) });
+    const product = await catalogReadService.getProduct(req.params.id, {
+      tenantId: getRequestTenantId(req),
+      user: req.user || null,
+    });
+    res.json({ success: true, data: product?.relatedProducts || [] });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 

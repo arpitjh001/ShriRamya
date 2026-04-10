@@ -1,0 +1,4772 @@
+[Redis] TLS enabled for secure connection
+[36mINFO [0m [2026-04-09T18:12:44.804Z]  Server initializing {
+  "env": "development",
+  "port": 8000,
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:12:45.708Z]  Swagger documentation enabled {
+  "path": "/api/docs",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+MongoDB connected: mongodb://localhost:27017/shriramya
+Products already seeded: 87 found
+Users already seeded: 4 found
+Blogs already seeded: 3 found
+Kurti Material already seeded: 5 found
+Database seeding complete!
+Background job queues initialized
+Server running on port 8000
+Environment: development
+[90mDEBUG[0m [2026-04-09T18:12:56.835Z] [7dc5522f-bcea-41a5-87de-07dc13dcdf89] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/health",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.7920",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "7dc5522f-bcea-41a5-87de-07dc13dcdf89",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:12:56.858Z] [7dc5522f-bcea-41a5-87de-07dc13dcdf89] API Request Completed {
+  "method": "GET",
+  "path": "/api/v1/health",
+  "statusCode": 200,
+  "duration": "25ms",
+  "requestId": "7dc5522f-bcea-41a5-87de-07dc13dcdf89",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/health [32m200[0m 13.077 ms - 120[0m
+[90mDEBUG[0m [2026-04-09T18:13:06.203Z] [acce94c9-5e48-41f0-8d20-dde1a677567c] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "acce94c9-5e48-41f0-8d20-dde1a677567c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:06.246Z] [acce94c9-5e48-41f0-8d20-dde1a677567c] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 200,
+  "duration": "43ms",
+  "requestId": "acce94c9-5e48-41f0-8d20-dde1a677567c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [32m200[0m 41.055 ms - 61[0m
+[90mDEBUG[0m [2026-04-09T18:13:06.254Z] [bbbdcc33-5e16-4019-96cf-3045995b08b5] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/cart/coupon/apply",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "bbbdcc33-5e16-4019-96cf-3045995b08b5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/cart/coupon/apply [33m400[0m 94.560 ms - 67[0m
+[90mDEBUG[0m [2026-04-09T18:13:06.380Z] [7bd5dccb-786f-42b4-9ecb-ddb0b1e4bf77] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "7bd5dccb-786f-42b4-9ecb-ddb0b1e4bf77",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:06.396Z] [7bd5dccb-786f-42b4-9ecb-ddb0b1e4bf77] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 200,
+  "duration": "16ms",
+  "requestId": "7bd5dccb-786f-42b4-9ecb-ddb0b1e4bf77",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [32m200[0m 13.182 ms - 61[0m
+[90mDEBUG[0m [2026-04-09T18:13:06.403Z] [a94a92c8-c6c2-4406-b538-2a1dd78fd974] API Request Started {
+  "method": "DELETE",
+  "path": "/api/v1/cart/coupon/remove",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "a94a92c8-c6c2-4406-b538-2a1dd78fd974",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:06.426Z] [a94a92c8-c6c2-4406-b538-2a1dd78fd974] API Request Completed {
+  "method": "DELETE",
+  "path": "/coupon/remove",
+  "statusCode": 200,
+  "duration": "23ms",
+  "requestId": "a94a92c8-c6c2-4406-b538-2a1dd78fd974",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mDELETE /api/v1/cart/coupon/remove [32m200[0m 21.008 ms - 141[0m
+[90mDEBUG[0m [2026-04-09T18:13:15.334Z] [ca1c7394-067d-489f-b9d7-469472687477] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/cart/add",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "ca1c7394-067d-489f-b9d7-469472687477",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:15.383Z] [ca1c7394-067d-489f-b9d7-469472687477] API Request Completed {
+  "method": "POST",
+  "path": "/cart/add",
+  "statusCode": 200,
+  "duration": "49ms",
+  "requestId": "ca1c7394-067d-489f-b9d7-469472687477",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/cart/add [32m200[0m 47.151 ms - 866[0m
+[90mDEBUG[0m [2026-04-09T18:13:15.398Z] [05054e05-0e1d-4acb-b529-8bceb7e0af37] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/cart/coupon/apply",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "05054e05-0e1d-4acb-b529-8bceb7e0af37",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:15.422Z] [05054e05-0e1d-4acb-b529-8bceb7e0af37] API Request Completed {
+  "method": "POST",
+  "path": "/coupon/apply",
+  "statusCode": 200,
+  "duration": "24ms",
+  "requestId": "05054e05-0e1d-4acb-b529-8bceb7e0af37",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/cart/coupon/apply [32m200[0m 22.677 ms - 376[0m
+[90mDEBUG[0m [2026-04-09T18:13:15.430Z] [29e43d35-1c6b-4b1a-aae9-96ca27088227] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "29e43d35-1c6b-4b1a-aae9-96ca27088227",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:15.439Z] [29e43d35-1c6b-4b1a-aae9-96ca27088227] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 200,
+  "duration": "9ms",
+  "requestId": "29e43d35-1c6b-4b1a-aae9-96ca27088227",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [32m200[0m 8.200 ms - 250[0m
+[90mDEBUG[0m [2026-04-09T18:13:49.968Z] [1dbcf7a7-45d5-4f3e-94c2-a4af9c8de955] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/auth/login",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "1dbcf7a7-45d5-4f3e-94c2-a4af9c8de955",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:50.339Z] [1dbcf7a7-45d5-4f3e-94c2-a4af9c8de955] API Request Completed {
+  "method": "POST",
+  "path": "/auth/login",
+  "statusCode": 200,
+  "duration": "372ms",
+  "requestId": "1dbcf7a7-45d5-4f3e-94c2-a4af9c8de955",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/auth/login [32m200[0m 356.389 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.059Z] [6551228a-29a8-42fc-b812-72262d47a9fd] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "6551228a-29a8-42fc-b812-72262d47a9fd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.062Z] [6551228a-29a8-42fc-b812-72262d47a9fd] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "3ms",
+  "requestId": "6551228a-29a8-42fc-b812-72262d47a9fd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 1.051 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.087Z] [8a6c64cd-6e9f-4b42-8bc9-0c4599e4bd86] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "8a6c64cd-6e9f-4b42-8bc9-0c4599e4bd86",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:13:52.098Z] [f6ee5098-456d-48f3-9086-5ac2ab427d02] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "f6ee5098-456d-48f3-9086-5ac2ab427d02",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.099Z] [f6ee5098-456d-48f3-9086-5ac2ab427d02] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "f6ee5098-456d-48f3-9086-5ac2ab427d02",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.348 ms - 0[0m
+[36mINFO [0m [2026-04-09T18:13:52.108Z] [f6ee5098-456d-48f3-9086-5ac2ab427d02] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 200,
+  "duration": "21ms",
+  "requestId": "8a6c64cd-6e9f-4b42-8bc9-0c4599e4bd86",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [32m200[0m 19.620 ms - 275[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.111Z] [f6dac73c-a1a5-4291-bb17-c4144a754544] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "f6dac73c-a1a5-4291-bb17-c4144a754544",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.119Z] [f6dac73c-a1a5-4291-bb17-c4144a754544] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "8ms",
+  "requestId": "f6dac73c-a1a5-4291-bb17-c4144a754544",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 5.906 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.190Z] [caf7656b-f1ff-488e-93bb-9925a69a1d8d] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "caf7656b-f1ff-488e-93bb-9925a69a1d8d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.192Z] [caf7656b-f1ff-488e-93bb-9925a69a1d8d] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "caf7656b-f1ff-488e-93bb-9925a69a1d8d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/coupon [32m204[0m 0.482 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.196Z] [b1b5c142-9152-4f6f-870d-55266a21fa62] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "b1b5c142-9152-4f6f-870d-55266a21fa62",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.198Z] [b1b5c142-9152-4f6f-870d-55266a21fa62] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "b1b5c142-9152-4f6f-870d-55266a21fa62",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/coupon [32m204[0m 0.468 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.201Z] [f859c6af-e7f0-4cb5-b056-4425bacdf705] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "f859c6af-e7f0-4cb5-b056-4425bacdf705",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.222Z] [f859c6af-e7f0-4cb5-b056-4425bacdf705] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 200,
+  "duration": "21ms",
+  "requestId": "f859c6af-e7f0-4cb5-b056-4425bacdf705",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [32m200[0m 19.689 ms - 61[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.225Z] [4287dfc2-d7cc-4e36-8b06-054c47ebdf54] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "4287dfc2-d7cc-4e36-8b06-054c47ebdf54",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.241Z] [4287dfc2-d7cc-4e36-8b06-054c47ebdf54] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "16ms",
+  "requestId": "4287dfc2-d7cc-4e36-8b06-054c47ebdf54",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 14.208 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.631Z] [9a12d524-88f7-4f52-8817-5bc7086afa8b] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "9a12d524-88f7-4f52-8817-5bc7086afa8b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:13:52.641Z] [bc0a6e3c-70c0-4035-9306-2c6f209a8037] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "bc0a6e3c-70c0-4035-9306-2c6f209a8037",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.888Z] [bc0a6e3c-70c0-4035-9306-2c6f209a8037] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "258ms",
+  "requestId": "9a12d524-88f7-4f52-8817-5bc7086afa8b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?featured=true&limit=4 [32m200[0m 171.020 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:52.896Z] [6ad298dd-b1c6-499a-b48a-e777ac961d81] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "6ad298dd-b1c6-499a-b48a-e777ac961d81",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:52.924Z] [6ad298dd-b1c6-499a-b48a-e777ac961d81] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "283ms",
+  "requestId": "bc0a6e3c-70c0-4035-9306-2c6f209a8037",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=most-desired&limit=4 [32m200[0m 230.875 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:53.982Z] [fd727bfa-c3c6-44c6-88c2-609bf29ac29a] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "fd727bfa-c3c6-44c6-88c2-609bf29ac29a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:54.251Z] [fd727bfa-c3c6-44c6-88c2-609bf29ac29a] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "1356ms",
+  "requestId": "6ad298dd-b1c6-499a-b48a-e777ac961d81",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?featured=true&limit=4 [36m304[0m 1353.848 ms - -[0m
+[36mINFO [0m [2026-04-09T18:13:54.563Z] [fd727bfa-c3c6-44c6-88c2-609bf29ac29a] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "581ms",
+  "requestId": "fd727bfa-c3c6-44c6-88c2-609bf29ac29a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=most-desired&limit=4 [36m304[0m 558.796 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:58.088Z] [158bd2f3-c0e3-4145-914f-bcc08e993eaa] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "158bd2f3-c0e3-4145-914f-bcc08e993eaa",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:58.094Z] [158bd2f3-c0e3-4145-914f-bcc08e993eaa] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "6ms",
+  "requestId": "158bd2f3-c0e3-4145-914f-bcc08e993eaa",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.506 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:13:58.214Z] [025cc1c5-134d-425f-96e2-05298abaa5e3] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "025cc1c5-134d-425f-96e2-05298abaa5e3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:13:58.444Z] [08b177d2-f4ba-4315-851c-719c88f4c831] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "08b177d2-f4ba-4315-851c-719c88f4c831",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:58.446Z] [08b177d2-f4ba-4315-851c-719c88f4c831] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "08b177d2-f4ba-4315-851c-719c88f4c831",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.300 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:13:58.448Z] [378bfc03-0046-4944-9f46-67da9966a109] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/categories/slug/sarees",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "378bfc03-0046-4944-9f46-67da9966a109",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:58.526Z] [378bfc03-0046-4944-9f46-67da9966a109] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "312ms",
+  "requestId": "025cc1c5-134d-425f-96e2-05298abaa5e3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 311.148 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:58.654Z] [254852fc-6ead-458a-9bc5-26bedf98efbe] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "254852fc-6ead-458a-9bc5-26bedf98efbe",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:13:58.706Z] [b37afca3-65b3-48bd-b81b-9d328d0f0f9a] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "b37afca3-65b3-48bd-b81b-9d328d0f0f9a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:58.709Z] [b37afca3-65b3-48bd-b81b-9d328d0f0f9a] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "statusCode": 204,
+  "duration": "3ms",
+  "requestId": "b37afca3-65b3-48bd-b81b-9d328d0f0f9a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/coupon [32m204[0m 0.623 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:13:58.713Z] [a4b49e47-e283-4b1b-ac4e-618588cdf63f] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "a4b49e47-e283-4b1b-ac4e-618588cdf63f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:13:58.856Z] [a4b49e47-e283-4b1b-ac4e-618588cdf63f] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "202ms",
+  "requestId": "254852fc-6ead-458a-9bc5-26bedf98efbe",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 171.983 ms - -[0m
+[36mINFO [0m [2026-04-09T18:13:58.962Z] [a4b49e47-e283-4b1b-ac4e-618588cdf63f] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "249ms",
+  "requestId": "a4b49e47-e283-4b1b-ac4e-618588cdf63f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 248.330 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:13:59.334Z] [499fb9dd-14b1-4bf6-94d9-4449092b14bc] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "499fb9dd-14b1-4bf6-94d9-4449092b14bc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:00.464Z] [499fb9dd-14b1-4bf6-94d9-4449092b14bc] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "1130ms",
+  "requestId": "499fb9dd-14b1-4bf6-94d9-4449092b14bc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 1057.705 ms - -[0m
+[36mINFO [0m [2026-04-09T18:14:00.466Z] [499fb9dd-14b1-4bf6-94d9-4449092b14bc] API Request Completed {
+  "method": "GET",
+  "path": "/categories/slug/sarees",
+  "statusCode": 200,
+  "duration": "2018ms",
+  "requestId": "378bfc03-0046-4944-9f46-67da9966a109",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/categories/slug/sarees [32m200[0m 1635.318 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:00.470Z] [aed24970-c4f5-4260-ab05-5f8c0cb46942] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/categories/slug/sarees",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "aed24970-c4f5-4260-ab05-5f8c0cb46942",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:14:01.001Z] [685beb7c-0d18-4c3e-b1a6-ea74463e0d52] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "sarees",
+    "per_page": "100"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "685beb7c-0d18-4c3e-b1a6-ea74463e0d52",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:01.195Z] [685beb7c-0d18-4c3e-b1a6-ea74463e0d52] API Request Completed {
+  "method": "GET",
+  "path": "/categories/slug/sarees",
+  "statusCode": 304,
+  "duration": "725ms",
+  "requestId": "aed24970-c4f5-4260-ab05-5f8c0cb46942",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/categories/slug/sarees [36m304[0m 723.560 ms - -[0m
+[36mINFO [0m [2026-04-09T18:14:01.218Z] [685beb7c-0d18-4c3e-b1a6-ea74463e0d52] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "216ms",
+  "requestId": "685beb7c-0d18-4c3e-b1a6-ea74463e0d52",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=sarees&per_page=100 [32m200[0m 159.814 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:01.249Z] [cded5694-ea59-4e74-b45a-00aa2df19148] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "sarees",
+    "per_page": "100"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "cded5694-ea59-4e74-b45a-00aa2df19148",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:01.399Z] [cded5694-ea59-4e74-b45a-00aa2df19148] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "150ms",
+  "requestId": "cded5694-ea59-4e74-b45a-00aa2df19148",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=sarees&per_page=100 [36m304[0m 140.731 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:01.558Z] [27150e09-0f28-4339-8569-9c53d1c88a0c] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "27150e09-0f28-4339-8569-9c53d1c88a0c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp [0m-[0m - ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:01.972Z] [f405ff69-faeb-4bb5-8dac-bcf0b420e416] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "f405ff69-faeb-4bb5-8dac-bcf0b420e416",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:01.977Z] [f405ff69-faeb-4bb5-8dac-bcf0b420e416] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "5ms",
+  "requestId": "f405ff69-faeb-4bb5-8dac-bcf0b420e416",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 4.285 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:01.994Z] [1a657e90-c07e-4beb-b23b-03fbc06ccaa0] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "1a657e90-c07e-4beb-b23b-03fbc06ccaa0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.004Z] [1a657e90-c07e-4beb-b23b-03fbc06ccaa0] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "10ms",
+  "requestId": "1a657e90-c07e-4beb-b23b-03fbc06ccaa0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 9.063 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.011Z] [3e812575-f159-4c56-b18a-33161d306e2a] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "3e812575-f159-4c56-b18a-33161d306e2a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.077Z] [3e812575-f159-4c56-b18a-33161d306e2a] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "66ms",
+  "requestId": "3e812575-f159-4c56-b18a-33161d306e2a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 64.368 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.081Z] [46663136-3109-4f6f-8166-41e80c049a8b] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "46663136-3109-4f6f-8166-41e80c049a8b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.103Z] [46663136-3109-4f6f-8166-41e80c049a8b] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "22ms",
+  "requestId": "46663136-3109-4f6f-8166-41e80c049a8b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 21.145 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.296Z] [846cf085-c2e8-475a-8f31-d0256271500e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7ea61fb66d298f232cd94",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "846cf085-c2e8-475a-8f31-d0256271500e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:14:02.300Z] [6a149105-5393-4654-bda9-619a007162b2] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/recommendations/69d7ea61fb66d298f232cd94",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "6a149105-5393-4654-bda9-619a007162b2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.469Z] [6a149105-5393-4654-bda9-619a007162b2] API Request Completed {
+  "method": "GET",
+  "path": "/products/69d7ea61fb66d298f232cd94",
+  "statusCode": 200,
+  "duration": "171ms",
+  "requestId": "846cf085-c2e8-475a-8f31-d0256271500e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7ea61fb66d298f232cd94 [32m200[0m 159.376 ms - -[0m
+[36mINFO [0m [2026-04-09T18:14:02.475Z] [6a149105-5393-4654-bda9-619a007162b2] API Request Completed {
+  "method": "GET",
+  "path": "/recommendations/69d7ea61fb66d298f232cd94",
+  "statusCode": 200,
+  "duration": "175ms",
+  "requestId": "6a149105-5393-4654-bda9-619a007162b2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/recommendations/69d7ea61fb66d298f232cd94 [32m200[0m 161.122 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.478Z] [39371ce0-64bc-468d-bcae-f8631db31e55] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7ea61fb66d298f232cd94",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "39371ce0-64bc-468d-bcae-f8631db31e55",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:14:02.485Z] [788e136e-0304-4fb0-b4e1-a0f4fcf8a93a] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/recommendations/69d7ea61fb66d298f232cd94",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "788e136e-0304-4fb0-b4e1-a0f4fcf8a93a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:14:02.490Z] [d8578775-233a-4576-ae47-5f3921ed1125] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/reviews/product/69d7ea61fb66d298f232cd94",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "d8578775-233a-4576-ae47-5f3921ed1125",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.492Z] [d8578775-233a-4576-ae47-5f3921ed1125] API Request Completed {
+  "method": "GET",
+  "path": "/reviews/product/69d7ea61fb66d298f232cd94",
+  "statusCode": 200,
+  "duration": "3ms",
+  "requestId": "d8578775-233a-4576-ae47-5f3921ed1125",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/reviews/product/69d7ea61fb66d298f232cd94 [32m200[0m 1.106 ms - 276[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.505Z] [fc7feb41-c3b1-49e6-ad78-a267335068f8] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7ea61fb66d298f232cd94/variants/matrix",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "fc7feb41-c3b1-49e6-ad78-a267335068f8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.599Z] [fc7feb41-c3b1-49e6-ad78-a267335068f8] API Request Completed {
+  "method": "GET",
+  "path": "/products/69d7ea61fb66d298f232cd94",
+  "statusCode": 304,
+  "duration": "121ms",
+  "requestId": "39371ce0-64bc-468d-bcae-f8631db31e55",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7ea61fb66d298f232cd94 [36m304[0m 116.722 ms - -[0m
+[36mINFO [0m [2026-04-09T18:14:02.660Z] [fc7feb41-c3b1-49e6-ad78-a267335068f8] API Request Completed {
+  "method": "GET",
+  "path": "/recommendations/69d7ea61fb66d298f232cd94",
+  "statusCode": 304,
+  "duration": "175ms",
+  "requestId": "788e136e-0304-4fb0-b4e1-a0f4fcf8a93a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/recommendations/69d7ea61fb66d298f232cd94 [36m304[0m 172.014 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.683Z] [17f35632-172a-4494-8b7a-cb1c3eb9d4aa] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/reviews/product/69d7ea61fb66d298f232cd94",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "17f35632-172a-4494-8b7a-cb1c3eb9d4aa",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.685Z] [17f35632-172a-4494-8b7a-cb1c3eb9d4aa] API Request Completed {
+  "method": "GET",
+  "path": "/reviews/product/69d7ea61fb66d298f232cd94",
+  "statusCode": 304,
+  "duration": "3ms",
+  "requestId": "17f35632-172a-4494-8b7a-cb1c3eb9d4aa",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/reviews/product/69d7ea61fb66d298f232cd94 [36m304[0m 0.752 ms - -[0m
+[36mINFO [0m [2026-04-09T18:14:02.696Z] [17f35632-172a-4494-8b7a-cb1c3eb9d4aa] API Request Completed {
+  "method": "GET",
+  "path": "/69d7ea61fb66d298f232cd94/variants/matrix",
+  "statusCode": 200,
+  "duration": "192ms",
+  "requestId": "fc7feb41-c3b1-49e6-ad78-a267335068f8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7ea61fb66d298f232cd94/variants/matrix [32m200[0m 172.770 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.699Z] [785e03e2-1dc9-4d1d-979f-ecd929c0cde0] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7ea61fb66d298f232cd94/variants/matrix",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "785e03e2-1dc9-4d1d-979f-ecd929c0cde0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.728Z] [785e03e2-1dc9-4d1d-979f-ecd929c0cde0] API Request Completed {
+  "method": "GET",
+  "path": "/69d7ea61fb66d298f232cd94/variants/matrix",
+  "statusCode": 304,
+  "duration": "30ms",
+  "requestId": "785e03e2-1dc9-4d1d-979f-ecd929c0cde0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7ea61fb66d298f232cd94/variants/matrix [36m304[0m 26.711 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:02.950Z] [0bde38e7-2ad6-4d6e-acc7-960263b77b83] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "0bde38e7-2ad6-4d6e-acc7-960263b77b83",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:02.965Z] [0bde38e7-2ad6-4d6e-acc7-960263b77b83] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "statusCode": 200,
+  "duration": "15ms",
+  "requestId": "0bde38e7-2ad6-4d6e-acc7-960263b77b83",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp [32m200[0m 11.574 ms - 48396[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.683Z] [2878e099-a710-4580-84be-9c735ef5adf5] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "2878e099-a710-4580-84be-9c735ef5adf5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.684Z] [2878e099-a710-4580-84be-9c735ef5adf5] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "2878e099-a710-4580-84be-9c735ef5adf5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.353 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.687Z] [8e6e493c-be10-4a00-a579-971e4e0b7732] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/blogs/capabilities",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "8e6e493c-be10-4a00-a579-971e4e0b7732",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.688Z] [8e6e493c-be10-4a00-a579-971e4e0b7732] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/blogs/capabilities",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "8e6e493c-be10-4a00-a579-971e4e0b7732",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/blogs/capabilities [32m204[0m 0.365 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.690Z] [b48b6e76-0369-4277-b7cd-07dfcc56f977] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "b48b6e76-0369-4277-b7cd-07dfcc56f977",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.691Z] [b48b6e76-0369-4277-b7cd-07dfcc56f977] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "b48b6e76-0369-4277-b7cd-07dfcc56f977",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.357 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.693Z] [0ccc39f9-ed79-4252-90ab-c4547dce1fee] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/blogs/capabilities",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "0ccc39f9-ed79-4252-90ab-c4547dce1fee",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.695Z] [0ccc39f9-ed79-4252-90ab-c4547dce1fee] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/blogs/capabilities",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "0ccc39f9-ed79-4252-90ab-c4547dce1fee",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/blogs/capabilities [32m204[0m 0.328 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.696Z] [4305a731-b8df-484e-b66b-5ff79b87f65c] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "4305a731-b8df-484e-b66b-5ff79b87f65c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:14:04.710Z] [c60b7935-bed4-4c21-aa1b-d2676175f00c] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/blogs/capabilities",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "c60b7935-bed4-4c21-aa1b-d2676175f00c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.741Z] [c60b7935-bed4-4c21-aa1b-d2676175f00c] API Request Completed {
+  "method": "GET",
+  "path": "/blogs/capabilities",
+  "statusCode": 200,
+  "duration": "31ms",
+  "requestId": "c60b7935-bed4-4c21-aa1b-d2676175f00c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/blogs/capabilities [32m200[0m 29.161 ms - 126[0m
+[36mINFO [0m [2026-04-09T18:14:04.744Z] [c60b7935-bed4-4c21-aa1b-d2676175f00c] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "48ms",
+  "requestId": "4305a731-b8df-484e-b66b-5ff79b87f65c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 47.017 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.757Z] [85a5f54d-a6f3-4e19-bb7c-8c8ef220242e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/blogs/capabilities",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "85a5f54d-a6f3-4e19-bb7c-8c8ef220242e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.760Z] [85a5f54d-a6f3-4e19-bb7c-8c8ef220242e] API Request Completed {
+  "method": "GET",
+  "path": "/blogs/capabilities",
+  "statusCode": 304,
+  "duration": "3ms",
+  "requestId": "85a5f54d-a6f3-4e19-bb7c-8c8ef220242e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/blogs/capabilities [36m304[0m 1.684 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.771Z] [4ec0b8a5-23b5-4d20-86da-043de5855ff8] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "4ec0b8a5-23b5-4d20-86da-043de5855ff8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.818Z] [4ec0b8a5-23b5-4d20-86da-043de5855ff8] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "47ms",
+  "requestId": "4ec0b8a5-23b5-4d20-86da-043de5855ff8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 17.037 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.844Z] [c896a7e0-3ccd-4a32-9aab-41f44eb3e9b5] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "c896a7e0-3ccd-4a32-9aab-41f44eb3e9b5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.846Z] [c896a7e0-3ccd-4a32-9aab-41f44eb3e9b5] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "c896a7e0-3ccd-4a32-9aab-41f44eb3e9b5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/coupon [32m204[0m 0.500 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:14:04.848Z] [c8e16717-b317-4ebc-b3b7-d02b95459c96] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "c8e16717-b317-4ebc-b3b7-d02b95459c96",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:14:04.854Z] [27aef4cf-44db-4534-9ced-da23feb05001] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "27aef4cf-44db-4534-9ced-da23feb05001",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:04.995Z] [27aef4cf-44db-4534-9ced-da23feb05001] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 304,
+  "duration": "141ms",
+  "requestId": "27aef4cf-44db-4534-9ced-da23feb05001",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [36m304[0m 139.680 ms - -[0m
+[36mINFO [0m [2026-04-09T18:14:05.004Z] [27aef4cf-44db-4534-9ced-da23feb05001] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "156ms",
+  "requestId": "c8e16717-b317-4ebc-b3b7-d02b95459c96",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 150.427 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.007Z] [a7ac67e0-23d5-46d2-bee4-9fc29f02ccdb] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "a7ac67e0-23d5-46d2-bee4-9fc29f02ccdb",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.078Z] [a7ac67e0-23d5-46d2-bee4-9fc29f02ccdb] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "71ms",
+  "requestId": "a7ac67e0-23d5-46d2-bee4-9fc29f02ccdb",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 69.341 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.094Z] [17179f37-4d64-4751-8c2e-2e79db71102c] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "17179f37-4d64-4751-8c2e-2e79db71102c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.108Z] [17179f37-4d64-4751-8c2e-2e79db71102c] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "14ms",
+  "requestId": "17179f37-4d64-4751-8c2e-2e79db71102c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 12.496 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.195Z] [f62a2ac4-4348-42f0-9188-d5d35f1b696f] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "f62a2ac4-4348-42f0-9188-d5d35f1b696f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.203Z] [f62a2ac4-4348-42f0-9188-d5d35f1b696f] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 200,
+  "duration": "9ms",
+  "requestId": "f62a2ac4-4348-42f0-9188-d5d35f1b696f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [32m200[0m 7.138 ms - 26[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.210Z] [3c20b87c-67bb-4d5f-9281-1b06d5c6afcf] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "3c20b87c-67bb-4d5f-9281-1b06d5c6afcf",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.217Z] [3c20b87c-67bb-4d5f-9281-1b06d5c6afcf] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "7ms",
+  "requestId": "3c20b87c-67bb-4d5f-9281-1b06d5c6afcf",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 4.424 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.220Z] [412fffd6-28ff-47a4-8484-bc65f288fa4b] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "412fffd6-28ff-47a4-8484-bc65f288fa4b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.222Z] [412fffd6-28ff-47a4-8484-bc65f288fa4b] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "412fffd6-28ff-47a4-8484-bc65f288fa4b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/stock-levels [32m204[0m 0.368 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.225Z] [4fa77d90-4ad1-4645-8372-1c10a1bf7fa2] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "4fa77d90-4ad1-4645-8372-1c10a1bf7fa2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.226Z] [4fa77d90-4ad1-4645-8372-1c10a1bf7fa2] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "4fa77d90-4ad1-4645-8372-1c10a1bf7fa2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/stock-levels [32m204[0m 0.331 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.228Z] [e27af54d-a33b-43e4-9411-3ff23d5962a7] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "e27af54d-a33b-43e4-9411-3ff23d5962a7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.318Z] [e27af54d-a33b-43e4-9411-3ff23d5962a7] API Request Completed {
+  "method": "GET",
+  "path": "/stock-levels",
+  "statusCode": 200,
+  "duration": "90ms",
+  "requestId": "e27af54d-a33b-43e4-9411-3ff23d5962a7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/inventory/stock-levels [32m200[0m 77.737 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:05.321Z] [0258a4e7-b8b2-42bd-bf17-50f6e6e43bbc] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::1",
+  "requestId": "0258a4e7-b8b2-42bd-bf17-50f6e6e43bbc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:05.760Z] [0258a4e7-b8b2-42bd-bf17-50f6e6e43bbc] API Request Completed {
+  "method": "GET",
+  "path": "/stock-levels",
+  "statusCode": 304,
+  "duration": "439ms",
+  "requestId": "0258a4e7-b8b2-42bd-bf17-50f6e6e43bbc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/inventory/stock-levels [36m304[0m 437.498 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:14:06.734Z] [b0bb3b0b-bc5c-48e6-865e-4b4ea1abc696] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "b0bb3b0b-bc5c-48e6-865e-4b4ea1abc696",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:06.744Z] [b0bb3b0b-bc5c-48e6-865e-4b4ea1abc696] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp",
+  "statusCode": 200,
+  "duration": "10ms",
+  "requestId": "b0bb3b0b-bc5c-48e6-865e-4b4ea1abc696",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp [32m200[0m 4.818 ms - 103564[0m
+[90mDEBUG[0m [2026-04-09T18:14:06.748Z] [c61a964c-f438-4b43-ad17-bbcf5428b9fd] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "c61a964c-f438-4b43-ad17-bbcf5428b9fd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:14:06.768Z] [85be1cac-36ad-4f95-99e3-db655bbc59d7] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "85be1cac-36ad-4f95-99e3-db655bbc59d7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:14:06.771Z] [85be1cac-36ad-4f95-99e3-db655bbc59d7] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp",
+  "statusCode": 200,
+  "duration": "23ms",
+  "requestId": "c61a964c-f438-4b43-ad17-bbcf5428b9fd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp [32m200[0m 11.774 ms - 103564[0m
+[36mINFO [0m [2026-04-09T18:14:06.787Z] [85be1cac-36ad-4f95-99e3-db655bbc59d7] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "statusCode": 304,
+  "duration": "16ms",
+  "requestId": "85be1cac-36ad-4f95-99e3-db655bbc59d7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp [36m304[0m 9.287 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:17:08.215Z] [66aa80bb-0df4-4222-a1e0-8fe4cf24ce72] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "66aa80bb-0df4-4222-a1e0-8fe4cf24ce72",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:08.220Z] [66aa80bb-0df4-4222-a1e0-8fe4cf24ce72] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "statusCode": 204,
+  "duration": "5ms",
+  "requestId": "66aa80bb-0df4-4222-a1e0-8fe4cf24ce72",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/stock-levels [32m204[0m 0.917 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:17:08.223Z] [79440bca-9df9-4c51-93a7-a036b59cfbc4] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "79440bca-9df9-4c51-93a7-a036b59cfbc4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:08.225Z] [79440bca-9df9-4c51-93a7-a036b59cfbc4] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "79440bca-9df9-4c51-93a7-a036b59cfbc4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/stock-levels [32m204[0m 0.331 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:17:08.229Z] [58035e0b-3ffb-4923-a7cc-dbf3ff8479a8] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "58035e0b-3ffb-4923-a7cc-dbf3ff8479a8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:08.359Z] [58035e0b-3ffb-4923-a7cc-dbf3ff8479a8] API Request Completed {
+  "method": "GET",
+  "path": "/stock-levels",
+  "statusCode": 200,
+  "duration": "130ms",
+  "requestId": "58035e0b-3ffb-4923-a7cc-dbf3ff8479a8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/inventory/stock-levels [32m200[0m 117.817 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:17:08.361Z] [9766380f-23b3-40cb-b262-7fd77327670b] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "9766380f-23b3-40cb-b262-7fd77327670b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:08.428Z] [9766380f-23b3-40cb-b262-7fd77327670b] API Request Completed {
+  "method": "GET",
+  "path": "/stock-levels",
+  "statusCode": 304,
+  "duration": "68ms",
+  "requestId": "9766380f-23b3-40cb-b262-7fd77327670b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/inventory/stock-levels [36m304[0m 65.449 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:17:09.588Z] [3359d3d6-04af-4c6b-9856-fa0280928164] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "3359d3d6-04af-4c6b-9856-fa0280928164",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:09.590Z] [3359d3d6-04af-4c6b-9856-fa0280928164] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp",
+  "statusCode": 304,
+  "duration": "2ms",
+  "requestId": "3359d3d6-04af-4c6b-9856-fa0280928164",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp [36m304[0m 1.513 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:17:09.594Z] [60044d6d-f30c-4621-9aed-de015476048e] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "60044d6d-f30c-4621-9aed-de015476048e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:09.597Z] [60044d6d-f30c-4621-9aed-de015476048e] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp",
+  "statusCode": 304,
+  "duration": "2ms",
+  "requestId": "60044d6d-f30c-4621-9aed-de015476048e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp [36m304[0m 1.368 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:17:09.607Z] [442da6e8-a3cd-4789-a344-356eca6437b9] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "442da6e8-a3cd-4789-a344-356eca6437b9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:09.611Z] [442da6e8-a3cd-4789-a344-356eca6437b9] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "statusCode": 200,
+  "duration": "4ms",
+  "requestId": "442da6e8-a3cd-4789-a344-356eca6437b9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp [32m200[0m 2.414 ms - 48396[0m
+[90mDEBUG[0m [2026-04-09T18:17:39.688Z] [03ab23d0-6a7d-4046-9c93-31793b9af733] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/offline-sale",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "03ab23d0-6a7d-4046-9c93-31793b9af733",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:39.690Z] [03ab23d0-6a7d-4046-9c93-31793b9af733] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/offline-sale",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "03ab23d0-6a7d-4046-9c93-31793b9af733",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/offline-sale [32m204[0m 0.329 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:17:39.692Z] [6aec69e7-4882-4109-855d-c60e87ed6d6b] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/admin/inventory/offline-sale",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "6aec69e7-4882-4109-855d-c60e87ed6d6b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:39.734Z] [6aec69e7-4882-4109-855d-c60e87ed6d6b] API Request Completed {
+  "method": "POST",
+  "path": "/offline-sale",
+  "statusCode": 200,
+  "duration": "42ms",
+  "requestId": "6aec69e7-4882-4109-855d-c60e87ed6d6b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/admin/inventory/offline-sale [32m200[0m 39.838 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:17:39.740Z] [ccff82ad-d9fc-4279-bb5b-7b582a821b3d] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ccff82ad-d9fc-4279-bb5b-7b582a821b3d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:39.741Z] [ccff82ad-d9fc-4279-bb5b-7b582a821b3d] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "ccff82ad-d9fc-4279-bb5b-7b582a821b3d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/stock-levels [32m204[0m 0.288 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:17:39.744Z] [ed81d5ac-a92e-47c2-b30b-ada0f4f3921a] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ed81d5ac-a92e-47c2-b30b-ada0f4f3921a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:17:39.779Z] [ed81d5ac-a92e-47c2-b30b-ada0f4f3921a] API Request Completed {
+  "method": "GET",
+  "path": "/stock-levels",
+  "statusCode": 200,
+  "duration": "35ms",
+  "requestId": "ed81d5ac-a92e-47c2-b30b-ada0f4f3921a",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/inventory/stock-levels [32m200[0m 31.248 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:18:34.974Z] [60884529-0fe0-4999-8f46-307cb6da3b3b] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "60884529-0fe0-4999-8f46-307cb6da3b3b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:34.975Z] [60884529-0fe0-4999-8f46-307cb6da3b3b] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "60884529-0fe0-4999-8f46-307cb6da3b3b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?per_page=100&all_statuses=true [32m204[0m 0.296 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:18:34.978Z] [5afe6c7a-d331-44fe-9964-6ad806d8a810] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "5afe6c7a-d331-44fe-9964-6ad806d8a810",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:34.980Z] [5afe6c7a-d331-44fe-9964-6ad806d8a810] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "5afe6c7a-d331-44fe-9964-6ad806d8a810",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/categories [32m204[0m 0.346 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:18:34.983Z] [915bacfb-b9a9-4d48-903a-c89e33b6c435] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "915bacfb-b9a9-4d48-903a-c89e33b6c435",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:34.985Z] [915bacfb-b9a9-4d48-903a-c89e33b6c435] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "3ms",
+  "requestId": "915bacfb-b9a9-4d48-903a-c89e33b6c435",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?per_page=100 [32m204[0m 0.421 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:18:34.987Z] [d817460c-436d-43ce-bfcd-5972c69edafe] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "d817460c-436d-43ce-bfcd-5972c69edafe",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:34.988Z] [d817460c-436d-43ce-bfcd-5972c69edafe] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "d817460c-436d-43ce-bfcd-5972c69edafe",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?per_page=100&all_statuses=true [32m204[0m 0.257 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:18:34.990Z] [aa145c08-08bd-4ae8-a07f-df28bd180f4e] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "aa145c08-08bd-4ae8-a07f-df28bd180f4e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:34.991Z] [aa145c08-08bd-4ae8-a07f-df28bd180f4e] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "aa145c08-08bd-4ae8-a07f-df28bd180f4e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/categories [32m204[0m 0.244 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:18:34.994Z] [22a8bb92-c58f-4ddd-8bea-e8050c24119e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "22a8bb92-c58f-4ddd-8bea-e8050c24119e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:18:34.999Z] [6989c193-7f68-4e21-961c-33753a44151c] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "6989c193-7f68-4e21-961c-33753a44151c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:18:35.005Z] [4981c404-a0b5-4b8a-8cf6-554305673a11] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "4981c404-a0b5-4b8a-8cf6-554305673a11",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:35.171Z] [4981c404-a0b5-4b8a-8cf6-554305673a11] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "177ms",
+  "requestId": "22a8bb92-c58f-4ddd-8bea-e8050c24119e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?per_page=100&all_statuses=true [32m200[0m 109.344 ms - -[0m
+[36mINFO [0m [2026-04-09T18:18:35.174Z] [4981c404-a0b5-4b8a-8cf6-554305673a11] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "169ms",
+  "requestId": "4981c404-a0b5-4b8a-8cf6-554305673a11",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?per_page=100 [32m200[0m 152.867 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:18:35.186Z] [5ff90f78-17be-4e7a-a9f9-c9b78ab6a93e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "5ff90f78-17be-4e7a-a9f9-c9b78ab6a93e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:35.198Z] [5ff90f78-17be-4e7a-a9f9-c9b78ab6a93e] API Request Completed {
+  "method": "GET",
+  "path": "/categories",
+  "statusCode": 200,
+  "duration": "199ms",
+  "requestId": "6989c193-7f68-4e21-961c-33753a44151c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/categories [32m200[0m 167.405 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:18:35.234Z] [423f0ad2-68f4-447d-931f-506c714731d3] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "423f0ad2-68f4-447d-931f-506c714731d3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:18:35.270Z] [423f0ad2-68f4-447d-931f-506c714731d3] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "84ms",
+  "requestId": "5ff90f78-17be-4e7a-a9f9-c9b78ab6a93e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?per_page=100&all_statuses=true [36m304[0m 82.769 ms - -[0m
+[36mINFO [0m [2026-04-09T18:18:35.307Z] [423f0ad2-68f4-447d-931f-506c714731d3] API Request Completed {
+  "method": "GET",
+  "path": "/categories",
+  "statusCode": 304,
+  "duration": "73ms",
+  "requestId": "423f0ad2-68f4-447d-931f-506c714731d3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/categories [36m304[0m 71.436 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:19:52.022Z] [3440403d-eaec-42cc-8a16-79368a005ab4] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "3440403d-eaec-42cc-8a16-79368a005ab4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:52.024Z] [3440403d-eaec-42cc-8a16-79368a005ab4] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "3440403d-eaec-42cc-8a16-79368a005ab4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/stock-levels [32m204[0m 0.459 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:52.026Z] [99e391cf-c455-446c-9bf7-f9a005ad7362] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "99e391cf-c455-446c-9bf7-f9a005ad7362",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:52.028Z] [99e391cf-c455-446c-9bf7-f9a005ad7362] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "99e391cf-c455-446c-9bf7-f9a005ad7362",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/inventory/stock-levels [32m204[0m 0.289 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:52.032Z] [7b2fd550-ee1d-4bbb-9ea9-596b91939c02] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "7b2fd550-ee1d-4bbb-9ea9-596b91939c02",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:52.084Z] [7b2fd550-ee1d-4bbb-9ea9-596b91939c02] API Request Completed {
+  "method": "GET",
+  "path": "/stock-levels",
+  "statusCode": 304,
+  "duration": "52ms",
+  "requestId": "7b2fd550-ee1d-4bbb-9ea9-596b91939c02",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/inventory/stock-levels [36m304[0m 51.142 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:19:52.091Z] [6860efa8-e469-4136-b779-f95df2e944c6] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/inventory/stock-levels",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "6860efa8-e469-4136-b779-f95df2e944c6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:52.131Z] [6860efa8-e469-4136-b779-f95df2e944c6] API Request Completed {
+  "method": "GET",
+  "path": "/stock-levels",
+  "statusCode": 304,
+  "duration": "39ms",
+  "requestId": "6860efa8-e469-4136-b779-f95df2e944c6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/inventory/stock-levels [36m304[0m 36.728 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.428Z] [b90b75cd-30d2-42e9-bdc0-16d6781ba97f] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/coupons",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "b90b75cd-30d2-42e9-bdc0-16d6781ba97f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.432Z] [b90b75cd-30d2-42e9-bdc0-16d6781ba97f] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/coupons",
+  "statusCode": 204,
+  "duration": "4ms",
+  "requestId": "b90b75cd-30d2-42e9-bdc0-16d6781ba97f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/coupons [32m204[0m 0.555 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.435Z] [2cdacf67-6e24-48e0-8d37-3b80139abac2] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/coupons",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "2cdacf67-6e24-48e0-8d37-3b80139abac2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.436Z] [2cdacf67-6e24-48e0-8d37-3b80139abac2] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/coupons",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "2cdacf67-6e24-48e0-8d37-3b80139abac2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/coupons [32m204[0m 0.253 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.438Z] [2fd49dad-d020-4829-905c-dfaeac99b803] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/coupons",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "2fd49dad-d020-4829-905c-dfaeac99b803",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.439Z] [2fd49dad-d020-4829-905c-dfaeac99b803] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/coupons",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "2fd49dad-d020-4829-905c-dfaeac99b803",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/coupons [32m204[0m 0.308 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.441Z] [55946c25-5c76-45f5-bd8f-ba6d2f65b6d8] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/coupons",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "55946c25-5c76-45f5-bd8f-ba6d2f65b6d8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.443Z] [55946c25-5c76-45f5-bd8f-ba6d2f65b6d8] API Request Completed {
+  "method": "GET",
+  "path": "/coupons",
+  "statusCode": 304,
+  "duration": "2ms",
+  "requestId": "55946c25-5c76-45f5-bd8f-ba6d2f65b6d8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/coupons [36m304[0m 0.781 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.448Z] [f7b242f5-9585-4a2d-ab14-b38ff505c4e0] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/coupons",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "f7b242f5-9585-4a2d-ab14-b38ff505c4e0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.453Z] [f7b242f5-9585-4a2d-ab14-b38ff505c4e0] API Request Completed {
+  "method": "GET",
+  "path": "/coupons",
+  "statusCode": 304,
+  "duration": "5ms",
+  "requestId": "f7b242f5-9585-4a2d-ab14-b38ff505c4e0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/coupons [36m304[0m 0.834 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.455Z] [a7afc564-9ffc-4999-9ec8-51f6567385a5] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/coupons",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "a7afc564-9ffc-4999-9ec8-51f6567385a5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.458Z] [a7afc564-9ffc-4999-9ec8-51f6567385a5] API Request Completed {
+  "method": "GET",
+  "path": "/coupons",
+  "statusCode": 304,
+  "duration": "3ms",
+  "requestId": "a7afc564-9ffc-4999-9ec8-51f6567385a5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/coupons [36m304[0m 1.091 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.808Z] [b64f8bc2-470d-4561-b054-63b1d53b0cb1] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/overview",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "b64f8bc2-470d-4561-b054-63b1d53b0cb1",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.809Z] [b64f8bc2-470d-4561-b054-63b1d53b0cb1] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/overview",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "b64f8bc2-470d-4561-b054-63b1d53b0cb1",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/overview [32m204[0m 0.276 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.813Z] [779d7248-f7b9-4097-893c-ee18b4ef1c91] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/sales",
+  "query": {
+    "group_by": "day"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "779d7248-f7b9-4097-893c-ee18b4ef1c91",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.816Z] [779d7248-f7b9-4097-893c-ee18b4ef1c91] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/sales",
+  "statusCode": 204,
+  "duration": "3ms",
+  "requestId": "779d7248-f7b9-4097-893c-ee18b4ef1c91",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/sales?group_by=day [32m204[0m 0.422 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.817Z] [a05d9eff-9a0e-4a7d-910c-afc1af8f0d32] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/products",
+  "query": {
+    "limit": "10"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "a05d9eff-9a0e-4a7d-910c-afc1af8f0d32",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.819Z] [a05d9eff-9a0e-4a7d-910c-afc1af8f0d32] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/products",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "a05d9eff-9a0e-4a7d-910c-afc1af8f0d32",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/products?limit=10 [32m204[0m 0.306 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.821Z] [c491b45e-fcb7-420f-a128-1eefcfd96f74] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/revenue",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "c491b45e-fcb7-420f-a128-1eefcfd96f74",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.822Z] [c491b45e-fcb7-420f-a128-1eefcfd96f74] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/revenue",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "c491b45e-fcb7-420f-a128-1eefcfd96f74",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/revenue [32m204[0m 0.394 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.825Z] [5097cf86-d347-4d09-9bf9-88259d56c133] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/overview",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "5097cf86-d347-4d09-9bf9-88259d56c133",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.827Z] [5097cf86-d347-4d09-9bf9-88259d56c133] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/overview",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "5097cf86-d347-4d09-9bf9-88259d56c133",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/overview [32m204[0m 0.331 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.829Z] [0e4b5711-14ff-4420-9cf8-fcfe2dd3e0ef] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/sales",
+  "query": {
+    "group_by": "day"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "0e4b5711-14ff-4420-9cf8-fcfe2dd3e0ef",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.832Z] [0e4b5711-14ff-4420-9cf8-fcfe2dd3e0ef] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/sales",
+  "statusCode": 204,
+  "duration": "3ms",
+  "requestId": "0e4b5711-14ff-4420-9cf8-fcfe2dd3e0ef",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/sales?group_by=day [32m204[0m 0.846 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.834Z] [8d1969f4-45d2-4bf4-b238-84c47269fedd] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/products",
+  "query": {
+    "limit": "10"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "8d1969f4-45d2-4bf4-b238-84c47269fedd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.835Z] [8d1969f4-45d2-4bf4-b238-84c47269fedd] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/products",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "8d1969f4-45d2-4bf4-b238-84c47269fedd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/products?limit=10 [32m204[0m 0.285 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.838Z] [8184c014-cac0-42c9-8e7a-3d695b26f7f3] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/revenue",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "8184c014-cac0-42c9-8e7a-3d695b26f7f3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.839Z] [8184c014-cac0-42c9-8e7a-3d695b26f7f3] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/admin/analytics/revenue",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "8184c014-cac0-42c9-8e7a-3d695b26f7f3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/admin/analytics/revenue [32m204[0m 0.273 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.841Z] [5a331ada-848e-43fb-b2e4-549d0aa117a0] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/overview",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "5a331ada-848e-43fb-b2e4-549d0aa117a0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:19:53.854Z] [3d2b18c6-98d1-4436-b2e0-9af2c7aec42e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/products",
+  "query": {
+    "limit": "10"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "3d2b18c6-98d1-4436-b2e0-9af2c7aec42e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:19:53.859Z] [87c72573-9c6e-4243-90c7-d5c47730b99d] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/sales",
+  "query": {
+    "group_by": "day"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "87c72573-9c6e-4243-90c7-d5c47730b99d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:19:53.864Z] [f4c02c07-c6f8-4d0a-a27e-35daf5321ba2] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/revenue",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "f4c02c07-c6f8-4d0a-a27e-35daf5321ba2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.868Z] [f4c02c07-c6f8-4d0a-a27e-35daf5321ba2] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/revenue",
+  "statusCode": 304,
+  "duration": "4ms",
+  "requestId": "f4c02c07-c6f8-4d0a-a27e-35daf5321ba2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/revenue [36m304[0m 2.505 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.876Z] [5247a9e3-eaaa-4602-a1b3-3b1dd19c3f01] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/revenue",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "5247a9e3-eaaa-4602-a1b3-3b1dd19c3f01",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.880Z] [5247a9e3-eaaa-4602-a1b3-3b1dd19c3f01] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/revenue",
+  "statusCode": 304,
+  "duration": "4ms",
+  "requestId": "5247a9e3-eaaa-4602-a1b3-3b1dd19c3f01",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/revenue [36m304[0m 2.251 ms - -[0m
+[36mINFO [0m [2026-04-09T18:19:53.884Z] [5247a9e3-eaaa-4602-a1b3-3b1dd19c3f01] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/sales",
+  "statusCode": 200,
+  "duration": "25ms",
+  "requestId": "87c72573-9c6e-4243-90c7-d5c47730b99d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/sales?group_by=day [32m200[0m 24.194 ms - 613[0m
+[36mINFO [0m [2026-04-09T18:19:53.887Z] [5247a9e3-eaaa-4602-a1b3-3b1dd19c3f01] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/overview",
+  "statusCode": 200,
+  "duration": "46ms",
+  "requestId": "5a331ada-848e-43fb-b2e4-549d0aa117a0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/overview [32m200[0m 45.359 ms - 195[0m
+[36mINFO [0m [2026-04-09T18:19:53.891Z] [5247a9e3-eaaa-4602-a1b3-3b1dd19c3f01] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/products",
+  "statusCode": 200,
+  "duration": "37ms",
+  "requestId": "3d2b18c6-98d1-4436-b2e0-9af2c7aec42e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/products?limit=10 [32m200[0m 35.387 ms - 166[0m
+[90mDEBUG[0m [2026-04-09T18:19:53.893Z] [0d8d4415-931c-48af-8eba-bc10f706a9dd] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/sales",
+  "query": {
+    "group_by": "day"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "0d8d4415-931c-48af-8eba-bc10f706a9dd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:19:53.897Z] [22a86a79-3209-4b9e-a151-137f758fce48] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/overview",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "22a86a79-3209-4b9e-a151-137f758fce48",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:19:53.905Z] [14457946-adaf-4e45-98e0-9ef33084b727] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/admin/analytics/products",
+  "query": {
+    "limit": "10"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "14457946-adaf-4e45-98e0-9ef33084b727",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:19:53.913Z] [14457946-adaf-4e45-98e0-9ef33084b727] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/sales",
+  "statusCode": 200,
+  "duration": "20ms",
+  "requestId": "0d8d4415-931c-48af-8eba-bc10f706a9dd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/sales?group_by=day [32m200[0m 18.916 ms - 613[0m
+[36mINFO [0m [2026-04-09T18:19:53.925Z] [14457946-adaf-4e45-98e0-9ef33084b727] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/overview",
+  "statusCode": 304,
+  "duration": "28ms",
+  "requestId": "22a86a79-3209-4b9e-a151-137f758fce48",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/overview [36m304[0m 26.644 ms - -[0m
+[36mINFO [0m [2026-04-09T18:19:53.930Z] [14457946-adaf-4e45-98e0-9ef33084b727] API Request Completed {
+  "method": "GET",
+  "path": "/admin/analytics/products",
+  "statusCode": 304,
+  "duration": "24ms",
+  "requestId": "14457946-adaf-4e45-98e0-9ef33084b727",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/admin/analytics/products?limit=10 [36m304[0m 22.422 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.016Z] [4322b5c3-7d32-4818-9d91-8b88fdf028be] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "4322b5c3-7d32-4818-9d91-8b88fdf028be",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.018Z] [4322b5c3-7d32-4818-9d91-8b88fdf028be] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "4322b5c3-7d32-4818-9d91-8b88fdf028be",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?per_page=100&all_statuses=true [32m204[0m 0.294 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.020Z] [377a970e-8c8b-451e-ba65-def18f252adf] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "377a970e-8c8b-451e-ba65-def18f252adf",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.023Z] [377a970e-8c8b-451e-ba65-def18f252adf] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "statusCode": 204,
+  "duration": "3ms",
+  "requestId": "377a970e-8c8b-451e-ba65-def18f252adf",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/categories [32m204[0m 0.449 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.025Z] [f3cb5d0d-3c80-4667-bef1-87f535b9ba19] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "f3cb5d0d-3c80-4667-bef1-87f535b9ba19",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.026Z] [f3cb5d0d-3c80-4667-bef1-87f535b9ba19] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "f3cb5d0d-3c80-4667-bef1-87f535b9ba19",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?per_page=100 [32m204[0m 0.270 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.029Z] [a511da0a-8589-4dd1-8fd0-6ec57fcfc171] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "a511da0a-8589-4dd1-8fd0-6ec57fcfc171",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.031Z] [a511da0a-8589-4dd1-8fd0-6ec57fcfc171] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "a511da0a-8589-4dd1-8fd0-6ec57fcfc171",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?per_page=100&all_statuses=true [32m204[0m 0.245 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.033Z] [e4407867-dd07-41b0-9563-031698580f73] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "e4407867-dd07-41b0-9563-031698580f73",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:03.037Z] [39f4f7b4-fee0-47f5-9337-87312f571ad8] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "39f4f7b4-fee0-47f5-9337-87312f571ad8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.040Z] [39f4f7b4-fee0-47f5-9337-87312f571ad8] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/categories",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "39f4f7b4-fee0-47f5-9337-87312f571ad8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/categories [32m204[0m 0.220 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.041Z] [26937f4d-0246-4fdd-aee1-aba0fadc8162] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "26937f4d-0246-4fdd-aee1-aba0fadc8162",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:03.047Z] [1e89b10b-8d97-48ba-90ea-762c9091e739] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "1e89b10b-8d97-48ba-90ea-762c9091e739",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.117Z] [1e89b10b-8d97-48ba-90ea-762c9091e739] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "84ms",
+  "requestId": "e4407867-dd07-41b0-9563-031698580f73",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?per_page=100&all_statuses=true [36m304[0m 83.576 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:03.151Z] [1e89b10b-8d97-48ba-90ea-762c9091e739] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "104ms",
+  "requestId": "1e89b10b-8d97-48ba-90ea-762c9091e739",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?per_page=100 [36m304[0m 102.104 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.153Z] [3feaae12-9435-4729-8f61-23c9916f84c0] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "per_page": "100",
+    "all_statuses": "true"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "3feaae12-9435-4729-8f61-23c9916f84c0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.163Z] [3feaae12-9435-4729-8f61-23c9916f84c0] API Request Completed {
+  "method": "GET",
+  "path": "/categories",
+  "statusCode": 304,
+  "duration": "122ms",
+  "requestId": "26937f4d-0246-4fdd-aee1-aba0fadc8162",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/categories [36m304[0m 120.565 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.184Z] [027c72fe-b6e9-4b91-8ed5-fc13dc7fb6c9] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/categories",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "027c72fe-b6e9-4b91-8ed5-fc13dc7fb6c9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.229Z] [027c72fe-b6e9-4b91-8ed5-fc13dc7fb6c9] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "76ms",
+  "requestId": "3feaae12-9435-4729-8f61-23c9916f84c0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?per_page=100&all_statuses=true [36m304[0m 70.208 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:03.289Z] [027c72fe-b6e9-4b91-8ed5-fc13dc7fb6c9] API Request Completed {
+  "method": "GET",
+  "path": "/categories",
+  "statusCode": 304,
+  "duration": "105ms",
+  "requestId": "027c72fe-b6e9-4b91-8ed5-fc13dc7fb6c9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/categories [36m304[0m 101.848 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:03.857Z] [f0dec0c5-033b-4083-a123-710af6c7d116] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "f0dec0c5-033b-4083-a123-710af6c7d116",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:03.859Z] [eb8fbc5b-1ecd-4477-976e-6d35d1cb53ea] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "eb8fbc5b-1ecd-4477-976e-6d35d1cb53ea",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:03.861Z] [497be8a2-3006-48c0-9e79-7bda17628834] API Request Started {
+  "method": "GET",
+  "path": "/uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::ffff:127.0.0.1",
+  "requestId": "497be8a2-3006-48c0-9e79-7bda17628834",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:03.862Z] [497be8a2-3006-48c0-9e79-7bda17628834] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp",
+  "statusCode": 304,
+  "duration": "5ms",
+  "requestId": "f0dec0c5-033b-4083-a123-710af6c7d116",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_897a712a-f89a-43ae-96b4-7e01dd663ae1_med.webp [36m304[0m 4.383 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:03.865Z] [497be8a2-3006-48c0-9e79-7bda17628834] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp",
+  "statusCode": 304,
+  "duration": "6ms",
+  "requestId": "eb8fbc5b-1ecd-4477-976e-6d35d1cb53ea",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_054f0bc9-37a2-4a01-9e69-15efd83bef02_med.webp [36m304[0m 4.660 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:03.867Z] [497be8a2-3006-48c0-9e79-7bda17628834] API Request Completed {
+  "method": "GET",
+  "path": "/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp",
+  "statusCode": 304,
+  "duration": "7ms",
+  "requestId": "497be8a2-3006-48c0-9e79-7bda17628834",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /uploads/images/products_241b7806-c402-43ab-85ca-c83b2463e216_orig.webp [36m304[0m 5.204 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:08.058Z] [46410746-d0bc-4e50-b3d7-5608c5d8287f] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "46410746-d0bc-4e50-b3d7-5608c5d8287f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:08.064Z] [46410746-d0bc-4e50-b3d7-5608c5d8287f] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "6ms",
+  "requestId": "46410746-d0bc-4e50-b3d7-5608c5d8287f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 4.379 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:08.071Z] [f03af6b6-73db-4b22-801e-bbff858507bf] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "f03af6b6-73db-4b22-801e-bbff858507bf",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:08.073Z] [f03af6b6-73db-4b22-801e-bbff858507bf] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "f03af6b6-73db-4b22-801e-bbff858507bf",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?featured=true&limit=4 [32m204[0m 0.403 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:08.076Z] [c6aeda5e-961b-4bc9-81ce-0f528ab32262] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "c6aeda5e-961b-4bc9-81ce-0f528ab32262",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:08.077Z] [c6aeda5e-961b-4bc9-81ce-0f528ab32262] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "c6aeda5e-961b-4bc9-81ce-0f528ab32262",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?category=most-desired&limit=4 [32m204[0m 0.269 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:08.079Z] [ccb2de1a-4bef-4226-9e00-407f481463a7] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ccb2de1a-4bef-4226-9e00-407f481463a7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:08.082Z] [ccb2de1a-4bef-4226-9e00-407f481463a7] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "3ms",
+  "requestId": "ccb2de1a-4bef-4226-9e00-407f481463a7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?featured=true&limit=4 [32m204[0m 0.310 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:08.087Z] [10e3d149-a919-4654-8b1d-99698915fbc6] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "10e3d149-a919-4654-8b1d-99698915fbc6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:08.089Z] [10e3d149-a919-4654-8b1d-99698915fbc6] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "10e3d149-a919-4654-8b1d-99698915fbc6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?category=most-desired&limit=4 [32m204[0m 0.314 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:08.091Z] [adfc08fa-ec9f-4367-89f7-33ed986e4d89] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "adfc08fa-ec9f-4367-89f7-33ed986e4d89",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:08.096Z] [a3d03398-213a-4485-9e95-3a1394e2b32e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "a3d03398-213a-4485-9e95-3a1394e2b32e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:08.162Z] [a3d03398-213a-4485-9e95-3a1394e2b32e] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "71ms",
+  "requestId": "adfc08fa-ec9f-4367-89f7-33ed986e4d89",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=most-desired&limit=4 [32m200[0m 54.053 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:08.166Z] [a3d03398-213a-4485-9e95-3a1394e2b32e] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "70ms",
+  "requestId": "a3d03398-213a-4485-9e95-3a1394e2b32e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?featured=true&limit=4 [32m200[0m 59.149 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:08.169Z] [37cd208e-f71b-4400-9293-1b08b92dc89e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "37cd208e-f71b-4400-9293-1b08b92dc89e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:08.174Z] [7644b17e-ae27-40b9-8c93-76761f8d2248] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "7644b17e-ae27-40b9-8c93-76761f8d2248",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:08.223Z] [7644b17e-ae27-40b9-8c93-76761f8d2248] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "54ms",
+  "requestId": "37cd208e-f71b-4400-9293-1b08b92dc89e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=most-desired&limit=4 [36m304[0m 52.167 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:08.237Z] [7644b17e-ae27-40b9-8c93-76761f8d2248] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "63ms",
+  "requestId": "7644b17e-ae27-40b9-8c93-76761f8d2248",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?featured=true&limit=4 [36m304[0m 61.646 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.733Z] [1b2c0a6f-cf93-4e50-8c00-f7f9f5d9029b] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "1b2c0a6f-cf93-4e50-8c00-f7f9f5d9029b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.739Z] [1b2c0a6f-cf93-4e50-8c00-f7f9f5d9029b] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "6ms",
+  "requestId": "1b2c0a6f-cf93-4e50-8c00-f7f9f5d9029b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 5.045 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.757Z] [caa40ed1-16df-4a99-b199-a04f232e2b0e] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "caa40ed1-16df-4a99-b199-a04f232e2b0e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.759Z] [caa40ed1-16df-4a99-b199-a04f232e2b0e] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "caa40ed1-16df-4a99-b199-a04f232e2b0e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products/69d7e7a30b0889b31aec6712 [32m204[0m 0.392 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.761Z] [65a14e18-b65c-4559-a8b2-ee49992a31b3] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/recommendations/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "65a14e18-b65c-4559-a8b2-ee49992a31b3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.763Z] [65a14e18-b65c-4559-a8b2-ee49992a31b3] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/recommendations/69d7e7a30b0889b31aec6712",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "65a14e18-b65c-4559-a8b2-ee49992a31b3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/recommendations/69d7e7a30b0889b31aec6712 [32m204[0m 0.263 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.765Z] [7de02bb4-26d4-47c8-b130-7b7be7af88f2] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "7de02bb4-26d4-47c8-b130-7b7be7af88f2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.767Z] [7de02bb4-26d4-47c8-b130-7b7be7af88f2] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "7de02bb4-26d4-47c8-b130-7b7be7af88f2",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products/69d7e7a30b0889b31aec6712 [32m204[0m 0.367 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.769Z] [bdafd303-836d-4ab8-86a5-8f2bed975804] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/recommendations/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "bdafd303-836d-4ab8-86a5-8f2bed975804",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.770Z] [bdafd303-836d-4ab8-86a5-8f2bed975804] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/recommendations/69d7e7a30b0889b31aec6712",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "bdafd303-836d-4ab8-86a5-8f2bed975804",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/recommendations/69d7e7a30b0889b31aec6712 [32m204[0m 0.263 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.772Z] [05b81fe4-334f-4f8b-9e8e-3e8428cdeeb4] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "05b81fe4-334f-4f8b-9e8e-3e8428cdeeb4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:12.778Z] [a5032b30-f320-4124-950d-c50c4e538cd1] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/recommendations/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "a5032b30-f320-4124-950d-c50c4e538cd1",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.839Z] [a5032b30-f320-4124-950d-c50c4e538cd1] API Request Completed {
+  "method": "GET",
+  "path": "/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 200,
+  "duration": "67ms",
+  "requestId": "05b81fe4-334f-4f8b-9e8e-3e8428cdeeb4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7e7a30b0889b31aec6712 [32m200[0m 51.574 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:12.841Z] [a5032b30-f320-4124-950d-c50c4e538cd1] API Request Completed {
+  "method": "GET",
+  "path": "/recommendations/69d7e7a30b0889b31aec6712",
+  "statusCode": 200,
+  "duration": "63ms",
+  "requestId": "a5032b30-f320-4124-950d-c50c4e538cd1",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/recommendations/69d7e7a30b0889b31aec6712 [32m200[0m 57.422 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.843Z] [5eada92d-7823-4296-aede-bbb5b3e87110] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "5eada92d-7823-4296-aede-bbb5b3e87110",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:12.855Z] [c7013054-7972-4a73-94a3-a1b21471f142] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/recommendations/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "c7013054-7972-4a73-94a3-a1b21471f142",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:12.862Z] [0052facc-5c23-48e6-b983-83018812efa3] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/reviews/product/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "0052facc-5c23-48e6-b983-83018812efa3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.870Z] [0052facc-5c23-48e6-b983-83018812efa3] API Request Completed {
+  "method": "GET",
+  "path": "/reviews/product/69d7e7a30b0889b31aec6712",
+  "statusCode": 200,
+  "duration": "8ms",
+  "requestId": "0052facc-5c23-48e6-b983-83018812efa3",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/reviews/product/69d7e7a30b0889b31aec6712 [32m200[0m 1.750 ms - 276[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.914Z] [f965df10-db5f-488a-8de9-9a18f9995491] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712/variants/matrix",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "f965df10-db5f-488a-8de9-9a18f9995491",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.919Z] [f965df10-db5f-488a-8de9-9a18f9995491] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712/variants/matrix",
+  "statusCode": 204,
+  "duration": "5ms",
+  "requestId": "f965df10-db5f-488a-8de9-9a18f9995491",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products/69d7e7a30b0889b31aec6712/variants/matrix [32m204[0m 1.796 ms - 0[0m
+[36mINFO [0m [2026-04-09T18:20:12.934Z] [f965df10-db5f-488a-8de9-9a18f9995491] API Request Completed {
+  "method": "GET",
+  "path": "/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 304,
+  "duration": "91ms",
+  "requestId": "5eada92d-7823-4296-aede-bbb5b3e87110",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7e7a30b0889b31aec6712 [36m304[0m 90.254 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:12.945Z] [f965df10-db5f-488a-8de9-9a18f9995491] API Request Completed {
+  "method": "GET",
+  "path": "/recommendations/69d7e7a30b0889b31aec6712",
+  "statusCode": 304,
+  "duration": "91ms",
+  "requestId": "c7013054-7972-4a73-94a3-a1b21471f142",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/recommendations/69d7e7a30b0889b31aec6712 [36m304[0m 88.782 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.949Z] [847753ea-c7e2-4125-8889-063e0186c40f] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712/variants/matrix",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "847753ea-c7e2-4125-8889-063e0186c40f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:20:12.960Z] [ee2d707d-1c24-4453-8ee5-dd6fc3e3bfed] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/reviews/product/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ee2d707d-1c24-4453-8ee5-dd6fc3e3bfed",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:12.961Z] [ee2d707d-1c24-4453-8ee5-dd6fc3e3bfed] API Request Completed {
+  "method": "GET",
+  "path": "/reviews/product/69d7e7a30b0889b31aec6712",
+  "statusCode": 304,
+  "duration": "1ms",
+  "requestId": "ee2d707d-1c24-4453-8ee5-dd6fc3e3bfed",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/reviews/product/69d7e7a30b0889b31aec6712 [36m304[0m 0.490 ms - -[0m
+[36mINFO [0m [2026-04-09T18:20:12.992Z] [ee2d707d-1c24-4453-8ee5-dd6fc3e3bfed] API Request Completed {
+  "method": "GET",
+  "path": "/69d7e7a30b0889b31aec6712/variants/matrix",
+  "statusCode": 200,
+  "duration": "43ms",
+  "requestId": "847753ea-c7e2-4125-8889-063e0186c40f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7e7a30b0889b31aec6712/variants/matrix [32m200[0m 40.224 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:12.994Z] [a63d64e3-e7a9-458f-866f-710250d5ec5b] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712/variants/matrix",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "a63d64e3-e7a9-458f-866f-710250d5ec5b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:13.020Z] [a63d64e3-e7a9-458f-866f-710250d5ec5b] API Request Completed {
+  "method": "GET",
+  "path": "/69d7e7a30b0889b31aec6712/variants/matrix",
+  "statusCode": 304,
+  "duration": "26ms",
+  "requestId": "a63d64e3-e7a9-458f-866f-710250d5ec5b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7e7a30b0889b31aec6712/variants/matrix [36m304[0m 25.227 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:24.045Z] [4d36f390-e15f-4b7a-90d3-dea8dbc2bb16] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/add",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "4d36f390-e15f-4b7a-90d3-dea8dbc2bb16",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:24.046Z] [4d36f390-e15f-4b7a-90d3-dea8dbc2bb16] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/add",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "4d36f390-e15f-4b7a-90d3-dea8dbc2bb16",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/add [32m204[0m 0.175 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:24.049Z] [04c2156b-727f-4d63-ad6c-ddb05ee804b1] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/cart/add",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "04c2156b-727f-4d63-ad6c-ddb05ee804b1",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:24.076Z] [04c2156b-727f-4d63-ad6c-ddb05ee804b1] API Request Completed {
+  "method": "POST",
+  "path": "/cart/add",
+  "statusCode": 200,
+  "duration": "27ms",
+  "requestId": "04c2156b-727f-4d63-ad6c-ddb05ee804b1",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/cart/add [32m200[0m 25.779 ms - 765[0m
+[90mDEBUG[0m [2026-04-09T18:20:26.815Z] [35ab493a-c39b-4c7f-a957-8df53a4628fd] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/cart/add",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "35ab493a-c39b-4c7f-a957-8df53a4628fd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:26.843Z] [35ab493a-c39b-4c7f-a957-8df53a4628fd] API Request Completed {
+  "method": "POST",
+  "path": "/cart/add",
+  "statusCode": 200,
+  "duration": "28ms",
+  "requestId": "35ab493a-c39b-4c7f-a957-8df53a4628fd",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/cart/add [32m200[0m 15.229 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:37.842Z] [31110657-f7f6-48bf-af06-6da56679385f] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "31110657-f7f6-48bf-af06-6da56679385f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:37.850Z] [31110657-f7f6-48bf-af06-6da56679385f] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "8ms",
+  "requestId": "31110657-f7f6-48bf-af06-6da56679385f",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 6.104 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:39.986Z] [85df6f58-cab3-452f-9373-a8a3cd277730] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/item/69d7ede89e5af6fb406988be",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "85df6f58-cab3-452f-9373-a8a3cd277730",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:39.988Z] [85df6f58-cab3-452f-9373-a8a3cd277730] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/item/69d7ede89e5af6fb406988be",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "85df6f58-cab3-452f-9373-a8a3cd277730",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/item/69d7ede89e5af6fb406988be [32m204[0m 0.256 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:39.991Z] [d8d238cf-200a-47c1-8935-3808f0033190] API Request Started {
+  "method": "PUT",
+  "path": "/api/v1/cart/item/69d7ede89e5af6fb406988be",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "d8d238cf-200a-47c1-8935-3808f0033190",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:40.013Z] [d8d238cf-200a-47c1-8935-3808f0033190] API Request Completed {
+  "method": "PUT",
+  "path": "/cart/item/69d7ede89e5af6fb406988be",
+  "statusCode": 200,
+  "duration": "23ms",
+  "requestId": "d8d238cf-200a-47c1-8935-3808f0033190",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPUT /api/v1/cart/item/69d7ede89e5af6fb406988be [32m200[0m 20.307 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:40.018Z] [7d574f63-b784-4b74-8248-e2753e71763d] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "7d574f63-b784-4b74-8248-e2753e71763d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:40.019Z] [7d574f63-b784-4b74-8248-e2753e71763d] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "7d574f63-b784-4b74-8248-e2753e71763d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.238 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:40.022Z] [ec98bd41-1c32-4376-832d-efa0a6676629] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ec98bd41-1c32-4376-832d-efa0a6676629",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:40.031Z] [ec98bd41-1c32-4376-832d-efa0a6676629] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 200,
+  "duration": "9ms",
+  "requestId": "ec98bd41-1c32-4376-832d-efa0a6676629",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [32m200[0m 7.311 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:40.036Z] [fa3f1de9-a0c5-44d7-9fbb-103f2498e7c9] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "fa3f1de9-a0c5-44d7-9fbb-103f2498e7c9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:40.038Z] [fa3f1de9-a0c5-44d7-9fbb-103f2498e7c9] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "fa3f1de9-a0c5-44d7-9fbb-103f2498e7c9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/coupon [32m204[0m 0.247 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:40.042Z] [e3e52008-b717-4d2a-8efe-7808e1319130] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "e3e52008-b717-4d2a-8efe-7808e1319130",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:40.051Z] [e3e52008-b717-4d2a-8efe-7808e1319130] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 200,
+  "duration": "10ms",
+  "requestId": "e3e52008-b717-4d2a-8efe-7808e1319130",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [32m200[0m 8.181 ms - 61[0m
+[90mDEBUG[0m [2026-04-09T18:20:40.982Z] [b2d12c09-9583-4797-9a8e-321bf76e3253] API Request Started {
+  "method": "PUT",
+  "path": "/api/v1/cart/item/69d7ede89e5af6fb406988be",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "b2d12c09-9583-4797-9a8e-321bf76e3253",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:41.002Z] [b2d12c09-9583-4797-9a8e-321bf76e3253] API Request Completed {
+  "method": "PUT",
+  "path": "/cart/item/69d7ede89e5af6fb406988be",
+  "statusCode": 200,
+  "duration": "20ms",
+  "requestId": "b2d12c09-9583-4797-9a8e-321bf76e3253",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPUT /api/v1/cart/item/69d7ede89e5af6fb406988be [32m200[0m 17.665 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:41.009Z] [d7097dd0-6a16-4504-bd6b-be061c37d9b6] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "d7097dd0-6a16-4504-bd6b-be061c37d9b6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:41.019Z] [d7097dd0-6a16-4504-bd6b-be061c37d9b6] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 200,
+  "duration": "9ms",
+  "requestId": "d7097dd0-6a16-4504-bd6b-be061c37d9b6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [32m200[0m 7.585 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:41.026Z] [81197491-b842-4f87-892a-20843df86de5] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "81197491-b842-4f87-892a-20843df86de5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:41.033Z] [81197491-b842-4f87-892a-20843df86de5] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "7ms",
+  "requestId": "81197491-b842-4f87-892a-20843df86de5",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 6.353 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:46.161Z] [bde7cae7-a15f-4664-9432-23b98954bfd4] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/item/69d7edea9e5af6fb406988ca",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "bde7cae7-a15f-4664-9432-23b98954bfd4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:46.172Z] [bde7cae7-a15f-4664-9432-23b98954bfd4] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/item/69d7edea9e5af6fb406988ca",
+  "statusCode": 204,
+  "duration": "11ms",
+  "requestId": "bde7cae7-a15f-4664-9432-23b98954bfd4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/item/69d7edea9e5af6fb406988ca [32m204[0m 0.192 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:46.175Z] [d6d537ce-0fc7-4120-8fe3-b6d660e5ed0b] API Request Started {
+  "method": "DELETE",
+  "path": "/api/v1/cart/item/69d7edea9e5af6fb406988ca",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "d6d537ce-0fc7-4120-8fe3-b6d660e5ed0b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:46.191Z] [d6d537ce-0fc7-4120-8fe3-b6d660e5ed0b] API Request Completed {
+  "method": "DELETE",
+  "path": "/cart/item/69d7edea9e5af6fb406988ca",
+  "statusCode": 200,
+  "duration": "16ms",
+  "requestId": "d6d537ce-0fc7-4120-8fe3-b6d660e5ed0b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mDELETE /api/v1/cart/item/69d7edea9e5af6fb406988ca [32m200[0m 13.999 ms - 769[0m
+[90mDEBUG[0m [2026-04-09T18:20:46.195Z] [fe490226-2bae-4748-ae65-b2e4729fda3e] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "fe490226-2bae-4748-ae65-b2e4729fda3e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:46.196Z] [fe490226-2bae-4748-ae65-b2e4729fda3e] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "fe490226-2bae-4748-ae65-b2e4729fda3e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.158 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:46.198Z] [ca5c7ea9-5748-4f4e-849b-649be3ab18c7] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ca5c7ea9-5748-4f4e-849b-649be3ab18c7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:46.207Z] [ca5c7ea9-5748-4f4e-849b-649be3ab18c7] API Request Completed {
+  "method": "GET",
+  "path": "/cart",
+  "statusCode": 200,
+  "duration": "9ms",
+  "requestId": "ca5c7ea9-5748-4f4e-849b-649be3ab18c7",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart [32m200[0m 7.162 ms - 739[0m
+[90mDEBUG[0m [2026-04-09T18:20:46.212Z] [befabab4-cd8e-4dea-aff6-614e1404582b] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "befabab4-cd8e-4dea-aff6-614e1404582b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:46.213Z] [befabab4-cd8e-4dea-aff6-614e1404582b] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart/coupon",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "befabab4-cd8e-4dea-aff6-614e1404582b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart/coupon [32m204[0m 0.228 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:46.216Z] [55b301ac-e382-4019-a8cb-0843da535c62] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/cart/coupon",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "55b301ac-e382-4019-a8cb-0843da535c62",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:46.224Z] [55b301ac-e382-4019-a8cb-0843da535c62] API Request Completed {
+  "method": "GET",
+  "path": "/coupon",
+  "statusCode": 304,
+  "duration": "8ms",
+  "requestId": "55b301ac-e382-4019-a8cb-0843da535c62",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/cart/coupon [36m304[0m 7.662 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:49.412Z] [52d2a628-ffa2-456b-8b28-0bb42c43f22c] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "52d2a628-ffa2-456b-8b28-0bb42c43f22c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:49.419Z] [52d2a628-ffa2-456b-8b28-0bb42c43f22c] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "7ms",
+  "requestId": "52d2a628-ffa2-456b-8b28-0bb42c43f22c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 5.694 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:20:53.792Z] [cbb3a212-7009-41ae-b699-7345542a0fc4] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/orders",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "cbb3a212-7009-41ae-b699-7345542a0fc4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:53.794Z] [cbb3a212-7009-41ae-b699-7345542a0fc4] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/orders",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "cbb3a212-7009-41ae-b699-7345542a0fc4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/orders [32m204[0m 0.295 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:53.797Z] [744d4883-622f-45ce-869d-300fe3582313] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/orders",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "744d4883-622f-45ce-869d-300fe3582313",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:53.838Z] [744d4883-622f-45ce-869d-300fe3582313] API Request Completed {
+  "method": "POST",
+  "path": "/orders",
+  "statusCode": 201,
+  "duration": "41ms",
+  "requestId": "744d4883-622f-45ce-869d-300fe3582313",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/orders [32m201[0m 40.016 ms - 482[0m
+[90mDEBUG[0m [2026-04-09T18:20:53.846Z] [07ae2847-a8ef-499c-96c7-23dded631768] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/orders/ORD-1775758853808-FC74/payment",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "07ae2847-a8ef-499c-96c7-23dded631768",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:53.848Z] [07ae2847-a8ef-499c-96c7-23dded631768] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/orders/ORD-1775758853808-FC74/payment",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "07ae2847-a8ef-499c-96c7-23dded631768",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/orders/ORD-1775758853808-FC74/payment [32m204[0m 0.296 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:53.854Z] [034d69fb-4ba8-4d18-aa0e-2ff26bca58b9] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/orders/ORD-1775758853808-FC74/payment",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "034d69fb-4ba8-4d18-aa0e-2ff26bca58b9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:54.103Z] [034d69fb-4ba8-4d18-aa0e-2ff26bca58b9] API Request Completed {
+  "method": "POST",
+  "path": "/orders/ORD-1775758853808-FC74/payment",
+  "statusCode": 200,
+  "duration": "249ms",
+  "requestId": "034d69fb-4ba8-4d18-aa0e-2ff26bca58b9",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/orders/ORD-1775758853808-FC74/payment [32m200[0m 248.513 ms - 133[0m
+[90mDEBUG[0m [2026-04-09T18:20:54.145Z] [611961a4-6464-4980-8d7e-1a594d2baa87] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "611961a4-6464-4980-8d7e-1a594d2baa87",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:54.147Z] [611961a4-6464-4980-8d7e-1a594d2baa87] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/cart",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "611961a4-6464-4980-8d7e-1a594d2baa87",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/cart [32m204[0m 0.330 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:20:54.151Z] [7f114a9b-3dd5-41b9-921b-9e27234002d6] API Request Started {
+  "method": "DELETE",
+  "path": "/api/v1/cart",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "7f114a9b-3dd5-41b9-921b-9e27234002d6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:54.188Z] [7f114a9b-3dd5-41b9-921b-9e27234002d6] API Request Completed {
+  "method": "DELETE",
+  "path": "/cart",
+  "statusCode": 200,
+  "duration": "37ms",
+  "requestId": "7f114a9b-3dd5-41b9-921b-9e27234002d6",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mDELETE /api/v1/cart [32m200[0m 36.004 ms - 300[0m
+[90mDEBUG[0m [2026-04-09T18:20:54.340Z] [e12e8e23-b4ab-4dbb-be4e-e8dd4e3f4412] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "e12e8e23-b4ab-4dbb-be4e-e8dd4e3f4412",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:20:54.345Z] [e12e8e23-b4ab-4dbb-be4e-e8dd4e3f4412] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "5ms",
+  "requestId": "e12e8e23-b4ab-4dbb-be4e-e8dd4e3f4412",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 3.453 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:12.174Z] [590ed239-fe09-452f-9d8e-66e06ee1e496] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "590ed239-fe09-452f-9d8e-66e06ee1e496",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:21:12.180Z] [3b352588-8c84-48da-9706-ce1281e4cf59] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/orders",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "3b352588-8c84-48da-9706-ce1281e4cf59",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:12.189Z] [3b352588-8c84-48da-9706-ce1281e4cf59] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "15ms",
+  "requestId": "590ed239-fe09-452f-9d8e-66e06ee1e496",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 14.070 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:12.192Z] [0426901f-5d6b-4ffa-bc0f-22cc6fea53c4] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/users/profile",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "0426901f-5d6b-4ffa-bc0f-22cc6fea53c4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:21:12.200Z] [ba454e11-5e00-4737-8fc9-efcda3c75ffe] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ba454e11-5e00-4737-8fc9-efcda3c75ffe",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:12.205Z] [ba454e11-5e00-4737-8fc9-efcda3c75ffe] API Request Completed {
+  "method": "GET",
+  "path": "/users/profile",
+  "statusCode": 200,
+  "duration": "13ms",
+  "requestId": "0426901f-5d6b-4ffa-bc0f-22cc6fea53c4",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/users/profile?userId=69bbc4af3ec07945fb4868cc [32m200[0m 11.643 ms - 285[0m
+[36mINFO [0m [2026-04-09T18:21:12.208Z] [ba454e11-5e00-4737-8fc9-efcda3c75ffe] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "8ms",
+  "requestId": "ba454e11-5e00-4737-8fc9-efcda3c75ffe",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 6.287 ms - -[0m
+[36mINFO [0m [2026-04-09T18:21:12.210Z] [ba454e11-5e00-4737-8fc9-efcda3c75ffe] API Request Completed {
+  "method": "GET",
+  "path": "/orders",
+  "statusCode": 200,
+  "duration": "30ms",
+  "requestId": "3b352588-8c84-48da-9706-ce1281e4cf59",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/orders?userId=69bbc4af3ec07945fb4868cc [32m200[0m 17.497 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:12.212Z] [23a7c71c-41de-46a3-aa7d-a1e8adc2e8cc] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "23a7c71c-41de-46a3-aa7d-a1e8adc2e8cc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:21:12.218Z] [d46b82ef-a714-46fe-9956-fdfda4ee820e] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/users/profile",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "d46b82ef-a714-46fe-9956-fdfda4ee820e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:21:12.221Z] [ca36ac05-48c2-435a-b616-cb0a02e417ac] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/orders",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ca36ac05-48c2-435a-b616-cb0a02e417ac",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:12.228Z] [ca36ac05-48c2-435a-b616-cb0a02e417ac] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "16ms",
+  "requestId": "23a7c71c-41de-46a3-aa7d-a1e8adc2e8cc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 14.986 ms - -[0m
+[36mINFO [0m [2026-04-09T18:21:12.233Z] [ca36ac05-48c2-435a-b616-cb0a02e417ac] API Request Completed {
+  "method": "GET",
+  "path": "/users/profile",
+  "statusCode": 304,
+  "duration": "15ms",
+  "requestId": "d46b82ef-a714-46fe-9956-fdfda4ee820e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/users/profile?userId=69bbc4af3ec07945fb4868cc [36m304[0m 12.218 ms - -[0m
+[36mINFO [0m [2026-04-09T18:21:12.237Z] [ca36ac05-48c2-435a-b616-cb0a02e417ac] API Request Completed {
+  "method": "GET",
+  "path": "/orders",
+  "statusCode": 304,
+  "duration": "16ms",
+  "requestId": "ca36ac05-48c2-435a-b616-cb0a02e417ac",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/orders?userId=69bbc4af3ec07945fb4868cc [36m304[0m 14.768 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:21.124Z] [fab477d8-8d2f-4db5-85be-2edbc0fa36fc] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/orders/ORD-1775758853808-FC74/cancel",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "fab477d8-8d2f-4db5-85be-2edbc0fa36fc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:21.126Z] [fab477d8-8d2f-4db5-85be-2edbc0fa36fc] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/orders/ORD-1775758853808-FC74/cancel",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "fab477d8-8d2f-4db5-85be-2edbc0fa36fc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/orders/ORD-1775758853808-FC74/cancel [32m204[0m 0.346 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:21:21.128Z] [868a148b-545e-4629-b76e-677d56144431] API Request Started {
+  "method": "PUT",
+  "path": "/api/v1/orders/ORD-1775758853808-FC74/cancel",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "868a148b-545e-4629-b76e-677d56144431",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:21.144Z] [868a148b-545e-4629-b76e-677d56144431] API Request Completed {
+  "method": "PUT",
+  "path": "/orders/ORD-1775758853808-FC74/cancel",
+  "statusCode": 200,
+  "duration": "16ms",
+  "requestId": "868a148b-545e-4629-b76e-677d56144431",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPUT /api/v1/orders/ORD-1775758853808-FC74/cancel [32m200[0m 14.780 ms - 81[0m
+[90mDEBUG[0m [2026-04-09T18:21:21.149Z] [a6641c31-dc31-451e-928f-ee453d1f496b] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/orders",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "a6641c31-dc31-451e-928f-ee453d1f496b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:21.157Z] [a6641c31-dc31-451e-928f-ee453d1f496b] API Request Completed {
+  "method": "GET",
+  "path": "/orders",
+  "statusCode": 200,
+  "duration": "8ms",
+  "requestId": "a6641c31-dc31-451e-928f-ee453d1f496b",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/orders?userId=69bbc4af3ec07945fb4868cc [32m200[0m 5.632 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.301Z] [59738ef2-495b-49b9-85b5-be63dd63fa88] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/wishlist",
+  "query": {
+    "userId": "69bbc4af3ec07945fb4868cc"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "59738ef2-495b-49b9-85b5-be63dd63fa88",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.308Z] [59738ef2-495b-49b9-85b5-be63dd63fa88] API Request Completed {
+  "method": "GET",
+  "path": "/wishlist",
+  "statusCode": 304,
+  "duration": "7ms",
+  "requestId": "59738ef2-495b-49b9-85b5-be63dd63fa88",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/wishlist?userId=69bbc4af3ec07945fb4868cc [36m304[0m 5.257 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.322Z] [0fcf21af-f719-435e-99bd-348499479c5c] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "0fcf21af-f719-435e-99bd-348499479c5c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.324Z] [0fcf21af-f719-435e-99bd-348499479c5c] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "0fcf21af-f719-435e-99bd-348499479c5c",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products/69d7e7a30b0889b31aec6712 [32m204[0m 0.393 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.327Z] [d9885f32-26b7-406a-8274-01508f4213cc] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "d9885f32-26b7-406a-8274-01508f4213cc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.329Z] [d9885f32-26b7-406a-8274-01508f4213cc] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "d9885f32-26b7-406a-8274-01508f4213cc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?featured=true&limit=4 [32m204[0m 0.406 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.331Z] [e528c04b-eaa1-4ade-9212-64283d5e1653] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "e528c04b-eaa1-4ade-9212-64283d5e1653",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.332Z] [e528c04b-eaa1-4ade-9212-64283d5e1653] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "e528c04b-eaa1-4ade-9212-64283d5e1653",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?category=most-desired&limit=4 [32m204[0m 0.289 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.335Z] [2ab68cee-2d61-49a0-b0b0-0b0621af13eb] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "2ab68cee-2d61-49a0-b0b0-0b0621af13eb",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.339Z] [2ab68cee-2d61-49a0-b0b0-0b0621af13eb] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "4ms",
+  "requestId": "2ab68cee-2d61-49a0-b0b0-0b0621af13eb",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?featured=true&limit=4 [32m204[0m 0.269 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.341Z] [70072481-74f6-48e1-9dba-83594c13e42d] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "70072481-74f6-48e1-9dba-83594c13e42d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.343Z] [70072481-74f6-48e1-9dba-83594c13e42d] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 204,
+  "duration": "2ms",
+  "requestId": "70072481-74f6-48e1-9dba-83594c13e42d",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products/69d7e7a30b0889b31aec6712 [32m204[0m 0.244 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.345Z] [ad089865-4567-4caf-8500-071cfaccd258] API Request Started {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "ad089865-4567-4caf-8500-071cfaccd258",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.346Z] [ad089865-4567-4caf-8500-071cfaccd258] API Request Completed {
+  "method": "OPTIONS",
+  "path": "/api/v1/products",
+  "statusCode": 204,
+  "duration": "1ms",
+  "requestId": "ad089865-4567-4caf-8500-071cfaccd258",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mOPTIONS /api/v1/products?category=most-desired&limit=4 [32m204[0m 0.177 ms - 0[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.348Z] [bf49f4e6-e71f-44f1-a023-b74ae4542447] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "bf49f4e6-e71f-44f1-a023-b74ae4542447",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:21:25.352Z] [c4eef408-7861-4e8a-a9ad-59a766c877da] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "c4eef408-7861-4e8a-a9ad-59a766c877da",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[90mDEBUG[0m [2026-04-09T18:21:25.356Z] [102a24d9-93e5-40d0-97d8-bb13ec1e35fc] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "102a24d9-93e5-40d0-97d8-bb13ec1e35fc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.483Z] [102a24d9-93e5-40d0-97d8-bb13ec1e35fc] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "127ms",
+  "requestId": "102a24d9-93e5-40d0-97d8-bb13ec1e35fc",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=most-desired&limit=4 [36m304[0m 125.075 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.509Z] [6d0d1077-3e02-419c-be79-2657ae7d01f8] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "category": "most-desired",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "6d0d1077-3e02-419c-be79-2657ae7d01f8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.515Z] [6d0d1077-3e02-419c-be79-2657ae7d01f8] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 200,
+  "duration": "163ms",
+  "requestId": "c4eef408-7861-4e8a-a9ad-59a766c877da",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?featured=true&limit=4 [32m200[0m 117.986 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.566Z] [f90887cc-f5ff-4b1b-9f25-edc52c3517ac] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products",
+  "query": {
+    "featured": "true",
+    "limit": "4"
+  },
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "f90887cc-f5ff-4b1b-9f25-edc52c3517ac",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.620Z] [f90887cc-f5ff-4b1b-9f25-edc52c3517ac] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "111ms",
+  "requestId": "6d0d1077-3e02-419c-be79-2657ae7d01f8",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?category=most-desired&limit=4 [36m304[0m 108.209 ms - -[0m
+[36mINFO [0m [2026-04-09T18:21:25.626Z] [f90887cc-f5ff-4b1b-9f25-edc52c3517ac] API Request Completed {
+  "method": "GET",
+  "path": "/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 200,
+  "duration": "278ms",
+  "requestId": "bf49f4e6-e71f-44f1-a023-b74ae4542447",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7e7a30b0889b31aec6712 [32m200[0m 190.077 ms - -[0m
+[90mDEBUG[0m [2026-04-09T18:21:25.646Z] [cb1bcee9-9545-4848-96b8-34ba97807a40] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/products/69d7e7a30b0889b31aec6712",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+  "ip": "::1",
+  "requestId": "cb1bcee9-9545-4848-96b8-34ba97807a40",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-09T18:21:25.667Z] [cb1bcee9-9545-4848-96b8-34ba97807a40] API Request Completed {
+  "method": "GET",
+  "path": "/products",
+  "statusCode": 304,
+  "duration": "102ms",
+  "requestId": "f90887cc-f5ff-4b1b-9f25-edc52c3517ac",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products?featured=true&limit=4 [36m304[0m 99.931 ms - -[0m
+[36mINFO [0m [2026-04-09T18:21:25.712Z] [cb1bcee9-9545-4848-96b8-34ba97807a40] API Request Completed {
+  "method": "GET",
+  "path": "/products/69d7e7a30b0889b31aec6712",
+  "statusCode": 304,
+  "duration": "66ms",
+  "requestId": "cb1bcee9-9545-4848-96b8-34ba97807a40",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/products/69d7e7a30b0889b31aec6712 [36m304[0m 64.141 ms - -[0m

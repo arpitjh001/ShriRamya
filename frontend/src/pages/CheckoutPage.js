@@ -57,6 +57,13 @@ const CheckoutPage = () => {
     });
   };
 
+  const finalizeOrder = async (orderId, paymentPayload) => {
+    await ordersAPI.confirmPayment(orderId, paymentPayload);
+    await clearCart();
+    toast.success('Order placed successfully!');
+    navigate(`/order-success/${orderId}`);
+  };
+
   const handlePayment = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -86,7 +93,25 @@ const CheckoutPage = () => {
       };
 
       const orderResponse = await ordersAPI.create(orderData);
-      const { order_id, razorpay_order_id, amount, razorpay_key_id } = orderResponse.data;
+      const orderId = orderResponse.data?.order_id || orderResponse.data?.orderId;
+      const razorpayOrderId = orderResponse.data?.razorpay_order_id || orderResponse.data?.razorpayOrderId;
+      const amount = orderResponse.data?.amount;
+      const razorpayKeyId = orderResponse.data?.razorpay_key_id || orderResponse.data?.key;
+      const isMockPayment = Boolean(orderResponse.data?.is_mock || orderResponse.data?.isMock || razorpayKeyId === 'rzp_test_mock_key');
+
+      if (!orderId) {
+        throw new Error('Order creation response is missing order id');
+      }
+
+      if (isMockPayment) {
+        await finalizeOrder(orderId, {
+          razorpay_payment_id: `pay_mock_${Date.now()}`,
+          razorpay_order_id: razorpayOrderId || `order_mock_${Date.now()}`,
+          razorpay_signature: 'mock_signature',
+        });
+        setLoading(false);
+        return;
+      }
 
       // Load Razorpay
       const res = await loadRazorpayScript();
@@ -97,22 +122,19 @@ const CheckoutPage = () => {
       }
 
       const options = {
-        key: razorpay_key_id,
+        key: razorpayKeyId,
         amount: amount,
         currency: 'INR',
         name: 'Shri Ramya',
         description: 'Ethnic Wear Purchase',
-        order_id: razorpay_order_id,
+        order_id: razorpayOrderId,
         handler: async (response) => {
           try {
-            await ordersAPI.confirmPayment(order_id, {
+            await finalizeOrder(orderId, {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
             });
-            await clearCart();
-            toast.success('Order placed successfully!');
-            navigate(`/order-success/${order_id}`);
           } catch (error) {
             toast.error('Payment verification failed');
           }

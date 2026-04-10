@@ -1,5 +1,6 @@
 const httpStatus = require('http-status');
 const productService = require('../services/product.service');
+const catalogReadService = require('../services/catalog-read.service');
 const { successResponse } = require('../utils/response');
 const redis = require('../config/integrations/redis');
 
@@ -60,7 +61,10 @@ const getProducts = async (req, res, next) => {
 
     // Cache miss - fetch from database
     console.log(`[ProductController] Cache miss for products: ${cacheKey} (tenant: ${tenantId})`);
-    const data = await productService.getProducts(req.query, tenantId);
+    const data = await catalogReadService.listProducts(req.query, {
+      tenantId,
+      user: req.user || null,
+    });
 
     // Store in Redis cache with TTL
     if (redis) {
@@ -80,15 +84,12 @@ const getProducts = async (req, res, next) => {
 const getProduct = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
-    const product = await productService.getProductById(req.params.product_id, tenantId);
+    const product = await catalogReadService.getProduct(req.params.product_id, {
+      tenantId,
+      user: req.user || null,
+    });
 
-    // Check for admin/editor status to allow viewing drafts
-    const isAdminOrEditor = req.user && (
-      (req.user.roles || []).some(r => ['admin', 'editor'].includes(r.toLowerCase())) ||
-      ['admin', 'editor'].includes((req.user.role || '').toLowerCase())
-    );
-
-    if (product.status !== 'published' && !isAdminOrEditor) {
+    if (!product) {
       const ApiError = require('../utils/ApiError');
       throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
     }
@@ -164,12 +165,14 @@ const assignCategoriesToProduct = async (req, res, next) => {
   try {
     const { product_id } = req.params;
     const { categoryIds } = req.body;
+    const tenantId = getTenantId(req);
 
     if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
       return res.status(400).send({ message: 'categoryIds must be a non-empty array' });
     }
 
-    const result = await productService.assignCategoriesToProduct(product_id, categoryIds);
+    const result = await productService.assignCategoriesToProduct(product_id, categoryIds, tenantId);
+    await clearProductsCache();
     return successResponse(res, result, 'Categories assigned to product successfully');
   } catch (error) {
     next(error);
@@ -179,7 +182,8 @@ const assignCategoriesToProduct = async (req, res, next) => {
 const getProductCategories = async (req, res, next) => {
   try {
     const { product_id } = req.params;
-    const categories = await productService.getProductCategories(product_id);
+    const tenantId = getTenantId(req);
+    const categories = await productService.getProductCategories(product_id, tenantId);
     return successResponse(res, categories);
   } catch (error) {
     next(error);
@@ -189,7 +193,9 @@ const getProductCategories = async (req, res, next) => {
 const removeCategoryFromProduct = async (req, res, next) => {
   try {
     const { product_id, category_id } = req.params;
-    const result = await productService.removeCategoryFromProduct(product_id, category_id);
+    const tenantId = getTenantId(req);
+    const result = await productService.removeCategoryFromProduct(product_id, category_id, tenantId);
+    await clearProductsCache();
     return successResponse(res, result, 'Category removed from product successfully');
   } catch (error) {
     next(error);

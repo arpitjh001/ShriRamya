@@ -1,30 +1,14 @@
 /**
- * Order Controller (Enhanced)
- * Complete order management with customer and admin APIs
+ * Order Controller
+ * Complete order management with Mongoose
  */
 
 const httpStatus = require('http-status');
-const { mysqlPool } = require('../config/db');
-const orderStateMachine = require('../services/orderStateMachine.service');
+const { Order, User, Product, OrderEvent } = require('../models');
 const orderEventService = require('../services/events/orderEvent.service');
-const shipmentService = require('../services/shipment.service');
-const refundService = require('../services/refund.service');
 const couponService = require('../services/coupon.service');
-const { variantInventoryService } = require('../services/variant-inventory.service');
 const { successResponse } = require('../utils/response');
-const { ORDER_STATUS } = require('../services/orderStateMachine.service');
 const ApiError = require('../utils/ApiError');
-
-/**
- * Validate ID parameter
- */
-const validateId = (id, paramName = 'ID') => {
-    const parsed = parseInt(id);
-    if (isNaN(parsed) || parsed <= 0) {
-        throw new ApiError(httpStatus.BAD_REQUEST, `Invalid ${paramName} ID`);
-    }
-    return parsed;
-};
 
 /**
  * Generate unique order number
@@ -38,293 +22,136 @@ function generateOrderNumber() {
 
 /**
  * Create Order (Customer)
- * POST /api/v1/orders
  */
 const createOrder = async (req, res, next) => {
-    const connection = await mysqlPool.getConnection();
-
     try {
-        await connection.beginTransaction();
-
         const {
             items,
             billing,
             shipping,
             paymentMethod,
             customerNotes,
-            couponCode
+            couponCode,
+            tenantId = 1
         } = req.body;
 
-        // Validate items
         if (!items || items.length === 0) {
-            throw new Error('Order items are required');
+            throw new ApiError(httpStatus.BAD_REQUEST, 'Order items are required');
         }
 
         const userId = req.user.id;
+        const user = await User.findById(userId);
 
-        // Get user details from mysql_users (MongoDB user mapping)
-        const [userRows] = await connection.query(
-            'SELECT * FROM mysql_users WHERE id = ?',
-            [userId]
-        );
-        const user = userRows[0];
+        if (!user) {
+            throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+        }
 
         // Calculate totals
         let subtotal = 0;
-        const orderItems = [];
+        const processedItems = [];
 
         for (const item of items) {
-            // Get product/variant details
-            const [productRows] = await connection.query(
-                'SELECT * FROM products WHERE id = ?',
-                [item.productId]
-            );
-
-            if (productRows.length === 0) {
-                throw new Error(`Product ${item.productId} not found`);
+            const product = await Product.findById(item.productId);
+            if (!product) {
+                throw new ApiError(httpStatus.NOT_FOUND, `Product ${item.productId} not found`);
             }
 
-            const product = productRows[0];
-            let unitPrice = product.base_price || 0;
-
-            // Get variant price if applicable
-            if (item.variantId) {
-                const [variantRows] = await connection.query(
-                    'SELECT * FROM product_variants WHERE id = ? AND product_id = ?',
-                    [item.variantId, item.productId]
-                );
-
-                if (variantRows.length > 0) {
-                    const variant = variantRows[0];
-                    unitPrice = variant.price || unitPrice;
-                }
-            }
-
+            let unitPrice = product.basePrice || 0;
+            
             const itemTotal = unitPrice * item.quantity;
             subtotal += itemTotal;
 
-            orderItems.push({
+            processedItems.push({
                 productId: item.productId,
-                variantId: item.variantId || null,
+                variantId: item.variantId,
                 productName: product.name,
                 productSku: product.sku,
                 quantity: item.quantity,
                 unitPrice,
                 subtotal: itemTotal,
-                taxAmount: itemTotal * 0.18, // 18% GST (configurable)
-                discountAmount: 0,
-                total: itemTotal,
-                variantAttributes: item.attributes || null
+                taxAmount: itemTotal * 0.18,
+                total: itemTotal
             });
         }
 
-        // ==========================================
-        // COUPON INTEGRATION
-        // ==========================================
         let discountTotal = 0;
         let appliedCouponId = null;
         let appliedCouponCode = null;
 
-        if (couponCode && couponCode.trim().length > 0) {
+        if (couponCode) {
             try {
-                // Get cart data for coupon validation
-                const cartData = {
-                    subtotal: subtotal,
-                    items: orderItems.map(item => ({
-                        product_id: item.productId,
-                        category_ids: [],
-                        price: item.unitPrice,
-                        quantity: item.quantity
-                    }))
-                };
-
-                // Validate and calculate discount
                 const couponResult = await couponService.validateAndApplyCoupon(
-                    couponCode.trim(),
-                    cartData,
+                    couponCode,
+                    { subtotal, items: processedItems },
                     userId
                 );
-
                 discountTotal = couponResult.discount;
-                appliedCouponId = couponResult.coupon.id;
+                appliedCouponId = couponResult.coupon._id;
                 appliedCouponCode = couponResult.coupon.code;
-
-                console.log(`[OrderController] Coupon applied: ${appliedCouponCode}, Discount: ₹${discountTotal}`);
-            } catch (couponError) {
-                // Log warning but continue order without coupon
-                console.warn(`[OrderController] Coupon validation failed: ${couponError.message}`);
-                // Don't fail the order, just proceed without discount
+            } catch (error) {
+                console.warn('Coupon application failed:', error.message);
             }
         }
-        // ==========================================
 
-        // Calculate totals
-        const taxTotal = orderItems.reduce((sum, item) => sum + item.taxAmount, 0);
-        const shippingCost = subtotal > 5000 ? 0 : 100; // Free shipping above 5000
-        
-        // Apply free shipping coupon if applicable
-        let finalShippingCost = shippingCost;
-        if (appliedCouponCode) {
-            const [couponRows] = await connection.query(
-                'SELECT type FROM coupons WHERE code = ? AND status = "active"',
-                [appliedCouponCode]
-            );
-            if (couponRows.length > 0 && couponRows[0].type === 'free_shipping') {
-                finalShippingCost = 0;
-            }
-        }
-        
-        const grandTotal = subtotal - discountTotal + taxTotal + finalShippingCost;
+        const taxTotal = processedItems.reduce((sum, i) => sum + i.taxAmount, 0);
+        const shippingCost = subtotal > 5000 ? 0 : 100;
+        const grandTotal = subtotal - discountTotal + taxTotal + shippingCost;
 
-        // Generate order number
-        const orderNumber = generateOrderNumber();
-
-        // Create order
-        const [orderResult] = await connection.query(
-            `INSERT INTO orders
-            (user_id, order_number, status, payment_status, fulfillment_status,
-             subtotal, discount_total, tax_total, shipping_cost, grand_total, final_total,
-             coupon_id, coupon_code,
-             payment_method, customer_email, customer_phone,
-             billing_first_name, billing_last_name, billing_address_1, billing_address_2,
-             billing_city, billing_state, billing_postcode, billing_country,
-             shipping_first_name, shipping_last_name, shipping_address_1, shipping_address_2,
-             shipping_city, shipping_state, shipping_postcode, shipping_country,
-             customer_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                userId,
-                orderNumber,
-                ORDER_STATUS.PENDING_PAYMENT,
-                'pending',
-                'unfulfilled',
-                subtotal,
-                discountTotal,
-                taxTotal,
-                finalShippingCost,
-                grandTotal,
-                grandTotal, // final_total
-                appliedCouponId,
-                appliedCouponCode,
-                paymentMethod || 'cod',
-                user.email,
-                user.phone || billing.phone,
-                billing.firstName,
-                billing.lastName,
-                billing.address1,
-                billing.address2 || null,
-                billing.city,
-                billing.state,
-                billing.postcode,
-                billing.country || 'IN',
-                shipping.firstName,
-                shipping.lastName,
-                shipping.address1,
-                shipping.address2 || null,
-                shipping.city,
-                shipping.state,
-                shipping.postcode,
-                shipping.country || 'IN',
-                customerNotes || null
-            ]
-        );
-
-        const orderId = orderResult.insertId;
-
-        // Create order items
-        for (const item of orderItems) {
-            await connection.query(
-                `INSERT INTO order_items 
-                (order_id, product_id, variant_id, product_name, product_sku,
-                 quantity, unit_price, subtotal, tax_amount, discount_amount, total,
-                 variant_attributes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    orderId,
-                    item.productId,
-                    item.variantId,
-                    item.productName,
-                    item.productSku,
-                    item.quantity,
-                    item.unitPrice,
-                    item.subtotal,
-                    item.taxAmount,
-                    item.discountAmount,
-                    item.total,
-                    item.variantAttributes ? JSON.stringify(item.variantAttributes) : null
-                ]
-            );
-
-            // Reserve inventory
-            if (item.variantId) {
-                await connection.query(
-                    `INSERT INTO inventory_reservations 
-                    (order_id, variant_id, quantity, status, expires_at)
-                    VALUES (?, ?, ?, 'reserved', DATE_ADD(NOW(), INTERVAL 30 MINUTE))`,
-                    [orderId, item.variantId, item.quantity]
-                );
-            }
-        }
+        const order = await Order.create({
+            userId,
+            tenantId,
+            orderNumber: generateOrderNumber(),
+            status: 'pending',
+            paymentStatus: 'pending',
+            fulfillmentStatus: 'unfulfilled',
+            items: processedItems,
+            subtotal,
+            discountTotal,
+            taxTotal,
+            shippingCost,
+            grandTotal,
+            finalTotal: grandTotal,
+            couponId: appliedCouponId,
+            couponCode: appliedCouponCode,
+            paymentMethod: paymentMethod || 'cod',
+            customerEmail: user.email,
+            customerPhone: user.phone || (billing ? billing.phone : ''),
+            billing,
+            shipping,
+            customerNotes
+        });
 
         // Log order created event
         await orderEventService.logEvent(
-            orderId,
+            order._id,
             'order_created',
-            `Order ${orderNumber} created`,
-            { grandTotal, itemCount: items.length },
+            `Order ${order.orderNumber} created`,
+            { grandTotal },
             userId,
-            'customer',
-            connection
+            'customer'
         );
-
-        await connection.commit();
-
-        // Get full order details
-        const order = await getFullOrder(orderId);
 
         return successResponse(res, order, 'Order created successfully', httpStatus.CREATED);
     } catch (error) {
-        await connection.rollback();
         next(error);
-    } finally {
-        connection.release();
     }
 };
 
 /**
  * Get Customer Orders
- * GET /api/v1/my/orders
  */
 const getCustomerOrders = async (req, res, next) => {
     try {
         const { page = 1, limit = 10, status } = req.query;
-        const userId = req.user.id;
+        const filter = { userId: req.user.id };
+        if (status) filter.status = status;
 
-        const offset = (page - 1) * limit;
-        let whereClause = 'user_id = ?';
-        const params = [userId];
+        const orders = await Order.find(filter)
+            .sort({ created_at: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
 
-        if (status) {
-            whereClause += ' AND status = ?';
-            params.push(status);
-        }
-
-        // Get total count
-        const [countRows] = await mysqlPool.query(
-            `SELECT COUNT(*) as count FROM orders WHERE ${whereClause}`,
-            params
-        );
-        const total = countRows[0].count;
-
-        // Get orders
-        params.push(parseInt(limit), parseInt(offset));
-        const [orders] = await mysqlPool.query(
-            `SELECT * FROM orders 
-             WHERE ${whereClause} 
-             ORDER BY created_at DESC 
-             LIMIT ? OFFSET ?`,
-            params
-        );
+        const total = await Order.countDocuments(filter);
 
         return successResponse(res, {
             orders,
@@ -341,19 +168,17 @@ const getCustomerOrders = async (req, res, next) => {
 };
 
 /**
- * Get Order Details (Customer/Admin)
- * GET /api/v1/orders/:id
+ * Get Order Details
  */
 const getOrder = async (req, res, next) => {
     try {
-        const orderId = validateId(req.params.id, 'Order');
-        const order = await getFullOrder(orderId);
+        const order = await Order.findById(req.params.id);
+        if (!order) {
+            throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+        }
 
-        // Check authorization
-        if (req.user.role !== 'admin' && order.user_id !== req.user.id) {
-            const error = new Error('Not authorized to view this order');
-            error.statusCode = httpStatus.FORBIDDEN;
-            throw error;
+        if (req.user.role !== 'admin' && order.userId.toString() !== req.user.id) {
+            throw new ApiError(httpStatus.FORBIDDEN, 'Not authorized');
         }
 
         return successResponse(res, order);
@@ -364,38 +189,33 @@ const getOrder = async (req, res, next) => {
 
 /**
  * Cancel Order (Customer)
- * POST /api/v1/my/orders/:id/cancel
  */
 const cancelOrder = async (req, res, next) => {
     try {
-        const orderId = validateId(req.params.id, 'Order');
-        const { reason } = req.body;
-        const userId = req.user.id;
+        const order = await Order.findById(req.params.id);
+        if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
 
-        // Get order
-        const order = await orderStateMachine.getOrder(orderId);
-        
-        if (!order) {
-            const error = new Error('Order not found');
-            error.statusCode = httpStatus.NOT_FOUND;
-            throw error;
+        if (order.userId.toString() !== req.user.id) {
+            throw new ApiError(httpStatus.FORBIDDEN, 'Not authorized');
         }
 
-        // Check ownership
-        if (order.user_id !== userId) {
-            const error = new Error('Not authorized to cancel this order');
-            error.statusCode = httpStatus.FORBIDDEN;
-            throw error;
+        if (['shipped', 'delivered', 'cancelled'].includes(order.status)) {
+            throw new ApiError(httpStatus.BAD_REQUEST, `Cannot cancel order in ${order.status} status`);
         }
 
-        // Cancel order
-        const updatedOrder = await orderStateMachine.cancelOrder(orderId, {
-            userId,
-            userType: 'customer',
-            reason: reason || 'Customer requested cancellation'
-        });
+        order.status = 'cancelled';
+        await order.save();
 
-        return successResponse(res, updatedOrder, 'Order cancelled successfully');
+        await orderEventService.logEvent(
+            order._id,
+            'order_cancelled',
+            req.body.reason || 'Cancelled by customer',
+            {},
+            req.user.id,
+            'customer'
+        );
+
+        return successResponse(res, order, 'Order cancelled');
     } catch (error) {
         next(error);
     }
@@ -403,72 +223,26 @@ const cancelOrder = async (req, res, next) => {
 
 /**
  * Get All Orders (Admin)
- * GET /api/v1/admin/orders
  */
 const getAllOrders = async (req, res, next) => {
     try {
-        const {
-            page = 1,
-            limit = 20,
-            status,
-            paymentStatus,
-            fulfillmentStatus,
-            startDate,
-            endDate,
-            search
-        } = req.query;
+        const { page = 1, limit = 20, status, tenantId } = req.query;
+        const filter = {};
+        if (status) filter.status = status;
+        if (tenantId) filter.tenantId = tenantId;
 
-        const offset = (page - 1) * limit;
-        let whereClause = '1=1';
-        const params = [];
+        const orders = await Order.find(filter)
+            .sort({ created_at: -1 })
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
 
-        if (status) {
-            whereClause += ' AND status = ?';
-            params.push(status);
-        }
-        if (paymentStatus) {
-            whereClause += ' AND payment_status = ?';
-            params.push(paymentStatus);
-        }
-        if (fulfillmentStatus) {
-            whereClause += ' AND fulfillment_status = ?';
-            params.push(fulfillmentStatus);
-        }
-        if (startDate) {
-            whereClause += ' AND created_at >= ?';
-            params.push(startDate);
-        }
-        if (endDate) {
-            whereClause += ' AND created_at <= ?';
-            params.push(endDate);
-        }
-        if (search) {
-            whereClause += ' AND (order_number LIKE ? OR customer_email LIKE ?)';
-            params.push(`%${search}%`, `%${search}%`);
-        }
-
-        // Get total count
-        const [countRows] = await mysqlPool.query(
-            `SELECT COUNT(*) as count FROM orders WHERE ${whereClause}`,
-            params
-        );
-        const total = countRows[0].count;
-
-        // Get orders
-        params.push(parseInt(limit), parseInt(offset));
-        const [orders] = await mysqlPool.query(
-            `SELECT * FROM orders 
-             WHERE ${whereClause} 
-             ORDER BY created_at DESC 
-             LIMIT ? OFFSET ?`,
-            params
-        );
+        const total = await Order.countDocuments(filter);
 
         return successResponse(res, {
             orders,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
+            pagination: { 
+                page: parseInt(page), 
+                limit: parseInt(limit), 
                 total,
                 totalPages: Math.ceil(total / limit)
             }
@@ -480,37 +254,29 @@ const getAllOrders = async (req, res, next) => {
 
 /**
  * Update Order Status (Admin)
- * PATCH /api/v1/admin/orders/:id/status
  */
 const updateOrderStatus = async (req, res, next) => {
     try {
-        const orderId = validateId(req.params.id, 'Order');
-        const { status, paymentStatus, fulfillmentStatus, reason } = req.body;
-        const userId = req.user.id;
+        const { status, paymentStatus, fulfillmentStatus } = req.body;
+        const order = await Order.findById(req.params.id);
+        if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
 
-        let updatedOrder;
+        if (status) order.status = status;
+        if (paymentStatus) order.paymentStatus = paymentStatus;
+        if (fulfillmentStatus) order.fulfillmentStatus = fulfillmentStatus;
 
-        if (status) {
-            updatedOrder = await orderStateMachine.transitionStatus(orderId, status, {
-                userId,
-                userType: 'admin',
-                reason
-            });
-        } else if (paymentStatus) {
-            updatedOrder = await orderStateMachine.transitionPaymentStatus(orderId, paymentStatus, {
-                userId,
-                userType: 'admin',
-                reason
-            });
-        } else if (fulfillmentStatus) {
-            updatedOrder = await orderStateMachine.transitionFulfillmentStatus(orderId, fulfillmentStatus, {
-                userId,
-                userType: 'admin',
-                reason
-            });
-        }
+        await order.save();
 
-        return successResponse(res, updatedOrder, 'Order status updated successfully');
+        await orderEventService.logEvent(
+            order._id,
+            'order_updated',
+            `Status updated to ${status || order.status}`,
+            req.body,
+            req.user.id,
+            'admin'
+        );
+
+        return successResponse(res, order, 'Order updated');
     } catch (error) {
         next(error);
     }
@@ -518,93 +284,32 @@ const updateOrderStatus = async (req, res, next) => {
 
 /**
  * Get Order Analytics (Admin)
- * GET /api/v1/admin/analytics/orders
  */
 const getOrderAnalytics = async (req, res, next) => {
     try {
-        const { startDate, endDate } = req.query;
-        const dateFilter = startDate && endDate 
-            ? `WHERE created_at BETWEEN '${startDate}' AND '${endDate}'`
-            : '';
+        const { tenantId } = req.query;
+        const filter = tenantId ? { tenantId } : {};
 
-        // Total orders
-        const [totalOrders] = await mysqlPool.query(
-            `SELECT COUNT(*) as count FROM orders ${dateFilter}`
-        );
+        const totalOrders = await Order.countDocuments(filter);
+        const revenueResult = await Order.aggregate([
+            { $match: { ...filter, status: { $ne: 'cancelled' } } },
+            { $group: { _id: null, total: { $sum: '$grandTotal' } } }
+        ]);
 
-        // Total revenue
-        const [revenue] = await mysqlPool.query(
-            `SELECT SUM(grand_total) as total FROM orders WHERE status != 'cancelled' ${dateFilter ? 'AND ' + dateFilter.replace('WHERE', '') : ''}`
-        );
-
-        // Average order value
-        const [avgOrder] = await mysqlPool.query(
-            `SELECT AVG(grand_total) as avg FROM orders WHERE status != 'cancelled' ${dateFilter ? 'AND ' + dateFilter.replace('WHERE', '') : ''}`
-        );
-
-        // Orders by status
-        const [byStatus] = await mysqlPool.query(
-            `SELECT status, COUNT(*) as count FROM orders ${dateFilter} GROUP BY status`
-        );
-
-        // Recent orders count (last 7 days)
-        const [recentOrders] = await mysqlPool.query(
-            `SELECT COUNT(*) as count FROM orders WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`
-        );
+        const byStatus = await Order.aggregate([
+            { $match: filter },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
 
         return successResponse(res, {
-            totalOrders: totalOrders[0].count,
-            totalRevenue: parseFloat(revenue[0].total || 0),
-            averageOrderValue: parseFloat(avgOrder[0].avg || 0),
-            ordersByStatus: byStatus,
-            recentOrdersCount: recentOrders[0].count,
-            period: { startDate, endDate }
+            totalOrders,
+            totalRevenue: revenueResult.length > 0 ? revenueResult[0].total : 0,
+            ordersByStatus: byStatus
         });
     } catch (error) {
         next(error);
     }
 };
-
-/**
- * Helper: Get full order details
- */
-async function getFullOrder(orderId) {
-    const [orders] = await mysqlPool.query(
-        'SELECT * FROM orders WHERE id = ?',
-        [orderId]
-    );
-
-    if (orders.length === 0) {
-        const error = new Error('Order not found');
-        error.statusCode = httpStatus.NOT_FOUND;
-        throw error;
-    }
-
-    const order = orders[0];
-
-    // Get order items
-    const [items] = await mysqlPool.query(
-        'SELECT * FROM order_items WHERE order_id = ?',
-        [orderId]
-    );
-
-    // Get order events
-    const events = await orderEventService.getOrderTimeline(orderId);
-
-    // Get shipments
-    const shipments = await shipmentService.getOrderShipments(orderId);
-
-    // Get refunds
-    const refunds = await refundService.getOrderRefunds(orderId);
-
-    return {
-        ...order,
-        items,
-        events,
-        shipments,
-        refunds
-    };
-}
 
 module.exports = {
     createOrder,

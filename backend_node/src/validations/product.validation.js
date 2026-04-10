@@ -1,7 +1,13 @@
 const Joi = require('joi');
 
+const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+const resourceId = Joi.alternatives().try(
+  Joi.number().integer().positive(),
+  Joi.string().pattern(objectIdPattern)
+);
+
 const variantSchema = Joi.object({
-  id: Joi.number().integer().allow(null).optional(),
+  id: resourceId.allow(null).optional(),
   sku: Joi.string().allow('', null).optional(),
   price: Joi.number().min(0).optional(),
   discountPrice: Joi.number().min(0).less(Joi.ref('price')).allow(null, '').optional(),
@@ -33,7 +39,7 @@ const getProducts = {
     limit: Joi.number().integer().min(1).max(100).default(20),
     status: Joi.string().valid('draft', 'published', 'archived'),
     category: Joi.string(),
-    category_id: Joi.number().integer(),
+    category_id: resourceId,
     featured: Joi.boolean().default(false),
     search: Joi.string().allow('', null),
     sort: Joi.string(),
@@ -47,7 +53,7 @@ const getProducts = {
 
 const getProduct = {
   params: Joi.object().keys({
-    product_id: Joi.number().integer().required(),
+    product_id: resourceId.required(),
   }),
 };
 
@@ -60,11 +66,10 @@ const createProduct = {
     fabric: Joi.string().allow('', null).optional(),
     occasion: Joi.string().allow('', null).optional(),
     basePrice: Joi.number().min(0).optional(),
-    categoryId: Joi.number().integer().allow(null).optional(),
+    categoryId: resourceId.allow(null).optional(),
     categories: Joi.alternatives().try(
-      Joi.string(),
-      Joi.number(),
-      Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.number()))
+      resourceId,
+      Joi.array().items(resourceId)
     ).allow(null).optional(),
     status: Joi.string().valid('draft', 'published', 'archived').default('published'),
     attributes: Joi.array().items(Joi.object({
@@ -83,7 +88,7 @@ const createProduct = {
 
 const addVariant = {
   params: Joi.object().keys({
-    product_id: Joi.number().integer().required(),
+    product_id: resourceId.required(),
   }),
   body: variantSchema.keys({
     id: Joi.forbidden()
@@ -92,7 +97,7 @@ const addVariant = {
 
 const updateProduct = {
   params: Joi.object().keys({
-    product_id: Joi.number().integer().required(),
+    product_id: resourceId.required(),
   }),
   body: Joi.object().keys({
     name: Joi.string().optional(),
@@ -102,11 +107,10 @@ const updateProduct = {
     fabric: Joi.string().allow('', null).optional(),
     occasion: Joi.string().allow('', null).optional(),
     basePrice: Joi.number().min(0).optional(),
-    categoryId: Joi.number().integer().allow(null).optional(),
+    categoryId: resourceId.allow(null).optional(),
     categories: Joi.alternatives().try(
-      Joi.string(),
-      Joi.number(),
-      Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.number()))
+      resourceId,
+      Joi.array().items(resourceId)
     ).allow(null).optional(),
     status: Joi.string().valid('draft', 'published', 'archived').optional(),
     attributes: Joi.array().items(Joi.object({
@@ -124,8 +128,8 @@ const updateProduct = {
 
 const updateVariant = {
   params: Joi.object().keys({
-    product_id: Joi.number().integer().required(),
-    variant_id: Joi.number().integer().required(),
+    product_id: resourceId.required(),
+    variant_id: resourceId.required(),
   }),
   body: variantSchema.keys({
     id: Joi.forbidden()
@@ -134,14 +138,14 @@ const updateVariant = {
 
 const deleteVariant = {
   params: Joi.object().keys({
-    product_id: Joi.number().integer().required(),
-    variant_id: Joi.number().integer().required(),
+    product_id: resourceId.required(),
+    variant_id: resourceId.required(),
   }),
 };
 
 const syncVariantMatrix = {
   params: Joi.object().keys({
-    product_id: Joi.number().integer().required(),
+    product_id: resourceId.required(),
   }),
   body: Joi.object().keys({
     variants: Joi.array().items(variantSchema).required(),
@@ -150,8 +154,8 @@ const syncVariantMatrix = {
 
 const updateVariantStock = {
   params: Joi.object().keys({
-    product_id: Joi.number().integer().required(),
-    variant_id: Joi.number().integer().required(),
+    product_id: resourceId.required(),
+    variant_id: resourceId.required(),
   }),
   body: Joi.object().keys({
     stockLevel: Joi.number().integer().min(0).required(),

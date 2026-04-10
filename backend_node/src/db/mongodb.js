@@ -11,6 +11,7 @@ const connectDB = async () => {
     console.log('MongoDB connected:', config.mongoose.url);
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
+    throw err;
   }
 };
 

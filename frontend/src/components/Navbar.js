@@ -144,7 +144,7 @@ const Navbar = () => {
         }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className={`fixed left-0 right-0 top-[35px] md:top-[38px] transition-all duration-500 border-b ${
-          (isScrolled || isAdminPage) ? 'py-3 shadow-glass' : 'py-5 md:py-8 shadow-none'
+          (isScrolled || isAdminPage) ? 'py-3 shadow-glass' : 'py-4 md:py-5 shadow-none'
         }`}
       >
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8 xl:px-12 h-full">
@@ -172,7 +172,7 @@ const Navbar = () => {
                >
                  <motion.img
                    animate={{ 
-                     height: isScrolled ? (window.innerWidth < 1024 ? 35 : 45) : (window.innerWidth < 1024 ? 40 : 60),
+                     height: isScrolled ? (window.innerWidth < 1024 ? 42 : 56) : (window.innerWidth < 1024 ? 52 : 78),
                      scale: isScrolled ? 0.95 : 1 
                    }}
                    src="/logo.png"

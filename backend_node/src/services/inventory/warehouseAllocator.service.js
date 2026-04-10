@@ -3,43 +3,29 @@
  * Handles inventory allocation across multiple warehouses
  */
 
-const { mysqlPool } = require('../../config/db');
+const { Warehouse, WarehouseInventory, Product } = require('../../models');
 const ApiError = require('../../utils/ApiError');
 const httpStatus = require('http-status');
+const mongoose = require('mongoose');
 
 class WarehouseInventoryService {
   /**
    * Create a new warehouse
    */
   async createWarehouse(warehouseData) {
-    const [result] = await mysqlPool.query(
-      `INSERT INTO warehouses (name, city, country, address, latitude, longitude, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        warehouseData.name,
-        warehouseData.city,
-        warehouseData.country,
-        warehouseData.address || null,
-        warehouseData.latitude || null,
-        warehouseData.longitude || null,
-        warehouseData.is_active !== undefined ? warehouseData.is_active : true
-      ]
-    );
-
-    return this.getWarehouseById(result.insertId);
+    const warehouse = await Warehouse.create(warehouseData);
+    return warehouse;
   }
 
   /**
    * Get warehouse by ID
    */
   async getWarehouseById(id) {
-    const [rows] = await mysqlPool.query('SELECT * FROM warehouses WHERE id = ?', [id]);
-    
-    if (rows.length === 0) {
+    const warehouse = await Warehouse.findById(id);
+    if (!warehouse) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Warehouse not found');
     }
-
-    return this._formatWarehouse(rows[0]);
+    return warehouse;
   }
 
   /**
@@ -47,69 +33,43 @@ class WarehouseInventoryService {
    */
   async getAllWarehouses(params = {}) {
     const { is_active, city, country } = params;
-    
-    let query = 'SELECT * FROM warehouses WHERE 1=1';
-    const values = [];
+    const filter = {};
 
     if (is_active !== undefined) {
-      query += ' AND is_active = ?';
-      values.push(is_active);
+      filter.is_active = is_active;
     }
 
     if (city) {
-      query += ' AND city = ?';
-      values.push(city);
+      filter.city = city;
     }
 
     if (country) {
-      query += ' AND country = ?';
-      values.push(country);
+      filter.country = country;
     }
 
-    query += ' ORDER BY name ASC';
-
-    const [rows] = await mysqlPool.query(query, values);
-    return rows.map(warehouse => this._formatWarehouse(warehouse));
+    return Warehouse.find(filter).sort({ name: 1 });
   }
 
   /**
    * Update warehouse
    */
   async updateWarehouse(id, updateData) {
-    const allowedFields = ['name', 'city', 'country', 'address', 'latitude', 'longitude', 'is_active'];
-    const updates = [];
-    const values = [];
-
-    for (const field of allowedFields) {
-      if (updateData[field] !== undefined) {
-        updates.push(`${field} = ?`);
-        values.push(updateData[field]);
-      }
+    const warehouse = await Warehouse.findByIdAndUpdate(id, updateData, { new: true });
+    if (!warehouse) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Warehouse not found');
     }
-
-    if (updates.length === 0) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'No valid fields to update');
-    }
-
-    values.push(id);
-    await mysqlPool.query(
-      `UPDATE warehouses SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
-
-    return this.getWarehouseById(id);
+    return warehouse;
   }
 
   /**
    * Delete warehouse
    */
   async deleteWarehouse(id) {
-    const [result] = await mysqlPool.query('DELETE FROM warehouses WHERE id = ?', [id]);
-    
-    if (result.affectedRows === 0) {
+    const result = await Warehouse.findByIdAndDelete(id);
+    if (!result) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Warehouse not found');
     }
-
+    // Also cleanup inventory? Usually better to mark as inactive
     return { id, deleted: true };
   }
 
@@ -117,105 +77,61 @@ class WarehouseInventoryService {
    * Add stock to warehouse
    */
   async addStock(variantId, warehouseId, quantity) {
-    const connection = await mysqlPool.getConnection();
-    try {
-      await connection.beginTransaction();
-
-      // Check if warehouse exists
-      const [warehouse] = await connection.query('SELECT id FROM warehouses WHERE id = ?', [warehouseId]);
-      if (warehouse.length === 0) {
-        throw new ApiError(httpStatus.NOT_FOUND, 'Warehouse not found');
-      }
-
-      // Check if variant exists
-      const [variant] = await connection.query('SELECT id FROM product_variants WHERE id = ?', [variantId]);
-      if (variant.length === 0) {
-        throw new ApiError(httpStatus.NOT_FOUND, 'Variant not found');
-      }
-
-      // Upsert inventory
-      await connection.query(
-        `INSERT INTO warehouse_inventory (variant_id, warehouse_id, stock, reserved_stock)
-         VALUES (?, ?, ?, 0)
-         ON DUPLICATE KEY UPDATE stock = stock + VALUES(stock)`,
-        [variantId, warehouseId, quantity]
-      );
-
-      await connection.commit();
-
-      return this.getInventoryForVariant(variantId);
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
+    // Note: variantId here might be a Mongoose ObjectId
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Warehouse not found');
     }
+
+    const inventory = await WarehouseInventory.findOneAndUpdate(
+      { warehouseId, variantId },
+      { $inc: { stock: quantity } },
+      { upsert: true, new: true }
+    );
+
+    return this.getInventoryForVariant(variantId);
   }
 
   /**
    * Set stock level for variant in warehouse
    */
   async setStockLevel(variantId, warehouseId, quantity) {
-    const connection = await mysqlPool.getConnection();
-    try {
-      await connection.beginTransaction();
-
-      // Check if warehouse exists
-      const [warehouse] = await connection.query('SELECT id FROM warehouses WHERE id = ?', [warehouseId]);
-      if (warehouse.length === 0) {
-        throw new ApiError(httpStatus.NOT_FOUND, 'Warehouse not found');
-      }
-
-      // Upsert inventory with exact stock level
-      await connection.query(
-        `INSERT INTO warehouse_inventory (variant_id, warehouse_id, stock, reserved_stock)
-         VALUES (?, ?, ?, 0)
-         ON DUPLICATE KEY UPDATE stock = VALUES(stock)`,
-        [variantId, warehouseId, quantity]
-      );
-
-      await connection.commit();
-
-      return this.getInventoryForVariant(variantId);
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Warehouse not found');
     }
+
+    await WarehouseInventory.findOneAndUpdate(
+      { warehouseId, variantId },
+      { stock: quantity },
+      { upsert: true, new: true }
+    );
+
+    return this.getInventoryForVariant(variantId);
   }
 
   /**
    * Reserve stock for order
    */
   async reserveStock(variantId, warehouseId, quantity) {
-    const connection = await mysqlPool.getConnection();
+    const session = await mongoose.startSession();
     try {
-      await connection.beginTransaction();
+      session.startTransaction();
 
-      // Get current inventory
-      const [inventory] = await connection.query(
-        'SELECT * FROM warehouse_inventory WHERE variant_id = ? AND warehouse_id = ? FOR UPDATE',
-        [variantId, warehouseId]
-      );
-
-      if (inventory.length === 0) {
+      const inventory = await WarehouseInventory.findOne({ warehouseId, variantId }).session(session);
+      if (!inventory) {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Inventory not found for this variant-warehouse combination');
       }
 
-      const availableStock = inventory[0].stock - inventory[0].reserved_stock;
-      
+      const availableStock = inventory.stock - inventory.reserved_stock;
       if (availableStock < quantity) {
         throw new ApiError(httpStatus.BAD_REQUEST, `Insufficient stock. Available: ${availableStock}`);
       }
 
-      // Reserve stock
-      await connection.query(
-        'UPDATE warehouse_inventory SET reserved_stock = reserved_stock + ? WHERE variant_id = ? AND warehouse_id = ?',
-        [quantity, variantId, warehouseId]
-      );
+      inventory.reserved_stock += quantity;
+      await inventory.save({ session });
 
-      await connection.commit();
+      await session.commitTransaction();
 
       return {
         variantId,
@@ -224,10 +140,10 @@ class WarehouseInventoryService {
         remainingStock: availableStock - quantity
       };
     } catch (error) {
-      await connection.rollback();
+      await session.abortTransaction();
       throw error;
     } finally {
-      connection.release();
+      session.endSession();
     }
   }
 
@@ -235,112 +151,49 @@ class WarehouseInventoryService {
    * Release reserved stock
    */
   async releaseReservedStock(variantId, warehouseId, quantity) {
-    const connection = await mysqlPool.getConnection();
-    try {
-      await connection.beginTransaction();
-
-      await connection.query(
-        `UPDATE warehouse_inventory 
-         SET reserved_stock = GREATEST(0, reserved_stock - ?)
-         WHERE variant_id = ? AND warehouse_id = ?`,
-        [quantity, variantId, warehouseId]
-      );
-
-      await connection.commit();
-
-      return { success: true };
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
+    await WarehouseInventory.findOneAndUpdate(
+      { warehouseId, variantId },
+      { $inc: { reserved_stock: -quantity } }
+    );
+    return { success: true };
   }
 
   /**
    * Confirm reserved stock (deduct from inventory)
    */
   async confirmReservedStock(variantId, warehouseId, quantity) {
-    const connection = await mysqlPool.getConnection();
-    try {
-      await connection.beginTransaction();
-
-      await connection.query(
-        `UPDATE warehouse_inventory 
-         SET stock = stock - ?, reserved_stock = reserved_stock - ?
-         WHERE variant_id = ? AND warehouse_id = ?`,
-        [quantity, quantity, variantId, warehouseId]
-      );
-
-      await connection.commit();
-
-      return { success: true };
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
+    await WarehouseInventory.findOneAndUpdate(
+      { warehouseId, variantId },
+      { $inc: { stock: -quantity, reserved_stock: -quantity } }
+    );
+    return { success: true };
   }
 
   /**
    * Find nearest warehouse with stock
    */
   async findNearestWarehouseWithStock(variantId, customerCity, customerCountry, requiredQuantity = 1) {
-    // First, try to find warehouse in same city
-    let [warehouses] = await mysqlPool.query(
-      `SELECT wi.*, w.name as warehouse_name, w.city, w.country,
-              (wi.stock - wi.reserved_stock) as available_stock
-       FROM warehouse_inventory wi
-       JOIN warehouses w ON wi.warehouse_id = w.id
-       WHERE wi.variant_id = ? 
-         AND w.city = ? 
-         AND w.country = ?
-         AND w.is_active = TRUE
-         AND (wi.stock - wi.reserved_stock) >= ?
-       ORDER BY available_stock DESC`,
-      [variantId, customerCity, customerCountry, requiredQuantity]
-    );
+    // Get all warehouses with sufficient stock for this variant
+    const inventories = await WarehouseInventory.find({
+      variantId,
+      $expr: { $gte: [{ $subtract: ["$stock", "$reserved_stock"] }, requiredQuantity] }
+    }).populate('warehouseId');
 
-    if (warehouses.length > 0) {
-      return this._formatWarehouseWithInventory(warehouses[0]);
-    }
+    if (inventories.length === 0) return null;
 
-    // If not found in same city, try same country
-    [warehouses] = await mysqlPool.query(
-      `SELECT wi.*, w.name as warehouse_name, w.city, w.country,
-              (wi.stock - wi.reserved_stock) as available_stock
-       FROM warehouse_inventory wi
-       JOIN warehouses w ON wi.warehouse_id = w.id
-       WHERE wi.variant_id = ? 
-         AND w.country = ?
-         AND w.is_active = TRUE
-         AND (wi.stock - wi.reserved_stock) >= ?
-       ORDER BY available_stock DESC`,
-      [variantId, customerCountry, requiredQuantity]
-    );
+    // Filter and sort manually based on city/country match
+    const warehouses = inventories.map(inv => inv.warehouseId).filter(w => w && w.is_active);
 
-    if (warehouses.length > 0) {
-      return this._formatWarehouseWithInventory(warehouses[0]);
-    }
+    // 1. Same city & country
+    let best = warehouses.find(w => w.city === customerCity && w.country === customerCountry);
+    if (best) return this._formatWarehouseWithInventory(inventories.find(inv => inv.warehouseId._id.equals(best._id)));
 
-    // If still not found, return any warehouse with stock
-    [warehouses] = await mysqlPool.query(
-      `SELECT wi.*, w.name as warehouse_name, w.city, w.country,
-              (wi.stock - wi.reserved_stock) as available_stock
-       FROM warehouse_inventory wi
-       JOIN warehouses w ON wi.warehouse_id = w.id
-       WHERE wi.variant_id = ? 
-         AND w.is_active = TRUE
-         AND (wi.stock - wi.reserved_stock) >= ?
-       ORDER BY available_stock DESC
-       LIMIT 1`,
-      [variantId, requiredQuantity]
-    );
+    // 2. Same country
+    best = warehouses.find(w => w.country === customerCountry);
+    if (best) return this._formatWarehouseWithInventory(inventories.find(inv => inv.warehouseId._id.equals(best._id)));
 
-    if (warehouses.length > 0) {
-      return this._formatWarehouseWithInventory(warehouses[0]);
-    }
+    // 3. Any available
+    if (warehouses.length > 0) return this._formatWarehouseWithInventory(inventories[0]);
 
     return null;
   }
@@ -349,31 +202,25 @@ class WarehouseInventoryService {
    * Get inventory for variant across all warehouses
    */
   async getInventoryForVariant(variantId) {
-    const [rows] = await mysqlPool.query(
-      `SELECT wi.*, w.name as warehouse_name, w.city, w.country,
-              (wi.stock - wi.reserved_stock) as available_stock
-       FROM warehouse_inventory wi
-       JOIN warehouses w ON wi.warehouse_id = w.id
-       WHERE wi.variant_id = ?
-       ORDER BY available_stock DESC`,
-      [variantId]
-    );
-
-    return rows.map(row => this._formatWarehouseWithInventory(row));
+    const inventories = await WarehouseInventory.find({ variantId }).populate('warehouseId');
+    return inventories.map(inv => this._formatWarehouseWithInventory(inv));
   }
 
   /**
    * Get total available stock for variant
    */
   async getTotalAvailableStock(variantId) {
-    const [rows] = await mysqlPool.query(
-      `SELECT SUM(stock - reserved_stock) as total_available
-       FROM warehouse_inventory
-       WHERE variant_id = ?`,
-      [variantId]
-    );
+    const aggregation = await WarehouseInventory.aggregate([
+      { $match: { variantId: new mongoose.Types.ObjectId(variantId) } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: { $subtract: ["$stock", "$reserved_stock"] } }
+        }
+      }
+    ]);
 
-    return rows[0].total_available || 0;
+    return aggregation.length > 0 ? aggregation[0].total : 0;
   }
 
   /**
@@ -408,7 +255,7 @@ class WarehouseInventoryService {
       allocations.push({
         variantId,
         warehouseId: warehouse.id,
-        warehouseName: warehouse.warehouse_name,
+        warehouseName: warehouse.warehouseName,
         quantity,
         city: warehouse.city,
         country: warehouse.country
@@ -422,30 +269,21 @@ class WarehouseInventoryService {
    * Get low stock alerts
    */
   async getLowStockAlerts(threshold = 10) {
-    const [rows] = await mysqlPool.query(
-      `SELECT wi.*, w.name as warehouse_name, w.city, w.country,
-              (wi.stock - wi.reserved_stock) as available_stock,
-              pv.sku, p.name as product_name
-       FROM warehouse_inventory wi
-       JOIN warehouses w ON wi.warehouse_id = w.id
-       JOIN product_variants pv ON wi.variant_id = pv.id
-       JOIN products p ON pv.product_id = p.id
-       WHERE (wi.stock - wi.reserved_stock) <= ?
-       ORDER BY available_stock ASC`,
-      [threshold]
-    );
+    const inventories = await WarehouseInventory.find({
+      $expr: { $lte: [{ $subtract: ["$stock", "$reserved_stock"] }, threshold] }
+    }).populate('warehouseId').populate('productId');
 
-    return rows.map(row => ({
-      variantId: row.variant_id,
-      warehouseId: row.warehouse_id,
-      warehouseName: row.warehouse_name,
-      city: row.city,
-      country: row.country,
-      sku: row.sku,
-      productName: row.product_name,
-      availableStock: row.available_stock,
-      totalStock: row.stock,
-      reservedStock: row.reserved_stock
+    return inventories.map(inv => ({
+      variantId: inv.variantId,
+      warehouseId: inv.warehouseId._id,
+      warehouseName: inv.warehouseId.name,
+      city: inv.warehouseId.city,
+      country: inv.warehouseId.country,
+      sku: inv.productId ? inv.productId.sku : 'N/A',
+      productName: inv.productId ? inv.productId.name : 'Unknown',
+      availableStock: inv.stock - inv.reserved_stock,
+      totalStock: inv.stock,
+      reservedStock: inv.reserved_stock
     }));
   }
 
@@ -454,7 +292,7 @@ class WarehouseInventoryService {
    */
   _formatWarehouse(warehouse) {
     return {
-      id: warehouse.id,
+      id: warehouse._id,
       name: warehouse.name,
       city: warehouse.city,
       country: warehouse.country,
@@ -470,17 +308,18 @@ class WarehouseInventoryService {
   /**
    * Format warehouse with inventory response
    */
-  _formatWarehouseWithInventory(data) {
+  _formatWarehouseWithInventory(inv) {
+    const w = inv.warehouseId;
     return {
-      id: data.warehouse_id || data.id,
-      warehouseName: data.warehouse_name || data.name,
-      city: data.city,
-      country: data.country,
-      variantId: data.variant_id,
-      stock: data.stock,
-      reservedStock: data.reserved_stock,
-      availableStock: data.available_stock,
-      createdAt: data.created_at
+      id: w ? w._id : null,
+      warehouseName: w ? w.name : 'Unknown',
+      city: w ? w.city : 'Unknown',
+      country: w ? w.country : 'Unknown',
+      variantId: inv.variantId,
+      stock: inv.stock,
+      reservedStock: inv.reserved_stock,
+      availableStock: inv.stock - inv.reserved_stock,
+      createdAt: inv.created_at
     };
   }
 }
