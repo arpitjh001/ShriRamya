@@ -17,9 +17,16 @@ const VariantGridInput = ({
   availableColors = [],
   availableSizes = [],
   basePrice = 0,
+  lowStockThreshold = 5,
 }) => {
   const [bulkStockValue, setBulkStockValue] = useState('');
   const [showBulkInput, setShowBulkInput] = useState(false);
+
+  const normalizedLowStockThreshold = useMemo(() => {
+    const parsed = parseInt(lowStockThreshold, 10);
+    if (Number.isNaN(parsed)) return 5;
+    return Math.max(0, parsed);
+  }, [lowStockThreshold]);
 
   // Predefined colors and sizes for clothing
   const predefinedColors = [
@@ -179,10 +186,13 @@ const VariantGridInput = ({
 
   // Get stock status badge
   const getStockStatus = (stock) => {
-    if (stock === 0) {
+    const numericStock = Number.isFinite(stock) ? stock : parseInt(stock, 10);
+    const safeStock = Number.isFinite(numericStock) && numericStock > 0 ? numericStock : 0;
+
+    if (safeStock === 0) {
       return <Badge variant="destructive">Out of Stock</Badge>;
     }
-    if (stock <= 5) {
+    if (safeStock <= normalizedLowStockThreshold) {
       return <Badge variant="destructive">Low Stock</Badge>;
     }
     return <Badge variant="default" className="bg-green-600">In Stock</Badge>;

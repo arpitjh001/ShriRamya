@@ -998,12 +998,18 @@ const AdminProductsPage = () => {
                   min="0"
                   max="1000"
                   value={productForm.lowStockThreshold}
-                  onChange={(e) => setProductForm({ ...productForm, lowStockThreshold: parseInt(e.target.value) || 5 })}
+                  onChange={(e) => {
+                    const next = parseInt(e.target.value, 10);
+                    setProductForm({
+                      ...productForm,
+                      lowStockThreshold: Number.isNaN(next) ? 5 : Math.max(0, next),
+                    });
+                  }}
                   placeholder="5"
                   style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
                   className="max-w-xs"
                 />
-                <p className="text-xs text-indigo-400 mt-2">Current threshold: <strong>{productForm.lowStockThreshold || 5} units</strong></p>
+                <p className="text-xs text-indigo-400 mt-2">Current threshold: <strong>{productForm.lowStockThreshold ?? 5} units</strong></p>
               </div>
 
               {/* Variant Grid Section */}
@@ -1016,6 +1022,7 @@ const AdminProductsPage = () => {
                 variants={productForm.variants || []}
                 onChange={(newVariants) => setProductForm({ ...productForm, variants: newVariants })}
                 basePrice={parseFloat(productForm.basePrice) || 0}
+                lowStockThreshold={productForm.lowStockThreshold}
               />
             </div>
 
