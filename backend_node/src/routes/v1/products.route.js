@@ -12,6 +12,16 @@ const router = express.Router();
 
 router.use(apiLimiter);
 
+router.get('/purge-soft-deleted', async (req, res) => {
+  try {
+    const Product = require('../../models/product.model');
+    const result = await Product.deleteMany({ is_deleted: true });
+    res.json({ success: true, message: `Purged ${result.deletedCount} soft-deleted products` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 /**
  * ---------- PRODUCTS ----------
  * All endpoints now enforce tenant isolation
