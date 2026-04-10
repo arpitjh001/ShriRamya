@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productsAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles, ChevronDown, Layers, Star, MessageCircle, Share2 } from 'lucide-react';
 import { formatPrice } from '../utils';
@@ -19,6 +20,7 @@ const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [reviews, setReviews] = useState({ reviews: [], average: 0, total: 0 });
@@ -30,6 +32,7 @@ const ProductDetailPage = () => {
   const [variantStock, setVariantStock] = useState(null);
   const [tryOnModalOpen, setTryOnModalOpen] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState('description');
+  const [wish, setWish] = useState(false);
 
   // Variant matrix state
   const [variantMatrix, setVariantMatrix] = useState([]);
@@ -464,7 +467,7 @@ const ProductDetailPage = () => {
                               <span className="text-[9px] font-bold text-charcoal/50 rotate-12">SOLD OUT</span>
                             </div>
                           )}
-                          {isAvailable && stockCount <= 5 && stockCount > 0 && (
+                          {isAvailable && stockCount <= (product.lowStockThreshold || 5) && stockCount > 0 && (
                             <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" title="Low stock" />
                           )}
                         </button>

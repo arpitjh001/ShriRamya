@@ -102,31 +102,52 @@ class ProductService {
   }
 
   async _ensureDefaultCategory(productData, isUpdate = false) {
-    const hasCategories = Object.prototype.hasOwnProperty.call(productData, 'categories');
-    const hasCategoryId = Object.prototype.hasOwnProperty.call(productData, 'categoryId');
+    try {
+      const hasCategories = Object.prototype.hasOwnProperty.call(productData, 'categories');
+      const hasCategoryId = Object.prototype.hasOwnProperty.call(productData, 'categoryId');
 
-    // Normalize categories to array if it's a single value
-    if (hasCategories && productData.categories && !Array.isArray(productData.categories)) {
-      productData.categories = [productData.categories];
-    }
-
-    // If it's an update and no category info is provided (keys missing), don't force Uncategorized
-    if (isUpdate && !hasCategories && !hasCategoryId) {
-      return;
-    }
-
-    // Ensure at least one category exists (Uncategorized) if currently empty
-    if ((!productData.categories || productData.categories.length === 0) && !productData.categoryId) {
-      let uncategorized = await categoryService.getCategoryBySlug('uncategorized');
-      if (!uncategorized) {
-        uncategorized = await categoryService.createCategory({ name: 'Uncategorized', slug: 'uncategorized' });
+      // Normalize categories to array if it's a single value
+      if (hasCategories && productData.categories && !Array.isArray(productData.categories)) {
+        productData.categories = [productData.categories];
       }
-      productData.categories = [uncategorized.id];
-    }
 
-    // Ensure categoryId is set for the 'products' table base column if categories array exists
-    if (!productData.categoryId && productData.categories && productData.categories.length > 0) {
-      productData.categoryId = productData.categories[0];
+      // If it's an update and no category info is provided (keys missing), don't force Uncategorized
+      if (isUpdate && !hasCategories && !hasCategoryId) {
+        return;
+      }
+
+      // If categories already has items, no need for default
+      if (productData.categories && productData.categories.length > 0) {
+        // Ensure categoryId is also set if missing but categories array has data
+        if (!productData.categoryId) {
+          productData.categoryId = productData.categories[0];
+        }
+        return;
+      }
+
+      // If categoryId is set but categories array is not, sync them
+      if (productData.categoryId && (!productData.categories || productData.categories.length === 0)) {
+        productData.categories = [productData.categoryId];
+        return;
+      }
+
+      // Force tenant_id check
+      const tenantId = parseInt(productData.tenant_id || 1, 10);
+      
+      console.log(`[ProductService] Ensuring default 'Uncategorized' category for tenant: ${tenantId}`);
+      const uncategorized = await categoryService.ensureUncategorized(tenantId);
+      
+      if (!uncategorized || !uncategorized._id) {
+        console.error(`[ProductService] Failed to ensure 'Uncategorized' category joined for tenant ${tenantId}`);
+        return; // Fallback to avoid breaking creation if possible, though Mongoose might later fail if required
+      }
+
+      productData.categories = [uncategorized._id];
+      productData.categoryId = uncategorized._id;
+      
+      console.log(`[ProductService] Default category '${uncategorized.name}' (${uncategorized._id}) assigned.`);
+    } catch (error) {
+      console.error('[ProductService] _ensureDefaultCategory error:', error);
     }
   }
 
@@ -145,7 +166,7 @@ class ProductService {
 
     const normalizedVariant = {
       ...source,
-      sku: source.sku || '',
+      sku: source.sku || `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       price: Number(source.price || 0) || 0,
       discountPrice: source.discountPrice === '' || source.discountPrice == null
         ? null
@@ -213,23 +234,54 @@ class ProductService {
    */
   async createProduct(productData, tenantId = 1) {
     try {
-      console.log(`[ProductService] Creating native product: ${productData.name} for tenant: ${tenantId}`);
+      console.log(`[ProductService] Initiating creation for product: "${productData.name}" (Tenant: ${tenantId})`);
+      
+      // 1. Normalize data
+      console.log('[ProductService] Step 1: Normalizing product data...');
       productData = this.normalizeProductData(productData);
+      
+      // 2. Ensure default category
+      console.log('[ProductService] Step 2: Ensuring category assignment...');
       await this._ensureDefaultCategory(productData);
+      
+      // 3. Create in MongoDB
+      console.log('[ProductService] Step 3: Saving to MongoDB repository...');
       const productId = await mongoProductRepository.createProduct(productData, tenantId);
-
-      const product = await mongoProductRepository.getProduct(productId, tenantId);
-
-      // Update search index
-      try {
-        await searchService.updateSearchIndex(productId);
-      } catch (searchError) {
-        console.error(`[ProductService] Failed to update search index for new product ${productId}:`, searchError.message);
+      
+      if (!productId) {
+        throw new Error('MongoDB repository failed to return a product ID after creation');
       }
 
-      return this.formatProductForResponse(product);
+      // 4. Fetch the created product for background tasks and response
+      console.log(`[ProductService] Step 4: Fetching created product (ID: ${productId})...`);
+      const product = await mongoProductRepository.getProduct(productId, tenantId);
+      
+      if (!product) {
+        console.warn(`[ProductService] Product ${productId} created but not found immediately after (eventual consistency?)`);
+      }
+
+      // 5. Update Search Index (Background task)
+      if (product) {
+        try {
+          console.log('[ProductService] Step 5: Updating search index...');
+          await searchService.updateSearchIndex(productId);
+        } catch (searchError) {
+          console.error('[ProductService] Search index update failed (non-blocking):', searchError.message);
+        }
+      }
+      
+      console.log(`[ProductService] Success: Product "${productData.name}" created successfully.`);
+      return this.formatProductForResponse(product || { ...productData, _id: productId });
     } catch (error) {
-      console.error('[ProductService] createProduct failed:', error.message);
+      // Enhanced diagnostic logging for production
+      console.error('[ProductService] createProduct CRITICAL FAILURE:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        code: error.code,
+        errors: error.errors ? Object.keys(error.errors).map(k => `${k}: ${error.errors[k].message}`) : undefined
+      });
+      
       throw error;
     }
   }

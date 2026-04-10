@@ -43,9 +43,10 @@ router.post('/images', auth, requireRole('Admin', 'Editor'), upload.array('files
 router.get('/:imageId/:sizeName', async (req, res, next) => {
     try {
         const { imageId, sizeName } = req.params;
+        const sizeKey = String(sizeName || '').replace(/\.(webp|jpe?g|png|gif)$/i, '');
         
         // Validate parameters
-        if (!imageId || !sizeName) {
+        if (!imageId || !sizeKey) {
             return res.status(httpStatus.BAD_REQUEST).json({
                 success: false,
                 message: 'Missing imageId or sizeName'
@@ -55,7 +56,7 @@ router.get('/:imageId/:sizeName', async (req, res, next) => {
         // Find image in database
         const imageDoc = await Image.findOne({ imageId });
         
-        if (!imageDoc || !imageDoc.images[sizeName]) {
+        if (!imageDoc || !imageDoc.images[sizeKey]) {
             return res.status(httpStatus.NOT_FOUND).json({
                 success: false,
                 message: 'Image not found'
@@ -63,7 +64,7 @@ router.get('/:imageId/:sizeName', async (req, res, next) => {
         }
         
         // Convert base64 to buffer
-        const imageBuffer = Buffer.from(imageDoc.images[sizeName], 'base64');
+        const imageBuffer = Buffer.from(imageDoc.images[sizeKey], 'base64');
         
         // Determine content type based on format
         const contentType = imageDoc.metadata.format === 'webp' ? 'image/webp' : `image/${imageDoc.metadata.format}`;

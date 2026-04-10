@@ -122,14 +122,20 @@ const AdminProductsPage = () => {
         const priceValue = product.basePrice || product.base_price || product.price || 0;
         const basePrice = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
 
-        // Normalize images array to always be strings
-        const normalizedImages = (product.images || []).map(img => 
-           typeof img === 'string' ? img : (img.src || img.url || '')
-        ).filter(Boolean);
+        // Normalize images array to always be strings (and fallback to `thumbnail` if present)
+        const normalizedImages = (product.images || [])
+          .map(img => (typeof img === 'string' ? img : (img.src || img.url || '')))
+          .filter(Boolean);
+
+        if (typeof product.thumbnail === 'string' && product.thumbnail) {
+          normalizedImages.push(product.thumbnail);
+        }
+
+        const uniqueImages = Array.from(new Set(normalizedImages));
 
         return {
           ...product,
-          images: normalizedImages,
+          images: uniqueImages,
           basePrice: basePrice,
           sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
           stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || product.stock_quantity || product.stock || 0,

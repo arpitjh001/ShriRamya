@@ -83,7 +83,12 @@ const createProduct = {
     metaTitle: Joi.string().allow('').optional(),
     metaDescription: Joi.string().allow('').optional(),
     metaKeywords: Joi.string().allow('').optional(),
-  }),
+    // Root level fields that are normalized into default variant if provided
+    price: Joi.number().min(0).optional(),
+    discountPrice: Joi.number().min(0).allow(null, '').optional(),
+    stock: Joi.number().integer().min(0).optional(),
+    lowStockThreshold: Joi.number().integer().min(0).optional(),
+  }).unknown(true),
 };
 
 const addVariant = {
@@ -123,6 +128,11 @@ const updateProduct = {
     metaTitle: Joi.string().allow('').optional(),
     metaDescription: Joi.string().allow('').optional(),
     metaKeywords: Joi.string().allow('').optional(),
+    // Root level fields that are normalized into default variant if provided
+    price: Joi.number().min(0).optional(),
+    discountPrice: Joi.number().min(0).allow(null, '').optional(),
+    stock: Joi.number().integer().min(0).optional(),
+    lowStockThreshold: Joi.number().integer().min(0).optional(),
   }).min(1),
 };
 

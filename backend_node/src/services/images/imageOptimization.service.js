@@ -46,10 +46,25 @@ class ImageOptimizationService {
       this.useDatabase = false;
     }
     
-    this.cdnBaseUrl = config.cdnBaseUrl || config.publicBaseUrl || 'http://localhost:8000';
+    this.publicBaseUrl = config.publicBaseUrl || 'http://localhost:8000';
+    this.cdnBaseUrl = config.cdnBaseUrl || this.publicBaseUrl;
     
     // Ensure upload directory exists (for local development)
     this._ensureUploadDirectory();
+  }
+
+  _joinUrl(base, pathname) {
+    const safeBase = String(base || '').replace(/\/+$/, '');
+    const safePath = String(pathname || '').replace(/^\/+/, '');
+    return `${safeBase}/${safePath}`;
+  }
+
+  _generateApiUrl(base, imageId, sizeName, ext) {
+    return this._joinUrl(base, `/api/v1/images/${imageId}/${sizeName}${ext || ''}`);
+  }
+
+  _generateStaticUploadUrl(base, filename) {
+    return this._joinUrl(base, `/uploads/images/${filename}`);
   }
 
   /**
@@ -94,18 +109,26 @@ class ImageOptimizationService {
     for (const [sizeName, sizeConfig] of Object.entries(IMAGE_SIZES)) {
       if (sizeName === 'original') {
         // Store original
-        const originalPath = path.join(this.uploadDir, `${baseName}_orig${outputExt}`);
+        const filename = `${baseName}_orig${outputExt}`;
+        const originalPath = path.join(this.uploadDir, filename);
         const originalBuffer = await this._processImage(file.buffer, null, null, QUALITY_SETTINGS.original, outputFormat);
         processedImages.original = originalBuffer;
         await this._saveImage(originalPath, originalBuffer);
-        results.original = this._generateUrl(imageId, 'original', outputExt);
+
+        results.original = this.useDatabase
+          ? this._generateApiUrl(this.publicBaseUrl, imageId, 'original', outputExt)
+          : this._generateStaticUploadUrl(this.publicBaseUrl, filename);
       } else {
         // Generate resized versions
-        const sizedPath = path.join(this.uploadDir, `${baseName}${sizeConfig.suffix}${outputExt}`);
+        const filename = `${baseName}${sizeConfig.suffix}${outputExt}`;
+        const sizedPath = path.join(this.uploadDir, filename);
         const sizedBuffer = await this._processImage(file.buffer, sizeConfig.width, sizeConfig.height, QUALITY_SETTINGS[sizeName], outputFormat);
         processedImages[sizeName] = sizedBuffer;
         await this._saveImage(sizedPath, sizedBuffer);
-        results[sizeName] = this._generateUrl(imageId, sizeName, outputExt);
+
+        results[sizeName] = this.useDatabase
+          ? this._generateApiUrl(this.publicBaseUrl, imageId, sizeName, outputExt)
+          : this._generateStaticUploadUrl(this.publicBaseUrl, filename);
       }
     }
 
@@ -138,12 +161,19 @@ class ImageOptimizationService {
     }
 
     // Generate CDN URLs
-    results.cdn = {
-      thumbnail: this._generateCdnUrl(imageId, 'thumbnail', outputExt),
-      medium: this._generateCdnUrl(imageId, 'medium', outputExt),
-      large: this._generateCdnUrl(imageId, 'large', outputExt),
-      original: this._generateCdnUrl(imageId, 'original', outputExt)
-    };
+    results.cdn = this.useDatabase
+      ? {
+          thumbnail: this._generateApiUrl(this.cdnBaseUrl, imageId, 'thumbnail', outputExt),
+          medium: this._generateApiUrl(this.cdnBaseUrl, imageId, 'medium', outputExt),
+          large: this._generateApiUrl(this.cdnBaseUrl, imageId, 'large', outputExt),
+          original: this._generateApiUrl(this.cdnBaseUrl, imageId, 'original', outputExt),
+        }
+      : {
+          thumbnail: results.thumbnail,
+          medium: results.medium,
+          large: results.large,
+          original: results.original,
+        };
 
     // Store metadata
     results.metadata = {
@@ -209,23 +239,7 @@ class ImageOptimizationService {
     }
   }
 
-  /**
-   * Generate local URL
-   */
-  _generateUrl(imageId, sizeName, ext) {
-    return `${this.cdnBaseUrl}/api/v1/images/${imageId}/${sizeName}${ext}`;
-  }
-
-  /**
-   * Generate CDN URL
-   */
-  _generateCdnUrl(imageId, sizeName, ext) {
-    // If CDN is configured, use CDN URL
-    if (config.cdnBaseUrl && config.cdnBaseUrl !== this.cdnBaseUrl) {
-      return `${config.cdnBaseUrl}/api/v1/images/${imageId}/${sizeName}${ext}`;
-    }
-    return this._generateUrl(imageId, sizeName, ext);
-  }
+  // Note: URL generation is handled by `_generateApiUrl` / `_generateStaticUploadUrl`.
 
   /**
    * Get image by ID and size (from database or filesystem)
@@ -376,26 +390,74 @@ class ImageOptimizationService {
    */
   async generatePlaceholder(width = 800, height = 800, text = 'No Image') {
     const imageId = uuidv4();
-    const filename = `placeholder_${imageId}.webp`;
-    const outputPath = path.join(this.uploadDir, filename);
 
-    // Create placeholder with sharp
-    await sharp({
+    // Basic solid placeholder. (We ignore `text` for now to keep sharp usage simple.)
+    const placeholderBuffer = await sharp({
       create: {
         width,
         height,
         channels: 3,
-        background: { r: 240, g: 240, b: 240 }
-      }
+        background: { r: 240, g: 240, b: 240 },
+      },
     })
-    .jpeg({ quality: 80 })
-    .toFile(outputPath);
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    if (this.useDatabase && Image) {
+      try {
+        const imageDoc = new Image({
+          imageId,
+          category: 'other',
+          originalName: 'placeholder.webp',
+          images: {
+            thumbnail: placeholderBuffer.toString('base64'),
+            medium: placeholderBuffer.toString('base64'),
+            large: placeholderBuffer.toString('base64'),
+            original: placeholderBuffer.toString('base64'),
+          },
+          urls: {
+            thumbnail: this._generateApiUrl(this.publicBaseUrl, imageId, 'thumbnail', ''),
+            medium: this._generateApiUrl(this.publicBaseUrl, imageId, 'medium', ''),
+            large: this._generateApiUrl(this.publicBaseUrl, imageId, 'large', ''),
+            original: this._generateApiUrl(this.publicBaseUrl, imageId, 'original', ''),
+          },
+          metadata: {
+            format: 'webp',
+            sizes: Object.keys(IMAGE_SIZES),
+            width,
+            height,
+            fileSize: placeholderBuffer.length,
+          },
+        });
+        await imageDoc.save();
+      } catch (dbError) {
+        console.warn('[ImageService] Warning: Could not save placeholder to MongoDB:', dbError.message);
+      }
+
+      return {
+        imageId,
+        url: this._generateApiUrl(this.publicBaseUrl, imageId, 'original', ''),
+        cdnUrl: this._generateApiUrl(this.cdnBaseUrl, imageId, 'original', ''),
+        width,
+        height,
+      };
+    }
+
+    // Local filesystem fallback
+    const filename = `placeholder_${imageId}.webp`;
+    const outputPath = path.join(this.uploadDir, filename);
+    try {
+      await fs.writeFile(outputPath, placeholderBuffer);
+    } catch (error) {
+      console.warn('[ImageService] Warning: Could not write placeholder:', error.message);
+    }
 
     return {
-      url: this._generateUrl(filename),
-      cdnUrl: this._generateCdnUrl(filename),
+      imageId,
+      url: this._generateStaticUploadUrl(this.publicBaseUrl, filename),
+      cdnUrl: this._generateStaticUploadUrl(this.cdnBaseUrl, filename),
       width,
-      height
+      height,
     };
   }
 
@@ -417,7 +479,19 @@ class ImageOptimizationService {
       sizedFilename = filename.replace(/\.(webp|jpg|jpeg|png|gif)$/, `${sizeConfig.suffix}.$1`);
     }
 
-    return this._generateCdnUrl(sizedFilename);
+    if (this.useDatabase) {
+      // Try to extract the UUID imageId from the legacy filename pattern.
+      const match = String(filename || '').match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      const imageId = match?.[0] || null;
+      if (!imageId) {
+        throw new Error('Could not derive imageId from filename in serverless mode');
+      }
+
+      // Omit extensions so the /images route can serve the correct format.
+      return this._generateApiUrl(this.cdnBaseUrl, imageId, size, '');
+    }
+
+    return this._generateStaticUploadUrl(this.cdnBaseUrl, sizedFilename);
   }
 }
 

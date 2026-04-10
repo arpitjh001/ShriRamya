@@ -51,7 +51,7 @@ class AnalyticsService {
         break;
     }
 
-    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+    const validStatuses = ['placed', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
     const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
 
     const aggregation = await Order.aggregate([
@@ -366,7 +366,7 @@ class AnalyticsService {
     }
 
     const tenantFilter = { tenant_id: parseInt(tenantId) };
-    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+    const validStatuses = ['placed', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -412,14 +412,29 @@ class AnalyticsService {
     ]);
 
     // Counts
-    const productCount = await Product.countDocuments({ ...tenantFilter, status: { $in: ['published', 'publish'] } });
-    const customerCount = await User.countDocuments({ role: { $in: ['user', 'customer'] } }); // Users are currently global but roles distinguish
-    const lowStockCount = await Product.countDocuments({ 
-        ...tenantFilter,
-        $or: [
-            { stock: { $lte: 10 } },
-            { "variants.stock": { $lte: 10 } }
-        ]
+    const productBaseFilter = { ...tenantFilter, is_deleted: { $ne: true } };
+
+    // "Active products" means published and not deleted.
+    const productCount = await Product.countDocuments({
+      ...productBaseFilter,
+      status: { $in: ['published', 'publish'] }
+    });
+
+    const customerCount = await User.countDocuments({
+      is_active: { $ne: false },
+      role: { $in: ['user', 'customer'] }
+    }); // Users are currently global but roles distinguish
+
+    const lowStockCount = await Product.countDocuments({
+      ...productBaseFilter,
+      status: { $in: ['published', 'publish'] },
+      $or: [
+        { stock: { $lte: 5 } }, // Fallback to 5 if not specified
+        { "variants.stock": { $lte: 5 } }
+      ]
+      // Note: Ideally we would use the lowStockThreshold field, but MongoDB aggregate/count 
+      // with field-to-field comparison is more complex than a simple match. 
+      // For now, we use 5 as the standard baseline for the dashboard.
     });
 
     const result = {

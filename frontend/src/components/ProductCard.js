@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Eye, ShoppingBag } from 'lucide-react';
+import { Heart, Eye, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
 import { wishlistAPI } from '../services/api';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
@@ -14,10 +13,8 @@ const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1756483510798-c1fe4e47
 
 const ProductCard = ({ product }) => {
   const { user } = useAuth();
-  const { addToCart } = useCart();
   const navigate = useNavigate();
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [addingToCart, setAddingToCart] = useState(false);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   const image = useMemo(() => {
@@ -93,23 +90,6 @@ const ProductCard = ({ product }) => {
     }
   };
 
-  const handleAddToCart = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!product?.id) return;
-
-    setAddingToCart(true);
-    try {
-      await addToCart(product.id, 1);
-      toast.success('Added to cart');
-    } catch {
-      toast.error('Select options from quick view if size is required');
-    } finally {
-      setAddingToCart(false);
-    }
-  };
-
   const handleQuickView = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -166,11 +146,15 @@ const ProductCard = ({ product }) => {
           <div className="absolute inset-x-4 bottom-4 translate-y-6 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
             <Button
               className="w-full border border-accent/30 bg-accent text-charcoal hover:bg-gold-mist"
-              onClick={handleAddToCart}
-              disabled={addingToCart}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!product?.id) return;
+                navigate(`/products/${product.id}`);
+              }}
             >
-              <ShoppingBag className="h-4 w-4" />
-              {addingToCart ? 'Adding...' : 'Add To Cart'}
+              <ArrowRight className="h-4 w-4" />
+              View Product
             </Button>
           </div>
         </div>

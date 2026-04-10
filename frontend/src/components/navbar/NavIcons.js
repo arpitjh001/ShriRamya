@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Search, User, Heart, ShoppingBag, Bell } from 'lucide-react';
+import { Search, User, Heart, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -36,26 +36,23 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
         <Search className={`${iconClass} text-charcoal`} strokeWidth={2.6} />
       </motion.button>
 
-      <div className="hidden sm:flex items-center gap-2 md:gap-4">
-        <motion.button 
-          variants={iconVariants} 
-          whileHover="hover" 
-          whileTap="tap" 
-          onClick={onAccountClick}
-          className={actionIconClass}
-          aria-label="Account"
-        >
-          <User className={`${iconClass} text-charcoal`} strokeWidth={2.6} />
-          {hasNotifications && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-royal-maroon rounded-full border-2 border-ivory"
-            />
-          )}
-        </motion.button>
-
-      </div>
+      <motion.button 
+        variants={iconVariants} 
+        whileHover="hover" 
+        whileTap="tap" 
+        onClick={onAccountClick}
+        className={actionIconClass}
+        aria-label="Account"
+      >
+        <User className={`${iconClass} text-charcoal`} strokeWidth={2.6} />
+        {hasNotifications && (
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-royal-maroon rounded-full border-2 border-ivory"
+          />
+        )}
+      </motion.button>
 
       <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
         <Link to="/wishlist" className={actionIconClass} aria-label="Wishlist" data-testid="navbar-wishlist-icon">

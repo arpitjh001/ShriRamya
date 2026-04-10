@@ -5,6 +5,7 @@ const ordersRoute = require('./orders.route');
 const cartRoute = require('./cart.route');
 const blogsRoute = require('./blogs.route'); // Native multi-tenant blogs
 const uploadRoute = require('./upload.route');
+const imagesRoute = require('./images.route');
 const customersRoute = require('./customers.route');
 const couponsRoute = require('./coupons.route');
 const categoryRoute = require('./category.route');
@@ -28,6 +29,7 @@ router.use('/orders', ordersRoute);
 router.use('/cart', cartRoute);
 router.use('/blogs', blogsRoute); // Native multi-tenant blogs
 router.use('/upload', uploadRoute);
+router.use('/images', imagesRoute);
 router.use('/customers', customersRoute);
 router.use('/coupons', couponsRoute);
 router.use('/categories', categoryRoute);

@@ -8,7 +8,9 @@ const ensureReady = async () => {
   if (!readyPromise) {
     readyPromise = (async () => {
       await connectDB();
-      await seedDatabase();
+      if (process.env.SEED_DATABASE === 'true') {
+        await seedDatabase();
+      }
     })().catch((error) => {
       readyPromise = null;
       throw error;

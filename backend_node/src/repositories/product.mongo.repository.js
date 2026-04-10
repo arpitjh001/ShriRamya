@@ -1,8 +1,40 @@
 const Product = require('../models/product.model');
+const Category = require('../models/category.model');
+const Counter = require('../models/counter.model');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 class ProductMongoRepository {
+  async allocateNextProductId() {
+    // The production database has a unique `productId_1` index.
+    // Native product creation must always set a unique numeric productId.
+    const counterId = 'productId';
+
+    // Determine a safe baseline (max existing numeric productId).
+    const maxDoc = await Product.findOne({ productId: { $type: 'number' } })
+      .sort({ productId: -1 })
+      .select({ productId: 1 })
+      .lean();
+
+    const baseline = Number(maxDoc?.productId || 0);
+
+    // Atomic: if counter doesn't exist, start from baseline; then increment once and return.
+    // If the counter already exists, `$setOnInsert` is ignored and we just increment.
+    const updated = await Counter.findOneAndUpdate(
+      { _id: counterId },
+      { $setOnInsert: { seq: baseline }, $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    ).lean();
+
+    // Defensive fallback (should not happen, but avoids sending null productId).
+    return Number(updated?.seq || (baseline + 1));
+  }
+
+  generateFallbackProductId() {
+    // Millisecond timestamp * 1000 + random(0..999) stays within JS safe integer range.
+    return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  }
+
   buildProductQuery(identifier, tenantId = null) {
     const query = {};
     const stringIdentifier = String(identifier).trim();
@@ -66,6 +98,16 @@ class ProductMongoRepository {
     let slug = data.slug || this.generateSlug(data.name);
     data.slug = await this.generateUniqueSlug(slug);
     data.tenant_id = tenantId;
+
+    // Ensure a unique numeric productId for environments with a unique index on `productId`.
+    if (data.productId == null) {
+      try {
+        data.productId = await this.allocateNextProductId();
+      } catch (error) {
+        // If counters are unavailable for any reason, still avoid null productId collisions.
+        data.productId = this.generateFallbackProductId();
+      }
+    }
 
     const product = new Product(data);
     await product.save();

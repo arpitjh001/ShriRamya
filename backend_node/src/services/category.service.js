@@ -1,4 +1,5 @@
 const categoryRepository = require('../repositories/category.mongo.repository');
+const { Category } = require('../models');
 const redis = require('../config/integrations/redis');
 const crypto = require('crypto');
 
@@ -161,6 +162,28 @@ class CategoryService {
 
     async getProductsByCategorySlug(slug, limit = 100, status = 'published') {
         return categoryRepository.getProductsByCategorySlug(slug, limit, status);
+    }
+
+    async ensureUncategorized(tenant_id = 1) {
+        try {
+            let category = await Category.findOne({ 
+                name: 'Uncategorized', 
+                tenant_id: tenant_id 
+            });
+
+            if (!category) {
+                category = await Category.create({
+                    name: 'Uncategorized',
+                    slug: 'uncategorized',
+                    tenant_id: tenant_id,
+                    description: 'Default category for products'
+                });
+            }
+            return category;
+        } catch (error) {
+            console.error('Error in ensureUncategorized:', error);
+            throw error;
+        }
     }
 }
 
