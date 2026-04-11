@@ -320,68 +320,112 @@
      Autoformatting Engine Styles
      ========================================= */
 
+  /* =========================================
+     JOURNAL EDITORIAL STYLES (ELEVATED)
+     Heritage Journal Aesthetic
+     ========================================= */
+
   .journal-content {
-    @apply text-foreground font-body leading-relaxed;
+    @apply font-editorial leading-[1.8] tracking-normal;
     text-align: justify;
     hyphens: auto;
     orphans: 3;
     widows: 3;
+    background-color: #fcfaf7; /* High-end cream/ivory background */
+    padding: 3rem 4rem; /* Generous journal-like padding */
+    border-radius: 12px;
+    border: 1px solid rgba(200, 169, 106, 0.15);
+    color: #1a1a1a; /* Higher contrast for premium reading */
+    box-shadow: 
+      0 1px 3px rgba(0,0,0,0.05),
+      inset 0 0 40px rgba(200, 169, 106, 0.03); /* Subtle paper texture feel */
   }
 
   .journal-content p {
-    @apply mb-6;
-    font-size: 1.125rem;
+    @apply mb-8;
+    font-size: 1.25rem; /* Larger, readable journal size */
   }
 
-  /* Drop Cap Styling */
+  /* Intro Paragraph styling */
+  .journal-content .journal-intro {
+    @apply font-medium text-deep-emerald/90 border-b border-accent/10 pb-8 mb-12;
+    font-size: 1.5rem;
+    line-height: 1.5;
+  }
+
+  /* Drop Cap Styling - Now even more pronounced */
   .journal-dropcap {
-    @apply float-left text-primary font-heading leading-[0.8] mr-3 mt-1;
-    font-size: 4.5rem;
+    @apply float-left text-primary font-heading leading-[0.6] mr-4 mt-2;
+    font-size: 5.5rem;
     font-weight: 700;
-    text-transform: uppercase;
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.8), 2px 2px 0px rgba(200, 169, 106, 0.1);
   }
 
-  /* Image Layouts */
+  /* Image Layouts - Modern wrapping */
   .journal-figure {
-    @apply mb-8 mt-4 max-w-full lg:max-w-[45%] rounded-xl overflow-hidden shadow-luxury;
-    transition: transform 0.3s ease;
+    @apply mb-12 mt-6 max-w-full lg:max-w-[48%] rounded-sm overflow-hidden shadow-luxury border border-ivory p-1 bg-white;
+    transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
 
   @media (min-width: 1024px) {
     .journal-figure.journal-img-right {
-      @apply float-right ml-8 -mr-12;
+      @apply float-right ml-10 -mr-16;
     }
     
     .journal-figure.journal-img-left {
-      @apply float-left mr-8 -ml-12;
+      @apply float-left mr-10 -ml-16;
+    }
+    
+    .journal-figure:hover {
+      transform: scale(1.02);
     }
   }
 
   .journal-figure img {
-    @apply w-full h-auto block;
+    @apply w-full h-auto block grayscale-[0.1] hover:grayscale-0 transition-all duration-700;
   }
 
   .journal-caption {
-    @apply bg-accent/5 p-3 text-xs italic text-muted-foreground border-t border-border/10 text-center uppercase tracking-widest;
+    @apply bg-background p-4 text-[10px] italic text-muted-foreground border-t border-border/10 text-center uppercase tracking-[0.2em] font-body;
+  }
+
+  /* Editorial Headers */
+  .journal-content h1, 
+  .journal-content h2, 
+  .journal-content h3 {
+    @apply font-heading text-primary mb-8 mt-16 first:mt-0;
+  }
+
+  .journal-content h2 {
+    @apply text-4xl border-b border-accent/20 pb-4;
+  }
+
+  .journal-content h3 {
+    @apply text-2xl uppercase tracking-widest font-bold opacity-90;
   }
 
   .journal-content blockquote {
-    @apply relative py-8 px-12 my-12 italic text-2xl font-heading text-primary bg-accent/5 rounded-2xl border-l-4 border-primary;
-    text-align: left;
+    @apply relative py-12 px-16 my-16 italic text-3xl font-heading text-primary bg-accent/5 rounded-none border-l-0;
+    text-align: center;
   }
 
-  .journal-content blockquote::before {
-    content: "“";
-    @apply absolute -top-4 left-4 text-7xl text-primary/20 font-serif;
+  .journal-content blockquote::before,
+  .journal-content blockquote::after {
+    content: "—";
+    @apply block text-accent/30 text-4xl mb-4;
   }
 
   /* Responsive Adjustments */
   @media (max-width: 1023px) {
     .journal-content {
+      @apply p-8;
       text-align: left; /* Better for mobile */
     }
+    .journal-content p {
+      font-size: 1.125rem;
+    }
     .journal-figure {
-      @apply float-none w-full mx-0;
+      @apply float-none w-full mx-0 mb-8;
     }
   }
 }

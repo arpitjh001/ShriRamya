@@ -14,7 +14,11 @@ const HTMLRenderer = ({ html, className, isBody = false }) => {
     const processedHtml = isBody ? formatJournalContent(html) : html;
     const cleanHtml = DOMPurify.sanitize(processedHtml, {
         ADD_ATTR: ['class', 'style'],
-        ADD_TAGS: ['figure', 'figcaption']
+        ADD_TAGS: ['figure', 'figcaption'],
+        FORBID_TAGS: ['style'],
+        FORBID_ATTR: ['onerror', 'onload'],
+        // Explicitly allow classes we add in journalFormatter
+        ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'href', 'target'],
     });
     return <div className={className} dangerouslySetInnerHTML={{ __html: cleanHtml }} />;
 };
@@ -240,11 +244,11 @@ const BlogPostPage = () => {
                 <div className="journal-content prose prose-lg md:prose-xl prose-stone max-w-none 
           prose-headings:font-heading prose-headings:font-medium 
           prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl 
-          prose-p:font-body prose-p:leading-relaxed prose-p:text-muted-foreground
+          prose-p:font-editorial prose-p:leading-[1.8] prose-p:text-current
           prose-a:text-primary hover:prose-a:text-secondary prose-a:transition-colors
-          prose-img:rounded-xl prose-img:shadow-md
-          prose-blockquote:border-l-secondary prose-blockquote:bg-accent/5 prose-blockquote:p-6 prose-blockquote:rounded-r-lg prose-blockquote:font-heading prose-blockquote:text-xl prose-blockquote:italic
-          prose-li:text-muted-foreground
+          prose-img:rounded-none prose-img:shadow-none
+          prose-blockquote:border-none prose-blockquote:bg-transparent prose-blockquote:p-0 prose-blockquote:font-heading prose-blockquote:text-3xl
+          prose-li:text-current font-editorial
           prose-strong:text-foreground">
                     <HTMLRenderer html={post.content} isBody={true} />
                 </div>
