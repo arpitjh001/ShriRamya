@@ -314,6 +314,76 @@
     @apply border-accent bg-charcoal text-accent;
     transform: rotate(90deg);
   }
+
+  /* =========================================
+     JOURNAL EDITORIAL STYLES
+     Autoformatting Engine Styles
+     ========================================= */
+
+  .journal-content {
+    @apply text-foreground font-body leading-relaxed;
+    text-align: justify;
+    hyphens: auto;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .journal-content p {
+    @apply mb-6;
+    font-size: 1.125rem;
+  }
+
+  /* Drop Cap Styling */
+  .journal-dropcap {
+    @apply float-left text-primary font-heading leading-[0.8] mr-3 mt-1;
+    font-size: 4.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  /* Image Layouts */
+  .journal-figure {
+    @apply mb-8 mt-4 max-w-full lg:max-w-[45%] rounded-xl overflow-hidden shadow-luxury-sm;
+    transition: transform 0.3s ease;
+  }
+
+  @media (min-width: 1024px) {
+    .journal-figure.journal-img-right {
+      @apply float-right ml-8 -mr-12;
+    }
+    
+    .journal-figure.journal-img-left {
+      @apply float-left mr-8 -ml-12;
+    }
+  }
+
+  .journal-figure img {
+    @apply w-full h-auto block;
+  }
+
+  .journal-caption {
+    @apply bg-accent/5 p-3 text-xs italic text-muted-foreground border-t border-border/10 text-center uppercase tracking-widest;
+  }
+
+  .journal-content blockquote {
+    @apply relative py-8 px-12 my-12 italic text-2xl font-heading text-primary bg-accent/5 rounded-2xl border-l-4 border-primary;
+    text-align: left;
+  }
+
+  .journal-content blockquote::before {
+    content: "“";
+    @apply absolute -top-4 left-4 text-7xl text-primary/20 font-serif;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 1023px) {
+    .journal-content {
+      text-align: left; /* Better for mobile */
+    }
+    .journal-figure {
+      @apply float-none w-full mx-0;
+    }
+  }
 }
 
 ::selection {

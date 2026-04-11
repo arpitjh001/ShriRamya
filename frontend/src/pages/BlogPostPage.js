@@ -8,9 +8,14 @@ import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import DOMPurify from 'dompurify';
 import SEOMeta from '../components/SEOMeta';
+import { formatJournalContent } from '../utils/journalFormatter';
 
-const HTMLRenderer = ({ html, className }) => {
-    const cleanHtml = DOMPurify.sanitize(html);
+const HTMLRenderer = ({ html, className, isBody = false }) => {
+    const processedHtml = isBody ? formatJournalContent(html) : html;
+    const cleanHtml = DOMPurify.sanitize(processedHtml, {
+        ADD_ATTR: ['class', 'style'],
+        ADD_TAGS: ['figure', 'figcaption']
+    });
     return <div className={className} dangerouslySetInnerHTML={{ __html: cleanHtml }} />;
 };
 
@@ -232,7 +237,7 @@ const BlogPostPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
             >
-                <div className="prose prose-lg md:prose-xl prose-stone max-w-none 
+                <div className="journal-content prose prose-lg md:prose-xl prose-stone max-w-none 
           prose-headings:font-heading prose-headings:font-medium 
           prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl 
           prose-p:font-body prose-p:leading-relaxed prose-p:text-muted-foreground
@@ -241,7 +246,7 @@ const BlogPostPage = () => {
           prose-blockquote:border-l-secondary prose-blockquote:bg-accent/5 prose-blockquote:p-6 prose-blockquote:rounded-r-lg prose-blockquote:font-heading prose-blockquote:text-xl prose-blockquote:italic
           prose-li:text-muted-foreground
           prose-strong:text-foreground">
-                    <HTMLRenderer html={post.content} />
+                    <HTMLRenderer html={post.content} isBody={true} />
                 </div>
 
                 {/* Tags / Meta block */}
