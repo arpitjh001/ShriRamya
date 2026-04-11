@@ -45,10 +45,8 @@ async function migrateImages() {
 
     // 3. Update Database
     console.log('Connecting to MySQL...');
-    // When running from host, we use localhost instead of docker service name 'mysql'
-    // Also the port is mapped to 3307 in docker-compose.yml
-    const dbHost = process.env.MYSQL_HOST === 'mysql' ? 'localhost' : (process.env.MYSQL_HOST || 'localhost');
-    const dbPort = dbHost === 'localhost' ? 3307 : parseInt(process.env.MYSQL_PORT || '3306');
+    const dbHost = process.env.MYSQL_HOST || 'localhost';
+    const dbPort = parseInt(process.env.MYSQL_PORT || '3306', 10);
     
     console.log(`DB Host: ${dbHost}`);
     console.log(`DB Port: ${dbPort}`);

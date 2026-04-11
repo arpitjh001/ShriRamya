@@ -64,6 +64,57 @@ const isPubliclyVisibleProduct = (product) => {
 
 const isPublishedBlogStatus = (status) => String(status || '').toLowerCase() === 'published';
 
+const getNonEmptyString = (value) => (typeof value === 'string' && value.trim() ? value.trim() : '');
+
+const extractFirstImageSrc = (html) => {
+  if (!html) return '';
+  const match = String(html).match(/<img[^>]*\s+src=["']([^"']+)["'][^>]*>/i);
+  return match ? match[1] : '';
+};
+
+const getBlogDisplayImage = (post) => {
+  const storedFeatured =
+    getNonEmptyString(post?.featuredImage) ||
+    getNonEmptyString(post?.featured_image);
+
+  if (storedFeatured) return storedFeatured;
+
+  const images = Array.isArray(post?.images) ? post.images : [];
+  const galleryImage = images.map(getNonEmptyString).find(Boolean);
+  if (galleryImage) return galleryImage;
+
+  return getNonEmptyString(extractFirstImageSrc(post?.content));
+};
+
+const formatBlogPostForResponse = (post) => {
+  if (!post) return post;
+
+  const id = post._id?.toString?.() || String(post._id || post.slug || '');
+  const featuredImage =
+    getNonEmptyString(post.featuredImage) ||
+    getNonEmptyString(post.featured_image);
+  const image = getBlogDisplayImage(post);
+  const seoTitle = getNonEmptyString(post.seoTitle) || getNonEmptyString(post.seo_title);
+  const seoDescription = getNonEmptyString(post.seoDescription) || getNonEmptyString(post.seo_description);
+  const authorName = getNonEmptyString(post.author_name) || getNonEmptyString(post.author?.name) || 'Shri Ramya Team';
+
+  return {
+    ...post,
+    id,
+    image,
+    featuredImage,
+    featured_image: featuredImage,
+    seoTitle,
+    seo_title: seoTitle,
+    seoDescription,
+    seo_description: seoDescription,
+    author_name: authorName,
+    created_at: post.createdAt || post.created_at || null,
+    updated_at: post.updatedAt || post.updated_at || null,
+    published_at: post.publishedAt || post.published_at || null,
+  };
+};
+
 router.use('/admin', auth(['admin']));
 router.use('/orders/admin', auth(['admin']));
 
@@ -534,21 +585,30 @@ router.get('/blogs', optionalAuth, async (req, res) => {
     const privileged = isAdminOrEditor(req.user);
     if (category) filter.categories = { $in: [category] };
     if (search) filter.$or = [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }];
-    if (privileged && status) {
-      filter.status = status;
+
+    const normalizedStatus = getNonEmptyString(status).toLowerCase();
+    if (privileged) {
+      if (normalizedStatus && normalizedStatus !== 'all') {
+        filter.status = normalizedStatus;
+      } else if (!normalizedStatus) {
+        filter.status = 'published';
+      }
     } else {
       filter.status = 'published';
     }
-    const skip = (Number(page) - 1) * Number(per_page);
+
+    const pageNumber = Math.max(Number(page) || 1, 1);
+    const perPageNumber = Math.max(Number(per_page) || 10, 1);
+    const skip = (pageNumber - 1) * perPageNumber;
     const [posts, total] = await Promise.all([
-      Blog.find(filter, { __v: 0 }).sort({ publishedAt: -1, createdAt: -1 }).skip(skip).limit(Number(per_page)).lean(),
+      Blog.find(filter, { __v: 0 }).sort({ publishedAt: -1, createdAt: -1 }).skip(skip).limit(perPageNumber).lean(),
       Blog.countDocuments(filter)
     ]);
     res.json({
       success: true,
       data: {
-        posts: posts.map((post) => ({ ...post, id: post._id?.toString() || post.slug })),
-        pagination: { current_page: Number(page), total_pages: Math.ceil(total / Number(per_page)), total }
+        posts: posts.map((post) => formatBlogPostForResponse(post)),
+        pagination: { current_page: pageNumber, total_pages: Math.ceil(total / perPageNumber), total }
       }
     });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -594,7 +654,7 @@ router.get('/blogs/stats', async (req, res) => {
 
 router.post('/blogs', auth(['admin', 'editor']), async (req, res) => {
   try {
-    const { title, slug, content, excerpt, status = 'draft', categories = [], tags = [], featuredImage, seoTitle, seoDescription } = req.body;
+    const { title, slug, content, excerpt, status = 'draft', categories = [], tags = [], featuredImage, images = [], seoTitle, seoDescription } = req.body;
     const blogSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const blog = await Blog.create({
       title, slug: blogSlug, content, excerpt,
@@ -602,6 +662,7 @@ router.post('/blogs', auth(['admin', 'editor']), async (req, res) => {
       categories: Array.isArray(categories) ? categories : [],
       tags: Array.isArray(tags) ? tags : (tags || '').split(',').map(t => t.trim()).filter(Boolean),
       status, featuredImage, seoTitle, seoDescription,
+      images: Array.isArray(images) ? images : [],
       publishedAt: status === 'published' ? new Date() : null,
     });
     const blogData = blog.toObject();
@@ -618,8 +679,7 @@ router.get('/blogs/:idOrSlug', optionalAuth, async (req, res) => {
     if (!isAdminOrEditor(req.user) && !isPublishedBlogStatus(blog.status)) {
       return res.status(404).json({ success: false, message: 'Blog not found' });
     }
-    const { _id, ...data } = blog;
-    res.json({ success: true, data: { ...data, id: _id.toString() } });
+    res.json({ success: true, data: formatBlogPostForResponse(blog) });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
@@ -657,7 +717,51 @@ router.get('/wishlist', async (req, res) => {
   try {
     const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
     const items = await Wishlist.find({ userId }, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).lean();
-    res.json({ success: true, data: items });
+
+    // Backfill pricing for legacy wishlist entries that were saved without computed prices
+    const missingPricingProductIds = [
+      ...new Set(
+        items
+          .filter((item) => (Number(item.salePrice ?? item.price ?? 0) || 0) <= 0)
+          .map((item) => item.productId)
+          .filter((value) => Number.isFinite(Number(value)) && Number(value) > 0)
+          .map((value) => Number(value))
+      )
+    ];
+
+    if (missingPricingProductIds.length === 0) {
+      return res.json({ success: true, data: items });
+    }
+
+    const products = await Product.find(
+      { productId: { $in: missingPricingProductIds } },
+      { _id: 0, __v: 0 }
+    ).lean();
+
+    const pricingByProductId = new Map(
+      products.map((product) => {
+        const pid = Number(product.productId);
+        const { regularPrice, salePrice } = catalogReadService.computePricing(product);
+        return [pid, { price: regularPrice, salePrice }];
+      })
+    );
+
+    const hydratedItems = items.map((item) => {
+      const pid = Number(item.productId);
+      const pricing = pricingByProductId.get(pid);
+      if (!pricing) return item;
+
+      const existingDisplayPrice = Number(item.salePrice ?? item.price ?? 0) || 0;
+      if (existingDisplayPrice > 0) return item;
+
+      return {
+        ...item,
+        price: pricing.price,
+        salePrice: pricing.salePrice,
+      };
+    });
+
+    res.json({ success: true, data: hydratedItems });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
@@ -679,7 +783,16 @@ router.post('/wishlist/add', async (req, res) => {
     const exists = await Wishlist.findOne({ userId, productId: pid });
     if (exists) return res.json({ success: true, message: 'Already in wishlist' });
 
-    await Wishlist.create({ userId, productId: product.productId, name: product.name, thumbnail: product.thumbnail, price: product.price, salePrice: product.salePrice });
+    const { regularPrice, salePrice } = catalogReadService.computePricing(product);
+
+    await Wishlist.create({
+      userId,
+      productId: product.productId,
+      name: product.name,
+      thumbnail: product.thumbnail,
+      price: regularPrice,
+      salePrice,
+    });
     res.status(201).json({ success: true, message: 'Added to wishlist' });
   } catch (err) {
     console.error('[dbRoutes] /wishlist/add error:', err);
@@ -690,7 +803,7 @@ router.post('/wishlist/add', async (req, res) => {
 // Alias: POST /wishlist/:productId (frontend compatibility)
 router.post('/wishlist/:productId', async (req, res) => {
   try {
-    const userId = req.body.userId || req.headers['x-user-id'] || 'guest';
+    const userId = req.query.userId || (req.body && req.body.userId) || req.headers['x-user-id'] || 'guest';
     const identifier = req.params.productId;
 
     // Try flexible lookup (ObjectId, numeric productId, or slug)
@@ -718,7 +831,16 @@ router.post('/wishlist/:productId', async (req, res) => {
     const exists = await Wishlist.findOne({ userId, productId: pid });
     if (exists) return res.json({ success: true, message: 'Already in wishlist' });
 
-    await Wishlist.create({ userId, productId: pid, name: product.name, thumbnail: product.thumbnail, price: product.price, salePrice: product.salePrice });
+    const { regularPrice, salePrice } = catalogReadService.computePricing(product);
+
+    await Wishlist.create({
+      userId,
+      productId: pid,
+      name: product.name,
+      thumbnail: product.thumbnail,
+      price: regularPrice,
+      salePrice,
+    });
     res.status(201).json({ success: true, message: 'Added to wishlist' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

@@ -9,34 +9,45 @@ Welcome to the **Shri Ramya** project. This repository has been fully migrated f
   - **MongoDB**: For user accounts, orders, and persistent session data.
   - **MySQL**: Native CMS for blogs, products, and categories.
 - **CMS**: Native MySQL-based Content Management System
-- **Containerization**: Docker & Docker Compose
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
-- Node.js 20+ (for local development)
+- Node.js 18+
+- MongoDB (local or hosted)
+- MySQL (local or hosted)
 
-### Quick Start (Docker)
-1. Clone the repository.
-2. Ensure you have the `.env` file configured in `./backend_node/.env`.
-3. Run the following command:
+### Quick Start (Local)
+1. Configure `backend_node/.env` (Mongo + `JWT_SECRET` required at minimum).
+2. Start the backend:
    ```bash
-   docker-compose up --build -d
+   cd backend_node
+   npm install
+   npm run dev
+   ```
+3. Start the frontend:
+   ```bash
+   cd frontend
+   yarn install
+   yarn dev
    ```
 4. Access the application:
-   - **Frontend**: [http://localhost:8080](http://localhost:8080)
-   - **Backend API**: [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
-   - **Anthropic Proxy**: [http://localhost:8081](http://localhost:8081) (Dashboard for linking accounts)
+   - **Frontend**: http://localhost:3000
+   - **Backend API**: http://localhost:8000/api/v1
 
 ## 🤖 AI Development (Claude Code Proxy)
 This project integrates the **Antigravity Claude Proxy**, enabling you to use **Claude Code CLI** or other Anthropic-compatible tools with Google Antigravity / Gemini models.
 
 ### Setup
-1. Start the services with `docker-compose up -d`.
-2. Visit [http://localhost:8081](http://localhost:8081).
+1. Start the proxy:
+   ```bash
+   cd ai-proxy
+   npm install
+   npm run dev
+   ```
+2. Visit http://localhost:8080.
 3. Go to the **Accounts** tab and link your Google Account.
-4. Configure your CLI (e.g. `claude-code`) to use `http://localhost:8081` as the `ANTHROPIC_BASE_URL`.
+4. Configure your CLI (e.g. `claude-code`) to use `http://localhost:8080` as the `ANTHROPIC_BASE_URL`.
 
 ## 📡 API Endpoints (v1)
 

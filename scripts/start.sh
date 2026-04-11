@@ -1,77 +1,70 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Shri Ramya Startup Script
-# This script starts the entire application stack using Docker Compose.
+# Shri Ramya Startup Script (Local, no Docker)
+# Starts backend + frontend locally. Databases (MongoDB/MySQL/Redis) must be running separately.
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
 
-echo -e "${BLUE}🚀 Starting Shri Ramya Application Stack...${NC}"
-
-# Function to check if a command exists
 command_exists() {
-    command -v "$1" >/dev/null 2>&1
+  command -v "$1" >/dev/null 2>&1
 }
 
-# 1. Check for Docker
-if ! command_exists docker; then
-    echo -e "${RED}❌ Error: Docker is not installed.${NC}"
-    echo "Please install Docker from https://docs.docker.com/get-docker/"
-    exit 1
+if ! command_exists node; then
+  echo "Error: Node.js is not installed."
+  exit 1
 fi
 
-# 2. Check for Docker Compose
-DOCKER_COMPOSE="docker-compose"
-if ! command_exists docker-compose; then
-    if docker compose version >/dev/null 2>&1; then
-        DOCKER_COMPOSE="docker compose"
-    else
-        echo -e "${RED}❌ Error: Docker Compose is not installed.${NC}"
-        echo "Please install Docker Compose."
-        exit 1
-    fi
+if ! command_exists npm; then
+  echo "Error: npm is not available."
+  exit 1
 fi
 
-# 3. Check for .env file
+frontend_cmd=(yarn dev)
+if ! command_exists yarn; then
+  echo "Warning: yarn is not installed. Falling back to 'npm run dev' for the frontend."
+  frontend_cmd=(npm run dev)
+fi
+
 if [ ! -f "backend_node/.env" ]; then
-    echo -e "${YELLOW}⚠️ Warning: backend_node/.env not found.${NC}"
-    if [ -f "backend_node/.env.example" ]; then
-        echo "Creating backend_node/.env from .env.example..."
-        cp backend_node/.env.example backend_node/.env
-        echo -e "${GREEN}✅ Created backend_node/.env. Please review it if you have specific configurations.${NC}"
-    else
-        echo -e "${RED}❌ Error: backend_node/.env.example not found.${NC}"
-        echo "Please create a backend_node/.env file manually before starting."
-        exit 1
-    fi
-fi
-
-# 4. Start the application
-echo -e "${BLUE}📦 Building and starting containers (this may take a minute)...${NC}"
-$DOCKER_COMPOSE up --build -d
-
-if [ $? -eq 0 ]; then
-    echo -e "\n${GREEN}✅ Application started successfully!${NC}"
-    echo -e "------------------------------------------------"
-    echo -e "${BLUE}Main Entry (Nginx):${NC} http://localhost:8080"
-    echo -e "${BLUE}Backend API:${NC}        http://localhost:8000/api/v1"
-    echo -e "${BLUE}WordPress Admin:${NC}    http://localhost:8080/wp/wp-admin"
-    echo -e "------------------------------------------------"
-    echo -e "To view logs, run: ${YELLOW}docker-compose logs -f${NC}"
-    echo -e "To stop the app, run: ${YELLOW}docker-compose down${NC}"
-    
-    # Run a quick API health check if api_check.sh exists
-    if [ -f "./api_check.sh" ]; then
-        echo -e "\n${BLUE}🔍 Running health check...${NC}"
-        sleep 5 # Give services a moment to warm up
-        ./api_check.sh
-    fi
-else
-    echo -e "${RED}❌ Failed to start the application containers.${NC}"
-    echo "Check if there are any port conflicts (80, 8000, 3000, 8081, 3306)."
+  echo "Warning: backend_node/.env not found."
+  if [ -f "backend_node/.env.example" ]; then
+    echo "Creating backend_node/.env from backend_node/.env.example..."
+    cp backend_node/.env.example backend_node/.env
+  else
+    echo "Error: backend_node/.env.example not found. Create backend_node/.env before starting."
     exit 1
+  fi
 fi
+
+echo "Starting Shri Ramya (local)..."
+echo "Make sure MongoDB + MySQL are running."
+echo "Backend:  http://localhost:8000/api/v1"
+echo "Frontend: http://localhost:3000"
+echo ""
+
+cleanup() {
+  echo ""
+  echo "Stopping..."
+  if [ -n "${BACKEND_PID:-}" ] && kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
+    kill "$BACKEND_PID" >/dev/null 2>&1 || true
+  fi
+  if [ -n "${FRONTEND_PID:-}" ] && kill -0 "$FRONTEND_PID" >/dev/null 2>&1; then
+    kill "$FRONTEND_PID" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup INT TERM EXIT
+
+(cd backend_node && npm run dev) &
+BACKEND_PID=$!
+
+(cd frontend && "${frontend_cmd[@]}") &
+FRONTEND_PID=$!
+
+sleep 3
+if [ -f "./scripts/api_check.sh" ]; then
+  ./scripts/api_check.sh "http://localhost:8000/api/v1" || true
+fi
+
+wait

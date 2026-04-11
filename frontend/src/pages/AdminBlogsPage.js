@@ -104,8 +104,8 @@ const AdminBlogsPage = () => {
         <div className="px-6 md:px-12 lg:px-24 py-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                 <div>
-                    <h1 className="text-4xl font-heading font-medium tracking-tight mb-2">Journal Dashboard</h1>
-                    <p className="text-muted-foreground italic">Curate and manage the stories of Shri Ramya heritage.</p>
+                    <h1 className="text-4xl font-heading font-medium tracking-tight mb-2 text-white">Journal Dashboard</h1>
+                    <p className="text-slate-400 italic">Curate and manage the stories of Shri Ramya heritage.</p>
                 </div>
                 <div className="flex gap-4">
                     <Button asChild className="rounded-full px-6">
@@ -119,14 +119,14 @@ const AdminBlogsPage = () => {
             {/* Quick Stats - Part 10 Integration */}
             {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+                    <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-sm">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                                <Eye className="w-6 h-6 text-primary" />
+                            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                                <Eye className="w-6 h-6 text-primary-foreground" />
                             </div>
                             <div>
-                                <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Total Views</p>
-                                <p className="text-2xl font-heading font-medium">
+                                <p className="text-sm text-slate-400 font-medium uppercase tracking-wider">Total Views</p>
+                                <p className="text-2xl font-heading font-medium text-white">
                                     {stats.total_views || stats.monthlyStats?.reduce((acc, curr) => acc + curr.views, 0) || 0}
                                 </p>
                             </div>
@@ -139,11 +139,11 @@ const AdminBlogsPage = () => {
             {/* Controls */}
             <div className="flex flex-col lg:flex-row gap-4 mb-8">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                         type="text"
                         placeholder="Search stories..."
-                        className="w-full pl-10 pr-4 py-2 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/40 outline-none transition-all"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && fetchData({ search: e.currentTarget.value })}
@@ -159,7 +159,7 @@ const AdminBlogsPage = () => {
                             }}
                             className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all whitespace-nowrap ${filterStatus === s
                                     ? 'bg-primary text-primary-foreground border-primary shadow-md'
-                                    : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                                    : 'bg-white/5 text-slate-400 border-white/10 hover:border-primary/50'
                                 }`}
                         >
                             {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -169,42 +169,56 @@ const AdminBlogsPage = () => {
             </div>
 
             {/* Table Area */}
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-muted/30 border-b border-border">
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Entry Details</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Author</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Stats</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">Actions</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Entry Details</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Status</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Author</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">Stats</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody className="divide-y divide-white/10">
                             {loading ? (
                                 <tr>
                                     <td colSpan="5" className="px-6 py-12 text-center">
                                         <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary mb-2" />
-                                        <p className="text-muted-foreground">Loading journal entries...</p>
+                                        <p className="text-slate-400">Loading journal entries...</p>
                                     </td>
                                 </tr>
                             ) : posts.length === 0 ? (
                                 <tr>
                                     <td colSpan="5" className="px-6 py-12 text-center">
-                                        <p className="text-muted-foreground italic">No stories found matching your criteria.</p>
+                                        <p className="text-slate-400 italic">No stories found matching your criteria.</p>
                                     </td>
                                 </tr>
-                            ) : posts.map((post) => (
-                                <tr key={post.id} className="hover:bg-muted/20 transition-colors">
+                            ) : posts.map((post) => {
+                                const thumbnail =
+                                    post.featured_image ||
+                                    post.featuredImage ||
+                                    post.image ||
+                                    (Array.isArray(post.images) ? post.images.find(Boolean) : '') ||
+                                    '';
+
+                                return (
+                                <tr key={post.id} className="hover:bg-white/5 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
                                             <div className="w-16 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                                                <img src={post.featured_image || '/api/placeholder/64/40'} alt="" className="w-full h-full object-cover" />
+                                                {thumbnail ? (
+                                                    <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-accent/20 flex items-center justify-center">
+                                                        <span className="text-[10px] text-slate-400 font-medium">Shri Ramya</span>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-foreground mb-0.5 line-clamp-1">{post.title}</p>
-                                                <p className="text-xs text-muted-foreground">{new Date(post.publishedAt || post.published_at || post.createdAt || post.created_at).toDateString()}</p>
+                                                <p className="font-medium text-white mb-0.5 line-clamp-1">{post.title}</p>
+                                                <p className="text-xs text-slate-400">{new Date(post.publishedAt || post.published_at || post.createdAt || post.created_at).toDateString()}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -214,11 +228,11 @@ const AdminBlogsPage = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <p className="text-sm font-medium">{post.author?.name || post.author_name || 'System'}</p>
-                                        <p className="text-[10px] text-muted-foreground">Shri Ramya Curators</p>
+                                        <p className="text-sm font-medium text-white">{post.author?.name || post.author_name || 'System'}</p>
+                                        <p className="text-[10px] text-slate-400">Shri Ramya Curators</p>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3 text-muted-foreground">
+                                        <div className="flex items-center gap-3 text-slate-400">
                                             <div className="flex items-center gap-1" title="Views">
                                                 <Eye className="w-3.5 h-3.5" />
                                                 <span className="text-xs">{post.views || post.view_count || 0}</span>
@@ -231,12 +245,12 @@ const AdminBlogsPage = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
+                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10 text-slate-300 hover:text-white">
                                                 <Link to={`/admin/blog/${post.id}/edit`}>
                                                     <Edit className="w-4 h-4" />
                                                 </Link>
                                             </Button>
-                                            <div className="h-4 w-px bg-border mx-1" />
+                                            <div className="h-4 w-px bg-white/10 mx-1" />
                                             {post.status !== 'published' && (
                                                 <Button onClick={() => handleStatusMove(post.id, 'published')} variant="ghost" size="icon" title="Publish" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50">
                                                     <CheckCircle className="w-4 h-4" />
@@ -253,7 +267,8 @@ const AdminBlogsPage = () => {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

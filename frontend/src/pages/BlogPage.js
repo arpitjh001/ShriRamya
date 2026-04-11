@@ -94,15 +94,24 @@ const BlogPage = () => {
       // Combine static posts with native blog posts
       // Static posts always appear first
       // Ensure native posts have slug field for routing
-      const combinedPosts = [
-        ...STATIC_POSTS,
-        ...nativePosts.map(post => ({
+      const normalizedNativePosts = nativePosts.map((post) => {
+        const image =
+          post?.image ||
+          post?.featured_image ||
+          post?.featuredImage ||
+          (Array.isArray(post?.images) ? post.images.find(Boolean) : null) ||
+          null;
+
+        return {
           ...post,
-          slug: post.slug || `post-${post.id}` // Fallback slug if missing
-        }))
-      ];
+          slug: post.slug || `post-${post.id}`,
+          image,
+        };
+      });
+
+      const combinedPosts = [...STATIC_POSTS, ...normalizedNativePosts];
       setAllPosts(combinedPosts);
-      setPosts(nativePosts);
+      setPosts(normalizedNativePosts);
       setPagination(paginationData);
     } catch (error) {
       console.error('Failed to fetch blog posts:', error);

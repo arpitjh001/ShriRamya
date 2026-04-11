@@ -6,7 +6,7 @@
 // Override environment variables for testing
 process.env.NODE_ENV = 'test';
 process.env.MYSQL_HOST = 'localhost';
-process.env.MYSQL_PORT = '3307'; // Docker mapped port
+process.env.MYSQL_PORT = '3306';
 process.env.MYSQL_USER = 'shriramya_user';
 process.env.MYSQL_PASSWORD = 'shriramya_password';
 process.env.MYSQL_DATABASE = 'shriramya_test';

@@ -20,7 +20,7 @@ export default defineConfig({
     timeout: 10000
   },
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -44,8 +44,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'docker-compose ps',
-    url: 'http://localhost:8080',
+    command: 'yarn dev',
+    url: 'http://localhost:3000',
     reuseExistingServer: true,
   },
 });

@@ -3,6 +3,8 @@ const app = require('../src/app');
 const mongoose = require('mongoose');
 const config = require('../src/config/config');
 const User = require('../src/models/user.model');
+const Product = require('../src/models/product.model');
+const Wishlist = require('../src/models/wishlist.model');
 
 describe('API Endpoints Automation Tests (Native)', () => {
     let adminToken;
@@ -96,6 +98,47 @@ describe('API Endpoints Automation Tests (Native)', () => {
                 .set('Authorization', `Bearer ${adminToken}`)
                 .send({ name: 'Incomplete' });
             expect(res.status).toBe(400);
+        });
+    });
+
+    describe('❤️ Wishlist (Native)', () => {
+        const userId = 'test_user_wishlist_price';
+        const productId = 99999;
+        const slug = `wishlist-price-test-${productId}`;
+
+        beforeAll(async () => {
+            await Wishlist.deleteMany({ userId, productId });
+            await Product.deleteMany({ $or: [{ productId }, { slug }] });
+
+            await Product.create({
+                productId,
+                name: 'Wishlist Price Test Product',
+                slug,
+                basePrice: 1234,
+                thumbnail: 'https://example.com/thumb.jpg',
+                status: 'published',
+                tenant_id: 1,
+                variants: []
+            });
+        });
+
+        afterAll(async () => {
+            await Wishlist.deleteMany({ userId, productId });
+            await Product.deleteMany({ $or: [{ productId }, { slug }] });
+        });
+
+        test('POST /wishlist/:productId - saves computed price snapshot', async () => {
+            const res = await request(app)
+                .post(`/api/v1/wishlist/${productId}`)
+                .query({ userId })
+                .send({});
+
+            expect(res.status).toBe(201);
+
+            const entry = await Wishlist.findOne({ userId, productId }).lean();
+            expect(entry).toBeTruthy();
+            expect(Number(entry.price || 0)).toBe(1234);
+            expect(entry.salePrice == null || Number(entry.salePrice) === 0).toBe(true);
         });
     });
 

@@ -114,8 +114,7 @@ async function main() {
   } catch (error) {
     console.error('\n❌ Test database setup failed!');
     console.error('Error:', error.message);
-    console.error('\nMake sure Docker containers are running:');
-    console.log('  docker-compose up -d mysql mongodb redis');
+    console.error('\nMake sure MySQL and MongoDB are running locally and TEST_CONFIG points to the right ports.');
     process.exit(1);
   }
 }
