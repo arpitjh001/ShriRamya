@@ -75,9 +75,14 @@ const WishlistPage = () => {
         ) : (
           <AnimatePresence>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {items.map(item => (
-                <motion.div key={item.productId} layout exit={{ opacity: 0, scale: 0.8 }} data-testid={`wishlist-product-${item.productId}`}
-                  className="bg-card border border-border rounded-xl overflow-hidden group">
+              {items.map(item => {
+                const displayPrice = Number(item.salePrice ?? item.price ?? 0);
+                const originalPrice = Number(item.price ?? 0);
+                const showOriginal = originalPrice > 0 && originalPrice > displayPrice;
+
+                return (
+                  <motion.div key={item.productId} layout exit={{ opacity: 0, scale: 0.8 }} data-testid={`wishlist-product-${item.productId}`}
+                    className="bg-card border border-border rounded-xl overflow-hidden group">
                   <Link to={`/products/${item.productId}`} className="block">
                     <div className="aspect-[3/4] overflow-hidden relative">
                       <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -91,15 +96,16 @@ const WishlistPage = () => {
                   <div className="p-4">
                     <h3 className="text-sm font-medium line-clamp-2 mb-2">{item.name}</h3>
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="font-semibold">Rs.{(item.salePrice || item.price).toLocaleString()}</span>
-                      {item.price > item.salePrice && <span className="text-xs text-muted-foreground line-through">Rs.{item.price.toLocaleString()}</span>}
+                      <span className="font-semibold">Rs.{displayPrice.toLocaleString()}</span>
+                      {showOriginal && <span className="text-xs text-muted-foreground line-through">Rs.{originalPrice.toLocaleString()}</span>}
                     </div>
                     <Button size="sm" className="w-full" onClick={() => moveToCart(item)} data-testid={`move-to-cart-${item.productId}`}>
                       <ShoppingBag className="w-4 h-4 mr-2" /> Move to Cart
                     </Button>
                   </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           </AnimatePresence>
         )}
