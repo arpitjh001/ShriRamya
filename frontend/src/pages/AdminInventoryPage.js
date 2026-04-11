@@ -90,8 +90,13 @@ const AdminInventoryPage = () => {
   );
 
   const stats = useMemo(() => ({
-    totalVariants: inventory.length,
-    totalProducts: new Set(inventory.map((item) => item.productId)).size,
+    totalVariants: inventory.filter((item) => (Number(item.stock) || 0) > 0).length,
+    totalProducts: new Set(
+      inventory
+        .filter((item) => (Number(item.stock) || 0) > 0)
+        .map((item) => item.productId)
+        .filter(Boolean)
+    ).size,
     lowStock: inventory.filter((item) => item.isLowStock).length,
     outOfStock: inventory.filter((item) => item.stock === 0).length,
     totalValue: inventory.reduce((sum, item) => sum + ((item.price || 0) * (item.stock || 0)), 0),
@@ -196,23 +201,23 @@ const AdminInventoryPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-200">Variants</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-200">Variants In Stock</CardTitle>
               <Layers className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{stats.totalVariants}</div>
-              <p className="text-xs text-slate-400">Tracked inventory rows</p>
+              <p className="text-xs text-slate-400">SKUs with stock &gt; 0</p>
             </CardContent>
           </Card>
 
           <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-200">Products</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-200">Products In Stock</CardTitle>
               <Package className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{stats.totalProducts}</div>
-              <p className="text-xs text-slate-400">Unique products in stock</p>
+              <p className="text-xs text-slate-400">Unique products with stock &gt; 0</p>
             </CardContent>
           </Card>
 

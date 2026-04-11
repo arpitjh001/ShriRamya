@@ -1,4 +1,5 @@
 const Product = require('../models/product.model');
+const OfflineSale = require('../models/offlineSale.model');
 const redis = require('../config/integrations/redis');
 const { inventoryAuditService } = require('./inventory-audit.service');
 
@@ -259,6 +260,28 @@ class InventoryService {
       userId: data.userId || null,
       notes: noteParts.join(' | '),
     });
+
+    // Record in OfflineSale collection for analytics
+    try {
+      await OfflineSale.create({
+        tenant_id: Number(tenantId) || 1,
+        productId: product._id,
+        variantId,
+        quantity,
+        salePrice,
+        paymentMethod: data.paymentMethod || 'cash',
+        customerName: data.customerName || null,
+        customerPhone: data.customerPhone || null,
+        customerEmail: data.customerEmail || null,
+        notes: data.notes || null,
+        soldAt,
+        recordedBy: data.userId || null,
+        store_location: data.store_location || null
+      });
+    } catch (err) {
+      console.error('Error recording offline sale:', err.message);
+      // Don't fail the entire operation if offline sale record fails
+    }
 
     await this.clearProductListCache();
 

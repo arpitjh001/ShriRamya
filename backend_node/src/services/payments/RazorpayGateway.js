@@ -5,15 +5,38 @@
 
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const config = require('../../config/config');
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret'
-});
+let razorpayClient = null;
+
+const getRazorpayClient = () => {
+    const keyId = config.razorpay?.keyId || process.env.RAZORPAY_KEY_ID;
+    const keySecret = config.razorpay?.keySecret || process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+        return null;
+    }
+
+    if (!razorpayClient) {
+        razorpayClient = new Razorpay({
+            key_id: keyId,
+            key_secret: keySecret,
+        });
+    }
+
+    return razorpayClient;
+};
+
+const getKeySecret = () => config.razorpay?.keySecret || process.env.RAZORPAY_KEY_SECRET || '';
 
 class RazorpayGateway {
     constructor() {
         this.gatewayName = 'razorpay';
+    }
+
+    isConfigured() {
+        const client = getRazorpayClient();
+        return !!client;
     }
 
     /**
@@ -23,6 +46,14 @@ class RazorpayGateway {
      */
     async createPayment(order) {
         try {
+            const razorpay = getRazorpayClient();
+            if (!razorpay) {
+                return {
+                    success: false,
+                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const amount = Math.round(order.amount * 100); // Convert to paise
 
             const rzOrder = await razorpay.orders.create({
@@ -62,9 +93,17 @@ class RazorpayGateway {
      */
     verifyPayment(orderId, paymentId, signature) {
         try {
+            const keySecret = getKeySecret();
+            if (!keySecret) {
+                return {
+                    success: false,
+                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const sign = orderId + '|' + paymentId;
             const expectedSign = crypto
-                .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret')
+                .createHmac('sha256', keySecret)
                 .update(sign.toString())
                 .digest('hex');
 
@@ -90,6 +129,14 @@ class RazorpayGateway {
      */
     async verifyPaymentStatus(paymentId) {
         try {
+            const razorpay = getRazorpayClient();
+            if (!razorpay) {
+                return {
+                    success: false,
+                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const payment = await razorpay.payments.fetch(paymentId);
 
             return {
@@ -119,6 +166,14 @@ class RazorpayGateway {
      */
     async getOrderDetails(orderId) {
         try {
+            const razorpay = getRazorpayClient();
+            if (!razorpay) {
+                return {
+                    success: false,
+                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const order = await razorpay.orders.fetch(orderId);
 
             return {
@@ -149,6 +204,14 @@ class RazorpayGateway {
      */
     async refund(paymentId, amount = null, reason = '', speed = 0) {
         try {
+            const razorpay = getRazorpayClient();
+            if (!razorpay) {
+                return {
+                    success: false,
+                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const refundParams = {
                 payment_id: paymentId,
                 speed: speed,
@@ -188,6 +251,14 @@ class RazorpayGateway {
      */
     async getRefundDetails(refundId) {
         try {
+            const razorpay = getRazorpayClient();
+            if (!razorpay) {
+                return {
+                    success: false,
+                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const refund = await razorpay.refunds.fetch(refundId);
 
             return {
@@ -214,8 +285,16 @@ class RazorpayGateway {
      */
     verifyWebhookSignature(payload, signature) {
         try {
+            const keySecret = process.env.RAZORPAY_WEBHOOK_SECRET || getKeySecret();
+            if (!keySecret) {
+                return {
+                    valid: false,
+                    error: 'Razorpay webhook secret is not configured (missing RAZORPAY_WEBHOOK_SECRET or RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const expectedSignature = crypto
-                .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret')
+                .createHmac('sha256', keySecret)
                 .update(payload)
                 .digest('hex');
 
@@ -241,6 +320,14 @@ class RazorpayGateway {
      */
     async getPaymentsByOrder(orderId) {
         try {
+            const razorpay = getRazorpayClient();
+            if (!razorpay) {
+                return {
+                    success: false,
+                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)',
+                };
+            }
+
             const payments = await razorpay.orders.fetchPayments(orderId);
 
             return {

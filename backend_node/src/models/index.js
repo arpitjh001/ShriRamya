@@ -7,6 +7,7 @@ const Cart = require('./cart.model');
 const Review = require('./review.model');
 const Coupon = require('./coupon.model');
 const InventoryAuditLog = require('./inventoryAudit.model');
+const OfflineSale = require('./offlineSale.model');
 const Role = require('./role.model');
 const Permission = require('./permission.model');
 const Tenant = require('./tenant.model');
@@ -28,7 +29,7 @@ const { Payment, PaymentLog } = require('./payment.model');
 
 module.exports = { 
   Product, User, Order, Blog, Wishlist, Cart, 
-  Review, Coupon, InventoryAuditLog, 
+  Review, Coupon, InventoryAuditLog, OfflineSale,
   Role, Permission, Tenant,
   Category, SubcategoryGroup, SubcategoryValue,
   DailyStats, ProductPerformance,

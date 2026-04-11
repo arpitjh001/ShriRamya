@@ -438,7 +438,15 @@ router.post('/orders', optionalAuth, async (req, res) => {
       tenantId: getRequestTenantId(req),
     });
     res.status(201).json({ success: true, data });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      message: err.message,
+      ...(err.code ? { code: err.code } : {}),
+      ...(err.availableStock != null ? { availableStock: err.availableStock } : {}),
+    });
+  }
 });
 
 router.post('/orders/:orderId/payment', async (req, res) => {
@@ -683,14 +691,34 @@ router.post('/wishlist/add', async (req, res) => {
 router.post('/wishlist/:productId', async (req, res) => {
   try {
     const userId = req.body.userId || req.headers['x-user-id'] || 'guest';
-    const productId = Number(req.params.productId);
-    const product = await Product.findOne({ productId }, { _id: 0, __v: 0 }).lean();
+    const identifier = req.params.productId;
+
+    // Try flexible lookup (ObjectId, numeric productId, or slug)
+    const lookup = buildProductLookup(identifier);
+    let product = null;
+    if (lookup) {
+      product = await Product.findOne(lookup, { _id: 0, __v: 0 }).lean();
+    }
+
+    // Fallback: if not found and identifier is numeric, try numeric productId
+    if (!product) {
+      const numeric = Number(identifier);
+      if (!Number.isNaN(numeric)) {
+        product = await Product.findOne({ productId: numeric }, { _id: 0, __v: 0 }).lean();
+      }
+    }
+
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
-    const exists = await Wishlist.findOne({ userId, productId });
+    const pid = Number(product.productId ?? product.productId);
+    if (Number.isNaN(pid) || pid === 0) {
+      return res.status(400).json({ success: false, message: 'Product does not have a valid productId' });
+    }
+
+    const exists = await Wishlist.findOne({ userId, productId: pid });
     if (exists) return res.json({ success: true, message: 'Already in wishlist' });
 
-    await Wishlist.create({ userId, productId: product.productId, name: product.name, thumbnail: product.thumbnail, price: product.price, salePrice: product.salePrice });
+    await Wishlist.create({ userId, productId: pid, name: product.name, thumbnail: product.thumbnail, price: product.price, salePrice: product.salePrice });
     res.status(201).json({ success: true, message: 'Added to wishlist' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -698,7 +726,28 @@ router.post('/wishlist/:productId', async (req, res) => {
 router.delete('/wishlist/remove/:productId', async (req, res) => {
   try {
     const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
-    await Wishlist.deleteOne({ userId, productId: Number(req.params.productId) });
+    const identifier = req.params.productId;
+
+    // Flexible lookup (ObjectId, numeric productId, slug)
+    const lookup = buildProductLookup(identifier);
+    let product = null;
+    if (lookup) product = await Product.findOne(lookup, { _id: 0, __v: 0 }).lean();
+    if (!product) {
+      const numeric = Number(identifier);
+      if (!Number.isNaN(numeric)) product = await Product.findOne({ productId: numeric }, { _id: 0, __v: 0 }).lean();
+    }
+
+    let pid = null;
+    if (product && product.productId != null) pid = Number(product.productId);
+    if (!pid || Number.isNaN(pid)) {
+      const numeric = Number(identifier);
+      if (!Number.isNaN(numeric)) pid = numeric;
+    }
+
+    // If we still don't have a numeric productId, treat as idempotent success
+    if (!pid || Number.isNaN(pid)) return res.json({ success: true, message: 'Removed from wishlist' });
+
+    await Wishlist.deleteOne({ userId, productId: pid });
     res.json({ success: true, message: 'Removed from wishlist' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -707,7 +756,26 @@ router.delete('/wishlist/remove/:productId', async (req, res) => {
 router.delete('/wishlist/:productId', async (req, res) => {
   try {
     const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
-    await Wishlist.deleteOne({ userId, productId: Number(req.params.productId) });
+    const identifier = req.params.productId;
+
+    const lookup = buildProductLookup(identifier);
+    let product = null;
+    if (lookup) product = await Product.findOne(lookup, { _id: 0, __v: 0 }).lean();
+    if (!product) {
+      const numeric = Number(identifier);
+      if (!Number.isNaN(numeric)) product = await Product.findOne({ productId: numeric }, { _id: 0, __v: 0 }).lean();
+    }
+
+    let pid = null;
+    if (product && product.productId != null) pid = Number(product.productId);
+    if (!pid || Number.isNaN(pid)) {
+      const numeric = Number(identifier);
+      if (!Number.isNaN(numeric)) pid = numeric;
+    }
+
+    if (!pid || Number.isNaN(pid)) return res.json({ success: true, message: 'Removed from wishlist' });
+
+    await Wishlist.deleteOne({ userId, productId: pid });
     res.json({ success: true, message: 'Removed from wishlist' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -715,7 +783,26 @@ router.delete('/wishlist/:productId', async (req, res) => {
 router.get('/wishlist/check/:productId', async (req, res) => {
   try {
     const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
-    const exists = await Wishlist.findOne({ userId, productId: Number(req.params.productId) });
+    const identifier = req.params.productId;
+
+    const lookup = buildProductLookup(identifier);
+    let product = null;
+    if (lookup) product = await Product.findOne(lookup, { _id: 0, __v: 0 }).lean();
+    if (!product) {
+      const numeric = Number(identifier);
+      if (!Number.isNaN(numeric)) product = await Product.findOne({ productId: numeric }, { _id: 0, __v: 0 }).lean();
+    }
+
+    let pid = null;
+    if (product && product.productId != null) pid = Number(product.productId);
+    if (!pid || Number.isNaN(pid)) {
+      const numeric = Number(identifier);
+      if (!Number.isNaN(numeric)) pid = numeric;
+    }
+
+    if (!pid || Number.isNaN(pid)) return res.json({ success: true, data: { inWishlist: false } });
+
+    const exists = await Wishlist.findOne({ userId, productId: pid });
     res.json({ success: true, data: { inWishlist: !!exists } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

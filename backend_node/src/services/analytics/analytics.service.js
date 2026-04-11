@@ -3,12 +3,12 @@
  * Provides sales, product, revenue, and conversion analytics
  */
 
-const { Product, Order, User, Review, DailyStats, ProductPerformance } = require('../../models');
+const { Product, Order, User, Review, DailyStats, ProductPerformance, OfflineSale } = require('../../models');
 const redis = require('../../config/integrations/redis');
 
 class AnalyticsService {
   /**
-   * Get sales analytics
+   * Get sales analytics (Online + Offline)
    * GET /api/v1/admin/analytics/sales
    */
   async getSalesAnalytics(params = {}) {
@@ -54,7 +54,8 @@ class AnalyticsService {
     const validStatuses = ['placed', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
     const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
 
-    const aggregation = await Order.aggregate([
+    // Online orders aggregation
+    const onlineAggregation = await Order.aggregate([
       {
         $match: {
           ...tenantFilter,
@@ -84,12 +85,44 @@ class AnalyticsService {
       { $sort: { period: 1 } }
     ]);
 
+    // Offline sales aggregation
+    const offlineAggregation = await OfflineSale.aggregate([
+      {
+        $match: {
+          ...tenantFilter,
+          soldAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: groupFormat.replace ? groupFormat.replace('$created_at', '$soldAt') : { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
+          orderCount: { $sum: 1 },
+          totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+          avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+          quantity: { $sum: "$quantity" }
+        }
+      },
+      {
+        $project: {
+          period: "$_id",
+          orderCount: 1,
+          totalRevenue: 1,
+          avgOrderValue: 1,
+          quantity: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    // Merge online and offline data
+    const mergedData = this._mergeOnlineOfflineData(onlineAggregation, offlineAggregation);
+
     const result = {
       startDate,
       endDate,
       groupBy: group_by,
-      data: aggregation,
-      summary: this._calculateSalesSummary(aggregation)
+      data: mergedData,
+      summary: this._calculateSalesSummary(mergedData)
     };
 
     // Cache for 5 minutes
@@ -102,6 +135,59 @@ class AnalyticsService {
     }
 
     return result;
+  }
+
+  /**
+   * Merge online and offline sales data
+   */
+  _mergeOnlineOfflineData(onlineData, offlineData) {
+    const merged = new Map();
+
+    // Add online data
+    onlineData.forEach(item => {
+      merged.set(item.period, {
+        period: item.period,
+        onlineOrders: item.orderCount,
+        onlineRevenue: item.totalRevenue,
+        onlineCustomers: item.uniqueCustomers,
+        offlineOrders: 0,
+        offlineRevenue: 0,
+        offlineQuantity: 0,
+        totalOrders: item.orderCount,
+        totalRevenue: item.totalRevenue,
+        avgOrderValue: item.avgOrderValue,
+        avgValue: item.avgOrderValue
+      });
+    });
+
+    // Add offline data
+    offlineData.forEach(item => {
+      if (merged.has(item.period)) {
+        const existing = merged.get(item.period);
+        existing.offlineOrders = item.orderCount;
+        existing.offlineRevenue = item.totalRevenue;
+        existing.offlineQuantity = item.quantity;
+        existing.totalOrders = existing.onlineOrders + item.orderCount;
+        existing.totalRevenue = existing.onlineRevenue + item.totalRevenue;
+        existing.avgOrderValue = (existing.onlineRevenue + item.totalRevenue) / (existing.onlineOrders + item.orderCount);
+      } else {
+        merged.set(item.period, {
+          period: item.period,
+          onlineOrders: 0,
+          onlineRevenue: 0,
+          onlineCustomers: 0,
+          offlineOrders: item.orderCount,
+          offlineRevenue: item.totalRevenue,
+          offlineQuantity: item.quantity,
+          totalOrders: item.orderCount,
+          totalRevenue: item.totalRevenue,
+          avgOrderValue: item.avgOrderValue,
+          avgValue: item.avgOrderValue
+        });
+      }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => a.period.localeCompare(b.period));
   }
 
   /**
@@ -222,7 +308,7 @@ class AnalyticsService {
   }
 
   /**
-   * Get revenue analytics
+   * Get revenue analytics (Online + Offline)
    * GET /api/v1/admin/analytics/revenue
    */
   async getRevenueAnalytics(params = {}) {
@@ -248,8 +334,8 @@ class AnalyticsService {
     const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
     const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
-    // Get metrics
-    const metricsAggregation = await Order.aggregate([
+    // Online metrics
+    const onlineMetricsAggregation = await Order.aggregate([
       {
         $match: {
           ...tenantFilter,
@@ -268,8 +354,28 @@ class AnalyticsService {
       }
     ]);
 
-    const metrics = metricsAggregation[0] || { totalOrders: 0, grossRevenue: 0, refunds: 0, netRevenue: 0, avgOrderValue: 0 };
+    // Offline sales summary
+    const offlineMetrics = await OfflineSale.aggregate([
+      {
+        $match: {
+          ...tenantFilter,
+          soldAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+          avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
+        }
+      }
+    ]);
 
+    const onlineMetrics = onlineMetricsAggregation[0] || { totalOrders: 0, grossRevenue: 0, refunds: 0, netRevenue: 0, avgOrderValue: 0 };
+    const offlineMetricsData = offlineMetrics[0] || { totalOrders: 0, totalRevenue: 0, avgOrderValue: 0 };
+
+    // Online by payment method
     const byPaymentMethod = await Order.aggregate([
       {
         $match: {
@@ -295,8 +401,17 @@ class AnalyticsService {
       }
     ]);
 
-    // Daily trend
-    const dailyTrend = await Order.aggregate([
+    // Add offline to payment methods
+    if (offlineMetricsData.totalOrders > 0) {
+      byPaymentMethod.push({
+        method: 'offline',
+        orderCount: offlineMetricsData.totalOrders,
+        totalRevenue: offlineMetricsData.totalRevenue
+      });
+    }
+
+    // Daily trend (online + offline combined)
+    const onlineDailyTrend = await Order.aggregate([
       {
         $match: {
           ...tenantFilter,
@@ -314,26 +429,61 @@ class AnalyticsService {
       {
         $project: {
           date: "$_id",
-          revenue: 1,
-          orders: 1,
+          onlineRevenue: "$revenue",
+          onlineOrders: "$orders",
+          offlineRevenue: { $literal: 0 },
+          offlineOrders: { $literal: 0 },
           _id: 0
         }
       },
       { $sort: { date: 1 } }
     ]);
 
+    const offlineDailyTrend = await OfflineSale.aggregate([
+      {
+        $match: {
+          ...tenantFilter,
+          soldAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
+          revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+          orders: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          date: "$_id",
+          onlineRevenue: { $literal: 0 },
+          onlineOrders: { $literal: 0 },
+          offlineRevenue: "$revenue",
+          offlineOrders: "$orders",
+          _id: 0
+        }
+      }
+    ]);
+
+    // Merge daily trends
+    const mergedDailyTrend = this._mergeDailyTrends(onlineDailyTrend, offlineDailyTrend);
+
     const result = {
       startDate,
       endDate,
       metrics: {
-        totalOrders: metrics.totalOrders,
-        grossRevenue: metrics.grossRevenue,
-        refunds: metrics.refunds,
-        netRevenue: metrics.netRevenue,
-        avgOrderValue: metrics.avgOrderValue
+        totalOrders: onlineMetrics.totalOrders + offlineMetricsData.totalOrders,
+        onlineOrders: onlineMetrics.totalOrders,
+        offlineOrders: offlineMetricsData.totalOrders,
+        grossRevenue: onlineMetrics.grossRevenue + offlineMetricsData.totalRevenue,
+        onlineRevenue: onlineMetrics.grossRevenue,
+        offlineRevenue: offlineMetricsData.totalRevenue,
+        refunds: onlineMetrics.refunds,
+        netRevenue: onlineMetrics.netRevenue + offlineMetricsData.totalRevenue,
+        avgOrderValue: (onlineMetrics.grossRevenue + offlineMetricsData.totalRevenue) / (onlineMetrics.totalOrders + offlineMetricsData.totalOrders) || 0
       },
       byPaymentMethod,
-      dailyTrend
+      dailyTrend: mergedDailyTrend
     };
 
     if (redis) {
@@ -348,7 +498,50 @@ class AnalyticsService {
   }
 
   /**
-   * Get dashboard overview
+   * Merge daily trend data from online and offline sources
+   */
+  _mergeDailyTrends(onlineData, offlineData) {
+    const merged = new Map();
+
+    // Add online trends
+    onlineData.forEach(item => {
+      merged.set(item.date, {
+        date: item.date,
+        onlineRevenue: item.onlineRevenue,
+        onlineOrders: item.onlineOrders,
+        offlineRevenue: 0,
+        offlineOrders: 0,
+        revenue: item.onlineRevenue,
+        orders: item.onlineOrders
+      });
+    });
+
+    // Add offline trends
+    offlineData.forEach(item => {
+      if (merged.has(item.date)) {
+        const existing = merged.get(item.date);
+        existing.offlineRevenue = item.offlineRevenue;
+        existing.offlineOrders = item.offlineOrders;
+        existing.revenue = existing.onlineRevenue + item.offlineRevenue;
+        existing.orders = existing.onlineOrders + item.offlineOrders;
+      } else {
+        merged.set(item.date, {
+          date: item.date,
+          onlineRevenue: 0,
+          onlineOrders: 0,
+          offlineRevenue: item.offlineRevenue,
+          offlineOrders: item.offlineOrders,
+          revenue: item.offlineRevenue,
+          orders: item.offlineOrders
+        });
+      }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  /**
+   * Get dashboard overview (Online + Offline)
    */
   async getDashboardOverview(params = {}) {
     const tenantId = params.tenant_id || 1;
@@ -375,7 +568,7 @@ class AnalyticsService {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    // Today's stats
+    // Today's online stats
     const todayStats = await Order.aggregate([
       {
         $match: {
@@ -393,7 +586,24 @@ class AnalyticsService {
       }
     ]);
 
-    // Month stats
+    // Today's offline stats
+    const todayOfflineStats = await OfflineSale.aggregate([
+      {
+        $match: {
+          ...tenantFilter,
+          soldAt: { $gte: todayStart }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          orders: { $sum: 1 },
+          revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
+        }
+      }
+    ]);
+
+    // Month's online stats
     const monthStats = await Order.aggregate([
       {
         $match: {
@@ -410,6 +620,29 @@ class AnalyticsService {
         }
       }
     ]);
+
+    // Month's offline stats
+    const monthOfflineStats = await OfflineSale.aggregate([
+      {
+        $match: {
+          ...tenantFilter,
+          soldAt: { $gte: monthStart }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          orders: { $sum: 1 },
+          revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
+        }
+      }
+    ]);
+
+    // Combine results
+    const todayOnline = todayStats[0] || { orders: 0, revenue: 0 };
+    const todayOffline = todayOfflineStats[0] || { orders: 0, revenue: 0 };
+    const monthOnline = monthStats[0] || { orders: 0, revenue: 0 };
+    const monthOffline = monthOfflineStats[0] || { orders: 0, revenue: 0 };
 
     // Counts
     const productBaseFilter = { ...tenantFilter, is_deleted: { $ne: true } };
@@ -439,12 +672,20 @@ class AnalyticsService {
 
     const result = {
       today: {
-        orders: todayStats[0] ? todayStats[0].orders : 0,
-        revenue: todayStats[0] ? todayStats[0].revenue : 0
+        orders: todayOnline.orders + todayOffline.orders,
+        onlineOrders: todayOnline.orders,
+        offlineOrders: todayOffline.orders,
+        revenue: todayOnline.revenue + todayOffline.revenue,
+        onlineRevenue: todayOnline.revenue,
+        offlineRevenue: todayOffline.revenue
       },
       month: {
-        orders: monthStats[0] ? monthStats[0].orders : 0,
-        revenue: monthStats[0] ? monthStats[0].revenue : 0
+        orders: monthOnline.orders + monthOffline.orders,
+        onlineOrders: monthOnline.orders,
+        offlineOrders: monthOffline.orders,
+        revenue: monthOnline.revenue + monthOffline.revenue,
+        onlineRevenue: monthOnline.revenue,
+        offlineRevenue: monthOffline.revenue
       },
       totals: {
         products: productCount,

@@ -155,7 +155,7 @@ const AdminAnalyticsPage = () => {
 
         <TabsContent value="overview" className="space-y-8 animate-slide-up outline-none">
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard
               title="Total Revenue"
               value={overview?.month?.revenue || 0}
@@ -165,11 +165,12 @@ const AdminAnalyticsPage = () => {
               delay="delay-0"
               color="maroon"
               loading={loading}
+              subtext={`Online: ${overview?.month?.onlineRevenue ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(overview.month.onlineRevenue) : '₹0'}`}
             />
             <StatCard
-              title="Total Orders"
-              value={overview?.month?.orders || 0}
-              format="number"
+              title="Offline Revenue"
+              value={overview?.month?.offlineRevenue || 0}
+              format="currency"
               icon={ShoppingCart}
               trend="+8.2%"
               delay="delay-75"
@@ -177,11 +178,22 @@ const AdminAnalyticsPage = () => {
               loading={loading}
             />
             <StatCard
+              title="Total Orders"
+              value={overview?.month?.orders || 0}
+              format="number"
+              icon={ShoppingCart}
+              trend="+8.2%"
+              delay="delay-150"
+              color="emerald"
+              loading={loading}
+              subtext={`Online: ${overview?.month?.onlineOrders || 0} | Offline: ${overview?.month?.offlineOrders || 0}`}
+            />
+            <StatCard
               title="Active Products"
               value={overview?.totals?.products || 0}
               format="number"
               icon={Package}
-              delay="delay-150"
+              delay="delay-200"
               color="gold"
               loading={loading}
             />
@@ -191,7 +203,7 @@ const AdminAnalyticsPage = () => {
               format="number"
               icon={Users}
               trend="+4.1%"
-              delay="delay-200"
+              delay="delay-250"
               color="charcoal"
               loading={loading}
             />
@@ -246,21 +258,21 @@ const AdminAnalyticsPage = () => {
                       />
                       <Area 
                         type="monotone" 
-                        dataKey="totalRevenue" 
+                        dataKey="onlineRevenue" 
                         stroke="#C8A96A" 
                         strokeWidth={3}
                         fillOpacity={1} 
                         fill="url(#maroonGradient)" 
-                        name="Revenue"
+                        name="Online Revenue"
                       />
                       <Area 
                         type="monotone" 
-                        dataKey="orderCount" 
+                        dataKey="offlineRevenue" 
                         stroke="#0F3D3E" 
                         strokeWidth={2}
                         fillOpacity={1} 
                         fill="url(#emeraldGradient)" 
-                        name="Orders"
+                        name="Offline Revenue"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -429,28 +441,38 @@ const AdminAnalyticsPage = () => {
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-8 animate-slide-up outline-none">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="border-white/5 bg-white/5 shadow-glass backdrop-blur-md">
               <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Gross Inflow</p>
-                <h3 className="font-heading text-3xl font-bold text-white">
-                  {formatCurrency(revenueData?.metrics?.grossRevenue || 0)}
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Online Revenue</p>
+                <h3 className="font-heading text-2xl font-bold text-white">
+                  {formatCurrency(revenueData?.metrics?.onlineRevenue || 0)}
                 </h3>
+                <p className="text-[9px] text-white/30">Orders: {revenueData?.metrics?.onlineOrders || 0}</p>
               </CardContent>
             </Card>
             <Card className="border-emerald-500/20 bg-emerald-500/5 shadow-glass backdrop-blur-md">
               <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/60">Net Treasury</p>
-                <h3 className="font-heading text-3xl font-bold text-emerald-400">
-                  {formatCurrency(revenueData?.metrics?.netRevenue || 0)}
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/60">Offline Revenue</p>
+                <h3 className="font-heading text-2xl font-bold text-emerald-400">
+                  {formatCurrency(revenueData?.metrics?.offlineRevenue || 0)}
+                </h3>
+                <p className="text-[9px] text-emerald-400/50">Orders: {revenueData?.metrics?.offlineOrders || 0}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-blue-500/20 bg-blue-500/5 shadow-glass backdrop-blur-md">
+              <CardContent className="pt-8 text-center space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/60">Gross Inflow</p>
+                <h3 className="font-heading text-2xl font-bold text-blue-400">
+                  {formatCurrency(revenueData?.metrics?.grossRevenue || 0)}
                 </h3>
               </CardContent>
             </Card>
             <Card className="border-royal-maroon/20 bg-royal-maroon/5 shadow-glass backdrop-blur-md">
               <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-royal-maroon/60">Boutique Refunds</p>
-                <h3 className="font-heading text-3xl font-bold text-royal-maroon">
-                  {formatCurrency(revenueData?.metrics?.refunds || 0)}
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-royal-maroon/60">Net Treasury</p>
+                <h3 className="font-heading text-2xl font-bold text-royal-maroon">
+                  {formatCurrency(revenueData?.metrics?.netRevenue || 0)}
                 </h3>
               </CardContent>
             </Card>
@@ -497,7 +519,7 @@ const AdminAnalyticsPage = () => {
 };
 
 // Premium Stat Card
-const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading }) => {
+const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext }) => {
   const formatValue = () => {
     if (format === 'currency') {
       return new Intl.NumberFormat('en-IN', {
@@ -543,6 +565,7 @@ const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loadi
               {formatValue()}
             </h3>
           )}
+          {subtext && <p className="text-[11px] text-white/40 mt-1">{subtext}</p>}
         </div>
       </div>
     </div>

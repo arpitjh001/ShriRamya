@@ -6,6 +6,8 @@ const { Cart, Order, Product } = require('../models');
 const { sendOrderConfirmation } = require('./emailService');
 const { inventoryAuditService } = require('./inventory-audit.service');
 const { inventoryService } = require('./inventory.service');
+const RazorpayGateway = require('./payments/RazorpayGateway');
+const couponService = require('./coupon.service');
 
 const DEFAULT_COUNTRY = 'India';
 const FREE_SHIPPING_THRESHOLD = 999;
@@ -400,7 +402,7 @@ class StorefrontCheckoutService {
     return `ORD-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
   }
 
-  buildRazorpayOrderId() {
+  buildMockRazorpayOrderId() {
     return `order_mock_${Date.now()}${crypto.randomBytes(2).toString('hex')}`;
   }
 
@@ -466,25 +468,58 @@ class StorefrontCheckoutService {
       });
     }
 
-    const requestedSubtotal = Number(payload.subtotal);
-    const requestedDiscount = Number(payload.discount || 0) || 0;
-    const requestedTax = Number(payload.tax || 0) || 0;
-    const computedSubtotal = orderItems.reduce((sum, item) => sum + (item.salePrice * item.quantity), 0);
-    const subtotal = Number.isFinite(requestedSubtotal) && requestedSubtotal > 0 ? requestedSubtotal : computedSubtotal;
-    const shipping = payload.shipping == null || payload.shipping === ''
-      ? (subtotal > FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_CHARGE)
-      : (Number(payload.shipping) || 0);
-    const total = payload.total == null || payload.total === ''
-      ? subtotal - requestedDiscount + shipping + requestedTax
-      : (Number(payload.total) || subtotal - requestedDiscount + shipping + requestedTax);
-
-    const orderId = this.buildOrderId();
-    const razorpayOrderId = this.buildRazorpayOrderId();
-    const keyId = config.razorpay?.keyId || DEFAULT_RAZORPAY_KEY;
-    const isMock = payload.forceRazorpay === true ? false : true;
     const userId = mongoose.Types.ObjectId.isValid(String(user?.id || user?.userId || payload.userId || ''))
       ? new mongoose.Types.ObjectId(String(user?.id || user?.userId || payload.userId))
       : null;
+
+    const couponCode = (payload.couponCode || payload.coupon_code || payload.coupon || '').toString().trim();
+    const requestedTax = Math.max(0, Number(payload.tax || 0) || 0);
+    const computedSubtotal = orderItems.reduce((sum, item) => sum + (item.salePrice * item.quantity), 0);
+    const subtotal = computedSubtotal;
+    const shipping = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_CHARGE;
+    let requestedDiscount = 0;
+
+    if (couponCode) {
+      const couponResult = await couponService.validateAndApplyCoupon(
+        couponCode,
+        { subtotal, shipping_cost: shipping },
+        userId ? String(userId) : null
+      );
+      requestedDiscount = Number(couponResult?.discount || 0) || 0;
+    }
+
+    const total = Math.max(0, subtotal - requestedDiscount + shipping + requestedTax);
+
+    const orderId = this.buildOrderId();
+    const razorpayConfigured = RazorpayGateway.isConfigured();
+    const vercelEnv = String(process.env.VERCEL_ENV || '').toLowerCase();
+    const nodeEnv = String(config.env || process.env.NODE_ENV || '').toLowerCase();
+    const isProductionRuntime = nodeEnv === 'production' || vercelEnv === 'production';
+
+    const forceMock = payload.forceMock === true
+      || payload.mockPayment === true
+      || payload.is_mock === true
+      || payload.isMock === true;
+    const forceReal = payload.forceRazorpay === true || payload.forceRealPayment === true;
+
+    let isMock = false;
+    if (forceReal) {
+      isMock = false;
+    } else if (forceMock) {
+      isMock = true;
+    } else if (!razorpayConfigured) {
+      // In production, fail fast rather than silently using mock payments.
+      if (isProductionRuntime) {
+        const error = new Error('Razorpay is not configured on the server. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.');
+        error.statusCode = 500;
+        error.code = 'RAZORPAY_NOT_CONFIGURED';
+        throw error;
+      }
+      isMock = true;
+    }
+
+    const keyId = (config.razorpay?.keyId || process.env.RAZORPAY_KEY_ID || DEFAULT_RAZORPAY_KEY);
+    const razorpayOrderId = isMock ? this.buildMockRazorpayOrderId() : '';
 
     const order = await Order.create({
       orderId,
@@ -508,7 +543,7 @@ class StorefrontCheckoutService {
       tax: requestedTax,
       total,
       total_amount: total,
-      couponCode: payload.couponCode || '',
+      couponCode: couponCode || '',
       razorpayOrderId,
       payment_details: {
         gateway: 'razorpay',
@@ -521,11 +556,41 @@ class StorefrontCheckoutService {
       stockReduced: false,
     });
 
+    if (!isMock) {
+      const razorpayOrder = await RazorpayGateway.createPayment({
+        // Notes/receipt only need a stable identifier. We use our internal orderId string.
+        orderId: orderId,
+        orderNumber: orderId,
+        userId: userId || 'guest',
+        amount: total,
+        currency: 'INR',
+        receipt: `order_${orderId}_${Date.now()}`,
+      });
+
+      if (!razorpayOrder?.success) {
+        // Avoid littering the database with unpayable orders.
+        await Order.deleteOne({ _id: order._id }).catch(() => {});
+        const error = new Error(razorpayOrder?.error || 'Failed to create Razorpay order');
+        error.statusCode = 502;
+        error.code = 'RAZORPAY_ORDER_CREATE_FAILED';
+        throw error;
+      }
+
+      order.razorpayOrderId = razorpayOrder.orderId;
+      order.payment_details = {
+        ...this.normalizePaymentDetails(order.payment_details),
+        gateway: 'razorpay',
+        razorpayOrderId: razorpayOrder.orderId,
+        isMock: false,
+      };
+      await order.save();
+    }
+
     return {
       order_id: orderId,
       orderId,
-      razorpay_order_id: razorpayOrderId,
-      razorpayOrderId,
+      razorpay_order_id: order.razorpayOrderId || razorpayOrderId,
+      razorpayOrderId: order.razorpayOrderId || razorpayOrderId,
       amount: Math.round(total * 100),
       display_amount: total,
       currency: 'INR',
@@ -756,9 +821,51 @@ class StorefrontCheckoutService {
       throw error;
     }
 
+    const paymentDetails = this.normalizePaymentDetails(order.payment_details);
+    const isMock = paymentDetails.isMock === true
+      || paymentDetails.is_mock === true
+      || String(order.razorpayOrderId || '').startsWith('order_mock_');
+
+    if (!isMock) {
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = paymentPayload || {};
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        const error = new Error('Missing Razorpay payment details');
+        error.statusCode = 400;
+        error.code = 'PAYMENT_DETAILS_REQUIRED';
+        throw error;
+      }
+
+      if (String(order.razorpayOrderId || '') && String(order.razorpayOrderId) !== String(razorpay_order_id)) {
+        const error = new Error('Razorpay order id does not match this order');
+        error.statusCode = 400;
+        error.code = 'RAZORPAY_ORDER_MISMATCH';
+        throw error;
+      }
+
+      const verification = RazorpayGateway.verifyPayment(
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature
+      );
+
+      if (!verification?.success) {
+        const error = new Error(verification?.error || 'Invalid payment signature');
+        error.statusCode = 400;
+        error.code = 'RAZORPAY_SIGNATURE_INVALID';
+        throw error;
+      }
+
+      const statusCheck = await RazorpayGateway.verifyPaymentStatus(razorpay_payment_id);
+      if (!statusCheck?.success) {
+        const error = new Error(statusCheck?.error || 'Payment is not captured');
+        error.statusCode = 400;
+        error.code = 'RAZORPAY_PAYMENT_NOT_CAPTURED';
+        throw error;
+      }
+    }
+
     await this.reduceInventoryForOrder(order);
 
-    const paymentDetails = this.normalizePaymentDetails(order.payment_details);
     const paymentId = paymentPayload.razorpay_payment_id || `pay_mock_${Date.now()}`;
 
     order.paymentStatus = 'paid';

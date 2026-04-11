@@ -121,6 +121,25 @@ const ProductDetailPage = () => {
     fetchProduct();
   }, [id]);
 
+  // Check if product is in wishlist
+  useEffect(() => {
+    const checkWishlist = async () => {
+      if (!user || !product) return;
+      try {
+        const API_BASE = process.env.REACT_APP_BACKEND_URL;
+        const userId = user?.id || user?.userId || 'guest';
+        const res = await fetch(`${API_BASE}/api/v1/wishlist?userId=${userId}`);
+        const data = await res.json();
+        const pid = product.productId || product.id;
+        const isInWishlist = (data.data || []).some(item => String(item.productId) === String(pid));
+        setWish(isInWishlist);
+      } catch (err) {
+        console.error('Error checking wishlist:', err);
+      }
+    };
+    checkWishlist();
+  }, [user, product]);
+
   // Update variant stock when color/size changes
   const updateVariantStock = (color, size) => {
     const variant = variantMatrix.find(v => v.color === color && v.size === size);
@@ -231,6 +250,36 @@ const ProductDetailPage = () => {
         toast.error('Failed to add to cart');
       }
       return false;
+    }
+  };
+
+  // Toggle wishlist
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      toast.error('Please log in to add items to wishlist');
+      return;
+    }
+
+    try {
+      const API_BASE = process.env.REACT_APP_BACKEND_URL;
+      const userId = user?.id || user?.userId || 'guest';
+
+      const pid = product.productId || product.id;
+
+      if (wish) {
+        // Remove from wishlist
+        await fetch(`${API_BASE}/api/v1/wishlist/${pid}?userId=${userId}`, { method: 'DELETE' });
+        setWish(false);
+        toast.success('Removed from wishlist');
+      } else {
+        // Add to wishlist
+        await fetch(`${API_BASE}/api/v1/wishlist/${pid}?userId=${userId}`, { method: 'POST' });
+        setWish(true);
+        toast.success('Added to wishlist');
+      }
+    } catch (error) {
+      console.error('Wishlist error:', error);
+      toast.error('Failed to update wishlist');
     }
   };
 
@@ -358,8 +407,12 @@ const ProductDetailPage = () => {
                 <span className="text-[11px] uppercase font-bold tracking-[0.3em] text-royal-maroon/60">
                   {product.category}
                 </span>
-                <button className="p-2 hover:bg-white rounded-full transition-colors text-charcoal/40 hover:text-royal-maroon">
-                  <Heart className="w-5 h-5" />
+                <button 
+                  onClick={handleToggleWishlist}
+                  className={`p-2 hover:bg-white rounded-full transition-colors ${wish ? 'text-royal-maroon' : 'text-charcoal/40 hover:text-royal-maroon'}`}
+                  data-testid="wishlist-btn"
+                >
+                  <Heart className={`w-5 h-5 ${wish ? 'fill-current' : ''}`} />
                 </button>
               </div>
               
