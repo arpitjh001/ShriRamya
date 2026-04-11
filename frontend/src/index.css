@@ -329,6 +329,8 @@
     @apply font-editorial leading-[1.8] tracking-normal;
     text-align: justify;
     hyphens: auto;
+    overflow-wrap: break-word; /* Safety against overflow */
+    word-wrap: break-word;
     orphans: 3;
     widows: 3;
     background-color: #fcfaf7; /* High-end cream/ivory background */

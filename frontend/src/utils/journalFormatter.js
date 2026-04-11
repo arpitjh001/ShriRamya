@@ -11,9 +11,13 @@
 export const formatJournalContent = (html) => {
   if (!html) return '';
 
+  // PRE-PROCESS: Convert non-breaking spaces to regular spaces to ensure word wrapping works
+  // This handles the issue where browsers treat paragraphs as single long words
+  const sanitizedHtml = html.replace(/&nbsp;/g, ' ').replace(/\u00a0/g, ' ');
+
   // Use DOMParser to manipulate the HTML structure safely in the browser context
   const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  const doc = parser.parseFromString(sanitizedHtml, 'text/html');
   const body = doc.body;
 
   // 1. Add Drop Cap to the first paragraph and mark it as Intro
@@ -42,18 +46,14 @@ export const formatJournalContent = (html) => {
   }
 
   // 2. Handle Image Alignments and Alternating Layouts
-  // More robust detection: find ALL images regardless of parent nesting
   const images = body.querySelectorAll('img');
   images.forEach((img, index) => {
-    // Determine layout based on index (alternating)
     const layoutClass = index % 2 === 0 ? 'journal-img-right' : 'journal-img-left';
     
     // Create a figure container
     const figure = doc.createElement('figure');
     figure.className = `journal-figure ${layoutClass}`;
     
-    // Find the closest "block" element to replace (p, div, or the img itself if it's direct)
-    // In many editors, images are wrapped in <p> tags. We should replace the <p> if it only contains the image.
     let targetToReplace = img;
     const parent = img.parentElement;
     
@@ -61,16 +61,13 @@ export const formatJournalContent = (html) => {
       targetToReplace = parent;
     }
     
-    // Move image into figure
-    img.style.width = ''; // Reset inline styles from editor
+    img.style.width = ''; 
     img.style.height = '';
     
-    // Replace the target with our figure
     if (targetToReplace.parentNode) {
       targetToReplace.parentNode.replaceChild(figure, targetToReplace);
       figure.appendChild(img);
       
-      // Add caption if alt text exists
       if (img.alt && img.alt.length > 3 && !img.alt.includes('untitled')) {
         const caption = doc.createElement('figcaption');
         caption.className = 'journal-caption';
