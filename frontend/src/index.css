@@ -343,7 +343,7 @@
 
   /* Image Layouts */
   .journal-figure {
-    @apply mb-8 mt-4 max-w-full lg:max-w-[45%] rounded-xl overflow-hidden shadow-luxury-sm;
+    @apply mb-8 mt-4 max-w-full lg:max-w-[45%] rounded-xl overflow-hidden shadow-luxury;
     transition: transform 0.3s ease;
   }
 
