@@ -762,55 +762,138 @@ class StorefrontCheckoutService {
     return this.serializeOrder(order);
   }
 
-  async reduceInventoryForOrder(order) {
+  async buildInventoryReductionPlan(order) {
     if (order.stockReduced) {
-      return;
+      return [];
     }
+
+    const variantQuantities = new Map();
 
     for (const item of order.items || []) {
       if (!item.variantId) continue;
 
-      const product = await Product.findOne({ 'variants._id': item.variantId });
-      if (!product) {
-        const error = new Error(`Variant ${item.variantId} not found`);
-        error.statusCode = 404;
-        throw error;
-      }
-
-      const variant = product.variants.id(String(item.variantId));
-      if (!variant) {
-        const error = new Error(`Variant ${item.variantId} not found`);
-        error.statusCode = 404;
-        throw error;
-      }
-
+      const variantId = String(item.variantId);
       const quantity = Number(item.quantity || 0) || 0;
-      const oldStock = Number(variant.stock || 0) || 0;
+      if (quantity <= 0) continue;
 
-      if (quantity > oldStock) {
-        const error = new Error(`Insufficient stock for ${item.name || product.name}`);
+      const existing = variantQuantities.get(variantId);
+      if (existing) {
+        existing.quantity += quantity;
+        continue;
+      }
+
+      variantQuantities.set(variantId, {
+        variantId,
+        quantity,
+        itemName: item.name || 'Product',
+      });
+    }
+
+    const plan = [];
+
+    for (const entry of variantQuantities.values()) {
+      const product = await Product.findOne({ 'variants._id': entry.variantId });
+      if (!product) {
+        const error = new Error(`Variant ${entry.variantId} not found`);
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const variant = product.variants.id(String(entry.variantId));
+      if (!variant) {
+        const error = new Error(`Variant ${entry.variantId} not found`);
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const oldStock = Number(variant.stock || 0) || 0;
+      if (entry.quantity > oldStock) {
+        const error = new Error(`Insufficient stock for ${entry.itemName || product.name}`);
         error.statusCode = 409;
         error.code = 'INSUFFICIENT_STOCK';
         error.availableStock = oldStock;
         throw error;
       }
 
-      variant.stock = oldStock - quantity;
-      await product.save();
-
-      await inventoryAuditService.logSale(
-        variant._id,
-        product._id,
+      plan.push({
+        product,
+        productId: product._id,
+        productName: product.name || entry.itemName || 'Product',
+        variantId: entry.variantId,
+        quantity: entry.quantity,
         oldStock,
-        variant.stock,
-        quantity,
+        newStock: oldStock - entry.quantity,
+      });
+    }
+
+    return plan;
+  }
+
+  async applyInventoryReductionPlan(plan = []) {
+    const applied = [];
+
+    try {
+      for (const change of plan) {
+        const variant = change.product.variants.id(String(change.variantId));
+        if (!variant) {
+          const error = new Error(`Variant ${change.variantId} not found during stock reduction`);
+          error.statusCode = 404;
+          throw error;
+        }
+
+        variant.stock = change.newStock;
+        await change.product.save();
+        applied.push(change);
+      }
+
+      if (applied.length > 0) {
+        await inventoryService.clearProductListCache();
+      }
+    } catch (error) {
+      if (applied.length > 0) {
+        await this.rollbackInventoryReductionPlan(applied);
+      }
+      throw error;
+    }
+  }
+
+  async rollbackInventoryReductionPlan(plan = []) {
+    for (const change of [...plan].reverse()) {
+      try {
+        const variant = change.product.variants.id(String(change.variantId));
+        if (!variant) continue;
+
+        variant.stock = change.oldStock;
+        await change.product.save();
+      } catch (rollbackError) {
+        console.error('Inventory rollback failed:', rollbackError.message);
+      }
+    }
+
+    if (plan.length > 0) {
+      await inventoryService.clearProductListCache();
+    }
+  }
+
+  async logInventoryReduction(order, plan = []) {
+    for (const change of plan) {
+      await inventoryAuditService.logSale(
+        change.variantId,
+        change.productId,
+        change.oldStock,
+        change.newStock,
+        change.quantity,
         order.orderId,
         order.userId || null
       );
     }
+  }
 
-    await inventoryService.clearProductListCache();
+  async reduceInventoryForOrder(order) {
+    const plan = await this.buildInventoryReductionPlan(order);
+    await this.applyInventoryReductionPlan(plan);
     order.stockReduced = true;
+    return plan;
   }
 
   async confirmPayment(orderId, paymentPayload = {}) {
@@ -864,7 +947,7 @@ class StorefrontCheckoutService {
       }
     }
 
-    await this.reduceInventoryForOrder(order);
+    const inventoryPlan = await this.reduceInventoryForOrder(order);
 
     const paymentId = paymentPayload.razorpay_payment_id || `pay_mock_${Date.now()}`;
 
@@ -888,7 +971,19 @@ class StorefrontCheckoutService {
       note: 'Payment confirmed',
     });
 
-    await order.save();
+    try {
+      await order.save();
+    } catch (error) {
+      if (inventoryPlan.length > 0) {
+        await this.rollbackInventoryReductionPlan(inventoryPlan);
+        order.stockReduced = false;
+      }
+      throw error;
+    }
+
+    if (inventoryPlan.length > 0) {
+      await this.logInventoryReduction(order, inventoryPlan);
+    }
 
     sendOrderConfirmation(this.serializeOrder(order)).catch((error) => {
       console.error('Email send failed:', error.message);

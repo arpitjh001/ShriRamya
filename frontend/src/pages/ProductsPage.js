@@ -10,7 +10,7 @@ import { X, SlidersHorizontal } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 
 const PER_PAGE = 12;
-const ARRAY_FILTER_KEYS = ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve'];
+const ARRAY_FILTER_KEYS = ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve', 'brand', 'material'];
 const ALL_FILTER_KEYS = [...ARRAY_FILTER_KEYS, 'discount', 'rating', 'price_min', 'price_max', 'in_stock'];
 
 const ProductsPage = () => {

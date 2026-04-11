@@ -47,7 +47,6 @@ const Footer = () => {
             <h4 className="mb-6 text-2xl font-medium text-accent">Shop Collections</h4>
             <ul className="space-y-3 text-sm text-primary-foreground/78">
               <li><Link to="/products?category=Sarees" className="hover:text-accent">Sarees</Link></li>
-              <li><Link to="/products?category=Lehengas" className="hover:text-accent">Lehengas</Link></li>
               <li><Link to="/products?category=Suits" className="hover:text-accent">Suits</Link></li>
               <li><Link to="/products?category=Dupattas" className="hover:text-accent">Dupattas</Link></li>
               <li><Link to="/lookbook" className="hover:text-accent">Lookbook</Link></li>

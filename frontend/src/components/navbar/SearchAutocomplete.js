@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
  */
 const SearchAutocomplete = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
-  const [recentSearches, setRecentSearches] = useState(['Banarasi Silk', 'Zardosi Lehenga', 'Cotton Saree']);
+  const [recentSearches, setRecentSearches] = useState(['Banarasi Silk', 'Maheshwari Kurti Material', 'Cotton Saree']);
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -107,7 +107,7 @@ const SearchAutocomplete = ({ isOpen, onClose }) => {
                   Trending Collections
                 </div>
                 <div className="space-y-4">
-                  {['Wedding Wear 2024', 'Embroidered Suits', 'Handloom Sarees'].map((item) => (
+                  {['Wedding Wear Edit', 'Embroidered Suits', 'Handloom Sarees'].map((item) => (
                     <button
                       key={item}
                       onClick={() => { setQuery(item); }}

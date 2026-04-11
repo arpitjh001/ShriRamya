@@ -31,6 +31,7 @@ const AdminAnalyticsPage = () => {
   const [salesData, setSalesData] = useState([]);
   const [productData, setProductData] = useState([]);
   const [revenueData, setRevenueData] = useState(null);
+  const [customerData, setCustomerData] = useState([]);
 
   useEffect(() => {
     // Check if user has Admin role
@@ -48,17 +49,19 @@ const AdminAnalyticsPage = () => {
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const [overviewRes, salesRes, productsRes, revenueRes] = await Promise.all([
+      const [overviewRes, salesRes, productsRes, revenueRes, customersRes] = await Promise.all([
         analyticsAPI.getOverview(),
         analyticsAPI.getSales({ group_by: 'day' }),
         analyticsAPI.getProducts({ limit: 10 }),
-        analyticsAPI.getRevenue()
+        analyticsAPI.getRevenue(),
+        analyticsAPI.getTopCustomers({ limit: 10 })
       ]);
 
       setOverview(overviewRes.data);
       setSalesData(salesRes.data?.data || []);
       setProductData(productsRes.data?.products || []);
       setRevenueData(revenueRes.data);
+      setCustomerData(customersRes.data?.customers || []);
     } catch (error) {
       console.error('Failed to load analytics:', error);
       toast.error('Failed to load analytics data');
@@ -119,9 +122,8 @@ const AdminAnalyticsPage = () => {
               data-testid="export-csv-btn"
               onClick={async () => {
                 try {
-                  const API_BASE = process.env.REACT_APP_BACKEND_URL;
-                  const res = await fetch(`${API_BASE}/api/v1/admin/analytics/export`);
-                  const blob = await res.blob();
+                  const res = await analyticsAPI.api.get('/admin/analytics/export', { responseType: 'blob' });
+                  const blob = res.data;
                   const url = window.URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
@@ -129,7 +131,10 @@ const AdminAnalyticsPage = () => {
                   a.click();
                   window.URL.revokeObjectURL(url);
                   toast.success('Sales report exported');
-                } catch (err) { toast.error('Export failed'); }
+                } catch (err) { 
+                  console.error('Export error:', err);
+                  toast.error('Export failed'); 
+                }
               }}
             >
               <Download className="mr-2 h-4 w-4" />
@@ -142,7 +147,7 @@ const AdminAnalyticsPage = () => {
       {/* Main Content Areas */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
         <TabsList className="h-auto w-full justify-start gap-4 bg-transparent p-0 overflow-x-auto pb-2 scrollbar-hide">
-          {['overview', 'sales', 'products', 'revenue'].map((tab) => (
+          {['overview', 'sales', 'products', 'revenue', 'customers'].map((tab) => (
             <TabsTrigger
               key={tab}
               value={tab}
@@ -509,6 +514,52 @@ const AdminAnalyticsPage = () => {
                     <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="customers" className="space-y-8 animate-slide-up outline-none">
+          <Card className="border-white/5 bg-white/5 shadow-glass backdrop-blur-luxury">
+            <CardHeader className="border-b border-white/5">
+              <CardTitle className="font-heading text-xl text-white">Top Patrons</CardTitle>
+              <CardDescription className="text-white/40">Most frequent and valuable customers</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-8">
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full bg-white/5" />)}
+                </div>
+              ) : (
+                <div className="relative overflow-x-auto rounded-xl">
+                  <table className="w-full text-left text-sm text-white/70">
+                    <thead className="bg-white/5 text-[10px] uppercase tracking-widest text-white/40">
+                      <tr>
+                        <th className="px-6 py-4 font-bold">Customer</th>
+                        <th className="px-6 py-4 font-bold">Email</th>
+                        <th className="px-6 py-4 font-bold text-right">Orders</th>
+                        <th className="px-6 py-4 font-bold text-right text-royal-gold">Total Spent</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {customerData.map((customer, index) => (
+                        <tr key={index} className="transition-colors hover:bg-white/5">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-royal-gold/20 text-xs font-bold text-royal-gold capitalize">
+                                {customer.firstName?.[0] || customer.name?.[0] || 'U'}
+                              </div>
+                              <span className="font-bold text-white">{customer.name || `${customer.firstName} ${customer.lastName}`}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-white/50">{customer.email}</td>
+                          <td className="px-6 py-4 text-right font-medium">{customer.orderCount}</td>
+                          <td className="px-6 py-4 text-right font-bold text-royal-gold">{formatCurrency(customer.totalSpent)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
           </Card>

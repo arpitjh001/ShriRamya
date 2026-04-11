@@ -16,5 +16,6 @@ router.get('/overview', analyticsController.getDashboardOverview);
 router.get('/sales', analyticsController.getSalesAnalytics);
 router.get('/products', analyticsController.getProductAnalytics);
 router.get('/revenue', analyticsController.getRevenueAnalytics);
+router.get('/customers', analyticsController.getTopCustomers);
 
 module.exports = router;

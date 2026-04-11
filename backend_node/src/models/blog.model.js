@@ -15,6 +15,7 @@ const blogSchema = new mongoose.Schema({
   seoDescription: String,
   views: { type: Number, default: 0 },
   commentsCount: { type: Number, default: 0 },
+  isJournal: { type: Boolean, default: false },
   publishedAt: Date,
 }, { timestamps: true });
 

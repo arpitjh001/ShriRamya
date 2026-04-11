@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Package, Search, Filter, ChevronDown, Eye, Truck, CheckCircle, XCircle, Clock, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
+import { ordersAPI } from '../services/api';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -32,17 +33,22 @@ const AdminOrdersPage = () => {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, limit: 15 });
-      if (filter !== 'all') params.set('status', filter);
-      if (search) params.set('search', search);
-      const res = await fetch(`${API_BASE}/api/v1/admin/orders?${params}`);
-      const data = await res.json();
-      if (data.success) {
-        setOrders(data.data.orders || []);
-        setPagination(data.data.pagination || {});
-        setStats(data.data.stats || {});
+      const params = { page, limit: 15 };
+      if (filter !== 'all') params.status = filter;
+      if (search) params.search = search;
+      
+      const res = await ordersAPI.getAll(params);
+      const data = res.data;
+      
+      if (data) {
+        setOrders(data.orders || []);
+        setPagination(data.pagination || {});
+        setStats(data.stats || {});
       }
-    } catch (err) { console.error('Fetch orders error:', err); }
+    } catch (err) { 
+      console.error('Fetch orders error:', err);
+      toast.error('Failed to load orders');
+    }
     setLoading(false);
   }, [filter, search, page]);
 
@@ -51,20 +57,18 @@ const AdminOrdersPage = () => {
   const updateOrderStatus = async (orderId, newStatus, note = '') => {
     setUpdatingStatus(true);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/admin/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, note }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(`Order ${orderId} updated to ${newStatus}`);
+      const res = await ordersAPI.updateStatus(orderId, { status: newStatus, note });
+      if (res && (res.status === 200 || res.status === 204 || res.data)) {
+        toast.success(`Order updated to ${newStatus}`);
         fetchOrders();
         if (selectedOrder?.orderId === orderId) {
           setSelectedOrder(prev => ({ ...prev, status: newStatus }));
         }
       }
-    } catch (err) { toast.error('Failed to update status'); }
+    } catch (err) { 
+      console.error('Update status error:', err);
+      toast.error('Failed to update status'); 
+    }
     setUpdatingStatus(false);
   };
 

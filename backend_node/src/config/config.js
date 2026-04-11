@@ -1,5 +1,18 @@
+const path = require('path');
 const dotenv = require('dotenv');
 const Joi = require('joi');
+
+const envFiles = [
+  process.env.NODE_ENV === 'production'
+    ? path.join(__dirname, '..', '..', '.env.production')
+    : path.join(__dirname, '..', '..', '.env.local'),
+  path.join(__dirname, '..', '..', '.env'),
+];
+
+for (const envFile of envFiles) {
+  dotenv.config({ path: envFile });
+}
+
 dotenv.config();
 
 const buildMongoConnectionUrl = (envVars) => {

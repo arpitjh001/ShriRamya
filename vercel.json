@@ -15,12 +15,19 @@
     "PUBLIC_BASE_URL": "https://www.shriramya.com",
     "COOKIE_SECURE": "true",
     "SMS_PROVIDER": "twilio",
-    "REACT_APP_BACKEND_URL": "https://www.shriramya.com"
+    "REACT_APP_BACKEND_URL": "https://www.shriramya.com",
+    "CRON_SECRET": "insider_cron_Jh7s9Qm3wX2kP8rL5dN1aF6u"
   },
   "rewrites": [
     { "source": "/api/v1/(.*)", "destination": "/api/v1/index" },
     { "source": "/api/(.*)", "destination": "/api/v1/index" },
     { "source": "/((?!api/|.well-known/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/cron/insiders/weekly-digest",
+      "schedule": "0 9 * * 1"
+    }
   ],
   "functions": {
     "api/v1/index.js": {

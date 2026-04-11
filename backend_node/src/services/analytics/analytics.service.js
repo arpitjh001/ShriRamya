@@ -830,6 +830,67 @@ class AnalyticsService {
       totalCustomers: rows.reduce((sum, row) => sum + row.uniqueCustomers, 0)
     };
   }
+  /**
+   * Get top customers by revenue
+   * GET /api/v1/admin/analytics/customers
+   */
+  async getTopCustomers(params = {}) {
+    const { limit = 10, start_date, end_date } = params;
+    
+    const now = new Date();
+    const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const endDate = end_date ? new Date(end_date) : now;
+    
+    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+
+    const customers = await Order.aggregate([
+      {
+        $match: {
+          ...tenantFilter,
+          status: { $in: validStatuses },
+          created_at: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: "$userId",
+          orderCount: { $sum: 1 },
+          totalSpent: { $sum: "$total_amount" },
+          lastOrder: { $max: "$created_at" }
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userDetails"
+        }
+      },
+      { $unwind: "$userDetails" },
+      {
+        $project: {
+          id: "$_id",
+          name: "$userDetails.name",
+          email: "$userDetails.email",
+          orderCount: 1,
+          totalSpent: 1,
+          lastOrder: 1,
+          _id: 0
+        }
+      },
+      { $sort: { totalSpent: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
+
+    return {
+      startDate,
+      endDate,
+      customers
+    };
+  }
 }
+
 
 module.exports = new AnalyticsService();

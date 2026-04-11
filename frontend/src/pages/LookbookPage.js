@@ -40,7 +40,7 @@ const LookbookPage = () => {
       id: 6,
       image: 'https://images.unsplash.com/photo-1756483510818-060b42c7cecc?auto=format&fit=crop&w=2400&q=80',
       title: 'Golden Hour',
-      description: 'Luxurious lehengas with intricate work',
+      description: 'Lustrous zari textures with intricate artisan detail',
     },
   ];
 

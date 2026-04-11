@@ -309,6 +309,59 @@ const DiscountFilter = ({ selected, onChange, counts = {} }) => {
 };
 
 // ==========================================
+// RATING FILTER COMPONENT
+// ==========================================
+const RatingFilter = ({ selected, onChange, counts = {} }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const ratingOptions = [4, 3, 2, 1];
+
+  return (
+    <div className="border-b border-accent/10 pb-4">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center justify-between w-full py-3 text-left"
+      >
+        <span className="text-sm font-semibold uppercase tracking-wider text-primary">
+          Customer Rating
+          {selected && (
+            <span className="ml-2 text-xs font-normal text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+              {selected}★+
+            </span>
+          )}
+        </span>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {isExpanded && (
+        <div className="space-y-2 pt-2">
+          {ratingOptions.map(r => (
+            <label key={r} className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="radio"
+                name="rating"
+                checked={selected === r}
+                onChange={() => onChange(selected === r ? null : r)}
+                className="w-4 h-4 border-accent/30 text-primary focus:ring-primary/20"
+              />
+              <span className={`text-sm flex-1 ${selected === r ? 'text-primary font-medium' : 'text-muted-foreground group-hover:text-primary'}`}>
+                {r} stars & up
+              </span>
+              {counts[`${r}+`] !== undefined && (
+                <span className="text-xs text-muted-foreground">({counts[`${r}+`]})</span>
+              )}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==========================================
 // FILTER CHIPS COMPONENT
 // ==========================================
 export const FilterChips = ({ filters, onRemove, onClearAll }) => {
@@ -327,7 +380,7 @@ export const FilterChips = ({ filters, onRemove, onClearAll }) => {
   }
 
   // Array filters
-  ['size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve'].forEach(key => {
+  ['size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve', 'brand', 'material'].forEach(key => {
     if (filters[key] && filters[key].length > 0) {
       filters[key].forEach(value => {
         chips.push({
@@ -413,6 +466,9 @@ const FilterSidebar = ({
     discountRanges = {}
   } = filterMetadata;
 
+  // New product-specific filters (brands, materials)
+  const { brands = {}, materials = {} } = filterMetadata;
+
   // Convert object counts to array with counts
   const toOptionsArray = (obj) => 
     Object.entries(obj).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
@@ -425,6 +481,8 @@ const FilterSidebar = ({
   const neckOptions = toOptionsArray(neckTypes);
   const sleeveOptions = toOptionsArray(sleeveTypes);
   const colorOptions = Object.keys(colors);
+  const brandOptions = toOptionsArray(brands);
+  const materialOptions = toOptionsArray(materials);
 
   const handleArrayFilterChange = (key, values) => {
     onFilterChange({ [key]: values.length > 0 ? values : undefined });
@@ -462,7 +520,8 @@ const FilterSidebar = ({
         </Button>
       </div>
 
-      <div className="space-y-1">
+      <div className="overflow-y-auto max-h-[calc(100vh-7rem)] pr-2">
+        <div className="space-y-1">
         {/* Price Range */}
         <PriceRangeFilter
           min={priceRange.min}
@@ -491,6 +550,26 @@ const FilterSidebar = ({
             selected={filters.color || []}
             onChange={(values) => handleArrayFilterChange('color', values)}
             counts={colors}
+          />
+        )}
+
+        {/* Brand */}
+        {brandOptions.length > 0 && (
+          <CheckboxGroup
+            title="Brand"
+            options={brandOptions}
+            selected={filters.brand || []}
+            onChange={(values) => handleArrayFilterChange('brand', values)}
+          />
+        )}
+
+        {/* Material */}
+        {materialOptions.length > 0 && (
+          <CheckboxGroup
+            title="Material"
+            options={materialOptions}
+            selected={filters.material || []}
+            onChange={(values) => handleArrayFilterChange('material', values)}
           />
         )}
 
@@ -541,6 +620,13 @@ const FilterSidebar = ({
           counts={discountRanges}
         />
 
+        {/* Rating */}
+        <RatingFilter
+          selected={filters.rating}
+          onChange={(value) => onFilterChange({ rating: value || undefined })}
+          counts={{}}
+        />
+
         {/* Neck Type */}
         {neckOptions.length > 0 && (
           <CheckboxGroup
@@ -572,6 +658,7 @@ const FilterSidebar = ({
             />
             <span className="text-sm text-muted-foreground">In Stock Only</span>
           </label>
+        </div>
         </div>
       </div>
     </div>

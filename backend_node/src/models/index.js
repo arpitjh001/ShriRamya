@@ -26,6 +26,8 @@ const FraudRule = require('./fraudRule.model');
 const FraudLog = require('./fraudLog.model');
 const Shipment = require('./shipment.model');
 const { Payment, PaymentLog } = require('./payment.model');
+const InsiderSubscriber = require('./insiderSubscriber.model');
+const InsiderDigestLog = require('./insiderDigestLog.model');
 
 module.exports = { 
   Product, User, Order, Blog, Wishlist, Cart, 
@@ -37,5 +39,6 @@ module.exports = {
   Refund, OrderEvent, Notification,
   EmailTemplate, EmailLog,
   FraudRule, FraudLog,
-  Shipment, Payment, PaymentLog
+  Shipment, Payment, PaymentLog,
+  InsiderSubscriber, InsiderDigestLog
 };

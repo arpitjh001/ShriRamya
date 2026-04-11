@@ -2,12 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Star } from 'lucide-react';
-import { productsAPI } from '../services/api';
+import { ArrowRight, CalendarDays, CheckCircle2, Crown, Loader2, Mail, Sparkles, Star } from 'lucide-react';
+import { insiderAPI, productsAPI } from '../services/api';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import ProductCard from '../components/ProductCard';
 import RecentlyViewed from '../components/RecentlyViewed';
 import SEOMeta from '../components/SEOMeta';
+import { toast } from 'sonner';
 
 const featuredCollectionTiles = [
   {
@@ -42,14 +44,9 @@ const categoryTiles = [
     image: '/images/premium/homepage/sarees.png',
   },
   {
-    name: 'Lehengas',
-    category: 'lehengas',
-    image: '/images/premium/homepage/lehengas.png',
-  },
-  {
     name: 'Kurti Material',
     category: 'kurti-material',
-    image: 'https://images.unsplash.com/photo-1652722464455-ec026ef74703?w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1773846012458-e6a66c26e49f?auto=format&fit=crop&w=1400&q=80',
   },
   {
     name: 'Festive Wear',
@@ -109,10 +106,42 @@ const promotions = [
   },
 ];
 
+const insiderBenefits = [
+  {
+    title: 'Weekly Collection Note',
+    detail: 'A once-a-week digest with newly launched collections and fresh arrivals.',
+    icon: CalendarDays,
+  },
+  {
+    title: 'Early Access',
+    detail: 'Private previews for festive edits, limited drops, and premium launches.',
+    icon: Crown,
+  },
+  {
+    title: 'Editorial Styling',
+    detail: 'Curated notes on what to wear, gift, and collect next.',
+    icon: Mail,
+  },
+];
+
+const insiderInterestOptions = [
+  { value: 'women-wear', label: 'Women Wear' },
+  { value: 'festive-wear', label: 'Festive Wear' },
+  { value: 'jewellery', label: 'Jewellery' },
+  { value: 'home-lifestyle', label: 'Home Lifestyle' },
+];
+
 const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [insiderForm, setInsiderForm] = useState({
+    firstName: '',
+    email: '',
+    interests: ['women-wear', 'festive-wear'],
+  });
+  const [insiderSubmitting, setInsiderSubmitting] = useState(false);
+  const [insiderSuccess, setInsiderSuccess] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -134,6 +163,47 @@ const HomePage = () => {
     // Reset scroll to top on mount
     window.scrollTo(0, 0);
   }, []);
+
+  const toggleInsiderInterest = (value) => {
+    setInsiderForm((current) => ({
+      ...current,
+      interests: current.interests.includes(value)
+        ? current.interests.filter((entry) => entry !== value)
+        : [...current.interests, value],
+    }));
+  };
+
+  const handleInsiderSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!insiderForm.email.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    setInsiderSubmitting(true);
+
+    try {
+      await insiderAPI.subscribe({
+        firstName: insiderForm.firstName,
+        email: insiderForm.email,
+        interests: insiderForm.interests,
+        source: 'homepage',
+        signupPage: 'homepage',
+      });
+
+      setInsiderSuccess(true);
+      setInsiderForm((current) => ({
+        ...current,
+        email: '',
+      }));
+      toast.success('You are now part of the Insider Circle');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error.message || 'Unable to join the Insider Circle');
+    } finally {
+      setInsiderSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background selection:bg-accent/30">
@@ -505,30 +575,145 @@ const HomePage = () => {
 
       {/* Newsletter / Join The Heritage Circle */}
       <section className="luxury-section px-6 md:px-12 lg:px-20 py-24">
-        <div className="glass-luxury-strong mx-auto max-w-4xl rounded-[3rem] p-12 text-center md:p-20 border border-accent/20 shadow-heavy">
-          <motion.div 
-             initial={{ rotate: -15 }}
-             whileInView={{ rotate: 0 }}
-             transition={{ duration: 1, type: "spring" }}
-          >
-             <Star className="mx-auto mb-8 h-12 w-12 text-accent" />
-          </motion.div>
-          <h2 className="mb-6 text-5xl font-medium text-primary md:text-6xl tracking-tight">Become An Insider</h2>
-          <p className="mb-12 text-lg text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-            Gain early access to heirloom drops, private festive previews, and exclusive style notes from our head designer.
-          </p>
-          <div className="mx-auto flex max-w-xl flex-col gap-4 sm:flex-row">
-            <input
-              type="email"
-              placeholder="Your royal email"
-              data-testid="newsletter-input"
-              className="h-14 flex-[1.5] rounded-full border border-accent/30 bg-white/50 px-8 text-base text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:ring-1 focus:ring-accent transition-all"
-            />
-            <Button data-testid="newsletter-subscribe-button" size="lg" className="btn-luxury h-14 px-10 rounded-full flex-1 text-base">
-              Join Circle
-            </Button>
+        <div className="glass-luxury-strong mx-auto max-w-6xl overflow-hidden rounded-[3rem] border border-accent/20 shadow-heavy">
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="relative overflow-hidden border-b border-accent/10 p-10 md:p-14 lg:border-b-0 lg:border-r">
+              <div className="absolute -left-12 top-10 h-36 w-36 rounded-full bg-accent/10 blur-3xl" />
+              <motion.div
+                initial={{ rotate: -15 }}
+                whileInView={{ rotate: 0 }}
+                transition={{ duration: 1, type: "spring" }}
+                className="relative"
+              >
+                <Star className="mb-8 h-12 w-12 text-accent" />
+              </motion.div>
+              <p className="mb-4 text-[12px] uppercase tracking-[0.35em] text-secondary font-bold">Insider Circle</p>
+              <h2 className="mb-6 text-5xl font-medium text-primary md:text-6xl tracking-tight">Become An Insider</h2>
+              <p className="max-w-2xl text-lg text-muted-foreground font-light leading-relaxed">
+                Not just a newsletter. This should feel like a private front row pass to Shri Ramya:
+                weekly collection notes, early-access drops, and editorial styling cues worth opening.
+              </p>
+
+              <div className="mt-10 grid gap-4">
+                {insiderBenefits.map((benefit, index) => {
+                  const Icon = benefit.icon;
+                  return (
+                    <motion.div
+                      key={benefit.title}
+                      initial={{ opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.3 }}
+                      transition={{ duration: 0.6, delay: index * 0.08 }}
+                      className="rounded-[1.75rem] border border-accent/10 bg-white/45 p-5 backdrop-blur-sm"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-medium text-primary">{benefit.title}</p>
+                          <p className="mt-1 text-sm leading-7 text-muted-foreground">{benefit.detail}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-white/80 via-[#fff8ef] to-[#f8efe3] p-10 md:p-14">
+              <div className="mx-auto max-w-xl">
+                <p className="mb-3 text-sm uppercase tracking-[0.28em] text-secondary font-bold">Weekly Edit</p>
+                <h3 className="text-3xl font-medium text-primary tracking-tight">Join for curated updates, not noise</h3>
+                <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                  We send a weekly roundup when new collections land. Tell us what you care about so the insider flow can become more tailored over time.
+                </p>
+
+                <form className="mt-8 space-y-5" onSubmit={handleInsiderSubmit}>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.24em] text-muted-foreground">First Name</label>
+                      <Input
+                        type="text"
+                        value={insiderForm.firstName}
+                        onChange={(event) => setInsiderForm((current) => ({ ...current, firstName: event.target.value }))}
+                        placeholder="Aarohi"
+                        className="h-12 rounded-full border-accent/25 bg-white/80 px-5"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Email</label>
+                      <Input
+                        type="email"
+                        value={insiderForm.email}
+                        onChange={(event) => {
+                          setInsiderSuccess(false);
+                          setInsiderForm((current) => ({ ...current, email: event.target.value }));
+                        }}
+                        placeholder="you@example.com"
+                        data-testid="newsletter-input"
+                        className="h-12 rounded-full border-accent/25 bg-white/80 px-5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">What interests you most?</p>
+                    <div className="flex flex-wrap gap-3">
+                      {insiderInterestOptions.map((option) => {
+                        const active = insiderForm.interests.includes(option.value);
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => toggleInsiderInterest(option.value)}
+                            className={`rounded-full border px-4 py-2 text-sm transition-all ${
+                              active
+                                ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                                : 'border-accent/25 bg-white/70 text-foreground hover:border-accent/50 hover:bg-white'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    data-testid="newsletter-subscribe-button"
+                    size="lg"
+                    disabled={insiderSubmitting}
+                    className="btn-luxury h-14 w-full rounded-full text-base"
+                  >
+                    {insiderSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Joining the circle
+                      </>
+                    ) : (
+                      <>
+                        Join Circle
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="rounded-[1.5rem] border border-accent/10 bg-white/55 p-4 text-sm leading-7 text-muted-foreground">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className={`mt-1 h-5 w-5 shrink-0 ${insiderSuccess ? 'text-green-600' : 'text-accent'}`} />
+                      <p>
+                        {insiderSuccess
+                          ? 'You are in. Watch for a welcome email and then one thoughtfully curated note each week.'
+                          : 'Privacy is our philosophy. One weekly update, no clutter, and an unsubscribe link in every email.'}
+                      </p>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
-          <p className="mt-8 text-[11px] text-muted-foreground/60 uppercase tracking-[0.2em]">Privacy is our philosophy. Unsubscribe at any time.</p>
         </div>
       </section>
 

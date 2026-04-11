@@ -86,9 +86,29 @@ const getDashboardOverview = async (req, res, next) => {
   }
 };
 
+/**
+ * Get top customers analytics
+ * GET /api/v1/admin/analytics/customers
+ */
+const getTopCustomers = async (req, res, next) => {
+  try {
+    const params = { ...req.query, tenant_id: req.user.tenant_id };
+    const result = await analyticsService.getTopCustomers(params);
+    return successResponse(res, result);
+  } catch (error) {
+    console.error('Analytics error (customers):', error.message);
+    return successResponse(res, {
+      startDate: new Date(),
+      endDate: new Date(),
+      customers: []
+    }, 'Analytics data temporarily unavailable');
+  }
+};
+
 module.exports = {
   getSalesAnalytics,
   getProductAnalytics,
   getRevenueAnalytics,
-  getDashboardOverview
+  getDashboardOverview,
+  getTopCustomers
 };

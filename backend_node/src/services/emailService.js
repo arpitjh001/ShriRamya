@@ -24,6 +24,15 @@ function formatPrice(amount) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildItemsHTML(items) {
   return items.map(item => `
     <tr>
@@ -147,6 +156,102 @@ function adminOrderNotificationEmail(order) {
   };
 }
 
+function insiderWelcomeEmail({ subscriber, unsubscribeUrl = '' }) {
+  const firstName = escapeHtml(subscriber.firstName || 'Insider');
+  const unsubscribeLink = unsubscribeUrl
+    ? `<p style="margin:24px 0 0;font-size:12px;color:#8b7355;">Prefer fewer notes? <a href="${unsubscribeUrl}" style="color:#8b7355;">Unsubscribe here</a>.</p>`
+    : '';
+
+  return {
+    subject: 'Welcome to the Shri Ramya Insider Circle',
+    html: `
+    <div style="max-width:600px;margin:0 auto;font-family:'Segoe UI',Arial,sans-serif;background:#fffdf9;">
+      <div style="background:linear-gradient(135deg,#2d1810 0%,#5c3a28 100%);padding:36px;text-align:center;">
+        <p style="margin:0 0 10px;color:#c4a882;font-size:11px;letter-spacing:3px;text-transform:uppercase;">Shri Ramya Insider Circle</p>
+        <h1 style="margin:0;color:#f0e6d6;font-size:30px;font-weight:400;letter-spacing:1px;">You are on the list</h1>
+      </div>
+      <div style="padding:36px 32px;">
+        <p style="margin:0 0 16px;color:#5c3a28;font-size:16px;">Hello ${firstName},</p>
+        <p style="margin:0 0 18px;color:#5c3a28;font-size:15px;line-height:1.8;">
+          Thank you for joining our insider circle. We will send you a weekly note when new collections arrive, along with private previews, styling cues, and first access to select festive edits.
+        </p>
+        <div style="background:#faf6f0;border:1px solid #f0e6d6;border-radius:18px;padding:20px 22px;margin:26px 0;">
+          <p style="margin:0 0 10px;color:#2d1810;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">What you will receive</p>
+          <ul style="margin:0;padding-left:20px;color:#5c3a28;font-size:14px;line-height:1.9;">
+            <li>Weekly new-collection roundups</li>
+            <li>Early access to premium drops</li>
+            <li>Private styling and gifting edits</li>
+          </ul>
+        </div>
+        <a href="https://www.shriramya.com/products" style="display:inline-block;background:#2d1810;color:#f0e6d6;text-decoration:none;padding:14px 24px;border-radius:999px;font-size:14px;">Explore the latest edit</a>
+        ${unsubscribeLink}
+      </div>
+    </div>`,
+  };
+}
+
+function insiderWeeklyDigestEmail({ subscriber, collections = [], products = [], subject = '', unsubscribeUrl = '' }) {
+  const firstName = escapeHtml(subscriber.firstName || 'Insider');
+  const collectionCards = collections.map((collection) => `
+    <div style="margin:0 0 18px;padding:18px;border:1px solid #f0e6d6;border-radius:18px;background:#fff;">
+      ${collection.image ? `<img src="${collection.image}" alt="${escapeHtml(collection.name)}" style="width:100%;height:220px;object-fit:cover;border-radius:14px;margin-bottom:14px;" />` : ''}
+      <p style="margin:0 0 8px;color:#2d1810;font-size:20px;font-weight:600;">${escapeHtml(collection.name)}</p>
+      <p style="margin:0 0 14px;color:#6f5a49;font-size:14px;line-height:1.7;">${escapeHtml(collection.description || 'A fresh collection has arrived this week.')}</p>
+      <a href="${collection.link}" style="color:#7a4b2f;text-decoration:none;font-weight:600;">Explore collection</a>
+    </div>
+  `).join('');
+
+  const productCards = products.map((product) => `
+    <tr>
+      <td style="padding:12px 0;border-bottom:1px solid #f0e6d6;">
+        <table role="presentation" style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="width:88px;vertical-align:top;">
+              ${product.image ? `<img src="${product.image}" alt="${escapeHtml(product.name)}" style="width:72px;height:88px;object-fit:cover;border-radius:12px;" />` : ''}
+            </td>
+            <td style="padding-left:12px;vertical-align:top;">
+              <p style="margin:0 0 6px;color:#2d1810;font-size:15px;font-weight:600;">${escapeHtml(product.name)}</p>
+              <p style="margin:0 0 8px;color:#8b7355;font-size:13px;">${formatPrice(product.price)}</p>
+              <a href="${product.link}" style="color:#7a4b2f;text-decoration:none;font-size:13px;font-weight:600;">View piece</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `).join('');
+
+  const unsubscribeFooter = unsubscribeUrl
+    ? `<p style="margin:20px 0 0;color:#8b7355;font-size:12px;">If this is no longer your style, <a href="${unsubscribeUrl}" style="color:#8b7355;">unsubscribe here</a>.</p>`
+    : '';
+
+  return {
+    subject,
+    html: `
+    <div style="max-width:640px;margin:0 auto;font-family:'Segoe UI',Arial,sans-serif;background:#fffdf9;">
+      <div style="background:linear-gradient(135deg,#2d1810 0%,#6c422d 100%);padding:38px 32px;">
+        <p style="margin:0 0 10px;color:#d5b597;font-size:11px;letter-spacing:3px;text-transform:uppercase;">Weekly Insider Dispatch</p>
+        <h1 style="margin:0;color:#f0e6d6;font-size:32px;font-weight:400;line-height:1.2;">New collections, chosen for you</h1>
+      </div>
+      <div style="padding:34px 32px;">
+        <p style="margin:0 0 16px;color:#5c3a28;font-size:15px;line-height:1.8;">Hello ${firstName}, here is your weekly Shri Ramya edit with our newest collection stories and recent arrivals.</p>
+        ${collections.length > 0 ? `
+          <div style="margin:26px 0 18px;">
+            <p style="margin:0 0 12px;color:#2d1810;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Fresh collections</p>
+            ${collectionCards}
+          </div>
+        ` : ''}
+        ${products.length > 0 ? `
+          <div style="margin:30px 0 0;">
+            <p style="margin:0 0 12px;color:#2d1810;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Latest arrivals</p>
+            <table role="presentation" style="width:100%;border-collapse:collapse;">${productCards}</table>
+          </div>
+        ` : ''}
+        ${unsubscribeFooter}
+      </div>
+    </div>`,
+  };
+}
+
 async function sendOrderConfirmation(order) {
   const t = getTransporter();
   if (!t) { console.log('Email: SMTP not configured, skipping'); return; }
@@ -175,4 +280,41 @@ async function sendOrderConfirmation(order) {
   await Promise.allSettled(promises);
 }
 
-module.exports = { sendOrderConfirmation, getTransporter };
+async function sendInsiderWelcomeEmail({ subscriber, unsubscribeUrl = '' }) {
+  const t = getTransporter();
+  if (!t || !subscriber?.email) {
+    console.log('Email: SMTP not configured or subscriber missing, skipping insider welcome');
+    return;
+  }
+
+  const { subject, html } = insiderWelcomeEmail({ subscriber, unsubscribeUrl });
+  await t.sendMail({
+    from: `"Shri Ramya" <${SMTP_USER}>`,
+    to: subscriber.email,
+    subject,
+    html,
+  });
+}
+
+async function sendInsiderWeeklyDigestEmail({ subscriber, collections = [], products = [], subject = '', unsubscribeUrl = '' }) {
+  const t = getTransporter();
+  if (!t || !subscriber?.email) {
+    console.log('Email: SMTP not configured or subscriber missing, skipping insider digest');
+    return;
+  }
+
+  const payload = insiderWeeklyDigestEmail({ subscriber, collections, products, subject, unsubscribeUrl });
+  await t.sendMail({
+    from: `"Shri Ramya Insider Circle" <${SMTP_USER}>`,
+    to: subscriber.email,
+    subject: payload.subject,
+    html: payload.html,
+  });
+}
+
+module.exports = {
+  sendOrderConfirmation,
+  getTransporter,
+  sendInsiderWelcomeEmail,
+  sendInsiderWeeklyDigestEmail,
+};

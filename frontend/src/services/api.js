@@ -424,13 +424,20 @@ export const ordersAPI = {
     }
   },
 
-  getAll: async () => {
+  getAll: async (params = {}) => {
     try {
-      const res = await api.get("/admin/orders");
-      return res.data || { orders: [] };
+      return await api.get("/admin/orders", { params });
     } catch (err) {
       handleError(err);
-      return { orders: [] };
+      return { data: { orders: [], pagination: {}, stats: {} } };
+    }
+  },
+
+  updateStatus: async (orderId, data) => {
+    try {
+      return await api.patch(`/admin/orders/${orderId}/status`, data);
+    } catch (err) {
+      handleError(err);
     }
   },
 
@@ -492,6 +499,25 @@ export const ordersAPI = {
     } catch (err) {
       handleError(err);
       return { data: [] };
+    }
+  }
+};
+
+export const insiderAPI = {
+  subscribe: async (data) => {
+    try {
+      return await api.post("/insiders/subscribe", data);
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  getOptions: async () => {
+    try {
+      return await api.get("/insiders/options");
+    } catch (err) {
+      handleError(err);
+      return { data: { interests: [] } };
     }
   }
 };
@@ -794,6 +820,14 @@ export const analyticsAPI = {
     } catch (err) {
       handleError(err);
     }
+  },
+
+  getTopCustomers: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/customers", { params });
+    } catch (err) {
+      handleError(err);
+    }
   }
 };
 
@@ -968,7 +1002,7 @@ export const categoriesAPI = {
 export default api;
 
 // Export centralized API client
-export { api as apiClient, auth, handleError } from './apiClient';
+export { api as apiClient, authAPI as auth, handleError };
 
 // Export admin services
 export { default as adminOrderService } from './adminOrderService';
@@ -978,4 +1012,3 @@ export { default as reviewService } from './reviewService';
 export { default as searchService } from './searchService';
 export { default as notificationService } from './notificationService';
 export { default as analyticsService } from './analyticsService';
-

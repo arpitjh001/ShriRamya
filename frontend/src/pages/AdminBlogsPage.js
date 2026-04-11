@@ -18,6 +18,7 @@ const AdminBlogsPage = () => {
     const [stats, setStats] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const canDelete = Boolean(capabilities?.delete_posts) || (typeof isAdmin === 'function' && isAdmin());
 
     useEffect(() => {
         if (authLoading) return;
@@ -70,13 +71,17 @@ const AdminBlogsPage = () => {
     };
 
     const handleDelete = async (postId) => {
+        if (!canDelete) {
+            toast.error('Only admins can delete stories');
+            return;
+        }
         if (!window.confirm('Are you sure you want to delete this story?')) return;
         try {
             await blogAPI.deletePost(postId);
             toast.success('Story deleted');
-            setPosts(posts.filter(p => p.id !== postId));
+            setPosts((prev) => prev.filter((p) => p.id !== postId));
         } catch (error) {
-            toast.error('Delete failed');
+            toast.error(error?.response?.data?.message || error?.message || 'Delete failed');
         }
     };
 
@@ -261,9 +266,11 @@ const AdminBlogsPage = () => {
                                                     <Archive className="w-4 h-4" />
                                                 </Button>
                                             )}
-                                            <Button onClick={() => handleDelete(post.id)} variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {canDelete && (
+                                                <Button onClick={() => handleDelete(post.id)} variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

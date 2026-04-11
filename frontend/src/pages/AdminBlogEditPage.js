@@ -32,7 +32,8 @@ const AdminBlogEditPage = () => {
         seoTitle: '',
         seoDescription: '',
         featuredImage: '',
-        images: []
+        images: [],
+        isJournal: false
     });
     const [tagsInput, setTagsInput] = useState('');
 
@@ -134,7 +135,8 @@ const AdminBlogEditPage = () => {
                         seoTitle: p.seo_title || p.meta_title || '',
                         seoDescription: p.seo_description || p.meta_description || '',
                         featuredImage: p.featured_image || '',
-                        images: p.images || []
+                        images: p.images || [],
+                        isJournal: p.isJournal || false
                     });
                     setTagsInput(p.tags ? p.tags.join(', ') : '');
                     setFeaturedImageUrl(p.featured_image || '');
@@ -472,6 +474,19 @@ const AdminBlogEditPage = () => {
                                     <option value="published">Published</option>
                                     <option value="archived">Archived</option>
                                 </select>
+                            </div>
+
+                            <div className="p-4 border border-border rounded-lg bg-accent/5">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={postData.isJournal}
+                                        onChange={(e) => setPostData(prev => ({ ...prev, isJournal: e.target.checked }))}
+                                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <span className="text-xs font-bold uppercase tracking-widest select-none">Heritage Journal Style</span>
+                                </label>
+                                <p className="text-[10px] text-muted-foreground mt-2 italic">Enable premium editorial formatting with ivory backgrounds and serif typography.</p>
                             </div>
 
                         </div>

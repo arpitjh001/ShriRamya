@@ -10,8 +10,8 @@ import DOMPurify from 'dompurify';
 import SEOMeta from '../components/SEOMeta';
 import { formatJournalContent } from '../utils/journalFormatter';
 
-const HTMLRenderer = ({ html, className, isBody = false }) => {
-    const processedHtml = isBody ? formatJournalContent(html) : html;
+const HTMLRenderer = ({ html, className, isBody = false, useJournal = false }) => {
+    const processedHtml = (isBody && useJournal) ? formatJournalContent(html) : html;
     const cleanHtml = DOMPurify.sanitize(processedHtml, {
         ADD_ATTR: ['class', 'style'],
         ADD_TAGS: ['figure', 'figcaption'],
@@ -241,16 +241,16 @@ const BlogPostPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
             >
-                <div className="journal-content prose prose-lg md:prose-xl prose-stone max-w-none 
+                <div className={`${post.isJournal ? 'journal-content' : 'prose prose-lg md:prose-xl prose-stone'} max-w-none 
           prose-headings:font-heading prose-headings:font-medium 
           prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl 
-          prose-p:font-editorial prose-p:leading-[1.8] prose-p:text-current
+          ${post.isJournal ? 'prose-p:font-editorial prose-p:leading-[1.8] prose-p:text-current' : ''}
           prose-a:text-primary hover:prose-a:text-secondary prose-a:transition-colors
           prose-img:rounded-none prose-img:shadow-none
           prose-blockquote:border-none prose-blockquote:bg-transparent prose-blockquote:p-0 prose-blockquote:font-heading prose-blockquote:text-3xl
-          prose-li:text-current font-editorial
-          prose-strong:text-foreground">
-                    <HTMLRenderer html={post.content} isBody={true} />
+          prose-li:text-current ${post.isJournal ? 'font-editorial' : ''}
+          prose-strong:text-foreground`}>
+                    <HTMLRenderer html={post.content} isBody={true} useJournal={post.isJournal} />
                 </div>
 
                 {/* Tags / Meta block */}

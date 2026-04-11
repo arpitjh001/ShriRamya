@@ -69,7 +69,7 @@ const AboutPage = () => {
               "Our journey began with a simple vision: to bring the timeless beauty of Rajasthani craftsmanship to modern wardrobes while supporting the artisan communities that keep these traditions alive."
             </p>
             <p className="text-muted-foreground">
-              At Shri Ramya, we believe that every saree, lehenga, and suit tells a story. The vibrant colors of Bandhani, the intricate patterns of Banarasi silk, the delicate block prints of Jaipuri cotton – each technique represents centuries of cultural heritage and artistic mastery.
+              At Shri Ramya, we believe that every saree, kurta set, and suit tells a story. The vibrant colors of Bandhani, the intricate patterns of Banarasi silk, the delicate block prints of Jaipuri cotton – each technique represents centuries of cultural heritage and artistic mastery.
             </p>
             <p className="text-muted-foreground">
               We work directly with artisan families across Rajasthan and India, ensuring fair compensation and helping preserve traditional techniques that might otherwise be lost to time. When you choose Shri Ramya, you're not just purchasing clothing; you're supporting a legacy of craftsmanship and empowering skilled artisans.

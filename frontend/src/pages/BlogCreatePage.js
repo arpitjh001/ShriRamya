@@ -25,6 +25,7 @@ const BlogCreatePage = () => {
     const [seoDescription, setSeoDescription] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     const [uploading, setUploading] = useState(false);
+    const [isJournal, setIsJournal] = useState(false);
 
     const quillRef = useRef(null);
 
@@ -80,8 +81,6 @@ const BlogCreatePage = () => {
         }
     }), []);
 
-
-
     // Generate slug from title
     const generateSlug = (title) => {
         return title
@@ -101,18 +100,13 @@ const BlogCreatePage = () => {
     // Redirect if not allowed
     React.useEffect(() => {
         if (authLoading) return;
-        
-        // Wait for user to be loaded
         if (!user) {
             navigate('/blog');
             return;
         }
-        
-        // Check if user is admin by role
         const userRole = user?.role?.toLowerCase();
         const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
         const isUserAdmin = userRoles.includes('admin') || userRole === 'admin';
-        
         if (!capabilities.edit_posts && !isUserAdmin) {
             toast.error('Access denied');
             navigate('/blog');
@@ -145,7 +139,6 @@ const BlogCreatePage = () => {
                     if (imageUrl) uploadedUrls.push(imageUrl);
                 }
             }
-            
             if (uploadedUrls.length > 0) {
                 if (!featuredImage) {
                     setFeaturedImage(uploadedUrls[0]);
@@ -188,6 +181,7 @@ const BlogCreatePage = () => {
                 images: galleryImages,
                 seoTitle: seoTitle,
                 seoDescription: seoDescription,
+                isJournal: isJournal,
                 tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean)
             };
 
@@ -253,14 +247,11 @@ const BlogCreatePage = () => {
                                     className="flex-1 px-4 py-2 bg-background border border-border rounded-lg font-mono text-sm"
                                 />
                             </div>
-                            <p className="text-xs text-muted-foreground">This will be the URL path for your blog post</p>
                         </div>
 
                         <div className="space-y-4">
                             <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Story Imagery</label>
-                            
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Main Featured Image */}
                                 <div className="space-y-2">
                                     <p className="text-xs font-medium text-muted-foreground mb-2">Featured Image</p>
                                     <div 
@@ -280,19 +271,12 @@ const BlogCreatePage = () => {
                                                 <p className="text-xs text-muted-foreground">Select Main Image</p>
                                             </div>
                                         )}
-                                        <input 
-                                            id="featured-upload"
-                                            type="file" 
-                                            accept="image/*" 
-                                            className="hidden" 
-                                            onChange={handleImageUpload}
-                                        />
+                                        <input id="featured-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                                     </div>
                                 </div>
 
-                                {/* Gallery Images */}
                                 <div className="space-y-2">
-                                    <p className="text-xs font-medium text-muted-foreground mb-2">Gallery (WordPress Style)</p>
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">Gallery</p>
                                     <div className="grid grid-cols-3 gap-2">
                                         {galleryImages.map((img, idx) => (
                                             <div key={idx} className="relative aspect-square rounded-lg border border-border overflow-hidden group">
@@ -313,19 +297,10 @@ const BlogCreatePage = () => {
                                                 className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center bg-accent/5 transition-all"
                                             >
                                                 <Plus className="w-6 h-6 text-muted-foreground" />
-                                                <span className="text-[10px] text-muted-foreground mt-1">Add Image</span>
-                                                <input 
-                                                    id="gallery-upload"
-                                                    type="file" 
-                                                    accept="image/*" 
-                                                    multiple
-                                                    className="hidden" 
-                                                    onChange={handleImageUpload}
-                                                />
+                                                <input id="gallery-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
                                             </button>
                                         )}
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground mt-2 italic">Select multiple images to create a story gallery.</p>
                                 </div>
                             </div>
                         </div>
@@ -341,52 +316,10 @@ const BlogCreatePage = () => {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-8">
-                            <div className="space-y-4">
-                                <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block text-primary">SEO Title</label>
-                                <input
-                                    type="text"
-                                    value={seoTitle}
-                                    onChange={(e) => setSeoTitle(e.target.value)}
-                                    placeholder="Meta title for SEO"
-                                    className="w-full bg-accent/5 border border-border rounded-lg p-3 text-sm"
-                                />
-                            </div>
-                        </div>
-
                         <div className="space-y-4">
-                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block text-primary">SEO Description</label>
-                            <textarea
-                                value={seoDescription}
-                                onChange={(e) => setSeoDescription(e.target.value)}
-                                placeholder="Meta description for search engines"
-                                rows={2}
-                                className="w-full bg-accent/5 border border-border rounded-xl p-4 text-sm"
-                            />
-                        </div>
-
-                        <div className="space-y-4">
-                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Tags (comma separated)</label>
-                            <input
-                                type="text"
-                                value={tagsInput}
-                                onChange={(e) => setTagsInput(e.target.value)}
-                                placeholder="heritage, silk, weaving..."
-                                className="w-full bg-accent/5 border border-border rounded-lg p-3 text-sm"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground">Story Content</label>
+                            <label className="text-sm font-medium uppercase tracking-widest text-muted-foreground block">Story Content</label>
                             <div className="bg-background rounded-xl overflow-hidden border border-border pb-10">
-                                <ReactQuill 
-                                    ref={quillRef}
-                                    theme="snow" 
-                                    value={content} 
-                                    onChange={setContent} 
-                                    modules={modules}
-                                    className="h-[300px]"
-                                />
+                                <ReactQuill ref={quillRef} theme="snow" value={content} onChange={setContent} modules={modules} className="h-[300px]" />
                             </div>
                         </div>
 
@@ -408,6 +341,19 @@ const BlogCreatePage = () => {
                                 </div>
                             </div>
 
+                            <div className="flex items-center gap-2 px-4 py-2 bg-accent/5 rounded-lg border border-accent/10">
+                                <input 
+                                    type="checkbox" 
+                                    id="isJournal" 
+                                    checked={isJournal}
+                                    onChange={(e) => setIsJournal(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="isJournal" className="text-xs font-bold uppercase tracking-widest cursor-pointer select-none">
+                                    Heritage Journal Style
+                                </label>
+                            </div>
+
                             <Button type="submit" disabled={loading} className="px-8 py-6 rounded-full shadow-luxury-lg hover:shadow-luxury gap-2 uppercase tracking-widest text-xs font-bold">
                                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                                 {status === 'published' ? 'Publish Story' : 'Save Story'}
@@ -421,4 +367,3 @@ const BlogCreatePage = () => {
 };
 
 export default BlogCreatePage;
-

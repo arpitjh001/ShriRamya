@@ -7,6 +7,7 @@ const { Product, Order, Blog, Wishlist, Cart } = require('../models');
 const { sendOrderConfirmation } = require('../services/emailService');
 const catalogReadService = require('../services/catalog-read.service');
 const storefrontCheckoutService = require('../services/storefront-checkout.service');
+const { insiderService, INSIDER_INTERESTS } = require('../services/insider.service');
 const auth = require('../middlewares/auth');
 const { optionalAuth } = require('../middlewares/authRBAC');
 
@@ -209,6 +210,111 @@ router.get('/auth/check-admin', (req, res) => {
 router.post('/auth/refresh-token', (req, res) => {
   const token = jwt.sign({ sub: 'admin_001', role: 'admin', roles: ['admin'] }, config.jwt.secret, { expiresIn: '24h' });
   res.json({ success: true, data: { token } });
+});
+
+// ==========================================
+// INSIDER / NEWSLETTER ENDPOINTS
+// ==========================================
+router.get('/insiders/options', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      interests: INSIDER_INTERESTS,
+    },
+  });
+});
+
+router.post('/insiders/subscribe', async (req, res) => {
+  try {
+    const result = await insiderService.subscribe(req.body, {
+      tenantId: getRequestTenantId(req),
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Welcome to the Insider Circle',
+      data: result,
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get('/insiders/unsubscribe', async (req, res) => {
+  try {
+    await insiderService.unsubscribe(req.query.token);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`
+      <html>
+        <head><title>Unsubscribed | Shri Ramya</title></head>
+        <body style="font-family:Segoe UI,Arial,sans-serif;background:#fffaf5;color:#2d1810;padding:40px;">
+          <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #f0e6d6;border-radius:24px;padding:32px;">
+            <p style="margin:0 0 10px;color:#8b7355;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Shri Ramya Insider Circle</p>
+            <h1 style="margin:0 0 12px;font-size:30px;font-weight:500;">You have been unsubscribed</h1>
+            <p style="margin:0 0 18px;font-size:15px;line-height:1.8;color:#5c3a28;">You will no longer receive our weekly insider collection updates. You can join again anytime from the homepage.</p>
+            <a href="${config.publicBaseUrl || '/'}" style="display:inline-block;background:#2d1810;color:#f0e6d6;text-decoration:none;padding:12px 20px;border-radius:999px;">Back to Shri Ramya</a>
+          </div>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    res.status(err.statusCode || 500).setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`
+      <html>
+        <head><title>Unable to Unsubscribe | Shri Ramya</title></head>
+        <body style="font-family:Segoe UI,Arial,sans-serif;background:#fffaf5;color:#2d1810;padding:40px;">
+          <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #f0e6d6;border-radius:24px;padding:32px;">
+            <h1 style="margin:0 0 12px;font-size:30px;font-weight:500;">This unsubscribe link did not work</h1>
+            <p style="margin:0;font-size:15px;line-height:1.8;color:#5c3a28;">${err.message}</p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+});
+
+router.get('/cron/insiders/weekly-digest', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ success: false, message: 'Unauthorized cron request' });
+    }
+
+    const result = await insiderService.sendWeeklyDigest({
+      tenantId: getRequestTenantId(req),
+    });
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get('/admin/insiders/summary', async (req, res) => {
+  try {
+    const data = await insiderService.getSummary(getRequestTenantId(req));
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/admin/insiders/weekly-digest', async (req, res) => {
+  try {
+    const data = await insiderService.sendWeeklyDigest({
+      tenantId: getRequestTenantId(req),
+      force: req.body?.force === true,
+    });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
 });
 
 // ==========================================
@@ -705,8 +811,17 @@ router.delete('/blogs/:idOrSlug', auth(['admin']), async (req, res) => {
     if (req.params.idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
       lookup.push({ _id: req.params.idOrSlug });
     }
-    await Blog.deleteOne({ $or: lookup });
-    res.json({ success: true, message: 'Blog deleted' });
+
+    const deleted = await Blog.findOneAndDelete({ $or: lookup });
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Blog not found' });
+    }
+
+    res.json({
+      success: true,
+      data: { id: deleted._id?.toString?.() || String(req.params.idOrSlug), deleted: true },
+      message: 'Blog deleted'
+    });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
