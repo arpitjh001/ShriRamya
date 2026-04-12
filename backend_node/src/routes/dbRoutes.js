@@ -160,7 +160,20 @@ router.post('/auth/login', async (req, res) => {
 router.post('/auth/register', async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
+    
+    // Basic validation
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ success: false, message: 'Invalid email format' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
+    }
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+
     const db = require('../db/mongodb').mongoose.connection.db;
+
     const exists = await db.collection('users').findOne({ email: email.toLowerCase() });
     if (exists) return res.status(400).json({ success: false, message: 'Email already registered' });
 
@@ -775,6 +788,31 @@ router.post('/blogs', auth(['admin', 'editor']), async (req, res) => {
     const blogId = blogData._id?.toString();
     delete blogData.__v;
     res.status(201).json({ success: true, data: { ...blogData, id: blogId || blogSlug }, message: 'Blog post created successfully' });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.get('/blogs/tags', async (req, res) => {
+  try {
+    const tags = await Blog.distinct('tags');
+    res.json({ success: true, data: tags });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.get('/blogs/search', optionalAuth, async (req, res) => {
+  try {
+    const { q = '', limit = 10 } = req.query;
+    const filter = {
+      $or: [
+        { title: { $regex: q, $options: 'i' } },
+        { content: { $regex: q, $options: 'i' } },
+        { tags: { $regex: q, $options: 'i' } }
+      ]
+    };
+    if (!isAdminOrEditor(req.user)) {
+      filter.status = 'published';
+    }
+    const posts = await Blog.find(filter).limit(Number(limit)).lean();
+    res.json({ success: true, data: posts.map(p => formatBlogPostForResponse(p)) });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 

@@ -37,8 +37,7 @@ const AdminOrdersPage = () => {
       if (filter !== 'all') params.status = filter;
       if (search) params.search = search;
       
-      const res = await ordersAPI.getAll(params);
-      const data = res.data;
+      const data = await ordersAPI.getAll(params);
       
       if (data) {
         setOrders(data.orders || []);
@@ -78,8 +77,8 @@ const AdminOrdersPage = () => {
         <Icon className="w-6 h-6" />
       </div>
       <div>
-        <p className="text-2xl font-heading font-semibold">{value}</p>
-        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-2xl font-heading font-semibold text-white">{value}</p>
+        <p className="text-sm text-white/60">{label}</p>
       </div>
     </div>
   );
@@ -89,8 +88,8 @@ const AdminOrdersPage = () => {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-heading font-semibold">Order Management</h1>
-            <p className="text-muted-foreground mt-1">Monitor and manage all customer orders</p>
+            <h1 className="text-3xl font-heading font-semibold text-white">Order Management</h1>
+            <p className="text-white/60 mt-1">Monitor and manage all customer orders</p>
           </div>
           <Button onClick={fetchOrders} variant="outline" size="sm" data-testid="refresh-orders-btn">
             <RefreshCw className="w-4 h-4 mr-2" /> Refresh
@@ -110,14 +109,14 @@ const AdminOrdersPage = () => {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input
               data-testid="order-search-input"
               type="text"
               placeholder="Search by order ID, customer name, or email..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -149,16 +148,16 @@ const AdminOrdersPage = () => {
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full" data-testid="orders-table">
-                <thead className="bg-muted/30 border-b border-border">
+                <thead className="bg-white/5 border-b border-white/10">
                   <tr>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Order ID</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Items</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Order ID</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Customer</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Items</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Total</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Status</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Payment</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Date</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -168,14 +167,14 @@ const AdminOrdersPage = () => {
                     return (
                       <tr key={order.orderId} className="hover:bg-muted/20 transition-colors" data-testid={`order-row-${order.orderId}`}>
                         <td className="px-5 py-4">
-                          <span className="font-mono text-sm font-medium">{order.orderId?.slice(0, 18)}</span>
+                          <span className="font-mono text-sm font-medium text-white/90">{order.orderId?.slice(0, 18)}</span>
                         </td>
                         <td className="px-5 py-4">
-                          <p className="text-sm font-medium">{order.userName || order.shippingAddress?.name || 'Guest'}</p>
-                          <p className="text-xs text-muted-foreground">{order.userEmail || ''}</p>
+                          <p className="text-sm font-medium text-white">{order.userName || order.shippingAddress?.name || 'Guest'}</p>
+                          <p className="text-xs text-white/50">{order.userEmail || ''}</p>
                         </td>
-                        <td className="px-5 py-4 text-sm">{order.items?.length || 0} items</td>
-                        <td className="px-5 py-4 text-sm font-semibold">Rs.{(order.total || 0).toLocaleString()}</td>
+                        <td className="px-5 py-4 text-sm text-white/70">{order.items?.length || 0} items</td>
+                        <td className="px-5 py-4 text-sm font-semibold text-white">Rs.{(order.total || 0).toLocaleString()}</td>
                         <td className="px-5 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusCfg.color}`}>
                             <StatusIcon className="w-3.5 h-3.5" />
@@ -187,7 +186,7 @@ const AdminOrdersPage = () => {
                             {order.paymentStatus || 'pending'}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground">
+                        <td className="px-5 py-4 text-sm text-white/50">
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}
                         </td>
                         <td className="px-5 py-4">
@@ -244,8 +243,8 @@ const AdminOrdersPage = () => {
             <div className="p-6 border-b border-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-heading font-semibold">Order Details</h2>
-                  <p className="text-sm text-muted-foreground font-mono mt-1">{selectedOrder.orderId}</p>
+                  <h2 className="text-xl font-heading font-semibold text-white">Order Details</h2>
+                  <p className="text-sm text-white/50 font-mono mt-1">{selectedOrder.orderId}</p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowDetail(false)}>Close</Button>
               </div>
@@ -255,13 +254,13 @@ const AdminOrdersPage = () => {
               {/* Status + Payment */}
               <div className="flex gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Status</p>
+                  <p className="text-xs text-white/50 mb-1">Status</p>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${(STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.pending).color}`}>
                     {(STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.pending).label}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Payment</p>
+                  <p className="text-xs text-white/50 mb-1">Payment</p>
                   <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${selectedOrder.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                     {selectedOrder.paymentStatus}
                   </span>
@@ -270,11 +269,11 @@ const AdminOrdersPage = () => {
 
               {/* Customer Info */}
               <div className="bg-muted/30 rounded-lg p-4">
-                <h3 className="text-sm font-semibold mb-2">Customer</h3>
-                <p className="text-sm">{selectedOrder.userName || selectedOrder.shippingAddress?.name || 'N/A'}</p>
-                <p className="text-sm text-muted-foreground">{selectedOrder.userEmail || ''}</p>
+                <h3 className="text-sm font-semibold mb-2 text-white">Customer</h3>
+                <p className="text-sm text-white/90">{selectedOrder.userName || selectedOrder.shippingAddress?.name || 'N/A'}</p>
+                <p className="text-sm text-white/50">{selectedOrder.userEmail || ''}</p>
                 {selectedOrder.shippingAddress && (
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-white/50 mt-1">
                     {[selectedOrder.shippingAddress.street, selectedOrder.shippingAddress.city, selectedOrder.shippingAddress.state, selectedOrder.shippingAddress.pincode].filter(Boolean).join(', ')}
                   </p>
                 )}
@@ -282,40 +281,40 @@ const AdminOrdersPage = () => {
 
               {/* Items */}
               <div>
-                <h3 className="text-sm font-semibold mb-3">Items ({selectedOrder.items?.length || 0})</h3>
+                <h3 className="text-sm font-semibold mb-3 text-white">Items ({selectedOrder.items?.length || 0})</h3>
                 <div className="space-y-3">
                   {selectedOrder.items?.map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-muted/20 rounded-lg p-3">
+                    <div key={i} className="flex items-center gap-3 bg-white/5 rounded-lg p-3 border border-white/10">
                       {item.thumbnail && <img src={item.thumbnail} alt={item.name} className="w-14 h-14 rounded-lg object-cover" />}
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">Qty: {item.quantity} | Size: {item.size || '-'}</p>
+                        <p className="text-sm font-medium text-white">{item.name}</p>
+                        <p className="text-xs text-white/50">Qty: {item.quantity} | Size: {item.size || '-'}</p>
                       </div>
-                      <p className="text-sm font-semibold">Rs.{((item.salePrice || item.price) * item.quantity).toLocaleString()}</p>
+                      <p className="text-sm font-semibold text-white">Rs.{((item.salePrice || item.price) * item.quantity).toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Totals */}
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="flex justify-between text-sm"><span>Subtotal</span><span>Rs.{(selectedOrder.subtotal || 0).toLocaleString()}</span></div>
-                {selectedOrder.discount > 0 && <div className="flex justify-between text-sm text-emerald-600"><span>Discount</span><span>-Rs.{selectedOrder.discount.toLocaleString()}</span></div>}
-                <div className="flex justify-between text-sm"><span>Shipping</span><span>{selectedOrder.shipping ? `Rs.${selectedOrder.shipping}` : 'Free'}</span></div>
-                <div className="flex justify-between font-semibold text-lg border-t border-border pt-2"><span>Total</span><span>Rs.{(selectedOrder.total || 0).toLocaleString()}</span></div>
+              <div className="border-t border-white/10 pt-4 space-y-2">
+                <div className="flex justify-between text-sm text-white/70"><span>Subtotal</span><span>Rs.{(selectedOrder.subtotal || 0).toLocaleString()}</span></div>
+                {selectedOrder.discount > 0 && <div className="flex justify-between text-sm text-emerald-400"><span>Discount</span><span>-Rs.{selectedOrder.discount.toLocaleString()}</span></div>}
+                <div className="flex justify-between text-sm text-white/70"><span>Shipping</span><span>{selectedOrder.shipping ? `Rs.${selectedOrder.shipping}` : 'Free'}</span></div>
+                <div className="flex justify-between font-semibold text-lg border-t border-white/10 pt-2 text-white"><span>Total</span><span>Rs.{(selectedOrder.total || 0).toLocaleString()}</span></div>
               </div>
 
               {/* Status History */}
               {selectedOrder.statusHistory?.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-3">Status History</h3>
+                  <h3 className="text-sm font-semibold mb-3 text-white">Status History</h3>
                   <div className="space-y-2">
                     {selectedOrder.statusHistory.map((h, i) => (
                       <div key={i} className="flex items-center gap-3 text-sm">
                         <div className="w-2 h-2 rounded-full bg-primary" />
-                        <span className="font-medium capitalize">{h.status}</span>
-                        <span className="text-muted-foreground">{h.note}</span>
-                        <span className="text-muted-foreground ml-auto text-xs">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</span>
+                        <span className="font-medium capitalize text-white/90">{h.status}</span>
+                        <span className="text-white/60">{h.note}</span>
+                        <span className="text-white/40 ml-auto text-xs">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</span>
                       </div>
                     ))}
                   </div>
@@ -323,11 +322,11 @@ const AdminOrdersPage = () => {
               )}
 
               {/* Quick Actions */}
-              <div className="space-y-4 pt-4 border-t border-border">
+              <div className="space-y-4 pt-4 border-t border-white/10">
                 {/* Tracking Number */}
                 {['confirmed', 'shipped'].includes(selectedOrder.status) && (
                   <div data-testid="tracking-section">
-                    <label className="text-xs text-muted-foreground block mb-1">Tracking Number</label>
+                    <label className="text-xs text-white/50 block mb-1">Tracking Number</label>
                     <div className="flex gap-2">
                       <input
                         data-testid="tracking-number-input"
@@ -335,7 +334,7 @@ const AdminOrdersPage = () => {
                         placeholder="Enter tracking number..."
                         defaultValue={selectedOrder.trackingNumber || ''}
                         id="tracking-input"
-                        className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        className="flex-1 px-3 py-2 border border-white/10 rounded-lg bg-white/5 text-sm text-white placeholder:text-white/30 focus:ring-2 focus:ring-primary/20 focus:outline-none"
                       />
                       <Button size="sm" variant="outline"
                         data-testid="save-tracking-btn"

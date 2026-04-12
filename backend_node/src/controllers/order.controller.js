@@ -7,6 +7,7 @@ const httpStatus = require('http-status');
 const { Order, User, Product, OrderEvent } = require('../models');
 const orderEventService = require('../services/events/orderEvent.service');
 const couponService = require('../services/coupon.service');
+const analyticsService = require('../services/analytics/analytics.service');
 const { successResponse } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
 
