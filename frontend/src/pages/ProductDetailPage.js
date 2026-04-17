@@ -347,16 +347,16 @@ const ProductDetailPage = () => {
         type="product"
       />
       {/* Breadcrumbs */}
-      <nav className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pt-12 pb-6">
-        <ol className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-charcoal/40">
+      <nav className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pt-8 md:pt-12 pb-6">
+        <ol className="flex flex-wrap items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-charcoal/40">
           <li><Link to="/" className="hover:text-royal-maroon transition-colors">Home</Link></li>
           <li className="flex items-center gap-2">
             <span>/</span>
             <Link to={`/category/${product.category?.toLowerCase()}`} className="hover:text-royal-maroon transition-colors">{product.category}</Link>
           </li>
-          <li className="flex items-center gap-2 text-charcoal/80 italic">
+          <li className="flex min-w-0 items-center gap-2 text-charcoal/80 italic">
             <span>/</span>
-            <span>{product.name}</span>
+            <span className="break-words">{product.name}</span>
           </li>
         </ol>
       </nav>
@@ -365,7 +365,7 @@ const ProductDetailPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
           
           {/* Left Column: Media Gallery */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className="min-w-0 lg:col-span-7 space-y-4">
             <motion.div
               layoutId={`product-hero-${product.id}`}
               className="relative aspect-[3/4.5] overflow-hidden rounded-3xl group"
@@ -401,7 +401,7 @@ const ProductDetailPage = () => {
           </div>
 
           {/* Right Column: Information (Sticky) */}
-          <div className="lg:col-span-5 h-fit lg:sticky lg:top-32 space-y-8">
+          <div className="min-w-0 lg:col-span-5 h-fit lg:sticky lg:top-32 space-y-8">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] uppercase font-bold tracking-[0.3em] text-royal-maroon/60">
@@ -416,11 +416,11 @@ const ProductDetailPage = () => {
                 </button>
               </div>
               
-              <h1 className="text-4xl md:text-5xl font-heading font-medium text-charcoal tracking-tight leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading font-medium text-charcoal tracking-tight leading-tight break-words">
                 {product.name}
               </h1>
 
-              <div className="flex items-baseline gap-4">
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
                 <span className="text-3xl font-medium text-charcoal">{formatPrice(displayPrice)}</span>
                 {hasDiscount && (
                   <>
@@ -434,17 +434,17 @@ const ProductDetailPage = () => {
             </div>
 
             {/* Model Info (Inspiration from Maybell) */}
-            <div className="bg-white/40 border border-white/60 p-5 rounded-2xl flex items-center gap-6">
+            <div className="bg-white/40 border border-white/60 p-5 rounded-2xl flex flex-wrap items-center gap-4 sm:gap-6">
               <div className="flex flex-col">
                 <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">Model wears</span>
                 <span className="text-sm font-medium text-charcoal">Size S (Medium)</span>
               </div>
-              <div className="w-[1px] h-8 bg-charcoal/10" />
+              <div className="hidden sm:block w-[1px] h-8 bg-charcoal/10" />
               <div className="flex flex-col">
                 <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">Height</span>
                 <span className="text-sm font-medium text-charcoal">5'9" ft</span>
               </div>
-              <Sparkles className="ml-auto w-5 h-5 text-royal-maroon/30 animate-pulse" />
+              <Sparkles className="sm:ml-auto w-5 h-5 text-royal-maroon/30 animate-pulse" />
             </div>
 
             {/* Selection Options - Variant Matrix System */}
@@ -488,7 +488,7 @@ const ProductDetailPage = () => {
               {/* Size Selection - Variant Matrix */}
               {(availableSizes.length > 0 || product.size_stock?.length > 0) && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">Select Size</label>
                     <button className="text-[10px] uppercase font-bold text-royal-maroon hover:underline tracking-widest opacity-60">Size Guide</button>
                   </div>
@@ -508,7 +508,7 @@ const ProductDetailPage = () => {
                           key={index}
                           disabled={!isAvailable}
                           onClick={() => handleSizeSelect(size)}
-                          className={`min-w-[60px] h-[55px] rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 border relative ${
+                          className={`min-w-[52px] px-3 h-[55px] rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 border relative ${
                             isSelected
                               ? 'bg-charcoal text-white border-charcoal shadow-lg shadow-charcoal/20'
                               : 'bg-white text-charcoal border-charcoal/5 hover:border-charcoal/20'
@@ -554,13 +554,13 @@ const ProductDetailPage = () => {
 
             {/* CTAs */}
             <div className="flex flex-col gap-4">
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={handleAddToCart}
                   disabled={!product.in_stock}
-                  className="flex-[2] h-16 rounded-2xl bg-charcoal text-white hover:bg-black transition-all text-sm uppercase font-bold tracking-widest"
+                  className="w-full sm:flex-[2] h-16 rounded-2xl bg-charcoal text-white hover:bg-black transition-all text-sm uppercase font-bold tracking-[0.18em] sm:tracking-widest whitespace-normal text-center leading-tight px-4"
                 >
-                  <ShoppingCart className="w-5 h-5 mr-3" />
+                  <ShoppingCart className="w-5 h-5 shrink-0 mr-3" />
                   {product.in_stock ? 'Add to Shopping Bag' : 'Out of Stock'}
                 </Button>
                 <Button
@@ -572,7 +572,7 @@ const ProductDetailPage = () => {
                       navigate('/checkout');
                     }
                   }}
-                  className="flex-1 h-16 rounded-2xl border-charcoal/10 hover:border-charcoal bg-white transition-all text-sm uppercase font-bold tracking-widest"
+                  className="w-full sm:flex-1 h-16 rounded-2xl border-charcoal/10 hover:border-charcoal bg-white transition-all text-sm uppercase font-bold tracking-[0.18em] sm:tracking-widest whitespace-normal text-center leading-tight px-4"
                 >
                   Buy Now
                 </Button>
@@ -694,7 +694,7 @@ const ProductDetailPage = () => {
             </div>
 
             {/* Specs Grid */}
-            <div className="grid grid-cols-2 gap-y-6 pt-10 border-t border-charcoal/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 pt-10 border-t border-charcoal/5">
               {[
                 { label: 'Fabric', value: product.fabric },
                 { label: 'Craft Style', value: product.craft_style },
@@ -737,10 +737,10 @@ const ProductDetailPage = () => {
       {reviews.total > 0 && (
         <section data-testid="reviews-section" className="bg-ivory py-16">
           <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
-            <div className="flex items-center justify-between mb-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
               <div>
                 <h2 className="text-3xl font-heading tracking-tight">Customer Reviews</h2>
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex flex-wrap items-center gap-3 mt-2">
                   <div className="flex items-center gap-1">
                     {[1,2,3,4,5].map(s => (
                       <Star key={s} className={`w-5 h-5 ${s <= Math.round(reviews.average) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />

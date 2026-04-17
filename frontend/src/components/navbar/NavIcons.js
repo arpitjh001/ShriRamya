@@ -15,8 +15,8 @@ import { Link } from 'react-router-dom';
  * @param {NavIconsProps} props
  */
 const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSearchClick, onAccountClick }) => {
-  const actionIconClass = "relative inline-flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-full border border-charcoal/15 bg-ivory/90 text-charcoal shadow-[0_5px_16px_rgba(31,31,31,0.12)] hover:border-royal-maroon/35 hover:bg-white hover:text-royal-maroon hover:shadow-[0_8px_22px_rgba(106,30,45,0.18)] transition-all";
-  const iconClass = "w-5 h-5 md:w-6 md:h-6 text-charcoal stroke-[2.5] group-hover:text-royal-maroon";
+  const actionIconClass = "relative inline-flex shrink-0 items-center justify-center text-charcoal hover:text-royal-maroon transition-colors";
+  const iconClass = "w-[18px] h-[18px] sm:w-5 sm:h-5 md:w-[22px] md:h-[22px] lg:w-6 lg:h-6 stroke-[2.2]";
 
   const iconVariants = {
     hover: { scale: 1.2, rotate: 5, transition: { type: "spring", stiffness: 400, damping: 10 } },
@@ -24,7 +24,7 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
   };
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+    <div className="flex shrink-0 items-center gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 xl:gap-5">
       <motion.button
         variants={iconVariants}
         whileHover="hover"
@@ -33,7 +33,7 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
         className={actionIconClass}
         aria-label="Search"
       >
-        <Search className={`${iconClass} text-charcoal`} strokeWidth={2.6} />
+        <Search className={iconClass} strokeWidth={2.4} />
       </motion.button>
 
       <motion.button 
@@ -44,7 +44,7 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
         className={actionIconClass}
         aria-label="Account"
       >
-        <User className={`${iconClass} text-charcoal`} strokeWidth={2.6} />
+        <User className={iconClass} strokeWidth={2.4} />
         {hasNotifications && (
           <motion.span
             initial={{ scale: 0 }}
@@ -56,13 +56,13 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
 
       <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
         <Link to="/wishlist" className={actionIconClass} aria-label="Wishlist" data-testid="navbar-wishlist-icon">
-          <Heart className={`${iconClass} text-charcoal`} strokeWidth={2.7} />
+          <Heart className={iconClass} strokeWidth={2.4} />
           {wishlistCount > 0 && (
             <motion.span
               key={wishlistCount}
               initial={{ scale: 0.2, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="absolute -top-2 -right-2 bg-royal-maroon text-white text-[10px] font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 shadow-md ring-2 ring-ivory"
+              className="absolute -top-1.5 -right-1.5 bg-royal-maroon text-white text-[9px] font-bold min-w-4 h-4 sm:min-w-[18px] sm:h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
             >
               {wishlistCount}
             </motion.span>
@@ -72,12 +72,12 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
 
       <motion.div variants={iconVariants} whileHover="hover" whileTap="tap" className="relative group">
         <Link to="/cart" className={actionIconClass} aria-label="Cart">
-          <ShoppingBag className={`${iconClass} text-charcoal`} strokeWidth={2.7} />
+          <ShoppingBag className={iconClass} strokeWidth={2.4} />
           <motion.span
             key={cartCount}
             initial={{ scale: 0.2, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="absolute -top-2 -right-2 bg-royal-maroon text-white text-[10px] font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 shadow-md ring-2 ring-ivory"
+            className="absolute -top-1.5 -right-1.5 bg-royal-maroon text-white text-[9px] font-bold min-w-4 h-4 sm:min-w-[18px] sm:h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
           >
             {cartCount}
           </motion.span>

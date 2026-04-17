@@ -48,11 +48,11 @@ const MobileNav = ({ isOpen, onClose, categories = [], recentItems = [] }) => {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-charcoal/5">
-              <Link to="/" onClick={onClose} className="block">
+              <Link to="/" onClick={onClose} className="block rounded-full">
                 <img
-                  src="/logo.png"
+                  src="/logo_backup.png"
                   alt="Shri Ramya"
-                  className="h-14 md:h-16"
+                  className="h-14 w-14 rounded-full object-cover shadow-[0_10px_28px_rgba(64,13,23,0.24)] ring-1 ring-black/5"
                 />
               </Link>
               <button 

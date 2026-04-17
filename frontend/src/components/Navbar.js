@@ -128,7 +128,7 @@ const Navbar = () => {
   }, [location.pathname, location.hash]);
 
   return (
-    <header className="relative z-[100]">
+    <header className="relative z-[110]">
       <PromoBar 
         showDashboard={user && isAdmin()}
         onDashboardClick={() => navigate('/admin/dashboard')}
@@ -138,58 +138,77 @@ const Navbar = () => {
         initial={{ y: 0 }}
         animate={{ 
           y: isVisible ? 0 : -140,
-          backgroundColor: isScrolled ? "rgba(247, 243, 236, 0.85)" : "rgba(247, 243, 236, 0.98)",
-          backdropFilter: isScrolled ? "blur(30px) saturate(200%)" : "blur(12px)",
-          borderBottomColor: isScrolled ? "rgba(42, 42, 42, 0.12)" : "rgba(42, 42, 42, 0.05)",
+          backgroundColor: (isScrolled || isAdminPage) ? "rgba(247, 243, 236, 0.74)" : "rgba(247, 243, 236, 0.56)",
+          borderColor: (isScrolled || isAdminPage) ? "rgba(255, 255, 255, 0.46)" : "rgba(255, 255, 255, 0.34)",
+          boxShadow: (isScrolled || isAdminPage)
+            ? "0 20px 44px rgba(31, 31, 31, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.5)"
+            : "0 26px 60px rgba(31, 31, 31, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.44)",
         }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className={`fixed left-0 right-0 top-[35px] md:top-[38px] transition-all duration-500 border-b ${
-          (isScrolled || isAdminPage) ? 'py-3 shadow-glass' : 'py-4 md:py-5 shadow-none'
+        className={`fixed left-2 right-2 md:left-4 md:right-4 lg:left-6 lg:right-6 top-[26px] md:top-[27px] overflow-visible rounded-b-[2rem] border backdrop-blur-[22px] transition-all duration-500 ${
+          (isScrolled || isAdminPage) ? 'py-3' : 'py-4 md:py-5'
         }`}
       >
-        <div className="max-w-[1920px] mx-auto px-4 lg:px-8 xl:px-12 h-full">
+        <div className="max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-8 xl:px-12 h-full">
           {/* Main Flex Layout matching Berdy.in (Logo Left, Links Center, Icons Right) */}
-          <div className="flex items-center justify-between w-full h-full relative">
+          <div className="flex items-center justify-between gap-3 lg:gap-5 w-full h-full relative">
             
             {/* Left: Hamburger (Mobile) + Logo (Desktop/Mobile) */}
-            <div className="flex items-center justify-start flex-shrink-0">
+            <div className="flex items-center justify-start flex-shrink-0 lg:w-12 xl:w-16">
                {/* Hamburger Menu (< 1024px) */}
                <motion.button
                  whileHover={{ scale: 1.1, rotate: 90 }}
                  whileTap={{ scale: 0.9 }}
                  onClick={() => setIsMobileMenuOpen(true)}
-                 className="lg:hidden p-2 -ml-2 mr-2 hover:bg-charcoal/5 rounded-full transition-all group"
+                 className="lg:hidden p-2 -ml-2 mr-1.5 hover:bg-charcoal/5 rounded-full transition-all group"
                  aria-label="Open Menu"
                >
                  <Menu className="w-6 h-6 text-charcoal group-hover:text-royal-maroon transition-colors" />
                </motion.button>
 
-               {/* Brand Logo */}
+               {/* Brand Logo - Mobile */}
                <Link 
                  to="/" 
-                 className="flex items-center justify-center group" 
+                 className="flex lg:hidden items-center justify-center group" 
                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                >
                  <motion.img
                    animate={{ 
-                     height: isScrolled ? (window.innerWidth < 1024 ? 42 : 56) : (window.innerWidth < 1024 ? 52 : 78),
+                     height: isScrolled ? 38 : 44,
                      scale: isScrolled ? 0.95 : 1 
                    }}
-                   src="/logo.png"
+                   src="/logo_backup.png"
                    alt="Shri Ramya"
-                   className="transition-all duration-700 drop-shadow-sm group-hover:drop-shadow-md object-contain h-auto site-logo"
+                   className="w-auto rounded-full object-cover transition-all duration-700 shadow-[0_10px_28px_rgba(64,13,23,0.24)] ring-1 ring-black/5 group-hover:shadow-[0_14px_34px_rgba(64,13,23,0.3)]"
                  />
                </Link>
             </div>
 
+            {/* Brand Logo - Desktop Hanging Badge */}
+            <Link
+              to="/"
+              className="hidden lg:flex absolute left-[-12px] xl:left-[-4px] top-full -translate-y-[34%] z-20 items-center justify-center group"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              <motion.img
+                animate={{
+                  height: isScrolled ? 74 : 88,
+                  scale: isScrolled ? 0.96 : 1
+                }}
+                src="/logo_backup.png"
+                alt="Shri Ramya"
+                className="w-auto rounded-full object-cover transition-all duration-700 shadow-[0_14px_36px_rgba(64,13,23,0.3)] ring-1 ring-black/5 group-hover:shadow-[0_18px_42px_rgba(64,13,23,0.36)]"
+              />
+            </Link>
+
             {/* Center: All Categories (Desktop Only) */}
-            <div className={`hidden lg:flex flex-1 items-center justify-center transition-all duration-500 gap-x-6 xl:gap-x-10 px-4`}>
+            <div className="hidden lg:flex flex-1 min-w-0 items-center justify-center transition-all duration-500 gap-x-4 xl:gap-x-6 2xl:gap-x-8 px-2 xl:px-4">
                {categories.map(cat => (
                  <button 
                   key={cat.slug}
                   onMouseEnter={() => handleCategoryHover(cat.slug)}
                   onClick={() => handleCategoryClick(cat.slug)}
-                  className="relative text-[13px] xl:text-[14px] uppercase font-heading font-medium tracking-[0.08em] xl:tracking-[0.14em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
+                  className="relative text-[12px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.06em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
                  >
                    {cat.name}
                    <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-maroon transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
@@ -197,7 +216,7 @@ const Navbar = () => {
                ))}
                <Link 
                  to="/blog" 
-                 className="relative text-[13px] xl:text-[14px] uppercase font-heading font-medium tracking-[0.08em] xl:tracking-[0.14em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
+                 className="relative text-[12px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.06em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
                >
                  Journal
                  <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-maroon transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
@@ -205,7 +224,7 @@ const Navbar = () => {
             </div>
 
             {/* Right Side: Utility Icons */}
-            <div className="flex items-center justify-end flex-shrink-0">
+            <div className="flex min-w-0 items-center justify-end flex-shrink-0">
                <NavIcons 
                  cartCount={cartCount}
                  wishlistCount={wishlistCount}
