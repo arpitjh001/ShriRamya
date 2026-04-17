@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Product = require('../models/product.model');
 const mongoProductRepository = require('../repositories/product.mongo.repository');
 const categoryService = require('./category.service');
 const searchService = require('./search/search.service');
@@ -363,11 +364,31 @@ class ProductService {
         perPage: parseInt(params.per_page || 20, 10),
       };
       const result = await mongoProductRepository.listProducts(params, options, tenantId);
+      
+      // Calculate Stats (Global, not just paginated)
+      const statsQuery = { tenant_id: tenantId, is_deleted: { $ne: true } };
+      if (params.status) statsQuery.status = params.status;
+      
+      // Use a separate count for stats or an aggregation if we want detailed break down
+      // For now, let's get the standard counts
+      const [totalCount, publishedCount, draftCount, outOfStockCount] = await Promise.all([
+        Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true } }),
+        Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true }, status: 'published' }),
+        Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true }, status: 'draft' }),
+        Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true }, stock: 0 })
+      ]);
+
       return {
         ...result,
         products: Array.isArray(result.products)
           ? result.products.map((product) => this.formatProductForResponse(product))
           : [],
+        stats: {
+          total: totalCount,
+          published: publishedCount,
+          draft: draftCount,
+          outOfStock: outOfStockCount
+        }
       };
     } catch (error) {
       console.error('[ProductService] getProducts failed:', error.message);

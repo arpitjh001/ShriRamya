@@ -133,8 +133,26 @@ class CouponService {
     const coupons = await Coupon.find(query).sort({ created_at: -1 }).skip(skip).limit(parseInt(per_page, 10)).lean();
     const total = await Coupon.countDocuments(query);
 
+    // Calculate Global Stats
+    const [totalCount, activeCount, expiredCount, totalUsageResult] = await Promise.all([
+      Coupon.countDocuments({}),
+      Coupon.countDocuments({ status: 'active' }),
+      Coupon.countDocuments({ expires_at: { $lt: new Date() } }),
+      Coupon.aggregate([
+        { $group: { _id: null, totalUsage: { $sum: '$used_count' } } }
+      ])
+    ]);
+
+    const totalUsage = totalUsageResult.length > 0 ? totalUsageResult[0].totalUsage : 0;
+
     return {
       coupons,
+      stats: {
+        total: totalCount,
+        active: activeCount,
+        expired: expiredCount,
+        totalUsage
+      },
       pagination: {
         page: parseInt(page, 10),
         perPage: parseInt(per_page, 10),

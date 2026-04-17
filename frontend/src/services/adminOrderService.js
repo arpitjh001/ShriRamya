@@ -117,6 +117,27 @@ export const adminOrderService = {
   getOrderAnalytics(params = {}) {
     return api.get('/orders/admin/analytics/orders', { params });
   },
+
+  /**
+   * Xpressbees: Get available couriers
+   */
+  getXpressbeesCouriers() {
+    return api.get('/orders/admin/shipping/xpressbees/couriers');
+  },
+
+  /**
+   * Xpressbees: Check serviceability
+   */
+  checkXpressbeesServiceability(data) {
+    return api.post('/orders/admin/shipping/xpressbees/serviceability', data);
+  },
+
+  /**
+   * Sync shipment status with provider
+   */
+  syncShipment(shipmentId) {
+    return api.post(`/orders/admin/shipments/${shipmentId}/sync`);
+  },
 };
 
 export default adminOrderService;

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Package, Search, Filter, ChevronDown, Eye, Truck, CheckCircle, XCircle, Clock, ArrowUpDown, RefreshCw } from 'lucide-react';
+import { Package, Search, Filter, ChevronDown, Eye, Truck, CheckCircle, XCircle, Clock, ArrowUpDown, RefreshCw, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import { ordersAPI } from '../services/api';
+import adminOrderService from '../services/adminOrderService';
+import XpressbeesShipmentModal from '../components/XpressbeesShipmentModal';
+import { ExternalLink, Download, ArrowRight } from 'lucide-react';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -29,11 +32,16 @@ const AdminOrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showShipmentModal, setShowShipmentModal] = useState(false);
+  const [shipmentDetails, setShipmentDetails] = useState(null);
+  const [fetchingShipment, setFetchingShipment] = useState(false);
 
-  const fetchOrders = useCallback(async () => {
+  const [limit, setLimit] = useState(20);
+
+  const fetchOrders = useCallback(async (targetPage = page, targetLimit = limit) => {
     setLoading(true);
     try {
-      const params = { page, limit: 15 };
+      const params = { page: targetPage, limit: targetLimit };
       if (filter !== 'all') params.status = filter;
       if (search) params.search = search;
       
@@ -41,17 +49,35 @@ const AdminOrdersPage = () => {
       
       if (data) {
         setOrders(data.orders || []);
-        setPagination(data.pagination || {});
         setStats(data.stats || {});
+        
+        const paginationData = data.meta?.pagination || data.pagination || {};
+        setPagination({
+          page: paginationData.page || targetPage,
+          limit: paginationData.limit || targetLimit,
+          total: paginationData.total || 0,
+          totalPages: paginationData.totalPages || paginationData.total_pages || 1
+        });
       }
     } catch (err) { 
       console.error('Fetch orders error:', err);
       toast.error('Failed to load orders');
     }
     setLoading(false);
-  }, [filter, search, page]);
+  }, [filter, search, page, limit]);
 
-  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOrders(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search, filter]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    setPage(newPage);
+    fetchOrders(newPage);
+  };
 
   const updateOrderStatus = async (orderId, newStatus, note = '') => {
     setUpdatingStatus(true);
@@ -71,52 +97,106 @@ const AdminOrdersPage = () => {
     setUpdatingStatus(false);
   };
 
-  const StatCard = ({ label, value, icon: Icon, color }) => (
-    <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${color}`}>
-        <Icon className="w-6 h-6" />
-      </div>
-      <div>
-        <p className="text-2xl font-heading font-semibold text-white">{value}</p>
-        <p className="text-sm text-white/60">{label}</p>
-      </div>
-    </div>
-  );
+  const fetchShipmentDetails = async (orderId) => {
+    setFetchingShipment(true);
+    try {
+      const res = await ordersAPI.getShipments(orderId);
+      if (res.data && res.data.length > 0) {
+        setShipmentDetails(res.data[0]); // Take the first active shipment
+      } else {
+        setShipmentDetails(null);
+      }
+    } catch (err) {
+      console.error('Fetch shipment details error:', err);
+    }
+    setFetchingShipment(false);
+  };
+
+  const handleSyncShipment = async (shipmentId) => {
+    try {
+      const res = await adminOrderService.syncShipment(shipmentId);
+      if (res.data) {
+        toast.success('Shipment synced successfully');
+        if (selectedOrder) {
+          fetchShipmentDetails(selectedOrder.orderId);
+          fetchOrders();
+        }
+      }
+    } catch (err) {
+      console.error('Sync shipment error:', err);
+      toast.error('Failed to sync shipment');
+    }
+  };
+
+
 
   return (
     <div data-testid="admin-orders-page" className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-heading font-semibold text-white">Order Management</h1>
-            <p className="text-white/60 mt-1">Monitor and manage all customer orders</p>
+            <h1 className="text-3xl font-heading font-semibold text-charcoal">Order Management</h1>
+            <p className="text-charcoal/60 mt-1">Monitor and manage all customer orders</p>
           </div>
-          <Button onClick={fetchOrders} variant="outline" size="sm" data-testid="refresh-orders-btn">
+          <Button 
+            onClick={() => fetchOrders(page)} 
+            variant="outline" 
+            size="sm" 
+            className="border-royal-maroon/20 text-royal-maroon hover:bg-royal-maroon/5"
+            data-testid="refresh-orders-btn"
+          >
             <RefreshCw className="w-4 h-4 mr-2" /> Refresh
           </Button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-          <StatCard label="Total" value={stats.total || 0} icon={Package} color="bg-primary/10 text-primary" />
-          <StatCard label="Pending" value={stats.pending || 0} icon={Clock} color="bg-amber-50 text-amber-600" />
-          <StatCard label="Confirmed" value={stats.confirmed || 0} icon={CheckCircle} color="bg-blue-50 text-blue-600" />
-          <StatCard label="Shipped" value={stats.shipped || 0} icon={Truck} color="bg-purple-50 text-purple-600" />
-          <StatCard label="Delivered" value={stats.delivered || 0} icon={CheckCircle} color="bg-emerald-50 text-emerald-600" />
-          <StatCard label="Cancelled" value={stats.cancelled || 0} icon={XCircle} color="bg-red-50 text-red-600" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard 
+            title="Total Revenue" 
+            value={stats.totalRevenue || 0} 
+            format="currency"
+            icon={TrendingUp} 
+            color="emerald" 
+            loading={loading && !stats.total} 
+            subtext="Gross sales revenue"
+          />
+          <StatCard 
+            title="Total Orders" 
+            value={stats.total || 0} 
+            icon={Package} 
+            color="maroon" 
+            loading={loading && !stats.total} 
+            subtext="All time orders"
+          />
+          <StatCard 
+            title="Pending" 
+            value={stats.pending || 0} 
+            icon={Clock} 
+            color="gold" 
+            loading={loading && !stats.total} 
+            subtext="Awaiting action"
+          />
+          <StatCard 
+            title="Shipped" 
+            value={stats.shipped || 0} 
+            icon={Truck} 
+            color="emerald" 
+            loading={loading && !stats.total} 
+            subtext="In transit"
+          />
         </div>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
             <input
               data-testid="order-search-input"
               type="text"
               placeholder="Search by order ID, customer name, or email..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-royal-maroon/10 rounded-lg text-sm text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-royal-maroon/20"
             />
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -126,6 +206,9 @@ const AdminOrdersPage = () => {
                 variant={filter === s ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => { setFilter(s); setPage(1); }}
+                className={filter === s 
+                  ? "bg-royal-maroon text-white" 
+                  : "border-royal-maroon/10 text-charcoal hover:bg-royal-maroon/5"}
                 data-testid={`filter-${s}-btn`}
               >
                 {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label}
@@ -145,68 +228,62 @@ const AdminOrdersPage = () => {
             <p className="text-lg font-medium text-muted-foreground">No orders found</p>
           </div>
         ) : (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-white border border-royal-maroon/10 rounded-xl overflow-hidden shadow-luxury">
             <div className="overflow-x-auto">
               <table className="w-full" data-testid="orders-table">
-                <thead className="bg-white/5 border-b border-white/10">
+                <thead className="bg-royal-maroon/[0.04] border-b border-royal-maroon/10">
                   <tr>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Order ID</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Customer</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Items</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Total</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Status</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Payment</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Date</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-white/70">Actions</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Order ID</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Customer</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Items</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Total</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Status</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Payment</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Date</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-charcoal/70">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-royal-maroon/5">
                   {orders.map(order => {
                     const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
                     const StatusIcon = statusCfg.icon;
                     return (
-                      <tr key={order.orderId} className="hover:bg-muted/20 transition-colors" data-testid={`order-row-${order.orderId}`}>
+                      <tr key={order.orderId} className="hover:bg-royal-maroon/[0.02] transition-colors" data-testid={`order-row-${order.orderId}`}>
                         <td className="px-5 py-4">
-                          <span className="font-mono text-sm font-medium text-white/90">{order.orderId?.slice(0, 18)}</span>
+                          <span className="font-mono text-sm font-medium text-charcoal/90">{order.orderId?.slice(0, 18)}</span>
                         </td>
                         <td className="px-5 py-4">
-                          <p className="text-sm font-medium text-white">{order.userName || order.shippingAddress?.name || 'Guest'}</p>
-                          <p className="text-xs text-white/50">{order.userEmail || ''}</p>
+                          <p className="text-sm font-bold text-charcoal">{order.userName || order.shippingAddress?.name || 'Guest'}</p>
+                          <p className="text-xs text-charcoal/50">{order.userEmail || ''}</p>
                         </td>
-                        <td className="px-5 py-4 text-sm text-white/70">{order.items?.length || 0} items</td>
-                        <td className="px-5 py-4 text-sm font-semibold text-white">Rs.{(order.total || 0).toLocaleString()}</td>
+                        <td className="px-5 py-4 text-sm text-charcoal/70">{order.items?.length || 0} items</td>
+                        <td className="px-5 py-4 text-sm font-bold text-charcoal">Rs.{(order.total || 0).toLocaleString()}</td>
                         <td className="px-5 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusCfg.color}`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${statusCfg.color}`}>
                             <StatusIcon className="w-3.5 h-3.5" />
                             {statusCfg.label}
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                             {order.paymentStatus || 'pending'}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-white/50">
+                        <td className="px-5 py-4 text-sm text-charcoal/50">
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => { setSelectedOrder(order); setShowDetail(true); }} data-testid={`view-order-${order.orderId}`}>
+                            <Button size="sm" variant="ghost" onClick={() => { 
+                              setSelectedOrder(order); 
+                              setShowDetail(true); 
+                              fetchShipmentDetails(order.orderId);
+                            }} className="text-royal-maroon hover:bg-royal-maroon/10" data-testid={`view-order-${order.orderId}`}>
                               <Eye className="w-4 h-4" />
                             </Button>
                             {order.status === 'pending' && (
-                              <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.orderId, 'confirmed', 'Confirmed by admin')} disabled={updatingStatus}>
+                              <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.orderId, 'confirmed', 'Confirmed by admin')} className="border-royal-maroon/20 text-royal-maroon hover:bg-royal-maroon/5" disabled={updatingStatus}>
                                 Confirm
-                              </Button>
-                            )}
-                            {order.status === 'confirmed' && (
-                              <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.orderId, 'shipped', 'Shipped by admin')} disabled={updatingStatus}>
-                                Ship
-                              </Button>
-                            )}
-                            {order.status === 'shipped' && (
-                              <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.orderId, 'delivered', 'Delivered')} disabled={updatingStatus}>
-                                Deliver
                               </Button>
                             )}
                           </div>
@@ -221,59 +298,124 @@ const AdminOrdersPage = () => {
         )}
 
         {/* Pagination */}
-        {pagination.total_pages > 1 && (
-          <div className="flex justify-center gap-2 mt-6">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-            <span className="flex items-center px-3 text-sm">Page {page} of {pagination.total_pages}</span>
-            <Button variant="outline" size="sm" disabled={page === pagination.total_pages} onClick={() => setPage(p => p + 1)}>Next</Button>
+        {orders.length > 0 && (
+          <div className="flex flex-col md:flex-row items-center justify-between mt-8 gap-4 px-2">
+            <div className="flex items-center gap-4 text-sm text-charcoal/50">
+              <div className="flex items-center gap-2">
+                <span>Items per page:</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    const newLimit = parseInt(e.target.value);
+                    setLimit(newLimit);
+                    setPage(1);
+                    fetchOrders(1, newLimit);
+                  }}
+                  className="bg-white border border-royal-maroon/10 rounded px-2 py-1 text-charcoal focus:outline-none focus:ring-1 focus:ring-royal-maroon"
+                >
+                  {[10, 20, 50, 100].map(val => (
+                    <option key={val} value={val}>{val}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                Showing <span className="font-bold text-charcoal">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
+                <span className="font-bold text-charcoal">
+                  {Math.min(pagination.page * pagination.limit, pagination.total)}
+                </span>{' '}
+                of <span className="font-bold text-charcoal">{pagination.total}</span> orders
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+                className="border-royal-maroon/10 bg-white text-royal-maroon hover:bg-royal-maroon/5"
+              >
+                Previous
+              </Button>
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNum = 1;
+                if (pagination.totalPages <= 5) pageNum = i + 1;
+                else if (pagination.page <= 3) pageNum = i + 1;
+                else if (pagination.page >= pagination.totalPages - 2) pageNum = pagination.totalPages - 4 + i;
+                else pageNum = pagination.page - 2 + i;
+
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pagination.page === pageNum ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNum)}
+                    className={pagination.page === pageNum 
+                      ? 'bg-royal-maroon text-white hover:bg-royal-maroon/90' 
+                      : 'border-royal-maroon/10 bg-white text-charcoal hover:bg-royal-maroon/5'}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className="border-royal-maroon/10 bg-white text-royal-maroon hover:bg-royal-maroon/5"
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>
 
       {/* Order Detail Modal */}
       {showDetail && selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowDetail(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-royal-maroon/20 backdrop-blur-sm px-4" onClick={() => setShowDetail(false)}>
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white border border-royal-maroon/10 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
             data-testid="order-detail-modal"
           >
-            <div className="p-6 border-b border-border">
+            <div className="p-6 border-b border-royal-maroon/10 bg-royal-maroon/[0.02]">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-heading font-semibold text-white">Order Details</h2>
-                  <p className="text-sm text-white/50 font-mono mt-1">{selectedOrder.orderId}</p>
+                  <h2 className="text-xl font-heading font-bold text-charcoal">Order Details</h2>
+                  <p className="text-sm text-charcoal/50 font-mono mt-1">{selectedOrder.orderId}</p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowDetail(false)}>Close</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowDetail(false)} className="text-charcoal hover:bg-royal-maroon/10">✕</Button>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
               {/* Status + Payment */}
               <div className="flex gap-4">
                 <div>
-                  <p className="text-xs text-white/50 mb-1">Status</p>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${(STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.pending).color}`}>
+                  <p className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-1">Status</p>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${(STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.pending).color}`}>
                     {(STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.pending).label}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs text-white/50 mb-1">Payment</p>
-                  <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${selectedOrder.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <p className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-1">Payment</p>
+                  <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${selectedOrder.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                     {selectedOrder.paymentStatus}
                   </span>
                 </div>
               </div>
 
               {/* Customer Info */}
-              <div className="bg-muted/30 rounded-lg p-4">
-                <h3 className="text-sm font-semibold mb-2 text-white">Customer</h3>
-                <p className="text-sm text-white/90">{selectedOrder.userName || selectedOrder.shippingAddress?.name || 'N/A'}</p>
-                <p className="text-sm text-white/50">{selectedOrder.userEmail || ''}</p>
+              <div className="bg-background rounded-xl p-4 border border-royal-maroon/5">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-charcoal/40 mb-3">Customer Information</h3>
+                <p className="text-sm font-bold text-charcoal">{selectedOrder.userName || selectedOrder.shippingAddress?.name || 'Guest'}</p>
+                <p className="text-sm text-charcoal/60">{selectedOrder.userEmail || ''}</p>
                 {selectedOrder.shippingAddress && (
-                  <p className="text-sm text-white/50 mt-1">
+                  <p className="text-sm text-charcoal/60 mt-2">
                     {[selectedOrder.shippingAddress.street, selectedOrder.shippingAddress.city, selectedOrder.shippingAddress.state, selectedOrder.shippingAddress.pincode].filter(Boolean).join(', ')}
                   </p>
                 )}
@@ -281,40 +423,42 @@ const AdminOrdersPage = () => {
 
               {/* Items */}
               <div>
-                <h3 className="text-sm font-semibold mb-3 text-white">Items ({selectedOrder.items?.length || 0})</h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-charcoal/40 mb-3">Order Items ({selectedOrder.items?.length || 0})</h3>
                 <div className="space-y-3">
                   {selectedOrder.items?.map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-white/5 rounded-lg p-3 border border-white/10">
-                      {item.thumbnail && <img src={item.thumbnail} alt={item.name} className="w-14 h-14 rounded-lg object-cover" />}
+                    <div key={i} className="flex items-center gap-4 bg-background rounded-xl p-3 border border-royal-maroon/5 hover:border-royal-maroon/20 transition-all">
+                      {item.thumbnail && <img src={item.thumbnail} alt={item.name} className="w-16 h-16 rounded-lg object-cover shadow-sm" />}
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-white">{item.name}</p>
-                        <p className="text-xs text-white/50">Qty: {item.quantity} | Size: {item.size || '-'}</p>
+                        <p className="text-sm font-bold text-charcoal">{item.name}</p>
+                        <p className="text-[11px] text-charcoal/50">Qty: {item.quantity} | Size: {item.size || '-'}</p>
                       </div>
-                      <p className="text-sm font-semibold text-white">Rs.{((item.salePrice || item.price) * item.quantity).toLocaleString()}</p>
+                      <p className="text-sm font-bold text-royal-maroon">Rs.{((item.salePrice || item.price) * item.quantity).toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Totals */}
-              <div className="border-t border-white/10 pt-4 space-y-2">
-                <div className="flex justify-between text-sm text-white/70"><span>Subtotal</span><span>Rs.{(selectedOrder.subtotal || 0).toLocaleString()}</span></div>
-                {selectedOrder.discount > 0 && <div className="flex justify-between text-sm text-emerald-400"><span>Discount</span><span>-Rs.{selectedOrder.discount.toLocaleString()}</span></div>}
-                <div className="flex justify-between text-sm text-white/70"><span>Shipping</span><span>{selectedOrder.shipping ? `Rs.${selectedOrder.shipping}` : 'Free'}</span></div>
-                <div className="flex justify-between font-semibold text-lg border-t border-white/10 pt-2 text-white"><span>Total</span><span>Rs.{(selectedOrder.total || 0).toLocaleString()}</span></div>
+              <div className="border-t border-royal-maroon/10 pt-4 space-y-2">
+                <div className="flex justify-between text-sm text-charcoal/70"><span>Subtotal</span><span>Rs.{(selectedOrder.subtotal || 0).toLocaleString()}</span></div>
+                {selectedOrder.discount > 0 && <div className="flex justify-between text-sm text-emerald-600 font-bold"><span>Discount</span><span>-Rs.{selectedOrder.discount.toLocaleString()}</span></div>}
+                <div className="flex justify-between text-sm text-charcoal/70"><span>Shipping</span><span>{selectedOrder.shipping ? `Rs.${selectedOrder.shipping}` : 'Free'}</span></div>
+                <div className="flex justify-between font-bold text-xl border-t border-royal-maroon/20 pt-2 text-charcoal"><span>Total</span><span>Rs.{(selectedOrder.total || 0).toLocaleString()}</span></div>
               </div>
 
               {/* Status History */}
               {selectedOrder.statusHistory?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-3 text-white">Status History</h3>
-                  <div className="space-y-2">
+                <div className="pt-4">
+                  <h3 className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-3">Fulfillment History</h3>
+                  <div className="space-y-3 pl-2 border-l-2 border-background">
                     {selectedOrder.statusHistory.map((h, i) => (
-                      <div key={i} className="flex items-center gap-3 text-sm">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        <span className="font-medium capitalize text-white/90">{h.status}</span>
-                        <span className="text-white/60">{h.note}</span>
-                        <span className="text-white/40 ml-auto text-xs">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</span>
+                      <div key={i} className="relative flex flex-col text-sm">
+                        <div className="absolute -left-[11px] top-1.5 w-2.5 h-2.5 rounded-full bg-royal-maroon" />
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold capitalize text-charcoal">{h.status}</span>
+                          <span className="text-[10px] text-charcoal/40 ml-auto">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</span>
+                        </div>
+                        <span className="text-xs text-charcoal/60 mt-1">{h.note}</span>
                       </div>
                     ))}
                   </div>
@@ -322,21 +466,21 @@ const AdminOrdersPage = () => {
               )}
 
               {/* Quick Actions */}
-              <div className="space-y-4 pt-4 border-t border-white/10">
-                {/* Tracking Number */}
+              <div className="space-y-4 pt-4 border-t border-royal-maroon/10">
                 {['confirmed', 'shipped'].includes(selectedOrder.status) && (
                   <div data-testid="tracking-section">
-                    <label className="text-xs text-white/50 block mb-1">Tracking Number</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40 block mb-2">Tracking Information</label>
                     <div className="flex gap-2">
                       <input
                         data-testid="tracking-number-input"
                         type="text"
-                        placeholder="Enter tracking number..."
+                        placeholder="Enter courier AWB number..."
                         defaultValue={selectedOrder.trackingNumber || ''}
                         id="tracking-input"
-                        className="flex-1 px-3 py-2 border border-white/10 rounded-lg bg-white/5 text-sm text-white placeholder:text-white/30 focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                        className="flex-1 px-3 py-2 border border-royal-maroon/10 rounded-lg bg-background text-sm text-charcoal placeholder:text-charcoal/30 focus:ring-2 focus:ring-royal-maroon/20 focus:outline-none"
                       />
                       <Button size="sm" variant="outline"
+                        className="border-royal-maroon/20 text-royal-maroon hover:bg-royal-maroon/5"
                         data-testid="save-tracking-btn"
                         onClick={() => {
                           const tn = document.getElementById('tracking-input').value;
@@ -349,28 +493,87 @@ const AdminOrdersPage = () => {
                   </div>
                 )}
 
-                <div className="flex gap-2 flex-wrap">
+                {/* Xpressbees Shipment Display */}
+                {shipmentDetails && (
+                  <div className="bg-royal-maroon/[0.03] rounded-xl p-4 border border-royal-maroon/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-royal-maroon" />
+                        <h4 className="text-sm font-bold text-charcoal">Xpressbees Shipment</h4>
+                      </div>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                        shipmentDetails.status === 'delivered' ? 'bg-emerald-100 text-emerald-800' : 'bg-royal-maroon/10 text-royal-maroon'
+                      }`}>
+                        {shipmentDetails.status}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[10px] uppercase text-charcoal/40 font-bold">AWB Number</p>
+                        <p className="text-sm font-mono font-medium text-charcoal">{shipmentDetails.awb_number || 'Pending'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase text-charcoal/40 font-bold">Courier</p>
+                        <p className="text-sm font-medium text-charcoal">{shipmentDetails.courier_name || 'Xpressbees'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {shipmentDetails.label_url && (
+                        <a 
+                          href={shipmentDetails.label_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-white border border-royal-maroon/20 rounded-lg text-xs font-bold text-royal-maroon hover:bg-royal-maroon/5 transition-all shadow-sm"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download Label
+                        </a>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => handleSyncShipment(shipmentDetails._id)}
+                        className="text-royal-maroon hover:bg-royal-maroon/5 p-2 h-auto"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap pb-4">
                 {selectedOrder.status === 'pending' && (
-                  <Button onClick={() => { updateOrderStatus(selectedOrder.orderId, 'confirmed'); setShowDetail(false); }} disabled={updatingStatus}>
+                  <Button onClick={() => { updateOrderStatus(selectedOrder.orderId, 'confirmed'); setShowDetail(false); }} className="bg-royal-maroon text-white hover:bg-royal-maroon/90" disabled={updatingStatus}>
                     Confirm Order
                   </Button>
                 )}
                 {selectedOrder.status === 'confirmed' && (
-                  <Button onClick={() => {
-                    const tn = document.getElementById('tracking-input')?.value || '';
-                    updateOrderStatus(selectedOrder.orderId, 'shipped', tn ? `Tracking: ${tn}` : 'Shipped by admin');
-                    setShowDetail(false);
-                  }} disabled={updatingStatus}>
-                    <Truck className="w-4 h-4 mr-2" /> Mark as Shipped
-                  </Button>
+                  <div className="flex flex-col w-full gap-3">
+                    {!shipmentDetails && (
+                      <Button 
+                        onClick={() => setShowShipmentModal(true)} 
+                        className="w-full bg-charcoal text-white hover:bg-charcoal/90 flex items-center justify-center gap-2 font-bold"
+                      >
+                        <Truck className="w-4 h-4" /> Ship via Xpressbees
+                      </Button>
+                    )}
+                    <Button onClick={() => {
+                      const tn = document.getElementById('tracking-input')?.value || '';
+                      updateOrderStatus(selectedOrder.orderId, 'shipped', tn ? `Tracking: ${tn}` : 'Shipped by admin');
+                      setShowDetail(false);
+                    }} className="w-full bg-royal-maroon text-white hover:bg-royal-maroon/90" disabled={updatingStatus}>
+                      <Truck className="w-4 h-4 mr-2" /> Mark as Shipped (Manual)
+                    </Button>
+                  </div>
                 )}
                 {selectedOrder.status === 'shipped' && (
-                  <Button onClick={() => { updateOrderStatus(selectedOrder.orderId, 'delivered'); setShowDetail(false); }} disabled={updatingStatus}>
+                  <Button onClick={() => { updateOrderStatus(selectedOrder.orderId, 'delivered'); setShowDetail(false); }} className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={updatingStatus}>
                     <CheckCircle className="w-4 h-4 mr-2" /> Mark as Delivered
                   </Button>
                 )}
                 {['pending', 'confirmed'].includes(selectedOrder.status) && (
-                  <Button variant="destructive" onClick={() => { updateOrderStatus(selectedOrder.orderId, 'cancelled', 'Cancelled by admin'); setShowDetail(false); }} disabled={updatingStatus}>
+                  <Button variant="ghost" onClick={() => { updateOrderStatus(selectedOrder.orderId, 'cancelled', 'Cancelled by admin'); setShowDetail(false); }} className="text-red-600 hover:bg-red-50 ml-auto" disabled={updatingStatus}>
                     Cancel Order
                   </Button>
                 )}
@@ -380,8 +583,83 @@ const AdminOrdersPage = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Xpressbees Shipment Modal */}
+      <AnimatePresence>
+        {showShipmentModal && selectedOrder && (
+          <XpressbeesShipmentModal
+            order={selectedOrder}
+            onClose={() => setShowShipmentModal(false)}
+            onSuccess={(data) => {
+              fetchShipmentDetails(selectedOrder.orderId);
+              fetchOrders();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default AdminOrdersPage;
+
+// Premium Stat Card Component
+const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext, indicator }) => {
+  const formatValue = () => {
+    if (format === 'currency') {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+    return new Intl.NumberFormat('en-IN').format(value);
+  };
+
+  const schemeOptions = {
+    maroon: { bg: 'bg-royal-maroon/[0.08]', text: 'text-royal-maroon', iconColor: 'text-royal-maroon', glow: 'shadow-sm' },
+    emerald: { bg: 'bg-emerald-500/[0.08]', text: 'text-emerald-700', iconColor: 'text-emerald-600', glow: 'shadow-sm' },
+    gold: { bg: 'bg-royal-gold/[0.15]', text: 'text-royal-gold', iconColor: 'text-royal-gold', glow: 'shadow-sm' },
+    charcoal: { bg: 'bg-charcoal/[0.05]', text: 'text-charcoal', iconColor: 'text-charcoal/60', glow: 'shadow-sm' }
+  };
+
+  const scheme = schemeOptions[color] || schemeOptions.charcoal;
+
+  return (
+    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-royal-maroon/5 bg-white p-6 shadow-luxury transition-all hover:scale-[1.02] hover:bg-background`}>
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-royal-maroon/[0.02] transition-transform group-hover:scale-150" />
+      
+      <div className="relative z-10 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${scheme.bg}`}>
+            <Icon className={`h-6 w-6 ${scheme.iconColor}`} />
+          </div>
+          {indicator && (
+            <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
+              indicator === 'red' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+            }`}>
+              {indicator === 'red' ? 'Alert' : 'Warning'}
+            </span>
+          )}
+          {trend && (
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-600">
+              {trend}
+            </span>
+          )}
+        </div>
+        
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-charcoal/40">{title}</p>
+          {loading ? (
+            <div className="h-9 w-24 bg-royal-maroon/[0.05] animate-pulse rounded mt-1" />
+          ) : (
+            <h3 className={`mt-1 text-3xl font-bold tracking-tight ${scheme.text}`}>
+              {formatValue()}
+            </h3>
+          )}
+          {subtext && <p className="text-[11px] text-charcoal/40 mt-1">{subtext}</p>}
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -28,11 +28,14 @@ const api = axios.create({
 
 api.interceptors.response.use(
   (response) => {
-    // If the response follows our standard format { success, message, data }
-    // we extract the data directly for easier consumption.
     if (response.data && response.data.hasOwnProperty('success')) {
       if (response.data.success) {
-        return { ...response, data: response.data.data };
+        // Return custom object with data and meta
+        return {
+          ...response,
+          data: response.data.data,
+          meta: response.data.meta || {}
+        };
       } else {
         return Promise.reject(new Error(response.data.message || 'API Error'));
       }
@@ -116,12 +119,13 @@ export const productsAPI = {
     try {
       const res = await api.get("/products", { params });
 
-      const rawProducts = res.data.products || res.data.items || res.data || [];
-      const transformedData = Array.isArray(rawProducts)
-        ? transformWooProducts(rawProducts)
-        : [];
-      const pagination = res.data.pagination || (
-        res.data.total != null
+      // Handle both standard paginated response and old wrapper format
+      const rawProducts = Array.isArray(res.data) 
+        ? res.data 
+        : (res.data?.products || res.data?.items || []);
+      
+      const pagination = res.meta?.pagination || res.data?.pagination || (
+        res.data?.total != null
           ? {
               current_page: res.data.page || 1,
               total_pages: Math.max(Math.ceil((res.data.total || 0) / (res.data.perPage || params.per_page || 20)), 1),
@@ -130,17 +134,17 @@ export const productsAPI = {
             }
           : {}
       );
-      const filters = res.data.filters || res.data.filterMetadata || {};
+      const filters = res.meta?.filters || res.data?.filters || res.data?.filterMetadata || {};
 
       return {
         ...res,
-        data: transformedData,
+        data: transformWooProducts(rawProducts),
         products: rawProducts,
         filters,
         pagination,
-        sortOptions: res.data.sortOptions || [],
-        appliedFilters: res.data.appliedFilters || {},
-        totalProducts: res.data.totalProducts || res.data.total || transformedData.length
+        sortOptions: res.meta?.sortOptions || res.data?.sortOptions || [],
+        appliedFilters: res.meta?.appliedFilters || res.data?.appliedFilters || {},
+        totalProducts: pagination.total || res.data?.total || rawProducts.length
       };
     } catch (err) {
       handleError(err);
@@ -426,10 +430,21 @@ export const ordersAPI = {
 
   getAll: async (params = {}) => {
     try {
-      return await api.get("/admin/orders", { params });
+      const res = await api.get("/admin/orders", { params });
+      // The interceptor already extracts meta and returns { data, meta }
+      // We want to return { orders, pagination, meta } for compatibility
+      const orders = res.data?.orders || res.orders || res.data || [];
+      const pagination = res.meta?.pagination || res.pagination || {};
+      
+      return {
+        ...res,
+        orders,
+        pagination,
+        data: res.data // Original data
+      };
     } catch (err) {
       handleError(err);
-      return { data: { orders: [], pagination: {}, stats: {} } };
+      return { orders: [], pagination: {}, data: [] };
     }
   },
 
@@ -441,12 +456,21 @@ export const ordersAPI = {
     }
   },
 
-  getMyOrders: async () => {
+  getMyOrders: async (params = {}) => {
     try {
-      return await api.get("/orders/my");
+      const res = await api.get("/orders/my", { params });
+      const orders = res.data?.orders || res.orders || res.data || [];
+      const pagination = res.meta?.pagination || res.pagination || {};
+
+      return {
+        ...res,
+        orders,
+        pagination,
+        data: res.data
+      };
     } catch (err) {
       handleError(err);
-      return { data: [] };
+      return { orders: [], pagination: {}, data: [] };
     }
   },
 
@@ -672,10 +696,13 @@ export const couponsAPI = {
   getAll: async (params = {}) => {
     try {
       const res = await api.get("/coupons", { params });
-      return res.data || { coupons: [] };
+      return {
+        coupons: res.data || [],
+        pagination: res.meta?.pagination || {}
+      };
     } catch (err) {
       handleError(err);
-      return { coupons: [] };
+      return { coupons: [], pagination: {} };
     }
   },
 
@@ -746,13 +773,16 @@ export const warehouseAPI = {
 };
 
 export const inventoryAPI = {
-  getStockLevels: async () => {
+  getStockLevels: async (params = {}) => {
     try {
-      const response = await api.get("/admin/inventory/stock-levels");
-      return Array.isArray(response.data) ? response.data : [];
+      const res = await api.get("/admin/inventory/stock-levels", { params });
+      return {
+        items: res.data || [],
+        pagination: res.meta?.pagination || {}
+      };
     } catch (err) {
       handleError(err);
-      return [];
+      return { items: [], pagination: {} };
     }
   },
 

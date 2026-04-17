@@ -1,227 +1,187 @@
-/**
- * Shipment Controller
- * HTTP request handlers for shipment operations
- */
-
 const httpStatus = require('http-status');
+
 const shipmentService = require('../services/shipment.service');
 const { successResponse } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
 
-/**
- * Validate ID parameter
- */
-const validateId = (id, paramName = 'ID') => {
-    const parsed = parseInt(id);
-    if (isNaN(parsed) || parsed <= 0) {
-        throw new ApiError(httpStatus.BAD_REQUEST, `Invalid ${paramName} ID`);
-    }
-    return parsed;
+const getActor = (user = null) => ({
+  userId: user?.id || user?.user_id || user?.sub || null,
+  userType: user?.role === 'admin' ? 'admin' : 'customer',
+});
+
+const requireIdentifier = (value, label) => {
+  if (value == null || !String(value).trim()) {
+    throw new ApiError(httpStatus.BAD_REQUEST, `${label} is required`);
+  }
+
+  return String(value).trim();
 };
 
-/**
- * Create shipment
- * POST /api/v1/admin/orders/:orderId/shipments
- */
 const createShipment = async (req, res, next) => {
-    try {
-        const { orderId } = req.params;
-        const { carrier, trackingNumber, trackingUrl, shippingMethod, shippingWeight, shippingDimensions } = req.body;
+  try {
+    const shipment = await shipmentService.createShipment(
+      {
+        orderId: requireIdentifier(req.params.id || req.params.orderId, 'Order ID'),
+        ...req.body,
+      },
+      getActor(req.user)
+    );
 
-        const shipment = await shipmentService.createShipment(
-            {
-                orderId: validateId(orderId, 'Order'),
-                carrier,
-                trackingNumber,
-                trackingUrl,
-                shippingMethod,
-                shippingWeight,
-                shippingDimensions
-            },
-            {
-                userId: req.user.id,
-                userType: req.user.role === 'admin' ? 'admin' : 'customer'
-            }
-        );
-
-        return successResponse(res, shipment, 'Shipment created successfully', httpStatus.CREATED);
-    } catch (error) {
-        next(error);
-    }
+    return successResponse(res, shipment, shipment.message, httpStatus.CREATED);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Get shipment by ID
- * GET /api/v1/shipments/:id
- */
 const getShipment = async (req, res, next) => {
-    try {
-        const shipmentId = validateId(req.params.id, 'Shipment');
-        const shipment = await shipmentService.getShipment(shipmentId);
-        return successResponse(res, shipment);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const shipment = await shipmentService.getShipment(requireIdentifier(req.params.id, 'Shipment ID'));
+    return successResponse(res, shipment);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Get shipments for an order
- * GET /api/v1/orders/:orderId/shipments
- */
 const getOrderShipments = async (req, res, next) => {
-    try {
-        const orderId = validateId(req.params.orderId, 'Order');
-        const shipments = await shipmentService.getOrderShipments(orderId);
-        return successResponse(res, shipments);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const shipments = await shipmentService.getOrderShipments(requireIdentifier(req.params.id || req.params.orderId, 'Order ID'));
+    return successResponse(res, shipments);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Update tracking information
- * PATCH /api/v1/shipments/:id/tracking
- */
 const updateTracking = async (req, res, next) => {
-    try {
-        const shipmentId = validateId(req.params.id, 'Shipment');
-        const { carrier, trackingNumber, trackingUrl } = req.body;
+  try {
+    const shipment = await shipmentService.updateTracking(
+      requireIdentifier(req.params.id, 'Shipment ID'),
+      req.body,
+      getActor(req.user)
+    );
 
-        const shipment = await shipmentService.updateTracking(
-            shipmentId,
-            { carrier, trackingNumber, trackingUrl },
-            { userId: req.user.id, userType: 'admin' }
-        );
-
-        return successResponse(res, shipment, 'Tracking information updated');
-    } catch (error) {
-        next(error);
-    }
+    return successResponse(res, shipment, shipment.message);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Mark shipment as shipped
- * POST /api/v1/shipments/:id/ship
- */
 const markAsShipped = async (req, res, next) => {
-    try {
-        const shipmentId = validateId(req.params.id, 'Shipment');
-        const shipment = await shipmentService.markAsShipped(
-            shipmentId,
-            { userId: req.user.id, userType: 'admin' }
-        );
-
-        return successResponse(res, shipment, 'Shipment marked as shipped');
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const shipment = await shipmentService.markAsShipped(requireIdentifier(req.params.id, 'Shipment ID'), getActor(req.user));
+    return successResponse(res, shipment, shipment.message);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Mark shipment as delivered
- * POST /api/v1/shipments/:id/deliver
- */
 const markAsDelivered = async (req, res, next) => {
-    try {
-        const shipmentId = validateId(req.params.id, 'Shipment');
-        const shipment = await shipmentService.markAsDelivered(
-            shipmentId,
-            { userId: req.user.id, userType: 'admin' }
-        );
-
-        return successResponse(res, shipment, 'Shipment marked as delivered');
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const shipment = await shipmentService.markAsDelivered(requireIdentifier(req.params.id, 'Shipment ID'), getActor(req.user));
+    return successResponse(res, shipment, shipment.message);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Get order tracking
- * GET /api/v1/orders/:orderId/tracking
- */
+const syncShipment = async (req, res, next) => {
+  try {
+    const shipment = await shipmentService.syncShipment(requireIdentifier(req.params.id, 'Shipment ID'), getActor(req.user));
+    return successResponse(res, shipment, shipment.message);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const cancelShipment = async (req, res, next) => {
+  try {
+    const shipment = await shipmentService.cancelShipment(requireIdentifier(req.params.id, 'Shipment ID'), getActor(req.user));
+    return successResponse(res, shipment, shipment.message);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getOrderTracking = async (req, res, next) => {
-    try {
-        const tracking = await shipmentService.getOrderTracking(parseInt(req.params.orderId));
-        return successResponse(res, tracking);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const tracking = await shipmentService.getOrderTracking(
+      requireIdentifier(req.params.id || req.params.orderId, 'Order ID'),
+      getActor(req.user)
+    );
+
+    return successResponse(res, tracking);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Get all shipments (Admin)
- * GET /api/v1/admin/shipments
- */
 const getAllShipments = async (req, res, next) => {
-    try {
-        const { page, limit, status, carrier } = req.query;
-        
-        const result = await shipmentService.getAllShipments({
-            page: parseInt(page) || 1,
-            limit: parseInt(limit) || 20,
-            status,
-            carrier
-        });
-
-        return successResponse(res, result);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const result = await shipmentService.getAllShipments(req.query || {});
+    return successResponse(res, result);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Get ready to ship orders
- * GET /api/v1/admin/shipments/ready-to-ship
- */
 const getReadyToShip = async (req, res, next) => {
-    try {
-        const orders = await shipmentService.getReadyToShip();
-        return successResponse(res, orders);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const orders = await shipmentService.getReadyToShip();
+    return successResponse(res, orders);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Get pending shipments
- * GET /api/v1/admin/shipments/pending
- */
 const getPendingShipments = async (req, res, next) => {
-    try {
-        const shipments = await shipmentService.getPendingShipments();
-        return successResponse(res, shipments);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const shipments = await shipmentService.getPendingShipments();
+    return successResponse(res, shipments);
+  } catch (error) {
+    next(error);
+  }
 };
 
-/**
- * Delete shipment
- * DELETE /api/v1/shipments/:id
- */
 const deleteShipment = async (req, res, next) => {
-    try {
-        const result = await shipmentService.deleteShipment(
-            parseInt(req.params.id),
-            { userId: req.user.id, userType: 'admin' }
-        );
+  try {
+    const result = await shipmentService.deleteShipment(requireIdentifier(req.params.id, 'Shipment ID'), getActor(req.user));
+    return successResponse(res, result, result.message);
+  } catch (error) {
+    next(error);
+  }
+};
 
-        return successResponse(res, result, 'Shipment deleted successfully');
-    } catch (error) {
-        next(error);
-    }
+const getXpressbeesCouriers = async (req, res, next) => {
+  try {
+    const couriers = await shipmentService.listXpressbeesCouriers();
+    return successResponse(res, couriers);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const checkXpressbeesServiceability = async (req, res, next) => {
+  try {
+    const serviceability = await shipmentService.checkXpressbeesServiceability(req.body || {});
+    return successResponse(res, serviceability);
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
-    createShipment,
-    getShipment,
-    getOrderShipments,
-    updateTracking,
-    markAsShipped,
-    markAsDelivered,
-    getOrderTracking,
-    getAllShipments,
-    getReadyToShip,
-    getPendingShipments,
-    deleteShipment
+  createShipment,
+  getShipment,
+  getOrderShipments,
+  updateTracking,
+  markAsShipped,
+  markAsDelivered,
+  syncShipment,
+  cancelShipment,
+  getOrderTracking,
+  getAllShipments,
+  getReadyToShip,
+  getPendingShipments,
+  deleteShipment,
+  getXpressbeesCouriers,
+  checkXpressbeesServiceability,
 };

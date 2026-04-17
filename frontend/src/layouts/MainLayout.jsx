@@ -1,19 +1,21 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Toaster } from 'sonner';
 
 const MainLayout = () => {
+    const location = useLocation();
+    const isHome = location.pathname === '/';
+
     return (
         <div className="App min-h-screen flex flex-col">
             <Navbar />
             {/* 
-                Main content with padding-top to account for fixed Navbar
-                Navbar height: ~100px on mobile, ~120px on desktop
-                Using pt-28 (112px) mobile, pt-36 (144px) desktop for safe clearance
+                Main content overlaps under the floating Navbar on HomePage, 
+                but uses padding for safe clearance on other pages.
             */}
-            <main className="flex-1 pt-28 md:pt-36">
+            <main className={`flex-1 ${!isHome ? 'pt-28 md:pt-36' : ''}`}>
                 <Outlet />
             </main>
             <Footer />

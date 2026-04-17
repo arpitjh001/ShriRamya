@@ -159,15 +159,15 @@ const ProductCard = ({ product }) => {
           </div>
         </div>
 
-        <div className="space-y-2 p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-secondary/75">{category || 'Heritage Edit'}</p>
-          <h3 className="line-clamp-1 font-heading text-xl font-medium text-charcoal transition-colors group-hover:text-primary">
+        <div className="space-y-1.5 p-4">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-secondary/75">{category || 'Heritage Edit'}</p>
+          <h3 className="line-clamp-1 font-heading text-lg font-medium text-charcoal transition-colors group-hover:text-primary">
             {product?.name || 'Unnamed Product'}
           </h3>
-          <div className="flex items-center gap-2 pt-1">
-            <span className="font-accent text-2xl font-semibold text-primary">{formatPrice(displayPrice)}</span>
+          <div className="flex items-center gap-2 pt-0.5">
+            <span className="font-accent text-xl font-semibold text-primary">{formatPrice(displayPrice)}</span>
             {hasDiscount && (
-              <span className="text-sm text-muted-foreground line-through">{formatPrice(price)}</span>
+              <span className="text-xs text-muted-foreground line-through">{formatPrice(price)}</span>
             )}
           </div>
         </div>

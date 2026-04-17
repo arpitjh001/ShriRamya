@@ -219,7 +219,7 @@ const HomePage = () => {
         <img
           src="/images/premium/homepage/wedding_couture.png"
           alt="Royal Indian traditional fashion"
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[10s] hover:scale-105"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[10000ms] hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/50" />
         <div className="hero-overlay absolute inset-0" />
@@ -289,21 +289,36 @@ const HomePage = () => {
             ))}
           </div>
         ) : (
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4" data-testid="featured-products-grid">
-            {featuredProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.8, delay: index * 0.1, ease: "easeOut" }}
-              >
-                <div className="transform transition-transform hover:-translate-y-2 duration-500">
-                   <ProductCard product={product} />
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            plugins={[
+              Autoplay({
+                delay: 1500,
+                stopOnInteraction: false,
+              }),
+            ]}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4 md:-ml-8" data-testid="featured-products-grid">
+              {featuredProducts.map((product, index) => (
+                <CarouselItem key={product.id} className="pl-4 md:pl-8 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 0.8, delay: index * 0.1, ease: "easeOut" }}
+                  >
+                    <div className="transform transition-transform hover:-translate-y-2 duration-500">
+                       <ProductCard product={product} />
+                    </div>
+                  </motion.div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
         )}
       </section>
 
@@ -399,7 +414,7 @@ const HomePage = () => {
                 <img
                   src={tile.image}
                   alt={tile.name}
-                  className="h-[440px] w-full object-cover transition-transform duration-[1.5s] group-hover:scale-110"
+                  className="h-[440px] w-full object-cover transition-transform duration-[1500ms] group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-transparent opacity-85 transition-opacity duration-700 group-hover:opacity-95" />
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-6 p-10">
@@ -519,7 +534,7 @@ const HomePage = () => {
                        <img
                         src={tile.image}
                         alt={tile.name}
-                        className="h-[520px] w-full object-cover transition-transform duration-[2s] group-hover:scale-105"
+                        className="h-[520px] w-full object-cover transition-transform duration-[2000ms] group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-primary/20 mix-blend-overlay group-hover:bg-transparent transition-colors duration-1000" />
                     </div>
@@ -561,21 +576,36 @@ const HomePage = () => {
             ))}
           </div>
         ) : (
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4" data-testid="trending-products-grid">
-            {trendingProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.8, delay: index * 0.1 }}
-              >
-                <div className="hover-lift">
-                  <ProductCard product={product} />
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            plugins={[
+              Autoplay({
+                delay: 1500,
+                stopOnInteraction: false,
+              }),
+            ]}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4 md:-ml-8" data-testid="trending-products-grid">
+              {trendingProducts.map((product, index) => (
+                <CarouselItem key={product.id} className="pl-4 md:pl-8 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 0.8, delay: index * 0.1 }}
+                  >
+                    <div className="hover-lift">
+                      <ProductCard product={product} />
+                    </div>
+                  </motion.div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
         )}
       </section>
 

@@ -147,21 +147,16 @@ const getCustomerOrders = async (req, res, next) => {
         const filter = { userId: req.user.id };
         if (status) filter.status = status;
 
+        const total = await Order.countDocuments(filter);
         const orders = await Order.find(filter)
             .sort({ created_at: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
 
-        const total = await Order.countDocuments(filter);
-
-        return successResponse(res, {
-            orders,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total,
-                totalPages: Math.ceil(total / limit)
-            }
+        return res.paginatedResponse(orders, {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total
         });
     } catch (error) {
         next(error);
@@ -232,20 +227,41 @@ const getAllOrders = async (req, res, next) => {
         if (status) filter.status = status;
         if (tenantId) filter.tenantId = tenantId;
 
+        const total = await Order.countDocuments(filter);
         const orders = await Order.find(filter)
             .sort({ created_at: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
 
-        const total = await Order.countDocuments(filter);
+        // Calculate Global Stats
+        const [totalCount, pendingCount, shippedCount, revenueResult] = await Promise.all([
+            Order.countDocuments({}),
+            Order.countDocuments({ status: 'pending' }),
+            Order.countDocuments({ status: 'shipped' }),
+            Order.aggregate([
+                { $match: { status: { $ne: 'cancelled' } } },
+                { $group: { _id: null, totalRevenue: { $sum: '$finalTotal' } } }
+            ])
+        ]);
 
-        return successResponse(res, {
-            orders,
-            pagination: { 
-                page: parseInt(page), 
-                limit: parseInt(limit), 
-                total,
-                totalPages: Math.ceil(total / limit)
+        const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+
+        return res.status(200).json({
+            success: true,
+            data: orders,
+            stats: {
+                total: totalCount,
+                pending: pendingCount,
+                shipped: shippedCount,
+                totalRevenue
+            },
+            meta: {
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total,
+                    totalPages: Math.ceil(total / limit)
+                }
             }
         });
     } catch (error) {

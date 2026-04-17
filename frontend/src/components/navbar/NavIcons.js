@@ -6,8 +6,10 @@ import { Link } from 'react-router-dom';
 /**
  * @typedef {Object} NavIconsProps
  * @property {number} cartCount - Number of items in the cart
+ * @property {number} wishlistCount - Number of items in the wishlist
  * @property {boolean} [hasNotifications=false] - Whether there are unread notifications
  * @property {Function} onSearchClick - Callback for search icon click
+ * @property {Function} onAccountClick - Callback for account icon click
  */
 
 /**
@@ -15,7 +17,7 @@ import { Link } from 'react-router-dom';
  * @param {NavIconsProps} props
  */
 const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSearchClick, onAccountClick }) => {
-  const actionIconClass = "relative inline-flex shrink-0 items-center justify-center text-charcoal hover:text-royal-maroon transition-colors";
+  const actionIconClass = "relative inline-flex shrink-0 items-center justify-center text-charcoal hover:text-royal-maroon transition-colors m-0 p-0 border-none bg-transparent outline-none cursor-pointer";
   const iconClass = "w-[18px] h-[18px] sm:w-5 sm:h-5 md:w-[22px] md:h-[22px] lg:w-6 lg:h-6 stroke-[2.2]";
 
   const iconVariants = {
@@ -25,36 +27,34 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
 
   return (
     <div className="flex shrink-0 items-center gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 xl:gap-5">
-      <motion.button
-        variants={iconVariants}
-        whileHover="hover"
-        whileTap="tap"
-        onClick={onSearchClick}
-        className={actionIconClass}
-        aria-label="Search"
-      >
-        <Search className={iconClass} strokeWidth={2.4} />
-      </motion.button>
+      <motion.div variants={iconVariants} whileHover="hover" whileTap="tap" className="flex items-center justify-center">
+        <button
+          onClick={onSearchClick}
+          className={actionIconClass}
+          aria-label="Search"
+        >
+          <Search className={iconClass} strokeWidth={2.4} />
+        </button>
+      </motion.div>
 
-      <motion.button 
-        variants={iconVariants} 
-        whileHover="hover" 
-        whileTap="tap" 
-        onClick={onAccountClick}
-        className={actionIconClass}
-        aria-label="Account"
-      >
-        <User className={iconClass} strokeWidth={2.4} />
-        {hasNotifications && (
-          <motion.span
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-royal-maroon rounded-full border-2 border-ivory"
-          />
-        )}
-      </motion.button>
+      <motion.div variants={iconVariants} whileHover="hover" whileTap="tap" className="flex items-center justify-center">
+        <button 
+          onClick={onAccountClick}
+          className={actionIconClass}
+          aria-label="Account"
+        >
+          <User className={iconClass} strokeWidth={2.4} />
+          {hasNotifications && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-royal-maroon rounded-full border-2 border-ivory"
+            />
+          )}
+        </button>
+      </motion.div>
 
-      <motion.div variants={iconVariants} whileHover="hover" whileTap="tap">
+      <motion.div variants={iconVariants} whileHover="hover" whileTap="tap" className="flex items-center justify-center">
         <Link to="/wishlist" className={actionIconClass} aria-label="Wishlist" data-testid="navbar-wishlist-icon">
           <Heart className={iconClass} strokeWidth={2.4} />
           {wishlistCount > 0 && (
@@ -70,7 +70,7 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
         </Link>
       </motion.div>
 
-      <motion.div variants={iconVariants} whileHover="hover" whileTap="tap" className="relative group">
+      <motion.div variants={iconVariants} whileHover="hover" whileTap="tap" className="flex items-center justify-center relative group">
         <Link to="/cart" className={actionIconClass} aria-label="Cart">
           <ShoppingBag className={iconClass} strokeWidth={2.4} />
           <motion.span

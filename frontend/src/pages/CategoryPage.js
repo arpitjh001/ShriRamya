@@ -7,29 +7,35 @@ const CategoryPage = () => {
     const { slug } = useParams();
     const [category, setCategory] = useState(null);
     const [products, setProducts] = useState([]);
-    const [sortedProducts, setSortedProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState('');
     const [sortOption, setSortOption] = useState('newest');
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const observer = useRef();
 
-    useEffect(() => {
-        const fetchCategoryData = async () => {
-            setLoading(true);
-            try {
-                // Fetch category details
+    const lastProductRef = useCallback(node => {
+        if (loading || loadingMore) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore) {
+                setPage(prevPage => prevPage + 1);
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [loading, loadingMore, hasMore]);
+
+    const fetchCategoryData = useCallback(async (pageNum = 1, isInitial = false) => {
+        if (isInitial) setLoading(true);
+        else setLoadingMore(true);
+
+        try {
+            // Fetch category details only on initial load
+            if (isInitial) {
                 const categoryData = await categoriesAPI.getBySlug(slug);
                 setCategory(categoryData);
-
-                // Fetch products for this category using the consolidated productsAPI
-                const prodRes = await productsAPI.getAll({ category: slug, per_page: 100 });
-                const fetchedProducts = prodRes.data || [];
-                setProducts(fetchedProducts);
-                setSortedProducts(fetchedProducts);
-
-                // Update document title for SEO
                 document.title = `${categoryData.name} | ShriRamya`;
-
-                // Set meta description
                 let metaDesc = document.querySelector('meta[name="description"]');
                 if (!metaDesc) {
                     metaDesc = document.createElement('meta');
@@ -37,35 +43,51 @@ const CategoryPage = () => {
                     document.head.appendChild(metaDesc);
                 }
                 metaDesc.content = categoryData.description || `Explore our high-quality ${categoryData.name} collection at ShriRamya.`;
-
-            } catch (err) {
-                console.error(err);
-                setError('Failed to fetch category data.');
-            } finally {
-                setLoading(false);
             }
-        };
 
-        if (slug) {
-            fetchCategoryData();
+            // Fetch products for this category
+            const params = { 
+                category: slug, 
+                per_page: 20, 
+                page: pageNum,
+                sort: sortOption === 'newest' ? 'date' : sortOption === 'price_low' ? 'price' : sortOption === 'price_high' ? 'price-desc' : 'popularity'
+            };
+            const prodRes = await productsAPI.getAll(params);
+            const fetchedProducts = prodRes.data || [];
+            
+            setProducts(prev => isInitial ? fetchedProducts : [...prev, ...fetchedProducts]);
+            setHasMore(fetchedProducts.length === 20);
+
+        } catch (err) {
+            console.error(err);
+            setError('Failed to fetch category data.');
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
         }
-    }, [slug]);
+    }, [slug, sortOption]);
 
     useEffect(() => {
-        let sorted = [...products];
-        if (sortOption === 'price_low') {
-            sorted.sort((a, b) => (Number(a.sale_price || a.price || 0)) - (Number(b.sale_price || b.price || 0)));
-        } else if (sortOption === 'price_high') {
-            sorted.sort((a, b) => (Number(b.sale_price || b.price || 0)) - (Number(a.sale_price || a.price || 0)));
-        } else if (sortOption === 'newest') {
-            sorted.sort((a, b) => new Date(b.created_at || b.date_created) - new Date(a.created_at || a.date_created));
+        if (slug) {
+            setPage(1);
+            fetchCategoryData(1, true);
         }
-        setSortedProducts(sorted);
-    }, [sortOption, products]);
+    }, [slug, sortOption, fetchCategoryData]);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div className="text-center py-20 text-red-500">{error}</div>;
-    if (!category) return <div className="text-center py-20">Category not found</div>;
+    useEffect(() => {
+        if (page > 1) {
+            fetchCategoryData(page, false);
+        }
+    }, [page, fetchCategoryData]);
+
+    if (loading && page === 1) return (
+        <div className="flex items-center justify-center min-h-screen bg-[#FAF9F6]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#181C14]"></div>
+        </div>
+    );
+
+    if (error) return <div className="text-center py-20 text-red-500 bg-[#FAF9F6] min-h-screen">{error}</div>;
+    if (!category) return <div className="text-center py-20 bg-[#FAF9F6] min-h-screen">Category not found</div>;
 
     return (
         <div className="bg-[#FAF9F6] min-h-screen">
@@ -86,9 +108,11 @@ const CategoryPage = () => {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-4 border-[#697565]/30">
-                    <h2 className="text-2xl font-semibold text-[#181C14]">Products</h2>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-2xl font-semibold text-[#181C14]">Products</h2>
+                        <span className="text-sm text-[#697565]">({products.length} loaded)</span>
+                    </div>
                     <div className="mt-4 md:mt-0">
-                        {/* Example filter UI */}
                         <select
                             value={sortOption}
                             onChange={(e) => setSortOption(e.target.value)}
@@ -102,7 +126,7 @@ const CategoryPage = () => {
                     </div>
                 </div>
 
-                {sortedProducts.length === 0 ? (
+                {products.length === 0 && !loading ? (
                     <div className="text-center py-16 text-[#697565]">
                         <p>No products found in this category.</p>
                         <Link to="/" className="inline-block mt-4 px-6 py-2 bg-[#181C14] text-white rounded-md hover:bg-[#3C3D37]">
@@ -110,11 +134,25 @@ const CategoryPage = () => {
                         </Link>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                        {sortedProducts.map((product) => (
-                            <ProductCard key={product.id} product={product} />
-                        ))}
-                    </div>
+                    <>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+                            {products.map((product, index) => (
+                                <div key={`${product.id}-${index}`} ref={index === products.length - 1 ? lastProductRef : null}>
+                                    <ProductCard product={product} />
+                                </div>
+                            ))}
+                        </div>
+
+                        {loadingMore && (
+                            <div className="flex justify-center py-12">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#181C14]"></div>
+                            </div>
+                        )}
+                        
+                        {!hasMore && products.length > 0 && (
+                            <p className="text-center text-[#697565] mt-12 italic">You've reached the end of the collection.</p>
+                        )}
+                    </>
                 )}
             </div>
         </div>

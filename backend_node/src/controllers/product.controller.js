@@ -1,7 +1,7 @@
 const httpStatus = require('http-status');
 const productService = require('../services/product.service');
 const catalogReadService = require('../services/catalog-read.service');
-const { successResponse } = require('../utils/response');
+const { successResponse, paginatedResponse } = require('../utils/response');
 const redis = require('../config/integrations/redis');
 
 // Cache TTL for product list - 60 seconds
@@ -69,13 +69,18 @@ const getProducts = async (req, res, next) => {
     // Store in Redis cache with TTL
     if (redis) {
       try {
+
+    // Store in Redis cache with TTL
+    if (redis) {
+      try {
         await redis.set(cacheKey, JSON.stringify(data), { ex: PRODUCTS_CACHE_TTL });
       } catch (cacheErr) {
         console.error('[ProductController] Redis cache write error:', cacheErr.message);
       }
     }
 
-    return successResponse(res, data);
+    return paginatedResponse(res, data.products, data.pagination, 'Products retrieved successfully');
+
   } catch (error) {
     next(error);
   }

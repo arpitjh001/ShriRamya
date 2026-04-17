@@ -1,5 +1,5 @@
 const { inventoryService } = require('../services/inventory.service');
-const { successResponse } = require('../utils/response');
+const { successResponse, paginatedResponse } = require('../utils/response');
 
 /**
  * Get low stock items
@@ -24,13 +24,14 @@ const getLowStockItems = async (req, res, next) => {
 const getStockLevels = async (req, res, next) => {
   try {
     const tenantId = req.tenantId || req.user?.tenantId || 1;
-    const stockLevels = await inventoryService.getStockLevels(tenantId);
+    const result = await inventoryService.getStockLevels(req.query, tenantId);
     
-    return successResponse(res, stockLevels, 'Stock levels retrieved successfully');
+    return paginatedResponse(res, result.items, result.pagination, 'Stock levels retrieved successfully');
   } catch (error) {
     next(error);
   }
 };
+
 
 /**
  * Update stock level for a variant

@@ -22,7 +22,7 @@ import { Separator } from '../components/ui/separator';
 import VariantGridInput from '../components/VariantGridInput';
 import {
   Plus, Trash2, Edit, Save, X, Upload, Image as ImageIcon,
-  Package, FolderPlus, Search, Eye, EyeOff, Sparkles
+  Package, FolderPlus, Search, Eye, EyeOff, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,6 +45,13 @@ const AdminProductsPage = () => {
   const [categories, setCategories] = useState([]);
   const [productSearch, setProductSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1
+  });
+  const [stats, setStats] = useState(null);
 
   // Product Modal State
   const [showProductModal, setShowProductModal] = useState(false);
@@ -107,22 +114,46 @@ const AdminProductsPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadProducts(), loadCategories()]);
+    await Promise.all([loadProducts(1), loadCategories()]);
     setLoading(false);
   };
 
-  const loadProducts = async () => {
+  // Debounced search for products
+  useEffect(() => {
+    if (loading) return;
+    const timer = setTimeout(() => {
+      loadProducts(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [productSearch]);
+
+  const loadProducts = async (page = 1, targetLimit = pagination.limit) => {
     try {
-      const response = await productsAPI.getAll({ per_page: 100, all_statuses: true });
-      // response.products is the raw data, response.data is the transformed data
-      const productsData = response.products || response.data || [];
+      setLoading(true);
+      const searchParams = {
+        page,
+        limit: targetLimit,
+        q: productSearch,
+        all_statuses: true
+      };
+
+      const response = await productsAPI.getAll(searchParams);
+      const productsData = response.data || response.products || [];
+      const serverStats = response.stats || null;
+      const paginationData = response.meta?.pagination || response.pagination || {};
+      
+      setStats(serverStats);
+      
+      setPagination(prev => ({
+        ...prev,
+        ...paginationData,
+        totalPages: paginationData.totalPages || paginationData.total_pages || 1
+      }));
 
       const mappedProducts = productsData.map(product => {
-        // Correctly handle basePrice from multiple possible fields
         const priceValue = product.basePrice || product.base_price || product.price || 0;
         const basePrice = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
 
-        // Normalize images array to always be strings (and fallback to `thumbnail` if present)
         const normalizedImages = (product.images || [])
           .map(img => (typeof img === 'string' ? img : (img.src || img.url || '')))
           .filter(Boolean);
@@ -147,7 +178,14 @@ const AdminProductsPage = () => {
     } catch (error) {
       console.error('Failed to load products:', error);
       toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    loadProducts(newPage);
   };
 
   const loadCategories = async () => {
@@ -479,11 +517,8 @@ const AdminProductsPage = () => {
   };
 
   // Filters
-  const filteredProducts = products.filter(p =>
-    p.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.categoryNames?.toLowerCase().includes(productSearch.toLowerCase())
-  );
+  // Products are now filtered server-side, but keep this for categories or fallback
+  const filteredProducts = products;
 
   const filteredCategories = categories.filter(c =>
     c.name?.toLowerCase().includes(categorySearch.toLowerCase()) ||
@@ -492,20 +527,54 @@ const AdminProductsPage = () => {
   );
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
-      padding: '32px'
-    }}>
+    <div className="min-h-screen bg-background pt-24 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard 
+          title="Total Products" 
+          value={stats?.total || 0} 
+          icon={Package} 
+          color="maroon" 
+          loading={loading && !stats} 
+          subtext="All inventory items"
+        />
+        <StatCard 
+          title="Published" 
+          value={stats?.published || 0} 
+          icon={Eye} 
+          color="emerald" 
+          loading={loading && !stats} 
+          subtext="Visible to customers"
+        />
+        <StatCard 
+          title="Drafts" 
+          value={stats?.draft || 0} 
+          icon={EyeOff} 
+          color="gold" 
+          loading={loading && !stats} 
+          subtext="In preparation"
+        />
+        <StatCard 
+          title="Out of Stock" 
+          value={stats?.outOfStock || 0} 
+          icon={AlertTriangle} 
+          color="charcoal" 
+          indicator="red"
+          loading={loading && !stats} 
+          subtext="Needs restocking"
+        />
+      </div>
+
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Product Dashboard</h1>
-            <p className="text-sm text-gray-300">Manage your products and categories</p>
+            <h1 className="text-3xl font-bold text-charcoal mb-2">Product Dashboard</h1>
+            <p className="text-sm text-gray-500">Manage your products and categories</p>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList style={{ background: 'rgba(255, 255, 255, 0.1)' }}>
+            <TabsList className="bg-gray-100/50 p-1 border border-gray-100">
               <TabsTrigger value="products" className="gap-2">
                 <Package className="w-4 h-4" />
                 Products
@@ -521,37 +590,28 @@ const AdminProductsPage = () => {
 
       {/* Products Tab */}
       {activeTab === 'products' && (
-        <Card style={{
-          background: 'rgba(30, 27, 75, 0.6)',
-          border: '1px solid rgba(148, 163, 184, 0.2)'
-        }}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+        <Card className="bg-white border-gray-100 shadow-sm overflow-hidden rounded-2xl">
+          <CardHeader className="border-b border-gray-50 bg-gray-50/30 p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
-                <CardTitle style={{ color: '#ffffff' }}>All Products</CardTitle>
-                <CardDescription style={{ color: '#94a3b8' }}>
-                  {filteredProducts.length} products found
+                <CardTitle className="text-charcoal text-2xl">All Products</CardTitle>
+                <CardDescription className="text-gray-500">
+                  Manage counts: {pagination.total} products total
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="relative">
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:flex-initial">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
                     placeholder="Search products..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
-                    className="pl-10 w-72"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: '#e2e8f0',
-                      borderColor: 'rgba(148, 163, 184, 0.3)'
-                    }}
+                    className="pl-10 w-full md:w-72 bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
                   />
                 </div>
                 <Button
                   onClick={() => handleOpenProductModal()}
-                  className="gap-2"
-                  style={{ background: '#6366f1' }}
+                  className="gap-2 bg-maroon hover:bg-maroon/90 text-white"
                 >
                   <Plus className="w-4 h-4" />
                   Add Product
@@ -567,69 +627,79 @@ const AdminProductsPage = () => {
             ) : (
               <div className="rounded-md border border-gray-700">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-gray-300">Product</TableHead>
-                      <TableHead className="text-gray-300">SKU</TableHead>
-                      <TableHead className="text-gray-300">Price</TableHead>
-                      <TableHead className="text-gray-300">Stock</TableHead>
-                      <TableHead className="text-gray-300">Category</TableHead>
-                      <TableHead className="text-gray-300">Status</TableHead>
-                      <TableHead className="text-right text-gray-300">Actions</TableHead>
+                  <TableHeader className="bg-gray-50/50">
+                    <TableRow className="border-gray-100">
+                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Product</TableHead>
+                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">SKU</TableHead>
+                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Price</TableHead>
+                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Stock</TableHead>
+                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Category</TableHead>
+                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Status</TableHead>
+                      <TableHead className="text-right text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map((product) => (
-                      <TableRow key={product.id} className="border-gray-700">
+                      <TableRow key={product.id} className="border-gray-100 hover:bg-gray-50/50 transition-colors">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {product.images?.[0] ? (
                               <img
                                 src={product.images[0]}
                                 alt={product.name}
-                                className="w-12 h-12 object-cover rounded-lg"
+                                className="w-10 h-10 object-cover rounded-lg border border-gray-100 shadow-sm"
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                                <Package className="w-6 h-6 text-gray-400" />
+                              <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100">
+                                <Package className="w-5 h-5 text-gray-400" />
                               </div>
                             )}
                             <div>
-                              <div className="font-medium text-white">{product.name}</div>
-                              <div className="text-xs text-gray-400">{product.description?.substring(0, 50) || 'No description'}</div>
+                              <div className="font-semibold text-charcoal text-sm">{product.name}</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider">{product.id.substring(18)}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-gray-300">{product.sku}</TableCell>
-                        <TableCell className="text-white">₹{product.basePrice?.toLocaleString() || '0'}</TableCell>
+                        <TableCell className="font-mono text-[11px] text-gray-500 uppercase">{product.sku || 'N/A'}</TableCell>
+                        <TableCell className="text-charcoal font-bold">₹{product.basePrice?.toLocaleString() || '0'}</TableCell>
                         <TableCell>
-                          <Badge variant={product.stock <= 5 ? 'destructive' : 'default'}>
-                            {product.stock}
-                          </Badge>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            product.stock <= 5 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
+                          }`}>
+                            {product.stock} in stock
+                          </span>
                         </TableCell>
-                        <TableCell className="text-gray-300">{product.categoryNames}</TableCell>
                         <TableCell>
-                          <Badge variant={product.status === 'published' ? 'default' : 'secondary'}>
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-medium border border-gray-200">
+                            {product.categoryNames}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`${
+                            product.status === 'published' 
+                              ? 'bg-emerald/10 text-emerald border-emerald/20' 
+                              : 'bg-gray-100 text-gray-500 border-gray-200'
+                          } border text-[10px] font-bold transition-all`}>
                             {product.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={() => handleOpenProductModal(product)}
-                              className="hover:bg-indigo-500/20 hover:text-indigo-400"
+                              className="h-8 w-8 hover:bg-maroon/10 hover:text-maroon text-gray-400 transition-colors"
                             >
-                              <Edit className="w-4 h-4" />
+                              <Edit className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={() => handleDeleteProduct(product.id)}
-                              className="hover:bg-red-500/20 hover:text-red-400"
+                              className="h-8 w-8 hover:bg-rose-100 hover:text-rose-600 text-gray-400 transition-colors"
                             >
-                              <Trash2 className="w-4 h-4 text-red-400" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         </TableCell>
@@ -637,7 +707,7 @@ const AdminProductsPage = () => {
                     ))}
                   </TableBody>
                 </Table>
-                {filteredProducts.length === 0 && (
+                {products.length === 0 && !loading && (
                   <div className="text-center py-12 text-gray-400">
                     <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No products found</p>
@@ -650,6 +720,80 @@ const AdminProductsPage = () => {
                     </Button>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* Pagination Controls */}
+            {!loading && products.length > 0 && (
+              <div className="flex flex-col md:flex-row items-center justify-between mt-8 gap-4 px-2">
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <span>Items per page:</span>
+                    <select
+                      value={pagination.limit}
+                      onChange={(e) => {
+                        const newLimit = parseInt(e.target.value);
+                        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+                        loadProducts(1, newLimit);
+                      }}
+                      className="bg-white border border-gray-200 rounded px-2 py-1 text-charcoal focus:outline-none focus:ring-1 focus:ring-maroon text-xs"
+                    >
+                      {[10, 20, 50, 100].map(val => (
+                        <option key={val} value={val}>{val}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    Showing <span className="text-charcoal font-semibold">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
+                    <span className="text-charcoal font-semibold">
+                      {Math.min(pagination.page * pagination.limit, pagination.total)}
+                    </span>{' '}
+                    of <span className="text-charcoal font-semibold">{pagination.total}</span> products
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                    className="border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-[11px] font-bold uppercase tracking-tighter"
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      let pageNum = pagination.page;
+                      if (pagination.totalPages <= 5) pageNum = i + 1;
+                      else if (pagination.page <= 3) pageNum = i + 1;
+                      else if (pagination.page >= pagination.totalPages - 2) pageNum = pagination.totalPages - 4 + i;
+                      else pageNum = pagination.page - 2 + i;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                            pagination.page === pageNum 
+                              ? 'bg-maroon text-white shadow-sm' 
+                              : 'text-gray-400 hover:bg-gray-100'} `}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-[11px] font-bold uppercase tracking-tighter"
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -1066,7 +1210,7 @@ const AdminProductsPage = () => {
             <Button variant="outline" onClick={() => setShowProductModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveProduct} style={{ background: '#6366f1' }}>
+            <Button onClick={handleSaveProduct} className="bg-maroon hover:bg-maroon/90 text-white">
               <Save className="w-4 h-4 mr-2" />
               {editingProduct ? 'Update Product' : 'Create Product'}
             </Button>
@@ -1077,43 +1221,43 @@ const AdminProductsPage = () => {
       {/* Category Modal */}
       <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle style={{ color: '#ffffff' }}>
+          <DialogHeader className="border-b border-gray-100 pb-4">
+            <DialogTitle className="text-2xl font-bold text-charcoal">
               {editingCategory ? 'Edit Category' : 'Create Category'}
             </DialogTitle>
-            <DialogDescription style={{ color: '#94a3b8' }}>
+            <DialogDescription className="text-gray-500">
               {editingCategory ? 'Update category details' : 'Add a new product category'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label style={{ color: '#e2e8f0' }}>Category Name *</Label>
+                <Label className="text-charcoal font-semibold mb-1.5 block">Category Name *</Label>
                 <Input
                   value={categoryForm.name}
                   onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
                   placeholder="e.g., Silk Sarees"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                  className="bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
                 />
               </div>
               <div>
-                <Label style={{ color: '#e2e8f0' }}>Slug</Label>
+                <Label className="text-charcoal font-semibold mb-1.5 block">Slug</Label>
                 <Input
                   value={categoryForm.slug}
                   onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })}
                   placeholder="e.g., silk-sarees"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                  className="bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
                 />
               </div>
             </div>
             <div>
-              <Label style={{ color: '#e2e8f0' }}>Description</Label>
+              <Label className="text-charcoal font-semibold mb-1.5 block">Description</Label>
               <Textarea
                 value={categoryForm.description}
                 onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
                 placeholder="Category description..."
                 rows={3}
-                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                className="bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
               />
             </div>
             <div>
@@ -1134,7 +1278,7 @@ const AdminProductsPage = () => {
             <Button variant="outline" onClick={() => setShowCategoryModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveCategory} style={{ background: '#6366f1' }}>
+            <Button onClick={handleSaveCategory} className="bg-maroon hover:bg-maroon/90 text-white">
               <Save className="w-4 h-4 mr-2" />
               {editingCategory ? 'Update Category' : 'Create Category'}
             </Button>
@@ -1146,3 +1290,64 @@ const AdminProductsPage = () => {
 };
 
 export default AdminProductsPage;
+
+// Premium Stat Card Component
+const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext, indicator }) => {
+  const formatValue = () => {
+    if (format === 'currency') {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+    return new Intl.NumberFormat('en-IN').format(value);
+  };
+
+  const schemeOptions = {
+    maroon: { bg: 'bg-maroon/10', text: 'text-maroon', iconColor: 'text-maroon', glow: 'shadow-luxury' },
+    emerald: { bg: 'bg-emerald/10', text: 'text-emerald', iconColor: 'text-emerald', glow: 'shadow-emerald-500/10' },
+    gold: { bg: 'bg-gold/10', text: 'text-gold', iconColor: 'text-gold', glow: 'shadow-gold-glow' },
+    charcoal: { bg: 'bg-charcoal/10', text: 'text-charcoal', iconColor: 'text-charcoal', glow: 'shadow-glass' }
+  };
+
+  const scheme = schemeOptions[color] || schemeOptions.charcoal;
+
+  return (
+    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]`}>
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-gray-50 transition-transform group-hover:scale-150" />
+      
+      <div className="relative z-10 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${scheme.bg} backdrop-blur-md`}>
+            <Icon className={`h-6 w-6 ${scheme.iconColor}`} />
+          </div>
+          {indicator && (
+            <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
+              indicator === 'red' ? 'bg-rose-100 text-rose-600' : 'bg-gold/10 text-gold'
+            }`}>
+              {indicator === 'red' ? 'Alert' : 'Warning'}
+            </span>
+          )}
+          {trend && (
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-600">
+              {trend}
+            </span>
+          )}
+        </div>
+        
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">{title}</p>
+          {loading ? (
+            <div className="h-9 w-24 bg-gray-100 animate-pulse rounded mt-1" />
+          ) : (
+            <h3 className={`mt-1 text-3xl font-bold tracking-tight ${scheme.text}`}>
+              {formatValue()}
+            </h3>
+          )}
+          {subtext && <p className="text-[11px] text-gray-400 mt-1">{subtext}</p>}
+        </div>
+      </div>
+    </div>
+  );
+};

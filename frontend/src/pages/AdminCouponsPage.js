@@ -7,9 +7,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Tag, Edit, Trash2, Plus, Search, Loader2 } from 'lucide-react';
+import { Tag, Edit, Trash2, Plus, Search, Loader2, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import { couponsAPI } from '../services/api';
 import { toast } from 'sonner';
+import { Skeleton } from '../components/ui/skeleton';
 
 const AdminCouponsPage = () => {
   const [coupons, setCoupons] = useState([]);
@@ -17,6 +18,13 @@ const AdminCouponsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 15,
+    total: 0,
+    totalPages: 1
+  });
+  const [stats, setStats] = useState(null);
   
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -43,20 +51,50 @@ const AdminCouponsPage = () => {
   });
 
   useEffect(() => {
-    loadCoupons();
-  }, []);
+    loadCoupons(1);
+  }, [statusFilter, typeFilter]);
 
-  const loadCoupons = async () => {
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadCoupons(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const loadCoupons = async (page = 1) => {
     setLoading(true);
     try {
-      const response = await couponsAPI.getAll();
-      setCoupons(response.coupons || response.data?.coupons || []);
+      const params = {
+        page,
+        limit: pagination.limit,
+        search: searchTerm,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        type: typeFilter !== 'all' ? typeFilter : undefined
+      };
+      const response = await couponsAPI.getAll(params);
+      
+      const data = response.data || response;
+      setCoupons(data.coupons || []);
+      setStats(data.stats || null);
+      
+      const paginationData = data.meta?.pagination || data.pagination || {};
+      setPagination(prev => ({
+        ...prev,
+        ...paginationData,
+        totalPages: paginationData.totalPages || paginationData.total_pages || 1
+      }));
     } catch (error) {
       console.error('Failed to load coupons:', error);
       toast.error('Failed to load coupons');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    loadCoupons(newPage);
   };
 
   const resetForm = () => {
@@ -200,16 +238,47 @@ const AdminCouponsPage = () => {
     return variants[status] || 'secondary';
   };
 
-  // Filter coupons
-  const filteredCoupons = coupons.filter(coupon => {
-    const matchesSearch = coupon.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || coupon.status === statusFilter;
-    const matchesType = typeFilter === 'all' || coupon.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  // Data is now filtered server-side
+  const displayedCoupons = coupons;
 
   return (
     <div className="p-6 space-y-6">
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard 
+          title="Total Coupons" 
+          value={stats?.total || 0} 
+          icon={Tag} 
+          color="maroon" 
+          loading={loading && !stats} 
+          subtext="All discount codes"
+        />
+        <StatCard 
+          title="Active" 
+          value={stats?.active || 0} 
+          icon={CheckCircle} 
+          color="emerald" 
+          loading={loading && !stats} 
+          subtext="Available for use"
+        />
+        <StatCard 
+          title="Expired" 
+          value={stats?.expired || 0} 
+          icon={XCircle} 
+          color="gold" 
+          loading={loading && !stats} 
+          subtext="Past validity dates"
+        />
+        <StatCard 
+          title="Total Usage" 
+          value={stats?.totalUsage || 0} 
+          icon={TrendingUp} 
+          color="emerald" 
+          loading={loading && !stats} 
+          subtext="Times coupons redeemed"
+        />
+      </div>
+
       {/* Header */}
       <Card>
         <CardHeader>
@@ -447,14 +516,14 @@ const AdminCouponsPage = () => {
                       <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                     </TableCell>
                   </TableRow>
-                ) : filteredCoupons.length === 0 ? (
+                ) : displayedCoupons.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       No coupons found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredCoupons.map((coupon) => (
+                  displayedCoupons.map((coupon) => (
                     <TableRow key={coupon.id}>
                       <TableCell className="font-mono font-bold text-primary">{coupon.code}</TableCell>
                       <TableCell className="capitalize">{coupon.type?.replace('_', ' ')}</TableCell>
@@ -498,6 +567,61 @@ const AdminCouponsPage = () => {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {!loading && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 px-2">
+              <div className="text-sm text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
+                <span className="font-medium text-foreground">
+                  {Math.min(pagination.page * pagination.limit, pagination.total)}
+                </span>{' '}
+                of <span className="font-medium text-foreground">{pagination.total}</span> coupons
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page <= 1}
+                >
+                  Previous
+                </Button>
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  let pageNum = pagination.page;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (pagination.page <= 3) {
+                    pageNum = i + 1;
+                  } else if (pagination.page >= pagination.totalPages - 2) {
+                    pageNum = pagination.totalPages - 4 + i;
+                  } else {
+                    pageNum = pagination.page - 2 + i;
+                  }
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pagination.page === pageNum ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      className={pagination.page === pageNum ? 'bg-primary text-primary-foreground' : ''}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -655,3 +779,64 @@ const AdminCouponsPage = () => {
 };
 
 export default AdminCouponsPage;
+
+// Premium Stat Card Component
+const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext, indicator }) => {
+  const formatValue = () => {
+    if (format === 'currency') {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+    return new Intl.NumberFormat('en-IN').format(value);
+  };
+
+  const schemeOptions = {
+    maroon: { bg: 'bg-indigo-900/40', text: 'text-indigo-100', iconColor: 'text-indigo-400', glow: 'shadow-luxury' },
+    emerald: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', iconColor: 'text-emerald-400', glow: 'shadow-emerald-500/10' },
+    gold: { bg: 'bg-amber-500/20', text: 'text-amber-400', iconColor: 'text-amber-400', glow: 'shadow-gold-glow' },
+    charcoal: { bg: 'bg-slate-700/40', text: 'text-white/80', iconColor: 'text-white/60', glow: 'shadow-glass' }
+  };
+
+  const scheme = schemeOptions[color] || schemeOptions.charcoal;
+
+  return (
+    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glass backdrop-blur-luxury transition-all hover:scale-[1.02] hover:bg-white/10`}>
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/5 transition-transform group-hover:scale-150" />
+      
+      <div className="relative z-10 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${scheme.bg} backdrop-blur-md`}>
+            <Icon className={`h-6 w-6 ${scheme.iconColor}`} />
+          </div>
+          {indicator && (
+            <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
+              indicator === 'red' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
+            }`}>
+              {indicator === 'red' ? 'Alert' : 'Warning'}
+            </span>
+          )}
+          {trend && (
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-400">
+              {trend}
+            </span>
+          )}
+        </div>
+        
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-white/40">{title}</p>
+          {loading ? (
+            <div className="h-9 w-24 bg-white/10 animate-pulse rounded mt-1" />
+          ) : (
+            <h3 className={`mt-1 text-3xl font-bold tracking-tight ${scheme.text}`}>
+              {formatValue()}
+            </h3>
+          )}
+          {subtext && <p className="text-[11px] text-white/40 mt-1">{subtext}</p>}
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -33,6 +33,12 @@ const AdminInventoryPage = () => {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1
+  });
   const [adjustmentModal, setAdjustmentModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [adjustmentQty, setAdjustmentQty] = useState(0);
@@ -46,15 +52,46 @@ const AdminInventoryPage = () => {
     notes: '',
   });
 
+  const [serverStats, setServerStats] = useState(null);
+
   useEffect(() => {
-    loadInventory();
+    loadInventory(1);
   }, []);
 
-  const loadInventory = async () => {
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadInventory(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const loadInventory = async (page = 1) => {
     setLoading(true);
     try {
-      const items = await inventoryAPI.getStockLevels();
+      const params = {
+        page,
+        limit: pagination.limit,
+        q: searchTerm
+      };
+      const response = await inventoryAPI.getStockLevels(params);
+      
+      const data = response.data || response;
+      const items = data.items || [];
       setInventory(Array.isArray(items) ? items : []);
+      
+      if (data.stats) {
+        setServerStats(data.stats);
+      }
+      
+      if (data.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          ...data.pagination,
+          totalPages: data.pagination.total_pages || data.pagination.totalPages || 1,
+          page: data.pagination.current_page || data.pagination.page || page
+        }));
+      }
     } catch (error) {
       console.error('Failed to load inventory:', error);
       toast.error('Failed to load inventory');
@@ -63,36 +100,25 @@ const AdminInventoryPage = () => {
     }
   };
 
-  const filteredInventory = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return inventory;
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    loadInventory(newPage);
+  };
 
-    return inventory.filter((item) => (
-      item.productName?.toLowerCase().includes(query) ||
-      item.categoryName?.toLowerCase().includes(query) ||
-      item.color?.toLowerCase().includes(query) ||
-      item.size?.toLowerCase().includes(query) ||
-      item.sku?.toLowerCase().includes(query)
-    ));
-  }, [inventory, searchTerm]);
+  const filteredInventory = inventory; // Now filtered server-side
 
-  const stockAlerts = useMemo(
-    () => inventory.filter((item) => item.isLowStock || item.stock === 0),
-    [inventory]
-  );
-
-  const stats = useMemo(() => ({
-    totalVariants: inventory.filter((item) => (Number(item.stock) || 0) > 0).length,
-    totalProducts: new Set(
-      inventory
-        .filter((item) => (Number(item.stock) || 0) > 0)
-        .map((item) => item.productId)
-        .filter(Boolean)
-    ).size,
-    lowStock: inventory.filter((item) => item.isLowStock).length,
-    outOfStock: inventory.filter((item) => item.stock === 0).length,
-    totalValue: inventory.reduce((sum, item) => sum + ((item.price || 0) * (item.stock || 0)), 0),
-  }), [inventory]);
+  const stats = useMemo(() => {
+    if (serverStats) return serverStats;
+    
+    // Fallback for UI if serverStats mapping isn't ready
+    return {
+      totalVariants: 0,
+      totalProducts: 0,
+      lowStock: 0,
+      outOfStock: 0,
+      totalValue: 0,
+    };
+  }, [serverStats]);
 
   const openAdjustmentModal = (item) => {
     setSelectedItem(item);
@@ -170,24 +196,24 @@ const AdminInventoryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-royal-veil p-4 md:p-8 font-body">
-      {/* Premium Glass Header */}
-      <div className="mb-8 animate-fade-in overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glass backdrop-blur-luxury md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8 font-body">
+      {/* Premium Header */}
+      <div className="mb-8 animate-fade-in overflow-hidden rounded-2xl border border-charcoal/10 bg-white p-6 shadow-luxury md:p-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            <h1 className="font-heading text-3xl font-bold tracking-tight text-white md:text-4xl">
-              Inventory <span className="text-royal-gold">Management</span>
+            <h1 className="font-heading text-3xl font-bold tracking-tight text-charcoal md:text-4xl">
+              Inventory <span className="text-royal-maroon">Management</span>
             </h1>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/50">
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-charcoal/60">
               Boutique Stock Control
             </p>
           </div>
           <Button
             onClick={loadInventory}
             variant="outline"
-            className="border-white/10 bg-white/5 text-white shadow-luxury hover:bg-white/10"
+            className="border-charcoal/10 bg-white text-charcoal shadow-sm hover:bg-charcoal/5"
           >
-            <RefreshCw className={`mr-2 h-4 w-4 text-royal-gold ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`mr-2 h-4 w-4 text-royal-maroon ${loading ? 'animate-spin' : ''}`} />
             Sync Stock
           </Button>
         </div>
@@ -202,25 +228,25 @@ const AdminInventoryPage = () => {
           <StatCard title="Total Value" value={stats.totalValue} icon={TrendingUp} color="emerald" delay="delay-250" loading={loading} format="currency" />
         </div>
 
-        {stockAlerts.length > 0 && (
-          <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+        {serverStats?.stockAlerts?.length > 0 && (
+          <Card className="border-red-200 bg-red-50/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-400">
-                <AlertTriangle className="w-5 h-5" />
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
                 Inventory Alerts
               </CardTitle>
-              <CardDescription className="text-slate-400">
-                {stockAlerts.length} variants need attention right now.
+              <CardDescription className="text-red-600/70">
+                {serverStats.stockAlerts.length} variants need attention right now.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {stockAlerts.slice(0, 6).map((item) => (
-                  <div key={item.variantId || item.id} className="p-3 rounded-lg bg-red-500/10">
-                    <p className="font-medium text-white">{item.productName}</p>
-                    <p className="text-xs text-slate-300">{item.color || 'Default'} / {item.size || 'Default'}</p>
-                    <p className="text-xs text-slate-400 mt-1">SKU: {item.sku || 'N/A'}</p>
-                    <div className="mt-2">{statusBadge(item)}</div>
+                {serverStats.stockAlerts.slice(0, 6).map((item) => (
+                  <div key={item.variantId || item.id} className="p-3 rounded-xl border border-red-100 bg-white shadow-sm">
+                    <p className="font-semibold text-charcoal">{item.productName}</p>
+                    <p className="text-xs text-charcoal/60">{item.color || 'Default'} / {item.size || 'Default'}</p>
+                    <p className="text-xs text-charcoal/40 mt-1">SKU: {item.sku || 'N/A'}</p>
+                    <div className="mt-2 text-charcoal">{statusBadge(item)}</div>
                   </div>
                 ))}
               </div>
@@ -228,22 +254,22 @@ const AdminInventoryPage = () => {
           </Card>
         )}
 
-        <Card style={{ background: 'rgba(30, 27, 75, 0.6)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
+        <Card className="border-charcoal/10 bg-white shadow-luxury">
           <CardHeader>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-white">Stock Levels</CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardTitle className="text-charcoal">Stock Levels</CardTitle>
+                <CardDescription className="text-charcoal/60">
                   Each row represents one sellable variant.
                 </CardDescription>
               </div>
               <div className="relative w-full max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
                 <Input
                   placeholder="Search by product, category, color, size, SKU..."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  className="pl-10 bg-white/5 text-slate-100 border-slate-400/30"
+                  className="pl-10 bg-background text-charcoal border-charcoal/10"
                 />
               </div>
             </div>
@@ -251,54 +277,60 @@ const AdminInventoryPage = () => {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-400" />
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-royal-maroon" />
               </div>
             ) : (
-              <div className="rounded-md border border-slate-400/20 overflow-hidden">
+              <div className="rounded-xl border border-charcoal/10 overflow-hidden shadow-sm">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-400/20">
-                      <TableHead className="text-slate-200">Product</TableHead>
-                      <TableHead className="text-slate-200">Categories</TableHead>
-                      <TableHead className="text-slate-200">Variant</TableHead>
-                      <TableHead className="text-slate-200">SKU</TableHead>
-                      <TableHead className="text-slate-200">Price</TableHead>
-                      <TableHead className="text-slate-200">Stock</TableHead>
-                      <TableHead className="text-slate-200">Threshold</TableHead>
-                      <TableHead className="text-slate-200">Status</TableHead>
-                      <TableHead className="text-right text-slate-200">Actions</TableHead>
+                  <TableHeader className="bg-charcoal/[0.02]">
+                    <TableRow className="border-charcoal/10">
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">Product</TableHead>
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">Categories</TableHead>
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">Variant</TableHead>
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">SKU</TableHead>
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">Price</TableHead>
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">Stock</TableHead>
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">Threshold</TableHead>
+                      <TableHead className="text-charcoal font-bold uppercase tracking-wider text-[11px]">Status</TableHead>
+                      <TableHead className="text-right text-charcoal font-bold uppercase tracking-wider text-[11px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredInventory.map((item) => (
-                      <TableRow key={item.variantId || item.id} className="border-slate-400/20">
+                      <TableRow key={item.variantId || item.id} className="border-charcoal/5 hover:bg-charcoal/[0.01] transition-colors">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {item.thumbnail ? (
-                              <img src={item.thumbnail} alt={item.productName} className="w-10 h-10 rounded object-cover" />
+                              <img src={item.thumbnail} alt={item.productName} className="w-10 h-10 rounded-lg object-cover ring-1 ring-charcoal/10" />
                             ) : (
-                              <div className="w-10 h-10 rounded bg-white/10" />
+                              <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
+                                <Package className="w-4 h-4 text-charcoal/20" />
+                              </div>
                             )}
                             <div>
-                              <div className="font-medium text-white">{item.productName}</div>
-                              <div className="text-xs text-slate-400">Product total: {item.productTotalStock}</div>
+                              <div className="font-semibold text-charcoal">{item.productName}</div>
+                              <div className="text-[10px] text-charcoal/40 uppercase tracking-tighter">Total Stock: {item.productTotalStock}</div>
                               {item.soldOffline && (
-                                <Badge className="mt-1 bg-cyan-600 text-white hover:bg-cyan-600">Sold Offline</Badge>
+                                <Badge className="mt-1 bg-royal-maroon/10 text-royal-maroon border-none hover:bg-royal-maroon/20">Sold Offline</Badge>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-300 max-w-[180px]">{item.categoryName || 'Uncategorized'}</TableCell>
-                        <TableCell className="text-slate-300">
+                        <TableCell className="text-charcoal/70 text-xs font-medium max-w-[180px]">{item.categoryName || 'Uncategorized'}</TableCell>
+                        <TableCell className="text-charcoal/70">
                           <div className="flex flex-col">
-                            <span>{item.color || 'Default'}</span>
-                            <span className="text-xs text-slate-400">{item.size || 'Default'}</span>
+                            <span className="font-semibold text-xs">{item.color || 'Default'}</span>
+                            <span className="text-[10px] text-charcoal/40 font-medium uppercase">{item.size || 'Default'}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-slate-300">{item.sku || 'N/A'}</TableCell>
-                        <TableCell className="text-slate-300">Rs.{Number(item.price || 0).toLocaleString()}</TableCell>
-                        <TableCell className="font-semibold text-white">{item.stock}</TableCell>
-                        <TableCell className="text-slate-300">{item.lowStockThreshold}</TableCell>
+                        <TableCell className="font-mono text-[10px] text-charcoal/50">{item.sku || 'N/A'}</TableCell>
+                        <TableCell className="text-charcoal font-semibold text-xs">Rs.{Number(item.price || 0).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <span className={`font-bold text-sm ${item.stock <= (item.lowStockThreshold || 5) ? 'text-red-600' : 'text-emerald-700'}`}>
+                            {item.stock}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-charcoal/40 text-[11px] font-medium">{item.lowStockThreshold}</TableCell>
                         <TableCell>{statusBadge(item)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -307,16 +339,16 @@ const AdminInventoryPage = () => {
                               size="sm"
                               onClick={() => openOfflineSaleModal(item)}
                               disabled={item.stock <= 0}
-                              className="gap-2 border-cyan-400/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-40"
+                              className="gap-2 border-charcoal/10 bg-white text-charcoal hover:bg-royal-maroon hover:text-white transition-all disabled:opacity-30"
                             >
-                              <ShoppingBag className="w-4 h-4" />
+                              <ShoppingBag className="w-3.5 h-3.5" />
                               Sold Offline
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => openAdjustmentModal(item)}
-                              className="border-slate-400/30 bg-transparent text-slate-100 hover:bg-white/10"
+                              className="border-charcoal/10 bg-charcoal/5 text-charcoal hover:bg-charcoal/10"
                             >
                               Adjust
                             </Button>
@@ -326,13 +358,99 @@ const AdminInventoryPage = () => {
                     ))}
                     {filteredInventory.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="py-12 text-center text-slate-400">
+                        <TableCell colSpan={9} className="py-12 text-center text-charcoal/40">
                           No inventory rows matched your search.
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!loading && pagination.totalPages > 1 && (
+              <div className="flex flex-col md:flex-row items-center justify-between mt-8 gap-4 px-2">
+                <div className="flex items-center gap-6">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-charcoal/40">
+                    Showing <span className="text-charcoal">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
+                    <span className="text-charcoal">
+                      {Math.min(pagination.page * pagination.limit, pagination.total)}
+                    </span>{' '}
+                    of <span className="text-charcoal">{pagination.total}</span> variants
+                  </div>
+                  
+                  {/* Items Per Page Selector */}
+                  <div className="flex items-center gap-3 border-l border-charcoal/10 pl-6">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40 whitespace-nowrap">View</span>
+                    <Select 
+                      value={pagination.limit.toString()} 
+                      onValueChange={(val) => {
+                        setPagination(prev => ({ ...prev, limit: parseInt(val), page: 1 }));
+                        loadInventory(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[70px] bg-background border-charcoal/10 text-xs font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                    className="text-charcoal hover:bg-charcoal/5 font-bold uppercase tracking-widest text-[10px]"
+                  >
+                    Prev
+                  </Button>
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum = pagination.page;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pagination.page === pageNum ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`min-w-[32px] h-8 text-[11px] font-bold transition-all ${
+                          pagination.page === pageNum 
+                            ? 'bg-charcoal text-white shadow-md scale-110' 
+                            : 'text-charcoal/40 hover:text-charcoal hover:bg-charcoal/5'
+                        }`}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="text-charcoal hover:bg-charcoal/5 font-bold uppercase tracking-widest text-[10px]"
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -515,17 +633,17 @@ const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loadi
   };
 
   const schemeOptions = {
-    maroon: { bg: 'bg-royal-maroon/20', text: 'text-royal-maroon', iconColor: 'text-royal-maroon', glow: 'shadow-luxury' },
-    emerald: { bg: 'bg-deep-emerald/20', text: 'text-emerald-400', iconColor: 'text-deep-emerald', glow: 'shadow-emerald-500/10' },
-    gold: { bg: 'bg-royal-gold/20', text: 'text-royal-gold', iconColor: 'text-royal-gold', glow: 'shadow-gold-glow' },
-    charcoal: { bg: 'bg-charcoal/40', text: 'text-white/80', iconColor: 'text-white/60', glow: 'shadow-glass' }
+    maroon: { bg: 'bg-royal-maroon/[0.08]', text: 'text-royal-maroon', iconColor: 'text-royal-maroon', glow: 'shadow-sm' },
+    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', iconColor: 'text-emerald-600', glow: 'shadow-sm' },
+    gold: { bg: 'bg-amber-50', text: 'text-amber-700', iconColor: 'text-amber-600', glow: 'shadow-sm' },
+    charcoal: { bg: 'bg-charcoal/[0.05]', text: 'text-charcoal', iconColor: 'text-charcoal/60', glow: 'shadow-sm' }
   };
 
   const scheme = schemeOptions[color] || schemeOptions.charcoal;
 
   return (
-    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glass backdrop-blur-luxury transition-all hover:scale-[1.02] hover:bg-white/10`}>
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/5 transition-transform group-hover:scale-150" />
+    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-charcoal/10 bg-white p-6 shadow-luxury transition-all hover:shadow-xl`}>
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-charcoal/[0.02] transition-transform group-hover:scale-150" />
       
       <div className="relative z-10 space-y-4">
         <div className="flex items-center justify-between">
@@ -534,28 +652,28 @@ const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loadi
           </div>
           {indicator && (
             <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
-              indicator === 'red' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
+              indicator === 'red' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
             }`}>
               {indicator === 'red' ? 'Alert' : 'Warning'}
             </span>
           )}
           {trend && (
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-400">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">
               {trend}
             </span>
           )}
         </div>
         
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-white/40">{title}</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">{title}</p>
           {loading ? (
-            <Skeleton className="mt-2 h-9 w-32 bg-white/10" />
+            <Skeleton className="mt-2 h-9 w-32 bg-charcoal/5" />
           ) : (
             <h3 className={`mt-1 font-heading text-3xl font-bold tracking-tight ${scheme.text}`}>
               {formatValue()}
             </h3>
           )}
-          {subtext && <p className="text-[11px] text-white/40 mt-1">{subtext}</p>}
+          {subtext && <p className="text-[11px] text-charcoal/40 mt-1">{subtext}</p>}
         </div>
       </div>
     </div>

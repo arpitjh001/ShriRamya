@@ -1,81 +1,110 @@
-/**
- * Shipment Repository (MongoDB)
- */
+const mongoose = require('mongoose');
 
 const { Shipment } = require('../models');
 
 class ShipmentRepository {
-    /**
-     * Create a new shipment
-     */
-    async create(shipmentData) {
-        return await Shipment.create(shipmentData);
+  async create(shipmentData) {
+    return Shipment.create(shipmentData);
+  }
+
+  async getById(id) {
+    if (!mongoose.Types.ObjectId.isValid(String(id))) {
+      return null;
     }
 
-    /**
-     * Find shipment by ID
-     */
-    async findById(id) {
-        return await Shipment.findById(id);
+    return Shipment.findById(id).populate('orderId');
+  }
+
+  async getByOrderId(orderId) {
+    if (!mongoose.Types.ObjectId.isValid(String(orderId))) {
+      return [];
     }
 
-    /**
-     * Find shipment by order ID
-     */
-    async findByOrderId(orderId) {
-        return await Shipment.findOne({ orderId });
+    return Shipment.find({ orderId }).sort({ created_at: -1 }).populate('orderId');
+  }
+
+  async findByTrackingNumber(trackingNumber) {
+    return Shipment.findOne({ trackingNumber }).populate('orderId');
+  }
+
+  async update(id, update) {
+    if (!mongoose.Types.ObjectId.isValid(String(id))) {
+      return null;
     }
 
-    /**
-     * Find shipment by tracking number
-     */
-    async findByTrackingNumber(trackingNumber) {
-        return await Shipment.findOne({ trackingNumber });
+    const hasOperators = Object.keys(update || {}).some((key) => key.startsWith('$'));
+    const normalizedUpdate = !hasOperators
+      ? update
+      : Object.entries(update || {}).reduce((accumulator, [key, value]) => {
+          if (key.startsWith('$')) {
+            accumulator[key] = value;
+          } else {
+            accumulator.$set = {
+              ...(accumulator.$set || {}),
+              [key]: value,
+            };
+          }
+
+          return accumulator;
+        }, {});
+
+    return Shipment.findByIdAndUpdate(id, normalizedUpdate, { new: true }).populate('orderId');
+  }
+
+  async updateStatus(id, status, historyEntry = null) {
+    const update = {
+      $set: {
+        status,
+      },
+    };
+
+    if (historyEntry) {
+      update.$push = {
+        history: historyEntry,
+      };
     }
 
-    /**
-     * Update shipment status
-     */
-    async updateStatus(id, status, location, description) {
-        const update = {
-            $set: { status },
-            $push: {
-                history: {
-                    status,
-                    location,
-                    description,
-                    timestamp: new Date()
-                }
-            }
-        };
-
-        if (status === 'delivered') {
-            update.$set.actualDelivery = new Date();
-        }
-
-        return await Shipment.findByIdAndUpdate(id, update, { new: true });
+    if (status === 'delivered') {
+      update.$set.actualDelivery = new Date();
     }
 
-    /**
-     * List shipments with filters
-     */
-    async list(filter = {}, options = {}) {
-        const { limit = 20, page = 1 } = options;
-        const skip = (page - 1) * limit;
-
-        const shipments = await Shipment.find(filter)
-            .sort({ created_at: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const count = await Shipment.countDocuments(filter);
-
-        return {
-            shipments,
-            total: count,
-            pages: Math.ceil(count / limit)
-        };
+    if (['shipped', 'in_transit', 'out_for_delivery', 'delivered', 'returned', 'exception'].includes(status)) {
+      update.$set.shippedAt = new Date();
     }
+
+    return this.update(id, update);
+  }
+
+  async list(filter = {}, options = {}) {
+    const page = Math.max(Number(options.page) || 1, 1);
+    const limit = Math.max(Number(options.limit) || 20, 1);
+    const skip = (page - 1) * limit;
+
+    const [shipments, total] = await Promise.all([
+      Shipment.find(filter)
+        .sort({ created_at: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('orderId'),
+      Shipment.countDocuments(filter),
+    ]);
+
+    return {
+      shipments,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+    };
+  }
+
+  async delete(id) {
+    if (!mongoose.Types.ObjectId.isValid(String(id))) {
+      return null;
+    }
+
+    return Shipment.findByIdAndDelete(id);
+  }
 }
 
 module.exports = new ShipmentRepository();

@@ -9,7 +9,7 @@ import { Button } from '../components/ui/button';
 import { X, SlidersHorizontal } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 
-const PER_PAGE = 12;
+const PER_PAGE = 20;
 const ARRAY_FILTER_KEYS = ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve', 'brand', 'material'];
 const ALL_FILTER_KEYS = [...ARRAY_FILTER_KEYS, 'discount', 'rating', 'price_min', 'price_max', 'in_stock'];
 
@@ -295,7 +295,7 @@ const ProductsPage = () => {
 
             {/* Loading */}
             {loading && (
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="product-skeleton">
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="product-skeleton">
                 {[...Array(8)].map((_, i) => (
                   <div key={i} className="animate-pulse">
                     <div className="aspect-[3/4] bg-muted rounded-lg mb-3" />
@@ -317,7 +317,7 @@ const ProductsPage = () => {
 
             {/* Products Grid */}
             {!loading && !error && products.length > 0 && (
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="product-grid">
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="product-grid">
                 {products.map((product, index) => (
                   <div
                     key={product.id || index}
@@ -332,7 +332,7 @@ const ProductsPage = () => {
 
             {/* Loading More */}
             {loadingMore && (
-              <div className="mt-6 grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-6 grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
                   <div key={`more-${i}`} className="animate-pulse">
                     <div className="aspect-[3/4] bg-muted rounded-lg mb-3" />

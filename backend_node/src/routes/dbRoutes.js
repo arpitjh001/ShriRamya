@@ -7,6 +7,7 @@ const { Product, Order, Blog, Wishlist, Cart } = require('../models');
 const { sendOrderConfirmation } = require('../services/emailService');
 const catalogReadService = require('../services/catalog-read.service');
 const storefrontCheckoutService = require('../services/storefront-checkout.service');
+const shipmentController = require('../controllers/shipment.controller');
 const { insiderService, INSIDER_INTERESTS } = require('../services/insider.service');
 const auth = require('../middlewares/auth');
 const { optionalAuth } = require('../middlewares/authRBAC');
@@ -677,22 +678,7 @@ router.post('/orders/my/:orderId/cancel', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/orders/:orderId/tracking', async (req, res) => {
-  try {
-    const order = await storefrontCheckoutService.getOrderByOrderId(req.params.orderId);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    res.json({
-      success: true,
-      data: {
-        orderId: order.orderId,
-        status: order.status,
-        trackingNumber: order.trackingNumber || '',
-        trackingUrl: order.trackingUrl || '',
-        statusHistory: order.statusHistory || [],
-      },
-    });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+router.get('/orders/:orderId/tracking', shipmentController.getOrderTracking);
 
 // ==========================================
 // BLOG ENDPOINTS
@@ -1221,10 +1207,19 @@ router.get('/admin/blogs/stats', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// Shipment stubs
-router.get('/orders/admin/shipments', (req, res) => res.json({ success: true, data: { shipments: [], total: 0 } }));
-router.get('/orders/admin/shipments/ready-to-ship', (req, res) => res.json({ success: true, data: [] }));
-router.get('/orders/admin/shipments/pending', (req, res) => res.json({ success: true, data: [] }));
+// Shipment management
+router.get('/orders/admin/shipments', shipmentController.getAllShipments);
+router.get('/orders/admin/shipments/ready-to-ship', shipmentController.getReadyToShip);
+router.get('/orders/admin/shipments/pending', shipmentController.getPendingShipments);
+router.post('/orders/admin/:id/shipments', shipmentController.createShipment);
+router.patch('/orders/admin/shipments/:id/tracking', shipmentController.updateTracking);
+router.post('/orders/admin/shipments/:id/ship', shipmentController.markAsShipped);
+router.post('/orders/admin/shipments/:id/deliver', shipmentController.markAsDelivered);
+router.post('/orders/admin/shipments/:id/sync', shipmentController.syncShipment);
+router.post('/orders/admin/shipments/:id/cancel', shipmentController.cancelShipment);
+router.delete('/orders/admin/shipments/:id', shipmentController.deleteShipment);
+router.get('/orders/admin/shipping/xpressbees/couriers', shipmentController.getXpressbeesCouriers);
+router.post('/orders/admin/shipping/xpressbees/serviceability', shipmentController.checkXpressbeesServiceability);
 
 // ==========================================
 // COUPONS

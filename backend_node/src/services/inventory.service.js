@@ -135,9 +135,72 @@ class InventoryService {
     }
   }
 
-  async getStockLevels(tenantId = 1) {
+  async getStockLevels(query = {}, tenantId = 1) {
     try {
-      return this.getAllInventoryItems(tenantId);
+      const page = Math.max(parseInt(query.page || 1, 10), 1);
+      const limit = Math.max(parseInt(query.limit || 20, 10), 1);
+      const search = (query.search || query.q || '').toLowerCase().trim();
+      const statusFilter = query.status || '';
+
+      const products = await Product.find({
+        tenant_id: Number(tenantId) || 1,
+        is_deleted: { $ne: true },
+      }).populate('categories').lean();
+
+      let allItems = [];
+      products.forEach((product) => {
+        if (Array.isArray(product.variants) && product.variants.length > 0) {
+          product.variants.forEach((variant) => {
+            allItems.push(this.mapInventoryItem(product, variant));
+          });
+        } else {
+          allItems.push(this.mapInventoryItem(product));
+        }
+      });
+
+      // Apply Search
+      if (search) {
+        allItems = allItems.filter(item => 
+          item.productName.toLowerCase().includes(search) ||
+          item.sku.toLowerCase().includes(search) ||
+          item.categoryNames.toLowerCase().includes(search) ||
+          item.color.toLowerCase().includes(search) ||
+          item.size.toLowerCase().includes(search)
+        );
+      }
+
+      // Apply Status Filter
+      if (statusFilter) {
+        allItems = allItems.filter(item => item.stockStatus === statusFilter);
+      }
+
+      const total = allItems.length;
+      const totalPages = Math.ceil(total / limit);
+      
+      // Calculate Stats based on all filtered items
+      const stats = {
+        totalVariants: allItems.length,
+        totalProducts: new Set(allItems.map(item => item.productId)).size,
+        lowStock: allItems.filter(item => item.isLowStock).length,
+        outOfStock: allItems.filter(item => item.stock === 0).length,
+        totalValue: allItems.reduce((sum, item) => sum + ((item.price || 0) * (item.stock || 0)), 0),
+      };
+
+      const startIndex = (page - 1) * limit;
+      const paginatedItems = allItems.slice(startIndex, startIndex + limit);
+
+      return {
+        items: paginatedItems,
+        stats,
+        pagination: {
+          current_page: page,
+          total_pages: totalPages,
+          total: total,
+          per_page: limit,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      };
     } catch (error) {
       console.error('[InventoryService] getStockLevels error:', error.message);
       throw error;

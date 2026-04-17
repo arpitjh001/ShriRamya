@@ -46,7 +46,7 @@ router.post('/my/:id/cancel',
 );
 
 // Get order tracking
-router.get('/:id/tracking', auth(), shipmentController.getOrderTracking);
+router.get('/:id/tracking', shipmentController.getOrderTracking);
 
 // Get order shipments
 router.get('/:id/shipments', auth(), shipmentController.getOrderShipments);
@@ -76,13 +76,21 @@ router.patch('/admin/:id/status',
 );
 
 // Get all shipments (MUST be before /admin/:id/shipments to avoid route conflict)
-router.get('/admin/shipments', auth(['admin']), shipmentController.getAllShipments);
+router.get('/admin/shipments',
+    auth(['admin']),
+    validate(orderValidation.getShipmentsQuery),
+    shipmentController.getAllShipments
+);
 
 // Get ready to ship
 router.get('/admin/shipments/ready-to-ship', auth(['admin']), shipmentController.getReadyToShip);
 
 // Get pending shipments
 router.get('/admin/shipments/pending', auth(['admin']), shipmentController.getPendingShipments);
+
+// Xpressbees helpers
+router.get('/admin/shipping/xpressbees/couriers', auth(['admin']), shipmentController.getXpressbeesCouriers);
+router.post('/admin/shipping/xpressbees/serviceability', auth(['admin']), shipmentController.checkXpressbeesServiceability);
 
 // Create shipment
 router.post('/admin/:id/shipments',
@@ -103,6 +111,12 @@ router.post('/admin/shipments/:id/ship', auth(['admin']), shipmentController.mar
 
 // Mark shipment as delivered
 router.post('/admin/shipments/:id/deliver', auth(['admin']), shipmentController.markAsDelivered);
+
+// Sync shipment tracking from provider
+router.post('/admin/shipments/:id/sync', auth(['admin']), shipmentController.syncShipment);
+
+// Cancel shipment at provider
+router.post('/admin/shipments/:id/cancel', auth(['admin']), shipmentController.cancelShipment);
 
 // Delete shipment
 router.delete('/admin/shipments/:id', auth(['admin']), shipmentController.deleteShipment);

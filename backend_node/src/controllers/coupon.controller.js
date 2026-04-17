@@ -1,12 +1,12 @@
 const couponService = require('../services/coupon.service');
-const { successResponse } = require('../utils/response');
+const { successResponse, paginatedResponse } = require('../utils/response');
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 
 const getCoupons = async (req, res, next) => {
     try {
-        const coupons = await couponService.getAllCoupons(req.query);
-        return successResponse(res, coupons);
+        const result = await couponService.getAllCoupons(req.query);
+        return paginatedResponse(res, result.coupons, result.pagination, 'Coupons retrieved successfully');
     } catch (error) {
         next(error);
     }

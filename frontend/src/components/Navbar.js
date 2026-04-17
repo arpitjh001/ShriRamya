@@ -138,15 +138,17 @@ const Navbar = () => {
         initial={{ y: 0 }}
         animate={{ 
           y: isVisible ? 0 : -140,
-          backgroundColor: (isScrolled || isAdminPage) ? "rgba(247, 243, 236, 0.74)" : "rgba(247, 243, 236, 0.56)",
-          borderColor: (isScrolled || isAdminPage) ? "rgba(255, 255, 255, 0.46)" : "rgba(255, 255, 255, 0.34)",
+          backgroundColor: (isScrolled || isAdminPage) ? "rgba(247, 243, 236, 0.35)" : "rgba(247, 243, 236, 0.12)",
+          borderColor: (isScrolled || isAdminPage) ? "rgba(255, 255, 255, 0.30)" : "rgba(255, 255, 255, 0.15)",
           boxShadow: (isScrolled || isAdminPage)
-            ? "0 20px 44px rgba(31, 31, 31, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.5)"
-            : "0 26px 60px rgba(31, 31, 31, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.44)",
+            ? "0 20px 44px rgba(31, 31, 31, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.25)"
+            : "0 26px 60px rgba(31, 31, 31, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
         }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className={`fixed left-2 right-2 md:left-4 md:right-4 lg:left-6 lg:right-6 top-[26px] md:top-[27px] overflow-visible rounded-b-[2rem] border backdrop-blur-[22px] transition-all duration-500 ${
-          (isScrolled || isAdminPage) ? 'py-3' : 'py-4 md:py-5'
+        className={`fixed left-0 right-0 w-full overflow-visible border-b backdrop-blur-[24px] transition-all duration-500 ${
+          isScrolled 
+            ? 'top-0 py-3' 
+            : (isAdminPage ? 'top-[32px] md:top-[34px] py-3' : 'top-[26px] md:top-[27px] py-4 md:py-5')
         }`}
       >
         <div className="max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-8 xl:px-12 h-full">
@@ -187,7 +189,7 @@ const Navbar = () => {
             {/* Brand Logo - Desktop Hanging Badge */}
             <Link
               to="/"
-              className="hidden lg:flex absolute left-[-12px] xl:left-[-4px] top-full -translate-y-[34%] z-20 items-center justify-center group"
+              className="hidden lg:flex absolute left-[-31px] xl:left-[-23px] top-full -translate-y-[34%] z-20 items-center justify-center group"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
               <motion.img
