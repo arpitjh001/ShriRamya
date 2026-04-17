@@ -8,6 +8,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import ProductCard from '../components/ProductCard';
 import RecentlyViewed from '../components/RecentlyViewed';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../components/ui/carousel';
+import Autoplay from 'embla-carousel-autoplay';
 import SEOMeta from '../components/SEOMeta';
 import { toast } from 'sonner';
 
@@ -324,36 +326,51 @@ const HomePage = () => {
           </Button>
         </div>
 
-        <div className="grid gap-10 md:grid-cols-3">
-          {featuredCollectionTiles.map((tile, index) => (
-            <motion.div
-              key={tile.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.9, delay: index * 0.15 }}
-            >
-              <Link
-                to={tile.link}
-                className="group relative block overflow-hidden rounded-[2rem] border border-accent/10 shadow-luxury-hover transition-all duration-700 hover:shadow-2xl"
-              >
-                <img
-                  src={tile.image}
-                  alt={tile.title}
-                  className="h-[520px] w-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/20 to-transparent opacity-90" />
-                <div className="absolute inset-x-0 bottom-0 p-10 text-primary-foreground transform transition-transform duration-500 group-hover:translate-y-[-10px]">
-                  <h3 className="mb-3 text-4xl font-medium tracking-tight leading-none">{tile.title}</h3>
-                  <p className="mb-6 text-base text-primary-foreground/75 font-body">{tile.subtitle}</p>
-                  <span className="inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-accent font-bold group-hover:text-white transition-colors">
-                    Discover <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
-                  </span>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+          }}
+          plugins={[
+            Autoplay({
+              delay: 1500,
+              stopOnInteraction: false,
+            }),
+          ]}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4 md:-ml-10">
+            {featuredCollectionTiles.map((tile, index) => (
+              <CarouselItem key={tile.title} className="pl-4 md:pl-10 md:basis-1/3">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.4 }}
+                  transition={{ duration: 0.9, delay: index * 0.15 }}
+                >
+                  <Link
+                    to={tile.link}
+                    className="group relative block overflow-hidden rounded-[2rem] border border-accent/10 shadow-luxury-hover transition-all duration-700 hover:shadow-2xl"
+                  >
+                    <img
+                      src={tile.image}
+                      alt={tile.title}
+                      className="h-[520px] w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/20 to-transparent opacity-90" />
+                    <div className="absolute inset-x-0 bottom-0 p-10 text-primary-foreground transform transition-transform duration-500 group-hover:translate-y-[-10px]">
+                      <h3 className="mb-3 text-4xl font-medium tracking-tight leading-none">{tile.title}</h3>
+                      <p className="mb-6 text-base text-primary-foreground/75 font-body">{tile.subtitle}</p>
+                      <span className="inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-accent font-bold group-hover:text-white transition-colors">
+                        Discover <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                      </span>
+                    </div>
+                  </Link>
+                </motion.div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
       </section>
 
       <div className="mx-6 md:mx-12 lg:mx-20 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
@@ -410,34 +427,49 @@ const HomePage = () => {
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-3">
-          {homeLifestyleTiles.map((tile, index) => (
-            <motion.div
-              key={tile.name}
-              whileHover={{ y: -10 }}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.8, delay: index * 0.1 }}
-            >
-              <Link
-                to={`/category/${encodeURIComponent(tile.category)}`}
-                className="group relative block overflow-hidden rounded-3xl border border-accent/20 shadow-lg hover:shadow-2xl transition-all duration-500"
-              >
-                <img
-                  src={tile.image}
-                  alt={tile.name}
-                  className="h-[400px] w-full object-cover grayscale-[20%] transition-transform duration-1000 group-hover:scale-105 group-hover:grayscale-0"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/10 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-8 text-center">
-                  <h3 className="text-3xl font-medium text-primary-foreground">{tile.name}</h3>
-                  <div className="mt-4 h-0.5 w-12 bg-accent mx-auto transform scale-x-0 transition-transform duration-500 group-hover:scale-x-100" />
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+          }}
+          plugins={[
+            Autoplay({
+              delay: 1500,
+              stopOnInteraction: false,
+            }),
+          ]}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4 md:-ml-8">
+            {homeLifestyleTiles.map((tile, index) => (
+              <CarouselItem key={tile.name} className="pl-4 md:pl-8 md:basis-1/3">
+                <motion.div
+                  whileHover={{ y: -10 }}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.8, delay: index * 0.1 }}
+                >
+                  <Link
+                    to={`/category/${encodeURIComponent(tile.category)}`}
+                    className="group relative block overflow-hidden rounded-3xl border border-accent/20 shadow-lg hover:shadow-2xl transition-all duration-500"
+                  >
+                    <img
+                      src={tile.image}
+                      alt={tile.name}
+                      className="h-[400px] w-full object-cover grayscale-[20%] transition-transform duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/10 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-8 text-center">
+                      <h3 className="text-3xl font-medium text-primary-foreground">{tile.name}</h3>
+                      <div className="mt-4 h-0.5 w-12 bg-accent mx-auto transform scale-x-0 transition-transform duration-500 group-hover:scale-x-100" />
+                    </div>
+                  </Link>
+                </motion.div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
       </section>
 
       {/* Semi Precious Jewellery */}
@@ -457,39 +489,54 @@ const HomePage = () => {
           </p>
         </div>
 
-        <div className="grid gap-10 md:grid-cols-3">
-          {jewelleryTiles.map((tile, index) => (
-            <motion.div
-              key={tile.name}
-              initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 1.1, delay: index * 0.2 }}
-            >
-              <Link
-                to={`/category/${encodeURIComponent(tile.category)}`}
-                className="group relative block overflow-hidden rounded-[2.5rem] border border-accent/30 shadow-2xl bg-white"
-              >
-                <div className="overflow-hidden relative">
-                   <img
-                    src={tile.image}
-                    alt={tile.name}
-                    className="h-[520px] w-full object-cover transition-transform duration-[2s] group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-primary/20 mix-blend-overlay group-hover:bg-transparent transition-colors duration-1000" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/100 via-primary/30 to-transparent opacity-95 group-hover:opacity-100 transition-opacity duration-700" />
-                <div className="absolute inset-x-0 bottom-0 p-10 transform translate-y-3 group-hover:translate-y-0 transition-all duration-700">
-                  <h3 className="text-4xl font-medium text-primary-foreground mb-6 tracking-tight leading-none">{tile.name}</h3>
-                  <div className="flex items-center gap-4 bg-accent/20 border border-accent/30 backdrop-blur-md rounded-full px-6 py-3 w-fit hover:bg-accent transition-colors group">
-                    <span className="text-[10px] uppercase font-bold tracking-[0.3em] text-accent group-hover:text-primary-foreground">Legacy Collection</span>
-                    <ArrowRight className="h-4 w-4 text-accent transform group-hover:translate-x-2 group-hover:text-primary-foreground transition-all" />
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+          }}
+          plugins={[
+            Autoplay({
+              delay: 1500,
+              stopOnInteraction: false,
+            }),
+          ]}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4 md:-ml-10">
+            {jewelleryTiles.map((tile, index) => (
+              <CarouselItem key={tile.name} className="pl-4 md:pl-10 md:basis-1/3">
+                <motion.div
+                  initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 1.1, delay: index * 0.2 }}
+                >
+                  <Link
+                    to={`/category/${encodeURIComponent(tile.category)}`}
+                    className="group relative block overflow-hidden rounded-[2.5rem] border border-accent/30 shadow-2xl bg-white"
+                  >
+                    <div className="overflow-hidden relative">
+                       <img
+                        src={tile.image}
+                        alt={tile.name}
+                        className="h-[520px] w-full object-cover transition-transform duration-[2s] group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-primary/20 mix-blend-overlay group-hover:bg-transparent transition-colors duration-1000" />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/100 via-primary/30 to-transparent opacity-95 group-hover:opacity-100 transition-opacity duration-700" />
+                    <div className="absolute inset-x-0 bottom-0 p-10 transform translate-y-3 group-hover:translate-y-0 transition-all duration-700">
+                      <h3 className="text-4xl font-medium text-primary-foreground mb-6 tracking-tight leading-none">{tile.name}</h3>
+                      <div className="flex items-center gap-4 bg-accent/20 border border-accent/30 backdrop-blur-md rounded-full px-6 py-3 w-fit hover:bg-accent transition-colors group">
+                        <span className="text-[10px] uppercase font-bold tracking-[0.3em] text-accent group-hover:text-primary-foreground">Legacy Collection</span>
+                        <ArrowRight className="h-4 w-4 text-accent transform group-hover:translate-x-2 group-hover:text-primary-foreground transition-all" />
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
       </section>
 
       {/* Trending Products */}

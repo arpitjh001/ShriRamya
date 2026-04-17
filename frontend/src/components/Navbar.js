@@ -202,13 +202,13 @@ const Navbar = () => {
             </Link>
 
             {/* Center: All Categories (Desktop Only) */}
-            <div className="hidden lg:flex flex-1 min-w-0 items-center justify-center transition-all duration-500 gap-x-4 xl:gap-x-6 2xl:gap-x-8 px-2 xl:px-4">
+            <div className="hidden lg:flex flex-1 min-w-0 items-center justify-center transition-all duration-500 gap-x-2 lg:gap-x-3 xl:gap-x-6 2xl:gap-x-8 px-1 xl:px-4">
                {categories.map(cat => (
                  <button 
                   key={cat.slug}
                   onMouseEnter={() => handleCategoryHover(cat.slug)}
                   onClick={() => handleCategoryClick(cat.slug)}
-                  className="relative text-[12px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.06em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
+                  className="relative text-[10px] lg:text-[11px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.05em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
                  >
                    {cat.name}
                    <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-maroon transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
@@ -216,7 +216,7 @@ const Navbar = () => {
                ))}
                <Link 
                  to="/blog" 
-                 className="relative text-[12px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.06em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
+                 className="relative text-[10px] lg:text-[11px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.05em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
                >
                  Journal
                  <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-maroon transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
