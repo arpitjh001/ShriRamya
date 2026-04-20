@@ -256,7 +256,7 @@ class CatalogReadService {
 
   async getBaseProducts({ tenantId, user }) {
     const baseQuery = {
-      is_deleted: false,
+      is_deleted: { $ne: true },
       ...this.buildTenantScope(tenantId),
     };
 
