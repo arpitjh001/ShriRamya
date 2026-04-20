@@ -11,6 +11,7 @@ const shipmentController = require('../controllers/shipment.controller');
 const { insiderService, INSIDER_INTERESTS } = require('../services/insider.service');
 const auth = require('../middlewares/auth');
 const { optionalAuth } = require('../middlewares/authRBAC');
+const tokenService = require('../services/token.service');
 
 const isAdminOrEditor = (user) => {
   if (!user) return false;
@@ -126,6 +127,7 @@ router.use('/orders/admin', auth(['admin']));
 router.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    const deviceId = req.headers['x-device-id'] || 'unknown_device';
     const db = require('../db/mongodb').mongoose.connection.db;
     const user = await db.collection('users').findOne({ email: email.toLowerCase() });
     if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -142,7 +144,8 @@ router.post('/auth/login', async (req, res) => {
       config.jwt.secret,
       { expiresIn: '24h' }
     );
-    const refreshToken = 'refresh_' + token.slice(-20);
+    const rawRefreshToken = await tokenService.generateRefreshToken(userId, deviceId);
+    const refreshToken = tokenService.encodeRT(userId, rawRefreshToken);
     res.json({
       success: true,
       data: {
@@ -161,6 +164,7 @@ router.post('/auth/login', async (req, res) => {
 router.post('/auth/register', async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
+    const deviceId = req.headers['x-device-id'] || 'unknown_device';
     
     // Basic validation
     if (!email || !email.includes('@')) {
@@ -191,12 +195,16 @@ router.post('/auth/register', async (req, res) => {
       config.jwt.secret,
       { expiresIn: '24h' }
     );
+    const rawRefreshToken = await tokenService.generateRefreshToken(userId, deviceId);
+    const refreshToken = tokenService.encodeRT(userId, rawRefreshToken);
     res.status(201).json({
       success: true,
       data: {
         user: { id: userId, userId, email, name, phone, role: 'user', tenantId: 1 },
         token,
         access_token: token,
+        refreshToken,
+        refresh_token: refreshToken,
       }
     });
   } catch (err) {
@@ -1236,7 +1244,50 @@ const MOCK_COUPONS = [
 ];
 
 router.get('/coupons', (req, res) => {
-  res.json({ success: true, data: { coupons: MOCK_COUPONS } });
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const perPage = Math.max(parseInt(req.query.per_page || req.query.limit, 10) || 20, 1);
+  const status = typeof req.query.status === 'string' ? req.query.status.trim().toLowerCase() : '';
+  const type = typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '';
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
+  const now = new Date();
+
+  const filteredCoupons = MOCK_COUPONS.filter((coupon) => {
+    const matchesStatus = !status || String(coupon.status || '').toLowerCase() === status;
+    const matchesType = !type || String(coupon.type || '').toLowerCase() === type;
+    const matchesSearch = !search || String(coupon.code || '').toLowerCase().includes(search);
+    return matchesStatus && matchesType && matchesSearch;
+  });
+
+  const total = filteredCoupons.length;
+  const paginatedCoupons = filteredCoupons.slice((page - 1) * perPage, page * perPage);
+  const stats = {
+    total: MOCK_COUPONS.length,
+    active: MOCK_COUPONS.filter((coupon) => String(coupon.status || '').toLowerCase() === 'active').length,
+    expired: MOCK_COUPONS.filter((coupon) => coupon.expires_at && new Date(coupon.expires_at) < now).length,
+    totalUsage: MOCK_COUPONS.reduce((sum, coupon) => sum + Number(coupon.used_count || 0), 0),
+  };
+  const totalPages = Math.max(Math.ceil(total / perPage), 1);
+
+  res.json({
+    success: true,
+    message: 'Coupons retrieved successfully',
+    data: { coupons: paginatedCoupons },
+    error: null,
+    meta: {
+      pagination: {
+        page,
+        limit: perPage,
+        total,
+        totalPages,
+        current_page: page,
+        per_page: perPage,
+        total_pages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+      stats,
+    },
+  });
 });
 
 router.get('/coupons/validate/:code', (req, res) => {

@@ -3,7 +3,7 @@
  * Complete redesign with integrated category management
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { productsAPI, uploadAPI, categoriesAPI } from '../services/api';
@@ -27,7 +27,38 @@ import {
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const AdminProductsPage = () => {
+const PRODUCT_STATUS_VALUES = {
+  publish: 'published',
+  published: 'published',
+  draft: 'draft',
+  archived: 'archived'
+};
+
+const normalizeProductStatus = (status, fallback = 'draft') => {
+  const normalized = String(status || '').toLowerCase();
+  return PRODUCT_STATUS_VALUES[normalized] || fallback;
+};
+
+const getProductCategoryLabels = (product) => {
+  const labels = Array.isArray(product?.categories)
+    ? product.categories
+        .map((category) => {
+          if (!category) return null;
+          if (typeof category === 'string' || typeof category === 'number') return null;
+          return category.name || category.slug || null;
+        })
+        .filter(Boolean)
+    : [];
+
+  if (labels.length > 0) {
+    return Array.from(new Set(labels));
+  }
+
+  const fallback = product?.categoryName || product?.category;
+  return fallback ? [fallback] : ['Uncategorized'];
+};
+
+const AdminProductsPage = ({ initialTab = 'products' }) => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -39,7 +70,13 @@ const AdminProductsPage = () => {
   const isPersistedObjectId = (value) => /^[0-9a-fA-F]{24}$/.test(String(value || ''));
 
   // State
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -52,6 +89,25 @@ const AdminProductsPage = () => {
     totalPages: 1
   });
   const [stats, setStats] = useState(null);
+
+  const getCouponTypeLabel = (type) => {
+    const badges = {
+      percentage: 'Percentage Off',
+      fixed_amount: 'Fixed Amount',
+      free_shipping: 'Free Shipping',
+      buy_x_get_y: 'BOGO'
+    };
+    return badges[type] || type;
+  };
+
+  const getStatusVariant = (status) => {
+    const variants = {
+      active: 'default',
+      inactive: 'secondary',
+      expired: 'destructive'
+    };
+    return variants[status] || 'secondary';
+  };
 
   // Product Modal State
   const [showProductModal, setShowProductModal] = useState(false);
@@ -138,17 +194,17 @@ const AdminProductsPage = () => {
       };
 
       const response = await productsAPI.getAll(searchParams);
-      const productsData = response.data || response.products || [];
+      const productsData = response.products || response.data || [];
       const serverStats = response.stats || null;
-      const paginationData = response.meta?.pagination || response.pagination || {};
       
       setStats(serverStats);
       
-      setPagination(prev => ({
-        ...prev,
-        ...paginationData,
-        totalPages: paginationData.totalPages || paginationData.total_pages || 1
-      }));
+      setPagination({
+        page: response.pagination.page || page,
+        limit: response.pagination.limit || targetLimit,
+        total: response.pagination.total || 0,
+        totalPages: response.pagination.totalPages || 1
+      });
 
       const mappedProducts = productsData.map(product => {
         const priceValue = product.basePrice || product.base_price || product.price || 0;
@@ -170,7 +226,8 @@ const AdminProductsPage = () => {
           basePrice: basePrice,
           sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
           stock: product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || product.stock_quantity || product.stock || 0,
-          categoryNames: product.categories?.map(cat => cat.name).join(', ') || product.category || product.categoryName || 'Uncategorized'
+          categoryLabels: getProductCategoryLabels(product),
+          categoryNames: getProductCategoryLabels(product).join(', ')
         };
       });
 
@@ -219,11 +276,16 @@ const AdminProductsPage = () => {
       setEditingProduct(product);
       // Calculate total stock from variants
       const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+      const selectedCategoryIds = Array.from(new Set([
+        ...(product.categories || []).map((category) => getCategoryIdentifier(category)),
+        product.categoryId ? String(product.categoryId) : null
+      ].filter(Boolean)));
+
       setProductForm({
         name: product.name || '',
         description: product.description || '',
         basePrice: product.basePrice?.toString() || '',
-        status: product.status || 'draft',
+        status: normalizeProductStatus(product.status),
         fabric: product.fabric || '',
         occasion: product.occasion || '',
         images: product.images || [],
@@ -232,13 +294,11 @@ const AdminProductsPage = () => {
           size: v.attributes?.size || v.size || '',
           color: v.attributes?.color || v.color || ''
         })) || [],
-        categories: (product.categories || [])
-          .map((category) => getCategoryIdentifier(category))
-          .filter(Boolean),
+        categories: selectedCategoryIds,
         discountPrice: product.variants?.[0]?.discountPrice?.toString() || '',
         totalStock: totalStock.toString(),
         lowStockThreshold: product.variants?.[0]?.lowStockThreshold?.toString() || '5',
-        sku: product.sku || ''
+        sku: product.sku && product.sku !== 'N/A' ? product.sku : ''
       });
     } else {
       setEditingProduct(null);
@@ -296,15 +356,19 @@ const AdminProductsPage = () => {
         return variantPayload;
       });
 
+      const selectedCategoryIds = Array.from(new Set(
+        (productForm.categories || []).map((categoryId) => String(categoryId)).filter(Boolean)
+      ));
+
       const productData = {
         name: productForm.name,
         description: productForm.description,
         fabric: productForm.fabric,
         occasion: productForm.occasion,
         basePrice: parseFloat(productForm.basePrice) || 0,
-        status: productForm.status,
+        status: normalizeProductStatus(productForm.status, 'published'),
         images: productForm.images,
-        categories: productForm.categories,
+        categories: selectedCategoryIds,
         sku: productSku, // Product-level SKU
         variants: editingProduct && cleanVariants.length === 0 ? undefined : cleanVariants
       };
@@ -517,69 +581,86 @@ const AdminProductsPage = () => {
   };
 
   // Filters
-  // Products are now filtered server-side, but keep this for categories or fallback
   const filteredProducts = products;
 
-  const filteredCategories = categories.filter(c =>
-    c.name?.toLowerCase().includes(categorySearch.toLowerCase()) ||
-    c.slug?.toLowerCase().includes(categorySearch.toLowerCase()) ||
-    c.description?.toLowerCase().includes(categorySearch.toLowerCase())
-  );
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return categories;
+    const searchLow = categorySearch.toLowerCase();
+    return categories.filter(cat => 
+      cat.name?.toLowerCase().includes(searchLow) || 
+      cat.slug?.toLowerCase().includes(searchLow) ||
+      cat.description?.toLowerCase().includes(searchLow)
+    );
+  }, [categories, categorySearch]);
+
+  const resolvedStats = useMemo(() => {
+    if (stats) {
+      return stats;
+    }
+
+    return {
+      total: pagination.total || products.length,
+      published: products.filter((product) => ['published', 'publish'].includes(String(product.status || '').toLowerCase())).length,
+      draft: products.filter((product) => String(product.status || '').toLowerCase() === 'draft').length,
+      outOfStock: products.filter((product) => Number(product.stock || 0) <= 0).length
+    };
+  }, [stats, pagination.total, products]);
+
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12">
+    <div className="admin-dashboard-shell min-h-screen pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard 
           title="Total Products" 
-          value={stats?.total || 0} 
+          value={resolvedStats.total || 0} 
           icon={Package} 
           color="maroon" 
-          loading={loading && !stats} 
+          loading={loading && !stats && products.length === 0} 
           subtext="All inventory items"
         />
         <StatCard 
           title="Published" 
-          value={stats?.published || 0} 
+          value={resolvedStats.published || 0} 
           icon={Eye} 
           color="emerald" 
-          loading={loading && !stats} 
+          loading={loading && !stats && products.length === 0} 
           subtext="Visible to customers"
         />
         <StatCard 
           title="Drafts" 
-          value={stats?.draft || 0} 
+          value={resolvedStats.draft || 0} 
           icon={EyeOff} 
           color="gold" 
-          loading={loading && !stats} 
+          loading={loading && !stats && products.length === 0} 
           subtext="In preparation"
         />
         <StatCard 
           title="Out of Stock" 
-          value={stats?.outOfStock || 0} 
+          value={resolvedStats.outOfStock || 0} 
           icon={AlertTriangle} 
           color="charcoal" 
           indicator="red"
-          loading={loading && !stats} 
+          loading={loading && !stats && products.length === 0} 
           subtext="Needs restocking"
         />
       </div>
 
       {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-charcoal mb-2">Product Dashboard</h1>
-            <p className="text-sm text-gray-500">Manage your products and categories</p>
+      <div className="mb-8 p-6 bg-white shadow-luxury-sm border-border">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="text-center sm:text-left">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Product Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Manage your products and categories</p>
           </div>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-gray-100/50 p-1 border border-gray-100">
-              <TabsTrigger value="products" className="gap-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+            <TabsList className="bg-white/5 p-1 border border-white/10 w-full sm:w-auto">
+              <TabsTrigger value="products" className="flex-1 gap-2 text-xs">
                 <Package className="w-4 h-4" />
                 Products
               </TabsTrigger>
-              <TabsTrigger value="categories" className="gap-2">
+              <TabsTrigger value="categories" className="flex-1 gap-2 text-xs">
                 <FolderPlus className="w-4 h-4" />
                 Categories
               </TabsTrigger>
@@ -590,28 +671,28 @@ const AdminProductsPage = () => {
 
       {/* Products Tab */}
       {activeTab === 'products' && (
-        <Card className="bg-white border-gray-100 shadow-sm overflow-hidden rounded-2xl">
-          <CardHeader className="border-b border-gray-50 bg-gray-50/30 p-6">
+        <Card className="bg-white shadow-luxury-sm border-border">
+          <CardHeader className="border-b border-white/10 p-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-charcoal text-2xl">All Products</CardTitle>
-                <CardDescription className="text-gray-500">
+                <CardTitle className="text-foreground text-2xl">All Products</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Manage counts: {pagination.total} products total
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <div className="relative flex-1 md:flex-initial">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     placeholder="Search products..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
-                    className="pl-10 w-full md:w-72 bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
+                    className="pl-10 w-full bg-slate-50 border-border text-foreground focus:ring-royal-maroon focus:border-royal-maroon placeholder:text-slate-500"
                   />
                 </div>
                 <Button
                   onClick={() => handleOpenProductModal()}
-                  className="gap-2 bg-maroon hover:bg-maroon/90 text-white"
+                  className="w-full sm:w-auto gap-2 bg-royal-maroon hover:bg-royal-maroon/90 text-foreground"
                 >
                   <Plus className="w-4 h-4" />
                   Add Product
@@ -625,43 +706,43 @@ const AdminProductsPage = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
               </div>
             ) : (
-              <div className="rounded-md border border-gray-700">
-                <Table>
-                  <TableHeader className="bg-gray-50/50">
-                    <TableRow className="border-gray-100">
-                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Product</TableHead>
-                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">SKU</TableHead>
-                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Price</TableHead>
-                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Stock</TableHead>
-                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Category</TableHead>
-                      <TableHead className="text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Status</TableHead>
-                      <TableHead className="text-right text-gray-600 font-bold uppercase tracking-tighter text-[11px]">Actions</TableHead>
+              <div className="rounded-md border border-border overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                <Table className="min-w-[800px] md:min-w-full">
+                  <TableHeader className="bg-slate-50">
+                    <TableRow className="border-border">
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Product</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">SKU</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Price</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Stock</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Categories</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Status</TableHead>
+                      <TableHead className="text-right text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map((product) => (
-                      <TableRow key={product.id} className="border-gray-100 hover:bg-gray-50/50 transition-colors">
+                      <TableRow key={product.id} className="border-border hover:bg-slate-50 transition-colors">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {product.images?.[0] ? (
                               <img
                                 src={product.images[0]}
                                 alt={product.name}
-                                className="w-10 h-10 object-cover rounded-lg border border-gray-100 shadow-sm"
+                                className="w-10 h-10 object-cover rounded-lg border border-white/10 shadow-sm"
                               />
                             ) : (
-                              <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100">
-                                <Package className="w-5 h-5 text-gray-400" />
+                              <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center border border-border">
+                                <Package className="w-5 h-5 text-slate-500" />
                               </div>
                             )}
                             <div>
-                              <div className="font-semibold text-charcoal text-sm">{product.name}</div>
-                              <div className="text-[10px] text-gray-400 uppercase tracking-wider">{product.id.substring(18)}</div>
+                              <div className="font-semibold text-foreground text-sm">{product.name}</div>
+                              <div className="text-[10px] text-slate-500 uppercase tracking-wider">{String(product.id || '').slice(-6)}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-[11px] text-gray-500 uppercase">{product.sku || 'N/A'}</TableCell>
-                        <TableCell className="text-charcoal font-bold">₹{product.basePrice?.toLocaleString() || '0'}</TableCell>
+                        <TableCell className="font-mono text-sm text-foreground font-medium uppercase">{product.sku || 'N/A'}</TableCell>
+                        <TableCell className="text-foreground font-bold">₹{product.basePrice?.toLocaleString() || '0'}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             product.stock <= 5 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
@@ -670,15 +751,22 @@ const AdminProductsPage = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-medium border border-gray-200">
-                            {product.categoryNames}
-                          </span>
+                          <div className="flex max-w-xs flex-wrap gap-1">
+                            {(product.categoryLabels || getProductCategoryLabels(product)).map((categoryName) => (
+                              <span
+                                key={`${product.id}-${categoryName}`}
+                                className="px-2 py-0.5 bg-slate-50 text-slate-600 rounded-full text-[10px] font-medium border border-border"
+                              >
+                                {categoryName}
+                              </span>
+                            ))}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge className={`${
                             product.status === 'published' 
-                              ? 'bg-emerald/10 text-emerald border-emerald/20' 
-                              : 'bg-gray-100 text-gray-500 border-gray-200'
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                              : 'bg-slate-50 text-muted-foreground border-border'
                           } border text-[10px] font-bold transition-all`}>
                             {product.status}
                           </Badge>
@@ -689,7 +777,7 @@ const AdminProductsPage = () => {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleOpenProductModal(product)}
-                              className="h-8 w-8 hover:bg-maroon/10 hover:text-maroon text-gray-400 transition-colors"
+                              className="h-8 w-8 text-muted-foreground hover:bg-slate-100 hover:text-foreground transition-colors"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </Button>
@@ -697,7 +785,7 @@ const AdminProductsPage = () => {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteProduct(product.id)}
-                              className="h-8 w-8 hover:bg-rose-100 hover:text-rose-600 text-gray-400 transition-colors"
+                              className="h-8 w-8 text-muted-foreground hover:bg-rose-500/20 hover:text-rose-400 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
@@ -708,7 +796,7 @@ const AdminProductsPage = () => {
                   </TableBody>
                 </Table>
                 {products.length === 0 && !loading && (
-                  <div className="text-center py-12 text-gray-400">
+                  <div className="text-center py-12 text-slate-500">
                     <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No products found</p>
                     <Button
@@ -722,117 +810,113 @@ const AdminProductsPage = () => {
                 )}
               </div>
             )}
-            
-            {/* Pagination Controls */}
-            {!loading && products.length > 0 && (
+                        {/* Pagination Controls */}
+            {!loading && products.length > 0 && pagination.totalPages > 1 && (
               <div className="flex flex-col md:flex-row items-center justify-between mt-8 gap-4 px-2">
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <span>Items per page:</span>
-                    <select
-                      value={pagination.limit}
+                <div className="flex items-center gap-6">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                    Showing <span className="text-foreground">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
+                    <span className="text-foreground">
+                      {Math.min(pagination.page * pagination.limit, pagination.total)}
+                    </span>{' '}
+                    of <span className="text-foreground">{pagination.total}</span> products
+                  </div>
+                  
+                  {/* Items Per Page Selector */}
+                  <div className="flex items-center gap-3 border-l border-border pl-6">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 whitespace-nowrap">View</span>
+                    <select 
+                      value={pagination.limit} 
                       onChange={(e) => {
                         const newLimit = parseInt(e.target.value);
                         setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
                         loadProducts(1, newLimit);
                       }}
-                      className="bg-white border border-gray-200 rounded px-2 py-1 text-charcoal focus:outline-none focus:ring-1 focus:ring-maroon text-xs"
+                      className="h-8 w-[70px] bg-slate-50 border border-border rounded-md text-xs font-bold px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-royal-maroon/20"
                     >
-                      {[10, 20, 50, 100].map(val => (
-                        <option key={val} value={val}>{val}</option>
-                      ))}
+                      <option value="10">10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
                     </select>
                   </div>
-                  <div>
-                    Showing <span className="text-charcoal font-semibold">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
-                    <span className="text-charcoal font-semibold">
-                      {Math.min(pagination.page * pagination.limit, pagination.total)}
-                    </span>{' '}
-                    of <span className="text-charcoal font-semibold">{pagination.total}</span> products
-                  </div>
                 </div>
-                
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-1.5">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page <= 1}
-                    className="border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-[11px] font-bold uppercase tracking-tighter"
+                    className="text-foreground hover:bg-slate-100 font-bold uppercase tracking-widest text-[10px]"
                   >
-                    Previous
+                    Prev
                   </Button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum = pagination.page;
-                      if (pagination.totalPages <= 5) pageNum = i + 1;
-                      else if (pagination.page <= 3) pageNum = i + 1;
-                      else if (pagination.page >= pagination.totalPages - 2) pageNum = pagination.totalPages - 4 + i;
-                      else pageNum = pagination.page - 2 + i;
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum = pagination.page;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
 
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                            pagination.page === pageNum 
-                              ? 'bg-maroon text-white shadow-sm' 
-                              : 'text-gray-400 hover:bg-gray-100'} `}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pagination.page === pageNum ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNum)}
+                        className={pagination.page === pageNum ? 'bg-royal-maroon text-white font-bold' : 'text-muted-foreground hover:bg-slate-100'}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page >= pagination.totalPages}
-                    className="border-gray-200 bg-white text-gray-600 hover:bg-gray-50 text-[11px] font-bold uppercase tracking-tighter"
+                    className="text-foreground hover:bg-slate-100 font-bold uppercase tracking-widest text-[10px]"
                   >
                     Next
                   </Button>
                 </div>
               </div>
             )}
+
           </CardContent>
         </Card>
       )}
 
       {/* Categories Tab */}
       {activeTab === 'categories' && (
-        <Card style={{
-          background: 'rgba(30, 27, 75, 0.6)',
-          border: '1px solid rgba(148, 163, 184, 0.2)'
-        }}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle style={{ color: '#ffffff' }}>Category Management</CardTitle>
-                <CardDescription style={{ color: '#94a3b8' }}>
+        <Card className="bg-white shadow-luxury-sm border-border">
+          <CardHeader className="border-b border-white/10 p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <CardTitle className="text-foreground text-2xl">Category Management</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   {filteredCategories.length} categories found
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <Input
                     placeholder="Search categories..."
                     value={categorySearch}
                     onChange={(e) => setCategorySearch(e.target.value)}
-                    className="pl-10 w-72"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: '#e2e8f0',
-                      borderColor: 'rgba(148, 163, 184, 0.3)'
-                    }}
+                    className="pl-10 w-full bg-slate-50 border-border text-foreground focus:ring-royal-maroon focus:border-royal-maroon placeholder:text-slate-500"
                   />
                 </div>
                 <Button
                   onClick={() => handleOpenCategoryModal()}
-                  className="gap-2"
-                  style={{ background: '#6366f1' }}
+                  className="w-full sm:w-auto gap-2 bg-royal-maroon hover:bg-royal-maroon/90 text-foreground"
                 >
                   <Plus className="w-4 h-4" />
                   Add Category
@@ -846,43 +930,43 @@ const AdminProductsPage = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
               </div>
             ) : (
-              <div className="rounded-md border border-gray-700">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-gray-300">Category</TableHead>
-                      <TableHead className="text-gray-300">Slug</TableHead>
-                      <TableHead className="text-gray-300">Description</TableHead>
-                      <TableHead className="text-right text-gray-300">Actions</TableHead>
+              <div className="rounded-md border border-white/10 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                <Table className="min-w-[700px] md:min-w-full">
+                  <TableHeader className="bg-white/5">
+                    <TableRow className="border-white/10">
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Category</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Slug</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Description</TableHead>
+                      <TableHead className="text-right text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredCategories.map((category) => (
-                      <TableRow key={category.id} className="border-gray-700">
+                      <TableRow key={category.id} className="border-border hover:bg-slate-50 transition-colors">
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {category.image ? (
                               <img
                                 src={category.image}
                                 alt={category.name}
-                                className="w-12 h-12 object-cover rounded-lg"
+                                className="w-12 h-12 object-cover rounded-lg border border-white/10 shadow-sm"
                               />
                             ) : (
-                              <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                                <FolderPlus className="w-6 h-6 text-gray-400" />
+                              <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center border border-border">
+                                <FolderPlus className="w-6 h-6 text-slate-500" />
                               </div>
                             )}
                             <div>
-                              <div className="font-medium text-white">{category.name}</div>
+                                <div className="font-semibold text-foreground text-sm">{category.name}</div>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <code className="px-2 py-1 bg-gray-800 rounded text-xs text-indigo-400">
+                          <code className="px-2 py-1 bg-slate-50 border border-border rounded text-[10px] text-royal-maroon font-mono">
                             {category.slug}
                           </code>
                         </TableCell>
-                        <TableCell className="max-w-md text-gray-300">
+                        <TableCell className="max-w-md text-muted-foreground text-sm">
                           {category.description || 'No description'}
                         </TableCell>
                         <TableCell className="text-right">
@@ -891,7 +975,7 @@ const AdminProductsPage = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleOpenCategoryModal(category)}
-                              className="hover:bg-indigo-500/20 hover:text-indigo-400"
+                              className="text-muted-foreground hover:bg-white/10 hover:text-foreground"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -899,9 +983,9 @@ const AdminProductsPage = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteCategory(category.id)}
-                              className="hover:bg-red-500/20 hover:text-red-400"
+                              className="text-muted-foreground hover:bg-rose-500/20 hover:text-rose-400"
                             >
-                              <Trash2 className="w-4 h-4 text-red-400" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -910,7 +994,7 @@ const AdminProductsPage = () => {
                   </TableBody>
                 </Table>
                 {filteredCategories.length === 0 && (
-                  <div className="text-center py-12 text-gray-400">
+                  <div className="text-center py-12 text-slate-500">
                     <FolderPlus className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No categories found</p>
                     <Button
@@ -927,129 +1011,140 @@ const AdminProductsPage = () => {
           </CardContent>
         </Card>
       )}
+    </div>
 
       {/* Product Modal */}
       <Dialog open={showProductModal} onOpenChange={setShowProductModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle style={{ color: '#ffffff' }}>
-              {editingProduct ? 'Edit Product' : 'Create Product'}
+        <DialogContent className="max-w-4xl bg-white border-border text-foreground rounded-3xl overflow-hidden shadow-luxury max-h-[95vh] flex flex-col">
+          <DialogHeader className="border-b border-white/10 pb-3">
+            <DialogTitle className="text-2xl font-heading font-bold text-foreground tracking-tight">
+              {editingProduct ? 'Update' : 'Establish'} <span className="text-royal-maroon">Heritage</span> Chronicle
             </DialogTitle>
-            <DialogDescription style={{ color: '#94a3b8' }}>
-              {editingProduct ? 'Update product details' : 'Add a new product to your catalog'}
+            <DialogDescription className="text-slate-500 italic font-medium">
+              Updating the timeless ledger of Shri Ramya possessions.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Label style={{ color: '#e2e8f0' }}>Product Name *</Label>
+          <div className="grid gap-3 py-2 max-h-[55vh] overflow-y-auto px-1 custom-scrollbar scrollbar-hide">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Archive Identity (Name) *</Label>
                 <Input
                   value={productForm.name}
                   onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  placeholder="e.g., Kanjeevaram Silk Saree"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                  placeholder="e.g., Banarasi Heritage Silk"
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
+                  required
                 />
               </div>
-              <div>
-                <Label style={{ color: '#e2e8f0' }}>Product SKU</Label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">SKU identifier</Label>
                 <Input
                   value={productForm.sku}
-                  onChange={(e) => setProductForm({ ...productForm, sku: e.target.value.toUpperCase() })}
-                  placeholder="e.g., SRE-BANA-001"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0', fontFamily: 'monospace' }}
-                />
-                <p className="text-xs text-gray-400 mt-1">Auto-generated if left blank</p>
-              </div>
-              <div>
-                <Label style={{ color: '#e2e8f0' }}>Price (₹)</Label>
-                <Input
-                  type="number"
-                  value={productForm.basePrice}
-                  onChange={(e) => setProductForm({ ...productForm, basePrice: e.target.value })}
-                  placeholder="999"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                  onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })}
+                  placeholder="e.g., BR-SLK-001"
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
                 />
               </div>
             </div>
-            <div>
-              <Label style={{ color: '#e2e8f0' }}>Discount Price (₹)</Label>
-              <Input
-                type="number"
-                value={productForm.discountPrice}
-                onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
-                placeholder="799"
-                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
-              />
-            </div>
-            <div>
-              <Label style={{ color: '#e2e8f0' }}>Description</Label>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Product Narrative</Label>
               <Textarea
                 value={productForm.description}
                 onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                placeholder="Product description..."
-                rows={3}
-                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                placeholder="The tale of this creation..."
+                rows={4}
+                className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50 resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label style={{ color: '#e2e8f0' }}>Fabric</Label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Base Valuation (Price) *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
+                  <Input
+                    type="number"
+                    value={productForm.basePrice}
+                    onChange={(e) => setProductForm({ ...productForm, basePrice: e.target.value })}
+                    className="pl-7 bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Sale Valuation (Optional)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
+                  <Input
+                    type="number"
+                    value={productForm.salePrice}
+                    onChange={(e) => setProductForm({ ...productForm, salePrice: e.target.value })}
+                    className="pl-7 bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Fabric Composition</Label>
                 <Input
                   value={productForm.fabric}
                   onChange={(e) => setProductForm({ ...productForm, fabric: e.target.value })}
-                  placeholder="e.g., Pure Silk"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                  placeholder="e.g., Pure Katan Silk"
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
                 />
               </div>
-              <div>
-                <Label style={{ color: '#e2e8f0' }}>Occasion</Label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Heritage Occasion</Label>
                 <Input
                   value={productForm.occasion}
                   onChange={(e) => setProductForm({ ...productForm, occasion: e.target.value })}
-                  placeholder="e.g., Wedding"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+                  placeholder="e.g., Bridal"
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
                 />
               </div>
             </div>
-            <div>
-              <Label style={{ color: '#e2e8f0' }}>Status</Label>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Archive Classification</Label>
               <Select
                 value={productForm.status}
                 onValueChange={(value) => setProductForm({ ...productForm, status: value })}
               >
-                <SelectTrigger style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-foreground focus:ring-royal-maroon/20">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
+                <SelectContent className="bg-slate-900 border-white/10 text-foreground">
+                  <SelectItem value="draft" className="focus:bg-white/10 focus:text-foreground">Draft (Hidden)</SelectItem>
+                  <SelectItem value="published" className="focus:bg-white/10 focus:text-foreground">Published (Public)</SelectItem>
+                  <SelectItem value="archived" className="focus:bg-white/10 focus:text-foreground">Archived (Lock)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Category Selection */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label style={{ color: '#e2e8f0' }}>Categories</Label>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Heritage Segments</Label>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleOpenCategoryModal()}
-                  className="h-7 px-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 gap-1 text-xs"
+                  className="h-7 px-2 text-royal-gold hover:text-royal-gold hover:bg-royal-gold/10 gap-1 text-[10px] font-bold uppercase tracking-widest"
                 >
                   <Plus className="w-3 h-3" />
                   New Category
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 rounded border"
-                style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(148, 163, 184, 0.3)' }}>
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-4 rounded-2xl border border-white/5 bg-black/20 custom-scrollbar">
                 {categories.map((category) => (
                   <div
                     key={category.id}
-                    className="flex items-center justify-between p-2 rounded hover:bg-white/10 transition-colors group"
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 transition-all group border border-transparent hover:border-white/5"
                   >
-                    <label className="flex items-center gap-2 cursor-pointer flex-1" style={{ color: '#e2e8f0' }}>
+                    <label className="flex items-center gap-3 cursor-pointer flex-1">
                       <input
                         type="checkbox"
                         checked={productForm.categories?.includes(category.id)}
@@ -1062,9 +1157,9 @@ const AdminProductsPage = () => {
                               : (prev.categories || []).filter(id => id !== category.id)
                           }));
                         }}
-                        className="w-4 h-4 rounded border-gray-600 text-indigo-500 focus:ring-indigo-500"
+                        className="w-4 h-4 rounded-md border-white/10 bg-white/5 text-royal-maroon focus:ring-royal-maroon/30"
                       />
-                      <span className="text-sm truncate">{category.name}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">{category.name}</span>
                     </label>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -1072,7 +1167,7 @@ const AdminProductsPage = () => {
                           e.preventDefault();
                           handleOpenCategoryModal(category);
                         }}
-                        className="p-1 text-gray-400 hover:text-indigo-400"
+                        className="p-1.5 text-slate-500 hover:text-royal-gold transition-colors"
                         title="Edit Category"
                       >
                         <Edit className="w-3 h-3" />
@@ -1082,7 +1177,7 @@ const AdminProductsPage = () => {
                           e.preventDefault();
                           handleDeleteCategory(category.id);
                         }}
-                        className="p-1 text-gray-400 hover:text-red-400"
+                        className="p-1.5 text-slate-500 hover:text-rose-500 transition-colors"
                         title="Delete Category"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -1090,57 +1185,37 @@ const AdminProductsPage = () => {
                     </div>
                   </div>
                 ))}
-                {categories.length === 0 && (
-                  <p className="text-gray-400 text-sm col-span-2 text-center py-4">
-                    No categories available. Create a category first.
-                  </p>
-                )}
               </div>
-              {productForm.categories?.length > 0 && (
-                <div className="flex gap-1 mt-2 flex-wrap">
-                  {productForm.categories.map(catId => {
-                    const cat = categories.find(c => c.id === catId);
-                    return cat ? (
-                      <Badge key={catId} variant="secondary" className="gap-1">
-                        {cat.name}
-                        <button
-                          onClick={() => setProductForm(prev => ({
-                            ...prev,
-                            categories: prev.categories.filter(id => id !== catId)
-                          }))}
-                          className="hover:text-red-400"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ) : null;
-                  })}
-                </div>
-              )}
             </div>
 
-            {/* Stock Management Section - Variant Grid */}
-            <div className="border-t pt-4" style={{ borderColor: 'rgba(148, 163, 184, 0.3)' }}>
-              <div className="flex items-center justify-between mb-4">
+            {/* Stock Management Section */}
+            <div className="border-t border-white/10 pt-4 space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5" style={{ color: '#6366f1' }} />
-                  <Label className="text-base" style={{ color: '#e2e8f0' }}>Inventory Management</Label>
+                  <div className="p-2 rounded-lg bg-royal-gold/10 border border-royal-gold/20">
+                    <Package className="w-4 h-4 text-royal-gold" />
+                  </div>
+                  <Label className="text-sm font-heading font-bold uppercase tracking-widest text-foreground">Vault Inventory</Label>
                 </div>
                 {productForm.variants?.length > 0 && (
-                  <Badge variant="default" className="bg-green-600">
-                    {productForm.variants.length} variants | {getTotalStock()} total stock
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3 py-1 rounded-full text-[10px] font-bold">
+                    {productForm.variants.length} Variants | {getTotalStock()} Units
                   </Badge>
                 )}
               </div>
 
-              {/* Low Stock Threshold Input */}
-              <div className="mb-6 p-4 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.3)', border: '1px solid' }}>
-                <Label style={{ color: '#e2e8f0' }} className="block mb-2">Low Stock Threshold</Label>
-                <p className="text-xs text-gray-400 mb-3">Set the minimum stock quantity before a product is marked as low stock. This applies to all variants.</p>
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Depletion Alert threshold</Label>
+                  <div className="group relative">
+                    <div className="p-1 rounded-full border border-white/10 hover:bg-white/10 transition-colors cursor-help">
+                      <Package className="w-2 h-2 text-slate-500" />
+                    </div>
+                  </div>
+                </div>
                 <Input
                   type="number"
                   min="0"
-                  max="1000"
                   value={productForm.lowStockThreshold}
                   onChange={(e) => {
                     const next = parseInt(e.target.value, 10);
@@ -1149,70 +1224,29 @@ const AdminProductsPage = () => {
                       lowStockThreshold: Number.isNaN(next) ? 5 : Math.max(0, next),
                     });
                   }}
-                  placeholder="5"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
-                  className="max-w-xs"
+                  className="bg-black/20 border-white/10 text-foreground focus:ring-royal-maroon/20 w-32"
                 />
-                <p className="text-xs text-indigo-400 mt-2">Current threshold: <strong>{productForm.lowStockThreshold ?? 5} units</strong></p>
+                <p className="text-[9px] text-slate-500 italic">Alert will trigger when inventory drops below {productForm.lowStockThreshold ?? 5} units.</p>
               </div>
 
-              {/* Variant Grid Section */}
-              <div className="mb-4">
-                <Label className="text-sm mb-2 block" style={{ color: '#e2e8f0' }}>Variant Inventory (Color × Size)</Label>
-              </div>
-
-              {/* Variant Grid Input Component */}
-              <VariantGridInput
-                variants={productForm.variants || []}
-                onChange={(newVariants) => setProductForm({ ...productForm, variants: newVariants })}
-                basePrice={parseFloat(productForm.basePrice) || 0}
-                lowStockThreshold={productForm.lowStockThreshold}
-              />
-            </div>
-
-            {/* Product Images */}
-            <div>
-              <Label style={{ color: '#e2e8f0' }}>Product Images</Label>
-              <div className="flex items-center gap-4 mt-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
+              <div className="space-y-4">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Inventory Matrix (Color × Size)</Label>
+                <VariantGridInput
+                  variants={productForm.variants || []}
+                  onChange={(newVariants) => setProductForm({ ...productForm, variants: newVariants })}
+                  basePrice={parseFloat(productForm.basePrice) || 0}
+                  lowStockThreshold={productForm.lowStockThreshold}
                 />
-                {uploadingImage && (
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
-                )}
               </div>
-              {productForm.images?.length > 0 && (
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {productForm.images.map((img, idx) => (
-                    <div key={idx} className="relative">
-                      <img src={img} alt="Product" className="w-20 h-20 object-cover rounded" />
-                      <button
-                        onClick={() => setProductForm(prev => ({
-                          ...prev,
-                          images: prev.images.filter((_, i) => i !== idx)
-                        }))}
-                        className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 hover:bg-red-600"
-                      >
-                        <X className="w-3 h-3 text-white" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowProductModal(false)}>
-              Cancel
+
+          <DialogFooter className="p-4 bg-slate-50 border-t border-border flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowProductModal(false)} className="h-10 px-6 font-bold uppercase tracking-widest text-[10px] border-border">
+              Dismiss
             </Button>
-            <Button onClick={handleSaveProduct} className="bg-maroon hover:bg-maroon/90 text-white">
-              <Save className="w-4 h-4 mr-2" />
-              {editingProduct ? 'Update Product' : 'Create Product'}
+            <Button onClick={handleSaveProduct} className="h-10 px-8 bg-royal-maroon hover:bg-royal-maroon/90 text-white font-bold uppercase tracking-widest text-[10px] shadow-md shadow-maroon/20">
+              {editingProduct ? 'Synchronize Record' : 'Establish Artifact'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1220,67 +1254,80 @@ const AdminProductsPage = () => {
 
       {/* Category Modal */}
       <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader className="border-b border-gray-100 pb-4">
-            <DialogTitle className="text-2xl font-bold text-charcoal">
-              {editingCategory ? 'Edit Category' : 'Create Category'}
+        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-0 bg-white border-none shadow-luxury rounded-2xl overflow-hidden">
+          <DialogHeader className="p-6 bg-slate-50 border-b border-border">
+            <DialogTitle className="text-xl font-bold text-foreground">
+              {editingCategory ? 'Edit Realm' : 'Establish New'} <span className="text-royal-maroon">Segment</span>
             </DialogTitle>
-            <DialogDescription className="text-gray-500">
-              {editingCategory ? 'Update category details' : 'Add a new product category'}
+            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Classifying the timeless heritage of the archive
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-charcoal font-semibold mb-1.5 block">Category Name *</Label>
+          
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Segment Label *</Label>
                 <Input
                   value={categoryForm.name}
                   onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                  placeholder="e.g., Silk Sarees"
-                  className="bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
+                  className="h-10 border-border bg-slate-50"
+                  placeholder="e.g., Banarasi Excellence"
                 />
               </div>
-              <div>
-                <Label className="text-charcoal font-semibold mb-1.5 block">Slug</Label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Resource Path (Slug)</Label>
                 <Input
                   value={categoryForm.slug}
                   onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })}
-                  placeholder="e.g., silk-sarees"
-                  className="bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
+                  className="h-10 border-border bg-slate-50"
+                  placeholder="banarasi-excellence"
                 />
               </div>
             </div>
-            <div>
-              <Label className="text-charcoal font-semibold mb-1.5 block">Description</Label>
+            
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Segment Narrative</Label>
               <Textarea
                 value={categoryForm.description}
                 onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                placeholder="Category description..."
-                rows={3}
-                className="bg-white border-gray-200 text-charcoal focus:ring-maroon focus:border-maroon"
+                className="h-24 border-border bg-slate-50 resize-none"
+                placeholder="The essence and history of this archival segment..."
               />
             </div>
-            <div>
-              <Label style={{ color: '#e2e8f0' }}>Category Image</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleCategoryImageUpload}
-                disabled={uploadingImage}
-                style={{ background: 'rgba(255, 255, 255, 0.05)', color: '#e2e8f0' }}
-              />
-              {categoryForm.image && (
-                <img src={categoryForm.image} alt="Category" className="w-32 h-32 object-cover rounded mt-2" />
-              )}
+
+            <div className="space-y-4">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Identity Imagery</Label>
+              <div className="flex items-center gap-4">
+                <label className="flex-1">
+                  <div className="flex items-center justify-center gap-2 w-full h-11 bg-slate-50 border border-dashed border-border rounded-xl hover:bg-slate-100 transition-all cursor-pointer">
+                    <ImageIcon className="w-4 h-4 text-royal-maroon" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Set Archive Image</span>
+                  </div>
+                  <input type="file" accept="image/*" onChange={handleCategoryImageUpload} disabled={uploadingImage} className="hidden" />
+                </label>
+                {categoryForm.image && (
+                  <div className="relative h-16 w-16 rounded-xl border border-border overflow-hidden group shadow-sm">
+                    <img src={categoryForm.image} alt="" className="w-full h-full object-cover" />
+                    <button 
+                      onClick={() => setCategoryForm({...categoryForm, image: ''})}
+                      className="absolute inset-0 bg-rose-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCategoryModal(false)}>
-              Cancel
+
+          <DialogFooter className="p-4 bg-slate-50 border-t border-border flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowCategoryModal(false)} className="h-10 px-6 font-bold uppercase tracking-widest text-[10px] border-border">
+              Dismiss
             </Button>
-            <Button onClick={handleSaveCategory} className="bg-maroon hover:bg-maroon/90 text-white">
+            <Button onClick={handleSaveCategory} className="h-10 px-8 bg-royal-maroon hover:bg-royal-maroon/90 text-white font-bold uppercase tracking-widest text-[10px] shadow-md shadow-maroon/20">
               <Save className="w-4 h-4 mr-2" />
-              {editingCategory ? 'Update Category' : 'Create Category'}
+              {editingCategory ? 'Certify Update' : 'Seal Segment'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1291,8 +1338,10 @@ const AdminProductsPage = () => {
 
 export default AdminProductsPage;
 
-// Premium Stat Card Component
-const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext, indicator }) => {
+// Premium Ivory Stat Card Component
+const StatCard = (props) => {
+  const { title, value, format, icon: Icon, color, trend, delay, loading, subtext, indicator } = props;
+
   const formatValue = () => {
     if (format === 'currency') {
       return new Intl.NumberFormat('en-IN', {
@@ -1305,47 +1354,40 @@ const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loadi
   };
 
   const schemeOptions = {
-    maroon: { bg: 'bg-maroon/10', text: 'text-maroon', iconColor: 'text-maroon', glow: 'shadow-luxury' },
-    emerald: { bg: 'bg-emerald/10', text: 'text-emerald', iconColor: 'text-emerald', glow: 'shadow-emerald-500/10' },
-    gold: { bg: 'bg-gold/10', text: 'text-gold', iconColor: 'text-gold', glow: 'shadow-gold-glow' },
-    charcoal: { bg: 'bg-charcoal/10', text: 'text-charcoal', iconColor: 'text-charcoal', glow: 'shadow-glass' }
+    maroon: { bg: 'bg-royal-maroon/10', text: 'text-royal-maroon', iconColor: 'text-royal-maroon' },
+    emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-600', iconColor: 'text-emerald-600' },
+    gold: { bg: 'bg-amber-500/10', text: 'text-amber-600', iconColor: 'text-amber-600' },
+    charcoal: { bg: 'bg-slate-100', text: 'text-slate-900', iconColor: 'text-slate-500' }
   };
 
   const scheme = schemeOptions[color] || schemeOptions.charcoal;
 
   return (
-    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]`}>
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-gray-50 transition-transform group-hover:scale-150" />
+    <div className={`group relative overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-luxury-sm transition-all hover:shadow-luxury hover:-translate-y-1`}>
+      <div className={`absolute -right-4 -top-4 h-24 w-24 rounded-full ${scheme.bg} opacity-20 transition-transform group-hover:scale-150`} />
       
       <div className="relative z-10 space-y-4">
         <div className="flex items-center justify-between">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${scheme.bg} backdrop-blur-md`}>
+          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${scheme.bg} shadow-sm transition-transform group-hover:rotate-6`}>
             <Icon className={`h-6 w-6 ${scheme.iconColor}`} />
           </div>
-          {indicator && (
-            <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
-              indicator === 'red' ? 'bg-rose-100 text-rose-600' : 'bg-gold/10 text-gold'
-            }`}>
-              {indicator === 'red' ? 'Alert' : 'Warning'}
-            </span>
-          )}
           {trend && (
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-600">
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-400">
               {trend}
             </span>
           )}
         </div>
         
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">{title}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
           {loading ? (
-            <div className="h-9 w-24 bg-gray-100 animate-pulse rounded mt-1" />
+            <div className="h-9 w-24 bg-white/10 animate-pulse rounded mt-1" />
           ) : (
             <h3 className={`mt-1 text-3xl font-bold tracking-tight ${scheme.text}`}>
               {formatValue()}
             </h3>
           )}
-          {subtext && <p className="text-[11px] text-gray-400 mt-1">{subtext}</p>}
+          {subtext && <p className="text-[11px] text-slate-500 mt-1">{subtext}</p>}
         </div>
       </div>
     </div>

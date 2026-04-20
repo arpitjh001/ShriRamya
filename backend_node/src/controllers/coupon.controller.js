@@ -6,7 +6,13 @@ const ApiError = require('../utils/ApiError');
 const getCoupons = async (req, res, next) => {
     try {
         const result = await couponService.getAllCoupons(req.query);
-        return paginatedResponse(res, result.coupons, result.pagination, 'Coupons retrieved successfully');
+        return paginatedResponse(
+            res,
+            result.coupons,
+            result.pagination,
+            'Coupons retrieved successfully',
+            { stats: result.stats }
+        );
     } catch (error) {
         next(error);
     }

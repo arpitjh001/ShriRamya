@@ -14,7 +14,7 @@ import AdminAnalyticsPage from './AdminAnalyticsPage';
 import AdminBlogsPage from './AdminBlogsPage';
 
 // Updated TABS - Native APIs only
-const TABS = ['Native Products', 'Inventory', 'Coupons', 'Journal', 'Orders', 'Analytics'];
+const TABS = ['Native Products', 'Categories', 'Inventory', 'Coupons', 'Journal', 'Orders', 'Analytics'];
 
 // View modes for Products tab
 const VIEW_MODES = {
@@ -25,7 +25,7 @@ const VIEW_MODES = {
 const AdminDashboardPage = () => {
     const { user, login } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('Products');
+    const [activeTab, setActiveTab] = useState('Native Products');
     const [viewMode, setViewMode] = useState(VIEW_MODES.DETAILED); // Default to detailed view (View B)
     const [loading, setLoading] = useState(false);
     const [adminCheck, setAdminCheck] = useState('checking'); // 'checking' | 'admin' | 'denied' | 'login'
@@ -73,8 +73,27 @@ const AdminDashboardPage = () => {
         description: '', usage_limit: '', expiry_date: '',
     });
 
-    // Check admin on mount
+    const hasAdminRole = (candidate) => {
+        if (!candidate) return false;
+
+        const userRole = (candidate.role || '').toLowerCase();
+        const userRoles = (candidate.roles || []).map(role => role.toLowerCase());
+
+        return userRole === 'admin' || userRoles.includes('admin');
+    };
+
+    // Resolve the access gate immediately from the decoded token when possible.
     useEffect(() => {
+        if (!user) {
+            setAdminCheck('login');
+            return;
+        }
+
+        if (hasAdminRole(user)) {
+            setAdminCheck('admin');
+            return;
+        }
+
         checkAdminAccess();
     }, [user]);
 
@@ -83,6 +102,12 @@ const AdminDashboardPage = () => {
             setAdminCheck('login');
             return;
         }
+
+        if (hasAdminRole(user)) {
+            setAdminCheck('admin');
+            return;
+        }
+
         try {
             const res = await authAPI.checkAdmin();
             // Response data is unwrapped by interceptor: res.data = { is_admin: true }
@@ -588,54 +613,68 @@ const AdminDashboardPage = () => {
     // Access Gate: login required
     if (adminCheck === 'login') {
         return (
-            <div style={{
-                minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
-                color: '#e2e8f0', fontFamily: "'Inter', sans-serif",
-            }}>
-                <div style={{
-                    background: 'rgba(30,27,75,0.95)', border: '1px solid rgba(148,163,184,0.2)',
-                    borderRadius: 20, padding: '3rem', width: 400, textAlign: 'center',
-                }}>
-                    <div style={{ fontSize: '3rem', marginBottom: 16 }}>🔐</div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: 0, background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Product Management</h1>
-                    <p style={{ color: '#94a3b8', marginBottom: '2rem', fontSize: '0.9rem' }}>
-                        Please log in with an admin account to access the Product Dashboard.
-                    </p>
-                    <form onSubmit={handleAdminLogin}>
-                        <div style={{ marginBottom: 16 }}>
-                            <input type="email" placeholder="Admin email" required
+            <div className="min-h-screen flex items-center justify-center bg-slate-950 font-body relative overflow-hidden">
+                {/* Background Blobs */}
+                <div className="absolute top-0 -left-4 w-72 h-72 bg-royal-maroon/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob" />
+                <div className="absolute top-0 -right-4 w-72 h-72 bg-royal-gold/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000" />
+                <div className="absolute -bottom-8 left-20 w-72 h-72 bg-emerald-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
+
+                <div className="relative z-10 w-full max-w-md p-8 rounded-3xl border border-white/10 bg-slate-900/40 shadow-luxury backdrop-blur-xl">
+                    <div className="text-center space-y-4 mb-8">
+                        <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-royal-maroon/10 border border-royal-maroon/20 mb-2">
+                             <span className="text-4xl">🔐</span>
+                        </div>
+                        <h1 className="font-heading text-3xl font-bold tracking-tight text-white">
+                            Admin <span className="text-royal-maroon">Vault</span>
+                        </h1>
+                        <p className="text-sm text-slate-400 font-medium uppercase tracking-[0.2em]">
+                            Luxury Dashboard Access
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleAdminLogin} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Admin Credentials</label>
+                            <input 
+                                type="email" 
+                                placeholder="Admin Email" 
+                                required
                                 value={loginForm.email}
                                 onChange={e => setLoginForm({ ...loginForm, email: e.target.value })}
-                                style={{
-                                    width: '100%', padding: '0.75rem 1rem', borderRadius: 10,
-                                    border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)',
-                                    color: '#e2e8f0', fontSize: '0.95rem', boxSizing: 'border-box',
-                                }} />
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-royal-maroon/20 focus:border-royal-maroon/50 transition-all font-mono"
+                            />
                         </div>
-                        <div style={{ marginBottom: 16 }}>
-                            <input type="password" placeholder="Password" required
+                        <div className="space-y-4">
+                            <input 
+                                type="password" 
+                                placeholder="Secure Password" 
+                                required
                                 value={loginForm.password}
                                 onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                                style={{
-                                    width: '100%', padding: '0.75rem 1rem', borderRadius: 10,
-                                    border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)',
-                                    color: '#e2e8f0', fontSize: '0.95rem', boxSizing: 'border-box',
-                                }} />
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-royal-maroon/20 focus:border-royal-maroon/50 transition-all font-mono"
+                            />
+                            {loginError && (
+                                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+                                    <p className="text-rose-400 text-xs text-center font-bold tracking-tight">{loginError}</p>
+                                </div>
+                            )}
                         </div>
-                        {loginError && (
-                            <p style={{ color: '#f87171', fontSize: '0.85rem', marginBottom: 12 }}>{loginError}</p>
-                        )}
-                        <button type="submit" disabled={loginLoading} style={{
-                            width: '100%', padding: '0.75rem', borderRadius: 10, border: 'none',
-                            background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff',
-                            fontWeight: 600, fontSize: '1rem', cursor: 'pointer',
-                        }}>{loginLoading ? 'Signing in...' : 'Sign In as Admin'}</button>
+                        
+                        <button 
+                            type="submit" 
+                            disabled={loginLoading} 
+                            className="w-full h-12 bg-royal-maroon text-white font-bold rounded-xl shadow-luxury hover:bg-royal-maroon/90 transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                            {loginLoading ? 'Unlocking...' : 'Unlock Dashboard'}
+                        </button>
                     </form>
-                    <button onClick={() => navigate('/')} style={{
-                        marginTop: 16, background: 'none', border: 'none', color: '#64748b',
-                        cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline',
-                    }}>← Back to Store</button>
+
+                    <button 
+                        onClick={() => navigate('/')} 
+                        className="w-full mt-8 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
+                    >
+                        ← Return to Boutique
+                    </button>
                 </div>
             </div>
         );
@@ -644,83 +683,105 @@ const AdminDashboardPage = () => {
     // Access Gate: denied (logged in but not admin)
     if (adminCheck === 'denied') {
         return (
-            <div style={{
-                minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
-                color: '#e2e8f0', fontFamily: "'Inter', sans-serif",
-            }}>
-                <div style={{
-                    background: 'rgba(30,27,75,0.95)', border: '1px solid rgba(239,68,68,0.3)',
-                    borderRadius: 20, padding: '3rem', width: 420, textAlign: 'center',
-                }}>
-                    <div style={{ fontSize: '3rem', marginBottom: 16 }}>🚫</div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: '#f87171' }}>
-                        Access Denied
-                    </h1>
-                    <p style={{ color: '#94a3b8', marginBottom: 8, fontSize: '0.9rem' }}>
-                        Your account <strong style={{ color: '#e2e8f0' }}>{user?.email}</strong> does not have admin privileges.
-                    </p>
-                    <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '0.8rem' }}>
-                        Contact the site administrator to request admin access.
-                    </p>
-                    <button onClick={() => navigate('/')} style={{
-                        padding: '0.75rem 2rem', borderRadius: 10, border: 'none',
-                        background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff',
-                        fontWeight: 600, cursor: 'pointer',
-                    }}>← Back to Store</button>
+            <div className="min-h-screen flex items-center justify-center bg-slate-950 font-body px-4">
+                <div className="w-full max-w-md p-8 rounded-3xl border border-rose-500/20 bg-slate-900/40 shadow-rose-900/40 backdrop-blur-xl text-center space-y-6">
+                    <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20 mb-2">
+                        <span className="text-4xl">🚫</span>
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-heading font-bold text-rose-400">Access Restricted</h1>
+                        <p className="text-slate-400 mt-2 text-sm leading-relaxed">
+                            Your account <span className="text-white font-bold">{user?.email}</span> is not authorized to enter the Admin Dashboard.
+                        </p>
+                    </div>
+                    
+                    <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-2">
+                        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Requirement</p>
+                        <p className="text-xs text-slate-300">Administrative clearance is required for this area of the vault.</p>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button 
+                            onClick={async () => {
+                                await authAPI.logout();
+                                setAdminCheck('login');
+                            }}
+                            className="w-full py-3 bg-white/5 border border-white/10 text-white rounded-xl text-sm font-bold hover:bg-white/10 transition-colors"
+                        >
+                            Log into another account
+                        </button>
+                        <button 
+                            onClick={() => navigate('/')} 
+                            className="w-full py-3 bg-royal-maroon text-white rounded-xl text-sm font-bold shadow-lg hover:bg-royal-maroon/90 transition-all font-heading"
+                        >
+                            ← Return to Boutique
+                        </button>
+                    </div>
                 </div>
             </div>
         );
     }
     return (
-        <div style={{
-            minHeight: '100vh', padding: '1rem',
-            background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
-            color: '#e2e8f0', fontFamily: "'Inter', sans-serif",
-        }}>
-            <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-                {/* Tabs */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', borderBottom: '1px solid rgba(148,163,184,0.2)', paddingBottom: 8 }}>
-                    {TABS.map(tab => (
-                        <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                            padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-                            fontWeight: 600, fontSize: '0.9rem', transition: 'all 0.2s',
-                            background: activeTab === tab ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.05)',
-                            color: activeTab === tab ? '#fff' : '#94a3b8',
-                        }}>{tab}</button>
-                    ))}
-                    {loading && (
-                        <div style={{
-                            marginLeft: 'auto', padding: '0.5rem 1rem', borderRadius: 8,
-                            background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', fontSize: '0.875rem'
-                        }}>
-                            Loading...
-                        </div>
-                    )}
+        <div className="admin-dashboard-stage min-h-screen text-foreground font-body selection:bg-royal-maroon/10 selection:text-foreground">
+            {/* Global Gradient Overlays */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-royal-maroon/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px]" />
+            </div>
+
+            <div className="relative z-10 p-4 md:p-8">
+                <div className="mx-auto max-w-[1600px] space-y-8">
+                    {/* Navigation Bar */}
+                    <div className="admin-dashboard-nav sticky top-2 z-50 rounded-[1.75rem] p-2 shadow-luxury flex flex-wrap items-center gap-2">
+                        {TABS.map(tab => (
+                            <button 
+                                key={tab} 
+                                onClick={() => setActiveTab(tab)} 
+                                className={`px-6 py-2.5 rounded-xl font-heading text-xs uppercase tracking-widest font-bold transition-all duration-300 ${
+                                    activeTab === tab 
+                                        ? 'bg-royal-maroon text-white shadow-lg shadow-royal-maroon/20 border border-royal-maroon/20' 
+                                        : 'text-slate-600 hover:text-foreground hover:bg-white/70 border border-transparent'
+                                }`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                        
+                        {loading && (
+                            <div className="ml-auto pr-4 flex items-center gap-2 text-royal-maroon animate-pulse">
+                                <div className="w-1.5 h-1.5 rounded-full bg-royal-maroon" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Processing</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Dashboard Screen */}
+                    <div className="animate-fade-in">
+                        {/* ===== NATIVE PRODUCTS TAB (Phase 9) ===== */}
+                        {activeTab === 'Native Products' && <AdminProductsPage />}
+
+                        {/* ===== CATEGORIES TAB (Integrated) ===== */}
+                        {activeTab === 'Categories' && <AdminProductsPage initialTab="categories" />}
+
+                        {/* ===== INVENTORY TAB (Phase 9) ===== */}
+                        {activeTab === 'Inventory' && <AdminInventoryPage />}
+
+                        {/* ===== COUPONS TAB (Phase 9) ===== */}
+                        {activeTab === 'Coupons' && <AdminCouponsPage />}
+
+                        {/* ===== ORDERS TAB (Phase 9) ===== */}
+                        {activeTab === 'Orders' && <AdminOrdersPage />}
+
+                        {/* ===== JOURNAL TAB (Phase 10) ===== */}
+                        {activeTab === 'Journal' && <AdminBlogsPage />}
+
+                        {/* ===== ANALYTICS TAB (Phase 9) ===== */}
+                        {activeTab === 'Analytics' && <AdminAnalyticsPage />}
+                    </div>
                 </div>
-
-                {/* ===== NATIVE PRODUCTS TAB (Phase 9) ===== */}
-                {activeTab === 'Native Products' && <AdminProductsPage />}
-
-                {/* ===== INVENTORY TAB (Phase 9) ===== */}
-                {activeTab === 'Inventory' && <AdminInventoryPage />}
-
-                {/* ===== COUPONS TAB (Phase 9) ===== */}
-                {activeTab === 'Coupons' && <AdminCouponsPage />}
-
-                {/* ===== ORDERS TAB (Phase 9) ===== */}
-                {activeTab === 'Orders' && <AdminOrdersPage />}
-
-                {/* ===== JOURNAL TAB (Phase 10) ===== */}
-                {activeTab === 'Journal' && <AdminBlogsPage />}
-
-                {/* ===== ANALYTICS TAB (Phase 9) ===== */}
-                {activeTab === 'Analytics' && <AdminAnalyticsPage />}
             </div>
         </div>
     );
 };
 
 export default AdminDashboardPage;
-
-

@@ -162,10 +162,16 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, tenantId = 1) => {
     const response = await authAPI.login({ email, password, tenantId });
-    localStorage.setItem('token', response.data.token);
+    const accessToken = response.data.token || response.data.access_token;
+    const refreshToken = response.data.refresh_token || response.data.refreshToken;
+
+    localStorage.setItem('token', accessToken);
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken);
+    }
 
     // Decode token to get full user info
-    const decoded = decodeToken(response.data.token);
+    const decoded = decodeToken(accessToken);
     const userData = {
       id: decoded.user_id || decoded.sub,
       email: decoded.email,
@@ -183,10 +189,16 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (data) => {
     const response = await authAPI.register(data);
-    localStorage.setItem('token', response.data.token);
+    const accessToken = response.data.token || response.data.access_token;
+    const refreshToken = response.data.refresh_token || response.data.refreshToken;
+
+    localStorage.setItem('token', accessToken);
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken);
+    }
 
     // Decode token to get full user info
-    const decoded = decodeToken(response.data.token);
+    const decoded = decodeToken(accessToken);
     const userData = {
       id: decoded.user_id || decoded.sub,
       email: decoded.email,
@@ -203,6 +215,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     setUser(null);
     setCapabilities({
       edit_posts: false,

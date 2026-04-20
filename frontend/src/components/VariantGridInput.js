@@ -199,7 +199,7 @@ const VariantGridInput = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Color Selection */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -248,7 +248,7 @@ const VariantGridInput = ({
 
       {/* Bulk Stock Input */}
       {variants.length > 0 && (
-        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold">Bulk Stock Update</Label>
             <Button
@@ -298,8 +298,8 @@ const VariantGridInput = ({
 
       {/* Variant Grid Table */}
       {variants.length > 0 ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
             <Label className="text-sm font-semibold">Variant Inventory</Label>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-gray-600">
@@ -311,8 +311,8 @@ const VariantGridInput = ({
             </div>
           </div>
 
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
+          <div className="border rounded-lg overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead className="w-32">Color</TableHead>

@@ -5,6 +5,20 @@
 
 const { Product, Order, User, Review, DailyStats, ProductPerformance, OfflineSale } = require('../../models');
 const redis = require('../../config/integrations/redis');
+const { buildTenantScope, buildTenantScopedQuery, andQuery, normalizeTenantId } = require('../../utils/tenantScope');
+
+const ANALYTICS_CACHE_VERSION = 'v2';
+const PUBLISHED_PRODUCT_SCOPE = {
+  $or: [
+    { status: { $in: ['published', 'publish'] } },
+    { status: { $exists: false } },
+    { status: null }
+  ]
+};
+
+const getTenantFilter = (tenantId) => (
+  tenantId ? buildTenantScope(tenantId) : {}
+);
 
 class AnalyticsService {
   /**
@@ -18,7 +32,7 @@ class AnalyticsService {
       group_by = 'day'
     } = params;
 
-    const cacheKey = `analytics:sales:${start_date}:${end_date}:${group_by}`;
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:sales:${start_date}:${end_date}:${group_by}`;
 
     // Try cache
     if (redis) {
@@ -52,66 +66,66 @@ class AnalyticsService {
     }
 
     const validStatuses = ['placed', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
-    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+    const tenantFilter = getTenantFilter(params.tenant_id);
 
-    // Online orders aggregation
-    const onlineAggregation = await Order.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          status: { $in: validStatuses },
-          created_at: { $gte: startDate, $lte: endDate }
+    // Parallelize online and offline aggregations
+    const [onlineAggregation, offlineAggregation] = await Promise.all([
+      Order.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            status: { $in: validStatuses },
+            created_at: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: groupFormat,
+            orderCount: { $sum: 1 },
+            totalRevenue: { $sum: "$total_amount" },
+            avgOrderValue: { $avg: "$total_amount" },
+            uniqueCustomers: { $addToSet: "$userId" }
+          }
+        },
+        {
+          $project: {
+            period: "$_id",
+            orderCount: 1,
+            totalRevenue: 1,
+            avgOrderValue: 1,
+            uniqueCustomers: { $size: "$uniqueCustomers" },
+            _id: 0
+          }
+        },
+        { $sort: { period: 1 } }
+      ]),
+      OfflineSale.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            soldAt: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: groupFormat.replace ? groupFormat.replace('$created_at', '$soldAt') : { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
+            orderCount: { $sum: 1 },
+            totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+            avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+            quantity: { $sum: "$quantity" }
+          }
+        },
+        {
+          $project: {
+            period: "$_id",
+            orderCount: 1,
+            totalRevenue: 1,
+            avgOrderValue: 1,
+            quantity: 1,
+            _id: 0
+          }
         }
-      },
-      {
-        $group: {
-          _id: groupFormat,
-          orderCount: { $sum: 1 },
-          totalRevenue: { $sum: "$total_amount" },
-          avgOrderValue: { $avg: "$total_amount" },
-          uniqueCustomers: { $addToSet: "$userId" }
-        }
-      },
-      {
-        $project: {
-          period: "$_id",
-          orderCount: 1,
-          totalRevenue: 1,
-          avgOrderValue: 1,
-          uniqueCustomers: { $size: "$uniqueCustomers" },
-          _id: 0
-        }
-      },
-      { $sort: { period: 1 } }
-    ]);
-
-    // Offline sales aggregation
-    const offlineAggregation = await OfflineSale.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          soldAt: { $gte: startDate, $lte: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: groupFormat.replace ? groupFormat.replace('$created_at', '$soldAt') : { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
-          orderCount: { $sum: 1 },
-          totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
-          avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
-          quantity: { $sum: "$quantity" }
-        }
-      },
-      {
-        $project: {
-          period: "$_id",
-          orderCount: 1,
-          totalRevenue: 1,
-          avgOrderValue: 1,
-          quantity: 1,
-          _id: 0
-        }
-      }
+      ])
     ]);
 
     // Merge online and offline data
@@ -202,7 +216,7 @@ class AnalyticsService {
       sort_by = 'revenue'
     } = params;
 
-    const cacheKey = `analytics:products:${start_date}:${end_date}:${sort_by}:${limit}`;
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:products:${start_date}:${end_date}:${sort_by}:${limit}`;
 
     if (redis) {
       try {
@@ -237,7 +251,7 @@ class AnalyticsService {
         break;
     }
 
-    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+    const tenantFilter = getTenantFilter(params.tenant_id);
 
     // This is a complex query in MongoDB. We'll simplify for now.
     // In a production app, we'd use the ProductPerformance collection.
@@ -314,7 +328,7 @@ class AnalyticsService {
   async getRevenueAnalytics(params = {}) {
     const { start_date, end_date } = params;
 
-    const cacheKey = `analytics:revenue:${start_date}:${end_date}`;
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:revenue:${start_date}:${end_date}`;
 
     if (redis) {
       try {
@@ -331,75 +345,136 @@ class AnalyticsService {
     const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
     const endDate = end_date ? new Date(end_date) : now;
 
-    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+    const tenantFilter = getTenantFilter(params.tenant_id);
     const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
-    // Online metrics
-    const onlineMetricsAggregation = await Order.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          created_at: { $gte: startDate, $lte: endDate }
+    // Parallelize all revenue metrics and trends
+    const [
+      onlineMetricsAggregation,
+      offlineMetrics,
+      byPaymentMethod,
+      onlineDailyTrend,
+      offlineDailyTrend
+    ] = await Promise.all([
+      // Online metrics
+      Order.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            created_at: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            grossRevenue: { $sum: "$total_amount" },
+            refunds: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, "$total_amount", 0] } },
+            netRevenue: { $sum: { $cond: [{ $in: ["$status", validStatuses] }, "$total_amount", 0] } },
+            avgOrderValue: { $avg: "$total_amount" }
+          }
         }
-      },
-      {
-        $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          grossRevenue: { $sum: "$total_amount" },
-          refunds: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, "$total_amount", 0] } },
-          netRevenue: { $sum: { $cond: [{ $in: ["$status", validStatuses] }, "$total_amount", 0] } },
-          avgOrderValue: { $avg: "$total_amount" }
+      ]),
+      // Offline sales summary
+      OfflineSale.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            soldAt: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+            avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
+          }
         }
-      }
-    ]);
-
-    // Offline sales summary
-    const offlineMetrics = await OfflineSale.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          soldAt: { $gte: startDate, $lte: endDate }
+      ]),
+      // Online by payment method
+      Order.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            status: { $in: validStatuses },
+            created_at: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: "$payment_method",
+            orderCount: { $sum: 1 },
+            totalRevenue: { $sum: "$total_amount" }
+          }
+        },
+        {
+          $project: {
+            method: "$_id",
+            orderCount: 1,
+            totalRevenue: 1,
+            _id: 0
+          }
         }
-      },
-      {
-        $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
-          avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
+      ]),
+      // Online Daily trend
+      Order.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            status: { $in: validStatuses },
+            created_at: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+            revenue: { $sum: "$total_amount" },
+            orders: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            date: "$_id",
+            onlineRevenue: "$revenue",
+            onlineOrders: "$orders",
+            offlineRevenue: { $literal: 0 },
+            offlineOrders: { $literal: 0 },
+            _id: 0
+          }
+        },
+        { $sort: { date: 1 } }
+      ]),
+      // Offline Daily trend
+      OfflineSale.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            soldAt: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
+            revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+            orders: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            date: "$_id",
+            onlineRevenue: { $literal: 0 },
+            onlineOrders: { $literal: 0 },
+            offlineRevenue: "$revenue",
+            offlineOrders: "$orders",
+            _id: 0
+          }
         }
-      }
+      ])
     ]);
 
     const onlineMetrics = onlineMetricsAggregation[0] || { totalOrders: 0, grossRevenue: 0, refunds: 0, netRevenue: 0, avgOrderValue: 0 };
     const offlineMetricsData = offlineMetrics[0] || { totalOrders: 0, totalRevenue: 0, avgOrderValue: 0 };
-
-    // Online by payment method
-    const byPaymentMethod = await Order.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          status: { $in: validStatuses },
-          created_at: { $gte: startDate, $lte: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: "$payment_method",
-          orderCount: { $sum: 1 },
-          totalRevenue: { $sum: "$total_amount" }
-        }
-      },
-      {
-        $project: {
-          method: "$_id",
-          orderCount: 1,
-          totalRevenue: 1,
-          _id: 0
-        }
-      }
-    ]);
 
     // Add offline to payment methods
     if (offlineMetricsData.totalOrders > 0) {
@@ -409,61 +484,6 @@ class AnalyticsService {
         totalRevenue: offlineMetricsData.totalRevenue
       });
     }
-
-    // Daily trend (online + offline combined)
-    const onlineDailyTrend = await Order.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          status: { $in: validStatuses },
-          created_at: { $gte: startDate, $lte: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
-          revenue: { $sum: "$total_amount" },
-          orders: { $sum: 1 }
-        }
-      },
-      {
-        $project: {
-          date: "$_id",
-          onlineRevenue: "$revenue",
-          onlineOrders: "$orders",
-          offlineRevenue: { $literal: 0 },
-          offlineOrders: { $literal: 0 },
-          _id: 0
-        }
-      },
-      { $sort: { date: 1 } }
-    ]);
-
-    const offlineDailyTrend = await OfflineSale.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          soldAt: { $gte: startDate, $lte: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
-          revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
-          orders: { $sum: 1 }
-        }
-      },
-      {
-        $project: {
-          date: "$_id",
-          onlineRevenue: { $literal: 0 },
-          onlineOrders: { $literal: 0 },
-          offlineRevenue: "$revenue",
-          offlineOrders: "$orders",
-          _id: 0
-        }
-      }
-    ]);
 
     // Merge daily trends
     const mergedDailyTrend = this._mergeDailyTrends(onlineDailyTrend, offlineDailyTrend);
@@ -544,8 +564,8 @@ class AnalyticsService {
    * Get dashboard overview (Online + Offline)
    */
   async getDashboardOverview(params = {}) {
-    const tenantId = params.tenant_id || 1;
-    const cacheKey = `analytics:dashboard:overview:${tenantId}`;
+    const tenantId = normalizeTenantId(params.tenant_id || 1);
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:dashboard:overview:${tenantId}`;
 
     if (redis) {
       try {
@@ -558,7 +578,7 @@ class AnalyticsService {
       }
     }
 
-    const tenantFilter = { tenant_id: parseInt(tenantId) };
+    const tenantFilter = buildTenantScope(tenantId);
     const validStatuses = ['placed', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
     const todayStart = new Date();
@@ -568,107 +588,54 @@ class AnalyticsService {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    // Today's online stats
-    const todayStats = await Order.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          status: { $in: validStatuses },
-          created_at: { $gte: todayStart }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          orders: { $sum: 1 },
-          revenue: { $sum: "$total_amount" }
-        }
-      }
+    const productBaseFilter = buildTenantScopedQuery(tenantId, { is_deleted: { $ne: true } });
+
+    // Parallelize all 7 database queries for maximum performance
+    const [
+      todayOnlineStats,
+      todayOfflineStats,
+      monthOnlineStats,
+      monthOfflineStats,
+      productCount,
+      customerCount,
+      lowStockCount
+    ] = await Promise.all([
+      // Today's online stats
+      Order.aggregate([
+        { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: todayStart } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: "$total_amount" } } }
+      ]),
+      // Today's offline stats
+      OfflineSale.aggregate([
+        { $match: { ...tenantFilter, soldAt: { $gte: todayStart } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } } } }
+      ]),
+      // Month's online stats
+      Order.aggregate([
+        { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: monthStart } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: "$total_amount" } } }
+      ]),
+      // Month's offline stats
+      OfflineSale.aggregate([
+        { $match: { ...tenantFilter, soldAt: { $gte: monthStart } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } } } }
+      ]),
+      // "Active products"
+      Product.countDocuments(andQuery(productBaseFilter, PUBLISHED_PRODUCT_SCOPE)),
+      // Active customers
+      User.countDocuments({ is_active: { $ne: false }, role: { $in: ['user', 'customer'] } }),
+      // Low stock items
+      Product.countDocuments(andQuery(
+        productBaseFilter,
+        PUBLISHED_PRODUCT_SCOPE,
+        { $or: [{ stock: { $lte: 5 } }, { "variants.stock": { $lte: 5 } }] }
+      ))
     ]);
 
-    // Today's offline stats
-    const todayOfflineStats = await OfflineSale.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          soldAt: { $gte: todayStart }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          orders: { $sum: 1 },
-          revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
-        }
-      }
-    ]);
-
-    // Month's online stats
-    const monthStats = await Order.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          status: { $in: validStatuses },
-          created_at: { $gte: monthStart }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          orders: { $sum: 1 },
-          revenue: { $sum: "$total_amount" }
-        }
-      }
-    ]);
-
-    // Month's offline stats
-    const monthOfflineStats = await OfflineSale.aggregate([
-      {
-        $match: {
-          ...tenantFilter,
-          soldAt: { $gte: monthStart }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          orders: { $sum: 1 },
-          revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
-        }
-      }
-    ]);
-
-    // Combine results
-    const todayOnline = todayStats[0] || { orders: 0, revenue: 0 };
+    const todayOnline = todayOnlineStats[0] || { orders: 0, revenue: 0 };
     const todayOffline = todayOfflineStats[0] || { orders: 0, revenue: 0 };
-    const monthOnline = monthStats[0] || { orders: 0, revenue: 0 };
+    const monthOnline = monthOnlineStats[0] || { orders: 0, revenue: 0 };
     const monthOffline = monthOfflineStats[0] || { orders: 0, revenue: 0 };
-
-    // Counts
-    const productBaseFilter = { ...tenantFilter, is_deleted: { $ne: true } };
-
-    // "Active products" means published and not deleted.
-    const productCount = await Product.countDocuments({
-      ...productBaseFilter,
-      status: { $in: ['published', 'publish'] }
-    });
-
-    const customerCount = await User.countDocuments({
-      is_active: { $ne: false },
-      role: { $in: ['user', 'customer'] }
-    }); // Users are currently global but roles distinguish
-
-    const lowStockCount = await Product.countDocuments({
-      ...productBaseFilter,
-      status: { $in: ['published', 'publish'] },
-      $or: [
-        { stock: { $lte: 5 } }, // Fallback to 5 if not specified
-        { "variants.stock": { $lte: 5 } }
-      ]
-      // Note: Ideally we would use the lowStockThreshold field, but MongoDB aggregate/count 
-      // with field-to-field comparison is more complex than a simple match. 
-      // For now, we use 5 as the standard baseline for the dashboard.
-    });
 
     const result = {
       today: {
@@ -789,18 +756,20 @@ class AnalyticsService {
    */
   async getOrderAnalytics(params = {}) {
     const tenantId = params.tenant_id || params.tenantId;
-    const filter = tenantId ? { tenant_id: parseInt(tenantId) } : {};
+    const filter = getTenantFilter(tenantId);
     const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
-    const totalOrders = await Order.countDocuments(filter);
-    const revenueResult = await Order.aggregate([
-      { $match: { ...filter, status: { $in: validStatuses } } },
-      { $group: { _id: null, total: { $sum: '$total_amount' } } }
-    ]);
-
-    const byStatus = await Order.aggregate([
-      { $match: filter },
-      { $group: { _id: '$status', count: { $sum: 1 } } }
+    // Parallelize count and revenue aggregation
+    const [totalOrders, revenueResult, byStatus] = await Promise.all([
+      Order.countDocuments(filter),
+      Order.aggregate([
+        { $match: { ...filter, status: { $in: validStatuses } } },
+        { $group: { _id: null, total: { $sum: '$total_amount' } } }
+      ]),
+      Order.aggregate([
+        { $match: filter },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ])
     ]);
 
     return {
@@ -841,7 +810,7 @@ class AnalyticsService {
     const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
     const endDate = end_date ? new Date(end_date) : now;
     
-    const tenantFilter = params.tenant_id ? { tenant_id: parseInt(params.tenant_id) } : {};
+    const tenantFilter = getTenantFilter(params.tenant_id);
     const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
     const customers = await Order.aggregate([

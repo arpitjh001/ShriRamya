@@ -40,6 +40,10 @@ const initRedis = () => {
         redis.on('error', (err) => {
             console.error('[Redis] Connection error:', err.message);
             redisAvailable = false;
+            // Immediate short-circuit for ioredis errors to prevent hangs
+            if (err.message.includes('ECONNRESET') || err.message.includes('ETIMEDOUT')) {
+                console.warn('[Redis] Fatal connection error detected, disabling Redis features');
+            }
         });
 
         redis.on('close', () => {

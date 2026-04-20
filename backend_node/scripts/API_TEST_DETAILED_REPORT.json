@@ -1,7 +1,7 @@
 {
   "summary": {
-    "total": 45,
-    "passed": 41,
+    "total": 50,
+    "passed": 46,
     "failed": 4,
     "skipped": 0
   },
@@ -12,8 +12,8 @@
       "failed": 0
     },
     "products": {
-      "total": 8,
-      "passed": 7,
+      "total": 12,
+      "passed": 11,
       "failed": 1
     },
     "categories": {
@@ -22,29 +22,22 @@
       "failed": 0
     },
     "cart": {
-      "total": 5,
-      "passed": 4,
-      "failed": 1
+      "total": 6,
+      "passed": 3,
+      "failed": 3
     },
     "blogs": {
       "total": 7,
-      "passed": 6,
-      "failed": 1
+      "passed": 7,
+      "failed": 0
     },
     "orders": {
       "total": 6,
-      "passed": 5,
-      "failed": 1
+      "passed": 6,
+      "failed": 0
     }
   },
-  "criticalIssues": [
-    {
-      "module": "blogs",
-      "test": "Search Blogs",
-      "error": "Can't find FULLTEXT index matching the column list",
-      "type": "SERVER_ERROR"
-    }
-  ],
+  "criticalIssues": [],
   "warnings": [],
   "testLog": [
     {
@@ -140,8 +133,7 @@
     {
       "module": "products",
       "name": "Create Product - Admin",
-      "status": "FAIL",
-      "error": "\"body.tenantId\" is not allowed"
+      "status": "PASS"
     },
     {
       "module": "products",
@@ -166,10 +158,31 @@
     },
     {
       "module": "products",
+      "name": "Get Single Product",
+      "status": "PASS"
+    },
+    {
+      "module": "products",
       "name": "Get Product - Invalid ID",
+      "status": "FAIL",
+      "error": "Product not found"
+    },
+    {
+      "module": "products",
+      "name": "Update Product - Admin",
+      "status": "PASS"
+    },
+    {
+      "module": "products",
+      "name": "Update Product - No Auth",
       "status": "PASS",
-      "statusCode": 400,
+      "statusCode": 401,
       "type": "NEGATIVE"
+    },
+    {
+      "module": "products",
+      "name": "Get Product Categories",
+      "status": "PASS"
     },
     {
       "module": "categories",
@@ -215,17 +228,21 @@
     },
     {
       "module": "cart",
+      "name": "Add To Cart",
+      "status": "FAIL",
+      "error": "Product not found"
+    },
+    {
+      "module": "cart",
       "name": "Add To Cart - Invalid Product",
-      "status": "PASS",
-      "statusCode": 400,
-      "type": "NEGATIVE"
+      "status": "FAIL",
+      "error": "Product not found"
     },
     {
       "module": "cart",
       "name": "Add To Cart - Zero Quantity",
-      "status": "PASS",
-      "statusCode": 400,
-      "type": "NEGATIVE"
+      "status": "FAIL",
+      "error": "Product not found"
     },
     {
       "module": "cart",
@@ -235,8 +252,7 @@
     {
       "module": "cart",
       "name": "Clear Cart",
-      "status": "FAIL",
-      "error": "Cart not found"
+      "status": "PASS"
     },
     {
       "module": "blogs",
@@ -273,8 +289,7 @@
     {
       "module": "blogs",
       "name": "Search Blogs",
-      "status": "FAIL",
-      "error": "Can't find FULLTEXT index matching the column list"
+      "status": "PASS"
     },
     {
       "module": "orders",
@@ -291,8 +306,9 @@
     {
       "module": "orders",
       "name": "Create Order - Empty Items",
-      "status": "FAIL",
-      "error": "Order items are required"
+      "status": "PASS",
+      "statusCode": 400,
+      "type": "NEGATIVE"
     },
     {
       "module": "orders",

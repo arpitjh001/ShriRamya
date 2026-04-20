@@ -21,6 +21,7 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
   });
 
   const pincode = order.shippingAddress?.pincode;
+  const orderAmount = Number(order.total || order.total_amount || order.grandTotal || order.amount || 1) || 1;
 
   useEffect(() => {
     if (pincode) {
@@ -35,7 +36,11 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
       const res = await adminOrderService.checkXpressbeesServiceability({
         destination_pincode: pincode,
         order_type: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
-        weight: formData.weight
+        order_amount: orderAmount,
+        weight: formData.weight,
+        length: formData.length,
+        width: formData.width,
+        height: formData.height
       });
       
       if (res.data) {

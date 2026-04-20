@@ -19,6 +19,15 @@ const toNumberOrNull = (value) => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
+const toXpressbeesWeightGrams = (value, fallback) => {
+  const numeric = toNumberOrNull(value);
+  if (!numeric || numeric <= 0) {
+    return fallback;
+  }
+
+  return numeric < 50 ? Math.round(numeric * 1000) : numeric;
+};
+
 const cleanObject = (value) => {
   if (!value || typeof value !== 'object') {
     return {};
@@ -180,6 +189,19 @@ class ShipmentService {
     }
 
     return '';
+  }
+
+  normalizeXpressbeesCourier(courier = {}) {
+    const id = courier.courier_id || courier.id || courier.service_id || '';
+    const name = courier.courier_name || courier.name || courier.service_name || 'Xpressbees';
+    const rate = courier.rate || courier.total_charges || courier.freight_charges || null;
+
+    return {
+      ...courier,
+      courier_id: id,
+      courier_name: name,
+      rate,
+    };
   }
 
   serializeShipment(shipmentDocument) {
@@ -345,9 +367,15 @@ class ShipmentService {
 
     const pickup = this.buildPickupPayload(shipmentData.pickup);
     const rto = this.buildRtoPayload(shipmentData.rto);
-    const dimensions = this.parseDimensions(shipmentData.shippingDimensions) || config.xpressbees.defaultPackage;
-    const weight = toNumberOrNull(shipmentData.shippingWeight) || config.xpressbees.defaultPackage.weight;
+    const dimensions = this.parseDimensions(shipmentData.shippingDimensions) || {
+      length: toNumberOrNull(shipmentData.length) || config.xpressbees.defaultPackage.length,
+      breadth: toNumberOrNull(shipmentData.breadth || shipmentData.width) || config.xpressbees.defaultPackage.breadth,
+      height: toNumberOrNull(shipmentData.height) || config.xpressbees.defaultPackage.height,
+    };
+    const weight = toXpressbeesWeightGrams(shipmentData.shippingWeight || shipmentData.weight, config.xpressbees.defaultPackage.weight);
     const paymentType = trimString(shipmentData.paymentType)
+      || trimString(shipmentData.payment_type)
+      || trimString(shipmentData.order_type).toLowerCase()
       || (trimString(order.paymentMethod || order.payment_method).toLowerCase() === 'cod' ? 'cod' : 'prepaid');
     const orderAmount = Number(order.total ?? order.total_amount ?? 0) || 0;
     const orderItems = Array.isArray(order.items) && order.items.length > 0
@@ -371,7 +399,7 @@ class ShipmentService {
       package_length: Number(dimensions.length || 10),
       package_breadth: Number(dimensions.breadth || 10),
       package_height: Number(dimensions.height || 10),
-      request_auto_pickup: shipmentData.requestAutoPickup === false ? 'no' : config.xpressbees.requestAutoPickup,
+      request_auto_pickup: shipmentData.requestAutoPickup === false || shipmentData.request_auto_pickup === false ? 'no' : config.xpressbees.requestAutoPickup,
       consignee: {
         name: address.name,
         address: address.address,
@@ -385,7 +413,7 @@ class ShipmentService {
       order_items: orderItems,
     };
 
-    const courierId = trimString(shipmentData.courierId || shipmentData.xpressbeesCourierId);
+    const courierId = trimString(shipmentData.courierId || shipmentData.courier_id || shipmentData.xpressbeesCourierId);
     if (courierId) {
       payload.courier_id = courierId;
     }
@@ -422,6 +450,7 @@ class ShipmentService {
     let history = [];
 
     if (provider === XPRESSBEES_PROVIDER) {
+      xpressbeesService.assertConfigured();
       const bookingPayload = this.buildXpressbeesPayload(order, shipmentData);
       const booking = await xpressbeesService.createShipment(bookingPayload);
 
@@ -908,18 +937,20 @@ class ShipmentService {
   }
 
   async listXpressbeesCouriers() {
-    return xpressbeesService.listCouriers();
+    const couriers = await xpressbeesService.listCouriers();
+    return couriers.map((courier) => this.normalizeXpressbeesCourier(courier));
   }
 
   async checkXpressbeesServiceability(payload = {}) {
-    const origin = trimString(payload.origin) || trimString(config.xpressbees.pickup.pincode);
-    let destination = trimString(payload.destination);
-    let paymentType = trimString(payload.paymentType || payload.payment_type).toLowerCase();
-    let orderAmount = Number(payload.orderAmount || payload.order_amount || 0) || 0;
-    let weight = toNumberOrNull(payload.weight) || config.xpressbees.defaultPackage.weight;
+    const origin = trimString(payload.origin || payload.origin_pincode || payload.pickup_pincode) || trimString(config.xpressbees.pickup.pincode);
+    let destination = trimString(payload.destination || payload.destination_pincode || payload.delivery_pincode);
+    let paymentType = trimString(payload.paymentType || payload.payment_type || payload.order_type).toLowerCase();
+    const orderAmountValue = toNumberOrNull(payload.orderAmount || payload.order_amount);
+    let orderAmount = orderAmountValue && orderAmountValue > 0 ? orderAmountValue : 1;
+    let weight = toXpressbeesWeightGrams(payload.weight, config.xpressbees.defaultPackage.weight);
     let dimensions = this.parseDimensions(payload.shippingDimensions) || {
       length: toNumberOrNull(payload.length) || config.xpressbees.defaultPackage.length,
-      breadth: toNumberOrNull(payload.breadth) || config.xpressbees.defaultPackage.breadth,
+      breadth: toNumberOrNull(payload.breadth || payload.width) || config.xpressbees.defaultPackage.breadth,
       height: toNumberOrNull(payload.height) || config.xpressbees.defaultPackage.height,
     };
 
@@ -937,7 +968,7 @@ class ShipmentService {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Origin and destination pincodes are required for Xpressbees serviceability');
     }
 
-    return xpressbeesService.checkServiceability({
+    const couriers = await xpressbeesService.checkServiceability({
       origin,
       destination,
       payment_type: paymentType || 'prepaid',
@@ -947,6 +978,14 @@ class ShipmentService {
       breadth: Number(dimensions.breadth || config.xpressbees.defaultPackage.breadth),
       height: Number(dimensions.height || config.xpressbees.defaultPackage.height),
     });
+
+    const normalizedCouriers = couriers.map((courier) => this.normalizeXpressbeesCourier(courier));
+
+    return {
+      serviceable: normalizedCouriers.length > 0,
+      available_couriers: normalizedCouriers,
+      couriers: normalizedCouriers,
+    };
   }
 }
 

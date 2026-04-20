@@ -1,12 +1,10 @@
-const app = require('../../backend_node/src/app');
-const { connectDB } = require('../../backend_node/src/db/mongodb');
-const { seedDatabase } = require('../../backend_node/src/db/seed');
-
 let readyPromise = null;
 
 const ensureReady = async () => {
   if (!readyPromise) {
     readyPromise = (async () => {
+      const { connectDB } = require('../../backend_node/src/db/mongodb');
+      const { seedDatabase } = require('../../backend_node/src/db/seed');
       await connectDB();
       if (process.env.SEED_DATABASE === 'true') {
         await seedDatabase();
@@ -23,6 +21,7 @@ const ensureReady = async () => {
 module.exports = async (req, res) => {
   try {
     await ensureReady();
+    const app = require('../../backend_node/src/app');
     return app(req, res);
   } catch (error) {
     console.error('Serverless API bootstrap failed:', error);

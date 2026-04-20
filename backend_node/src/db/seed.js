@@ -548,7 +548,7 @@ async function seedUsers(db) {
   const usersCollection = db.collection('users');
   const userCount = await usersCollection.countDocuments();
 
-  if (userCount < 2) {
+  {
     const bcrypt = require('bcryptjs');
     const adminHash = await bcrypt.hash('Admin@123', 8);
     const customerHash = await bcrypt.hash('Test@123', 8);
@@ -561,7 +561,7 @@ async function seedUsers(db) {
         phone: '+91-9876543210',
         role: 'admin',
         is_active: true,
-        shipping: { first_name: 'Admin', city: 'Jaipur', state: 'Rajasthan', postcode: '302001', country: 'India' },
+        tenant_id: DEFAULT_TENANT_ID,
         created_at: new Date(),
         updated_at: new Date(),
       },
@@ -593,9 +593,7 @@ async function seedUsers(db) {
       }
     }
 
-    console.log('Seeded users into MongoDB');
-  } else {
-    console.log(`Users already seeded: ${userCount} found`);
+    console.log('Seeded/Verified users in MongoDB');
   }
 }
 

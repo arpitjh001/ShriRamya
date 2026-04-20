@@ -9,6 +9,8 @@
     "DB_NAME": "shriramya",
     "NODE_ENV": "production",
     "MONGO_URL": "mongodb+srv://arpitjh001:DpyoKp8in9QBhoqW@shriramya-cluster.wwimqmj.mongodb.net/?appName=ShriRamya-Cluster",
+    "MONGODB_NON_SRV_HOSTS": "ac-e7drapw-shard-00-00.wwimqmj.mongodb.net:27017,ac-e7drapw-shard-00-01.wwimqmj.mongodb.net:27017,ac-e7drapw-shard-00-02.wwimqmj.mongodb.net:27017",
+    "MONGODB_NON_SRV_OPTIONS": "tls=true&authSource=admin&replicaSet=atlas-10ml3p-shard-0&retryWrites=true&w=majority&appName=ShriRamya-Cluster",
     "JWT_SECRET": "shriramya_production_secret_2026",
     "REDIS_URL": "rediss://default:gQAAAAAAAV3qAAIncDJmMjk0NTEyN2ZmYWM0ZThjOTRmN2UyNDM0NjRiMTQyOHAyODk1Nzg@on-turkey-89578.upstash.io:6379",
     "CORS_ORIGINS": "https://www.shriramya.com",

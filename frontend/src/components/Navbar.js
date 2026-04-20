@@ -17,7 +17,7 @@ import MobileNav from './navbar/MobileNav';
  * Main Navbar Component - Transformed into a premium, modular, and animated navigation.
  * Features: React.memo, Scroll-aware behavior, Glassmorphism, Framer Motion animations.
  */
-const Navbar = () => {
+const Navbar = ({ isHome = false }) => {
   const { user, isAdmin } = useAuth();
   const { cartCount } = useCart();
   const location = useLocation();
@@ -129,7 +129,9 @@ const Navbar = () => {
 
   return (
     <header className="relative z-[110]">
-      <PromoBar 
+      <PromoBar
+        messages={isHome ? ["Under Construction. Data Displayed is currently for testing purpose."] : undefined}
+        variant={isHome ? 'warning' : 'default'}
         showDashboard={user && isAdmin()}
         onDashboardClick={() => navigate('/admin/dashboard')}
       />

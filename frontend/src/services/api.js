@@ -22,6 +22,95 @@ const api = axios.create({
   timeout: 30000
 });
 
+let isRefreshingToken = false;
+let refreshQueue = [];
+
+const getStoredToken = (key) => {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem(key);
+};
+
+const setStoredToken = (key, value) => {
+  if (typeof localStorage === 'undefined' || !value) return;
+  localStorage.setItem(key, value);
+};
+
+const clearStoredTokens = () => {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('refresh_token');
+};
+
+const decodeJwtPayload = (token) => {
+  if (!token || typeof window === 'undefined' || typeof window.atob !== 'function') {
+    return null;
+  }
+
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - normalizedPayload.length % 4) % 4),
+      '='
+    );
+
+    return JSON.parse(window.atob(paddedPayload));
+  } catch (error) {
+    return null;
+  }
+};
+
+const resolveRefreshQueue = (error, token = null) => {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  refreshQueue = [];
+};
+
+const refreshAccessToken = async () => {
+  const refreshToken = getStoredToken('refresh_token');
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  const currentToken = getStoredToken('token');
+  const decodedToken = decodeJwtPayload(currentToken);
+  const userId = decodedToken?.user_id || decodedToken?.sub;
+  const refreshPayload = { refresh_token: refreshToken };
+
+  if (userId) {
+    refreshPayload.user_id = userId;
+  }
+
+  const response = await axios.post(`${API}/auth/refresh`, {
+    ...refreshPayload,
+  }, {
+    headers: { "Content-Type": "application/json" },
+    timeout: 30000,
+  });
+
+  const payload = response.data?.data || response.data || {};
+  const accessToken = payload.token || payload.access_token;
+  const nextRefreshToken = payload.refresh_token || payload.refreshToken;
+
+  if (!accessToken) {
+    throw new Error('Refresh response did not include an access token');
+  }
+
+  setStoredToken('token', accessToken);
+  if (nextRefreshToken) {
+    setStoredToken('refresh_token', nextRefreshToken);
+  }
+
+  return accessToken;
+};
+
 /* =========================
    Response Interceptor
 ========================= */
@@ -42,7 +131,38 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => Promise.reject(error)
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      if (isRefreshingToken) {
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshingToken = true;
+
+      try {
+        const token = await refreshAccessToken();
+        resolveRefreshQueue(null, token);
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        resolveRefreshQueue(refreshError, null);
+        clearStoredTokens();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshingToken = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
 );
 
 /* =========================
@@ -51,7 +171,7 @@ api.interceptors.response.use(
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -110,6 +230,21 @@ export const authAPI = {
 };
 
 /* =========================
+   Standardized Helpers
+========================= */
+
+const normalizePagination = (res, params = {}) => {
+  const paginationData = res.meta?.pagination || res.data?.pagination || {};
+  const page = paginationData.page || paginationData.current_page || res.data?.page || 1;
+  const limit = paginationData.limit || paginationData.per_page || res.data?.perPage || params.limit || params.per_page || 20;
+  const total = paginationData.total || res.data?.total || 0;
+  const totalPages = paginationData.totalPages || paginationData.total_pages || res.data?.totalPages || 
+                    Math.max(Math.ceil(total / limit), 1);
+
+  return { page, limit, total, totalPages };
+};
+
+/* =========================
    PRODUCTS APIs
 ========================= */
 
@@ -124,16 +259,8 @@ export const productsAPI = {
         ? res.data 
         : (res.data?.products || res.data?.items || []);
       
-      const pagination = res.meta?.pagination || res.data?.pagination || (
-        res.data?.total != null
-          ? {
-              current_page: res.data.page || 1,
-              total_pages: Math.max(Math.ceil((res.data.total || 0) / (res.data.perPage || params.per_page || 20)), 1),
-              total: res.data.total || 0,
-              per_page: res.data.perPage || params.per_page || 20,
-            }
-          : {}
-      );
+      const pagination = normalizePagination(res, params);
+
       const filters = res.meta?.filters || res.data?.filters || res.data?.filterMetadata || {};
 
       return {
@@ -142,13 +269,14 @@ export const productsAPI = {
         products: rawProducts,
         filters,
         pagination,
+        stats: res.meta?.stats || res.data?.stats || null,
         sortOptions: res.meta?.sortOptions || res.data?.sortOptions || [],
         appliedFilters: res.meta?.appliedFilters || res.data?.appliedFilters || {},
-        totalProducts: pagination.total || res.data?.total || rawProducts.length
+        totalProducts: pagination.total
       };
     } catch (err) {
       handleError(err);
-      return { data: [], products: [], filters: {}, pagination: {}, sortOptions: [], totalProducts: 0 };
+      return { data: [], products: [], filters: {}, pagination: {}, sortOptions: [], totalProducts: 0, stats: null };
     }
   },
 
@@ -200,7 +328,7 @@ export const productsAPI = {
       const res = await api.get(`/products/${id}/variants/matrix`);
       return res;
     } catch (err) {
-      handleError(err);
+      console.warn("Variant matrix unavailable:", err?.response?.data || err.message);
       return { data: { variants: [] } };
     }
   },
@@ -212,7 +340,7 @@ export const productsAPI = {
       });
       return res;
     } catch (err) {
-      handleError(err);
+      console.warn("Variant stock unavailable:", err?.response?.data || err.message);
       return { data: null };
     }
   },
@@ -224,7 +352,7 @@ export const productsAPI = {
       });
       return res;
     } catch (err) {
-      handleError(err);
+      console.warn("Variant validation unavailable:", err?.response?.data || err.message);
       return { data: { valid: false } };
     }
   },
@@ -251,7 +379,7 @@ export const productsAPI = {
 
       return { ...res, data: safeData };
     } catch (err) {
-      handleError(err);
+      console.warn("Recommendations unavailable:", err?.response?.data || err.message);
       return { data: [] };
     }
   }
@@ -430,17 +558,17 @@ export const ordersAPI = {
 
   getAll: async (params = {}) => {
     try {
-      const res = await api.get("/admin/orders", { params });
-      // The interceptor already extracts meta and returns { data, meta }
-      // We want to return { orders, pagination, meta } for compatibility
-      const orders = res.data?.orders || res.orders || res.data || [];
-      const pagination = res.meta?.pagination || res.pagination || {};
+      const res = await api.get("/orders/admin/all", { params });
+      const rawOrders = res.data?.orders || res.orders || res.data || [];
+      const orders = Array.isArray(rawOrders) ? rawOrders : [];
+      const pagination = normalizePagination(res, params);
       
       return {
         ...res,
         orders,
         pagination,
-        data: res.data // Original data
+        stats: res.data?.stats || res.meta?.stats || {},
+        data: res.data
       };
     } catch (err) {
       handleError(err);
@@ -450,7 +578,7 @@ export const ordersAPI = {
 
   updateStatus: async (orderId, data) => {
     try {
-      return await api.patch(`/admin/orders/${orderId}/status`, data);
+      return await api.patch(`/orders/admin/${orderId}/status`, data);
     } catch (err) {
       handleError(err);
     }
@@ -526,6 +654,10 @@ export const ordersAPI = {
     }
   }
 };
+
+/* =========================
+   INSIDER APIs
+========================= */
 
 export const insiderAPI = {
   subscribe: async (data) => {
@@ -696,13 +828,25 @@ export const couponsAPI = {
   getAll: async (params = {}) => {
     try {
       const res = await api.get("/coupons", { params });
+      const rawCoupons = res.data?.coupons || res.coupons || res.data || [];
+      const coupons = Array.isArray(rawCoupons) ? rawCoupons : [];
+      const pagination = normalizePagination(res, params);
+      const stats = res.meta?.stats || res.data?.stats || null;
+
       return {
-        coupons: res.data || [],
-        pagination: res.meta?.pagination || {}
+        ...res,
+        coupons,
+        pagination,
+        stats,
+        data: {
+          coupons,
+          stats,
+          pagination,
+        }
       };
     } catch (err) {
       handleError(err);
-      return { coupons: [], pagination: {} };
+      return { coupons: [], pagination: {}, stats: null, data: { coupons: [], stats: null, pagination: {} } };
     }
   },
 
@@ -776,9 +920,11 @@ export const inventoryAPI = {
   getStockLevels: async (params = {}) => {
     try {
       const res = await api.get("/admin/inventory/stock-levels", { params });
+      const rawItems = res.data?.items || res.items || res.data || [];
       return {
-        items: res.data || [],
-        pagination: res.meta?.pagination || {}
+        items: Array.isArray(rawItems) ? rawItems : [],
+        pagination: normalizePagination(res, params),
+        stats: res.meta?.stats || res.data?.stats || null
       };
     } catch (err) {
       handleError(err);

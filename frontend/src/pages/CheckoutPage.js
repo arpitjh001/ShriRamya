@@ -31,7 +31,7 @@ const CheckoutPage = () => {
 
   // Use cart item data directly — items already include name, image, price, attributes
   const subtotal = calculateSubtotal();
-  const shipping = subtotal > 999 ? 0 : 99;
+  const shipping = subtotal > 1000 ? 0 : 100;
   const total = Math.max(0, subtotal - discountAmount + shipping);
 
   const handleRemoveCoupon = async () => {

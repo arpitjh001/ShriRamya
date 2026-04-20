@@ -586,14 +586,14 @@ const AdminDashboardPage = () => {
     // Access Gate: checking
     if (adminCheck === 'checking') {
         return (
-            <div style={{
-                minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
-                color: '#e2e8f0',
-            }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: 16 }}>🔒</div>
-                    <p style={{ color: '#94a3b8' }}>Checking admin access...</p>
+            <div className="min-h-screen flex items-center justify-center bg-slate-950 font-body relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(153,27,27,0.05)_0%,transparent_100%)]" />
+                <div className="text-center relative z-10">
+                    <div className="animate-pulse mb-6 relative">
+                        <div className="h-16 w-16 bg-royal-maroon/20 rounded-full blur-xl absolute -inset-2" />
+                        <span className="text-4xl">💎</span>
+                    </div>
+                    <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-xs">Validating Credentials</p>
                 </div>
             </div>
         );
@@ -602,134 +602,140 @@ const AdminDashboardPage = () => {
     // Access Gate: login required
     if (adminCheck === 'login') {
         return (
-            <div style={{
-                minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
-                color: '#e2e8f0', fontFamily: "'Inter', sans-serif",
-            }}>
-                <div style={{
-                    background: 'rgba(30,27,75,0.95)', border: '1px solid rgba(148,163,184,0.2)',
-                    borderRadius: 20, padding: '3rem', width: 400, textAlign: 'center',
-                }}>
-                    <div style={{ fontSize: '3rem', marginBottom: 16 }}>🔐</div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: 0, background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Product Management</h1>
-                    <p style={{ color: '#94a3b8', marginBottom: '2rem', fontSize: '0.9rem' }}>
-                        Please log in with an admin account to access the Product Dashboard.
-                    </p>
-                    <form onSubmit={handleAdminLogin}>
-                        <div style={{ marginBottom: 16 }}>
-                            <input type="email" placeholder="Admin email" required
+            <div className="min-h-screen flex items-center justify-center bg-slate-950 font-body p-6 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(153,27,27,0.08)_0%,transparent_50%)]" />
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-10 w-full max-w-md text-center shadow-luxury relative z-10 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-royal-maroon/50 to-transparent" />
+                    
+                    <div className="mb-8">
+                        <div className="h-20 w-20 bg-royal-maroon/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-royal-maroon/20">
+                            <span className="text-3xl">🔐</span>
+                        </div>
+                        <h1 className="text-3xl font-heading font-bold text-white mb-2 tracking-tight">Vault <span className="text-royal-maroon">Access</span></h1>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Administrative Authentication</p>
+                    </div>
+
+                    <form onSubmit={handleAdminLogin} className="space-y-4">
+                        <div className="relative">
+                            <input 
+                                type="email" 
+                                placeholder="Administrative Identifier" 
+                                required
                                 value={loginForm.email}
                                 onChange={e => setLoginForm({ ...loginForm, email: e.target.value })}
-                                style={{
-                                    width: '100%', padding: '0.75rem 1rem', borderRadius: 10,
-                                    border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)',
-                                    color: '#e2e8f0', fontSize: '0.95rem', boxSizing: 'border-box',
-                                }} />
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:ring-2 focus:ring-royal-maroon/20 outline-none transition-all placeholder:text-slate-600 font-medium" 
+                            />
                         </div>
-                        <div style={{ marginBottom: 16 }}>
-                            <input type="password" placeholder="Password" required
+                        <div className="relative">
+                            <input 
+                                type="password" 
+                                placeholder="Personal Passkey" 
+                                required
                                 value={loginForm.password}
                                 onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                                style={{
-                                    width: '100%', padding: '0.75rem 1rem', borderRadius: 10,
-                                    border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.05)',
-                                    color: '#e2e8f0', fontSize: '0.95rem', boxSizing: 'border-box',
-                                }} />
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:ring-2 focus:ring-royal-maroon/20 outline-none transition-all placeholder:text-slate-600 font-medium" 
+                            />
                         </div>
+                        
                         {loginError && (
-                            <p style={{ color: '#f87171', fontSize: '0.85rem', marginBottom: 12 }}>{loginError}</p>
+                            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold uppercase tracking-tighter">
+                                {loginError}
+                            </div>
                         )}
-                        <button type="submit" disabled={loginLoading} style={{
-                            width: '100%', padding: '0.75rem', borderRadius: 10, border: 'none',
-                            background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff',
-                            fontWeight: 600, fontSize: '1rem', cursor: 'pointer',
-                        }}>{loginLoading ? 'Signing in...' : 'Sign In as Admin'}</button>
+
+                        <button 
+                            type="submit" 
+                            disabled={loginLoading} 
+                            className="w-full py-4 bg-royal-maroon hover:bg-royal-maroon/90 text-white font-bold uppercase tracking-[0.2em] text-xs rounded-2xl shadow-luxury transition-all disabled:opacity-50"
+                        >
+                            {loginLoading ? 'Decrypting Access...' : 'Authenticate Access'}
+                        </button>
                     </form>
-                    <button onClick={() => navigate('/')} style={{
-                        marginTop: 16, background: 'none', border: 'none', color: '#64748b',
-                        cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline',
-                    }}>← Back to Store</button>
+
+                    <button 
+                        onClick={() => navigate('/')} 
+                        className="mt-8 text-slate-500 hover:text-white text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors mx-auto"
+                    >
+                        <span>← Return to Gallery</span>
+                    </button>
                 </div>
             </div>
         );
     }
 
-    // Access Gate: denied (logged in but not admin)
+    // Access Gate: denied
     if (adminCheck === 'denied') {
         return (
-            <div style={{
-                minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
-                color: '#e2e8f0', fontFamily: "'Inter', sans-serif",
-            }}>
-                <div style={{
-                    background: 'rgba(30,27,75,0.95)', border: '1px solid rgba(239,68,68,0.3)',
-                    borderRadius: 20, padding: '3rem', width: 420, textAlign: 'center',
-                }}>
-                    <div style={{ fontSize: '3rem', marginBottom: 16 }}>🚫</div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: '#f87171' }}>
-                        Access Denied
-                    </h1>
-                    <p style={{ color: '#94a3b8', marginBottom: 8, fontSize: '0.9rem' }}>
-                        Your account <strong style={{ color: '#e2e8f0' }}>{user?.email}</strong> does not have admin privileges.
+            <div className="min-h-screen flex items-center justify-center bg-slate-950 font-body p-6 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(244,63,94,0.05)_0%,transparent_50%)]" />
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-rose-500/20 rounded-[2.5rem] p-10 w-full max-w-md text-center shadow-luxury relative z-10 overflow-hidden">
+                    <div className="mb-8">
+                        <div className="h-20 w-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
+                            <span className="text-3xl">🚫</span>
+                        </div>
+                        <h1 className="text-3xl font-heading font-bold text-rose-500 mb-2 tracking-tight">Access <span className="text-white">Prohibited</span></h1>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest italic">{user?.email}</p>
+                    </div>
+
+                    <p className="text-slate-400 text-sm leading-relaxed mb-10 px-4">
+                        This terminal is restricted to authorized curators only. Your credentials do not possess the necessary clearances.
                     </p>
-                    <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '0.8rem' }}>
-                        Contact the site administrator to request admin access.
-                    </p>
-                    <button onClick={() => navigate('/')} style={{
-                        padding: '0.75rem 2rem', borderRadius: 10, border: 'none',
-                        background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff',
-                        fontWeight: 600, cursor: 'pointer',
-                    }}>← Back to Store</button>
+
+                    <button 
+                        onClick={() => navigate('/')} 
+                        className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold uppercase tracking-[0.2em] text-xs rounded-2xl border border-white/10 transition-all"
+                    >
+                        ← Return to Gallery
+                    </button>
                 </div>
             </div>
         );
     }
+
     return (
-        <div style={{
-            minHeight: '100vh', padding: '1rem',
-            background: 'linear-gradient(135deg, #0f0c29 0%, #1a1035 50%, #24243e 100%)',
-            color: '#e2e8f0', fontFamily: "'Inter', sans-serif",
-        }}>
-            <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-                {/* Tabs */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', borderBottom: '1px solid rgba(148,163,184,0.2)', paddingBottom: 8 }}>
-                    {TABS.map(tab => (
-                        <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                            padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', cursor: 'pointer',
-                            fontWeight: 600, fontSize: '0.9rem', transition: 'all 0.2s',
-                            background: activeTab === tab ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.05)',
-                            color: activeTab === tab ? '#fff' : '#94a3b8',
-                        }}>{tab}</button>
-                    ))}
+        <div className="admin-dashboard-stage min-h-screen bg-background text-foreground font-body selection:bg-royal-maroon/10">
+            <div className="max-w-[1600px] mx-auto p-4 md:p-8">
+                {/* Refined Navigation Grid */}
+                <div className="mb-10 flex overflow-x-auto pb-6 scrollbar-hide">
+                    <div className="admin-dashboard-nav flex p-1.5 rounded-[1.5rem]">
+                        {TABS.map(tab => (
+                            <button 
+                                key={tab} 
+                                onClick={() => setActiveTab(tab)} 
+                                className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 relative ${
+                                    activeTab === tab 
+                                        ? 'bg-royal-maroon text-white shadow-luxury scale-105 z-10' 
+                                        : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                            >
+                                {tab}
+                                {activeTab === tab && (
+                                    <motion.div 
+                                        layoutId="tab-glow" 
+                                        className="absolute inset-0 bg-white/5 rounded-xl -z-10" 
+                                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                    />
+                                )}
+                            </button>
+                        ))}
+                    </div>
                     {loading && (
-                        <div style={{
-                            marginLeft: 'auto', padding: '0.5rem 1rem', borderRadius: 8,
-                            background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', fontSize: '0.875rem'
-                        }}>
-                            Loading...
+                        <div className="ml-auto flex items-center gap-3 px-6 animate-pulse">
+                            <div className="h-2 w-2 rounded-full bg-royal-maroon animate-ping" />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500">Synchronizing...</span>
                         </div>
                     )}
                 </div>
 
-                {/* ===== NATIVE PRODUCTS TAB (Phase 9) ===== */}
-                {activeTab === 'Native Products' && <AdminProductsPage />}
-
-                {/* ===== INVENTORY TAB (Phase 9) ===== */}
-                {activeTab === 'Inventory' && <AdminInventoryPage />}
-
-                {/* ===== COUPONS TAB (Phase 9) ===== */}
-                {activeTab === 'Coupons' && <AdminCouponsPage />}
-
-                {/* ===== ORDERS TAB (Phase 9) ===== */}
-                {activeTab === 'Orders' && <AdminOrdersPage />}
-
-                {/* ===== JOURNAL TAB (Phase 10) ===== */}
-                {activeTab === 'Journal' && <AdminBlogsPage />}
-
-                {/* ===== ANALYTICS TAB (Phase 9) ===== */}
-                {activeTab === 'Analytics' && <AdminAnalyticsPage />}
+                {/* Sub-Dashboard Rendering */}
+                <div className="animate-slide-up duration-500">
+                    {activeTab === 'Native Products' && <AdminProductsPage />}
+                    {activeTab === 'Inventory' && <AdminInventoryPage />}
+                    {activeTab === 'Coupons' && <AdminCouponsPage />}
+                    {activeTab === 'Orders' && <AdminOrdersPage />}
+                    {activeTab === 'Journal' && <AdminBlogsPage />}
+                    {activeTab === 'Analytics' && <AdminAnalyticsPage />}
+                </div>
             </div>
         </div>
     );

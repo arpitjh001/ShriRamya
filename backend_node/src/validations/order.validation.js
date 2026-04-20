@@ -76,7 +76,8 @@ const updateOrderStatus = {
     paymentStatus: Joi.string().valid('pending', 'paid', 'failed', 'refunded').optional(),
     fulfillmentStatus: Joi.string().valid('unfulfilled', 'processing', 'shipped', 'delivered').optional(),
     reason: Joi.string().max(500).optional(),
-  }).or('status', 'paymentStatus', 'fulfillmentStatus'),
+    internalNotes: Joi.string().max(2000).allow('').optional(),
+  }).or('status', 'paymentStatus', 'fulfillmentStatus', 'internalNotes'),
 };
 
 const createShipment = {

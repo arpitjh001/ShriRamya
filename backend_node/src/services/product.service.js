@@ -13,6 +13,18 @@ class ProductService {
     return String(value);
   }
 
+  normalizeProductStatus(status) {
+    if (status == null || status === '') return status;
+
+    const normalizedStatus = String(status).toLowerCase();
+    if (normalizedStatus === 'publish') return 'published';
+    if (['draft', 'published', 'archived'].includes(normalizedStatus)) {
+      return normalizedStatus;
+    }
+
+    return status;
+  }
+
   toIsoDateOrNull(value) {
     if (!value) return null;
     const date = value instanceof Date ? value : new Date(value);
@@ -216,6 +228,10 @@ class ProductService {
       normalizedProductData.categoryId = normalizedProductData.categoryId
         ? this.normalizeIdentifier(normalizedProductData.categoryId)
         : null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'status')) {
+      normalizedProductData.status = this.normalizeProductStatus(normalizedProductData.status);
     }
 
     // Normalize lowStockThreshold

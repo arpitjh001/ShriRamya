@@ -2,6 +2,7 @@ const Product = require('../models/product.model');
 const OfflineSale = require('../models/offlineSale.model');
 const redis = require('../config/integrations/redis');
 const { inventoryAuditService } = require('./inventory-audit.service');
+const { buildTenantScopedQuery } = require('../utils/tenantScope');
 
 class InventoryService {
   async clearProductListCache() {
@@ -105,10 +106,9 @@ class InventoryService {
   }
 
   async getAllInventoryItems(tenantId = 1) {
-    const products = await Product.find({
-      tenant_id: Number(tenantId) || 1,
+    const products = await Product.find(buildTenantScopedQuery(tenantId, {
       is_deleted: { $ne: true },
-    }).populate('categories').lean();
+    })).populate('categories').lean();
     const items = [];
 
     products.forEach((product) => {
@@ -142,10 +142,9 @@ class InventoryService {
       const search = (query.search || query.q || '').toLowerCase().trim();
       const statusFilter = query.status || '';
 
-      const products = await Product.find({
-        tenant_id: Number(tenantId) || 1,
+      const products = await Product.find(buildTenantScopedQuery(tenantId, {
         is_deleted: { $ne: true },
-      }).populate('categories').lean();
+      })).populate('categories').lean();
 
       let allItems = [];
       products.forEach((product) => {
@@ -175,7 +174,10 @@ class InventoryService {
       }
 
       const total = allItems.length;
-      const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.max(Math.ceil(total / limit), 1);
+      const stockAlerts = allItems
+        .filter((item) => item.isLowStock || item.isOutOfStock)
+        .sort((left, right) => left.stock - right.stock);
       
       // Calculate Stats based on all filtered items
       const stats = {
@@ -184,6 +186,7 @@ class InventoryService {
         lowStock: allItems.filter(item => item.isLowStock).length,
         outOfStock: allItems.filter(item => item.stock === 0).length,
         totalValue: allItems.reduce((sum, item) => sum + ((item.price || 0) * (item.stock || 0)), 0),
+        stockAlerts,
       };
 
       const startIndex = (page - 1) * limit;
@@ -193,9 +196,12 @@ class InventoryService {
         items: paginatedItems,
         stats,
         pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
           current_page: page,
           total_pages: totalPages,
-          total: total,
           per_page: limit,
           hasNext: page < totalPages,
           hasPrev: page > 1
@@ -210,7 +216,7 @@ class InventoryService {
   async updateStockLevel(id, stockLevel, lowStockThreshold = 5, tenantId = 1) {
     try {
       let product = await Product.findOneAndUpdate(
-        { 'variants._id': id, tenant_id: Number(tenantId) || 1 },
+        buildTenantScopedQuery(tenantId, { 'variants._id': id }),
         {
           $set: {
             'variants.$.stock': stockLevel,
@@ -226,7 +232,7 @@ class InventoryService {
       }
 
       product = await Product.findOneAndUpdate(
-        { _id: id, tenant_id: Number(tenantId) || 1 },
+        buildTenantScopedQuery(tenantId, { _id: id }),
         { $set: { stock: stockLevel } },
         { new: true }
       ).populate('categories').lean();
@@ -267,11 +273,10 @@ class InventoryService {
       throw error;
     }
 
-    const product = await Product.findOne({
-      tenant_id: Number(tenantId) || 1,
+    const product = await Product.findOne(buildTenantScopedQuery(tenantId, {
       'variants._id': variantId,
       is_deleted: { $ne: true },
-    });
+    }));
 
     if (!product) {
       const error = new Error('Variant not found');

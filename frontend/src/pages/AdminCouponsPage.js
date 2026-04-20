@@ -20,7 +20,7 @@ const AdminCouponsPage = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 15,
+    limit: 20,
     total: 0,
     totalPages: 1
   });
@@ -68,17 +68,17 @@ const AdminCouponsPage = () => {
       const params = {
         page,
         limit: pagination.limit,
+        per_page: pagination.limit,
         search: searchTerm,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         type: typeFilter !== 'all' ? typeFilter : undefined
       };
       const response = await couponsAPI.getAll(params);
-      
-      const data = response.data || response;
-      setCoupons(data.coupons || []);
-      setStats(data.stats || null);
-      
-      const paginationData = data.meta?.pagination || data.pagination || {};
+
+      setCoupons(response.coupons || []);
+      setStats(response.stats || null);
+
+      const paginationData = response.pagination || {};
       setPagination(prev => ({
         ...prev,
         ...paginationData,
@@ -164,7 +164,7 @@ const AdminCouponsPage = () => {
     };
 
     try {
-      await couponsAPI.update(selectedCoupon.id, submitData);
+      await couponsAPI.update(selectedCoupon.id || selectedCoupon._id, submitData);
       toast.success('Coupon updated successfully');
       setShowEditDialog(false);
       setSelectedCoupon(null);
@@ -181,7 +181,7 @@ const AdminCouponsPage = () => {
   const handleDelete = async () => {
     setSaving(true);
     try {
-      await couponsAPI.delete(selectedCoupon.id);
+      await couponsAPI.delete(selectedCoupon.id || selectedCoupon._id);
       toast.success('Coupon deleted successfully');
       setShowDeleteDialog(false);
       setSelectedCoupon(null);
@@ -213,13 +213,7 @@ const AdminCouponsPage = () => {
     });
     setShowEditDialog(true);
   };
-
-  const openDeleteDialog = (coupon) => {
-    setSelectedCoupon(coupon);
-    setShowDeleteDialog(true);
-  };
-
-  const getTypeBadge = (type, value) => {
+  const getTypeBadge = (type, value) => {
     const badges = {
       percentage: `${value}% OFF`,
       flat: `₹${value} OFF`,
@@ -238,11 +232,16 @@ const AdminCouponsPage = () => {
     return variants[status] || 'secondary';
   };
 
+  const openDeleteDialog = (coupon) => {
+    setSelectedCoupon(coupon);
+    setShowDeleteDialog(true);
+  };
+
   // Data is now filtered server-side
   const displayedCoupons = coupons;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="admin-dashboard-shell min-h-screen pt-24 pb-12 font-body px-6">
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard 
@@ -279,476 +278,534 @@ const AdminCouponsPage = () => {
         />
       </div>
 
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Tag className="w-5 h-5" />
-                Coupons
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Manage discount codes and promotional offers</p>
-            </div>
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create Coupon
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Coupon</DialogTitle>
-                  <DialogDescription>
-                    Create a new discount coupon for your store
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreate} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="code">Coupon Code *</Label>
-                      <Input
-                        id="code"
-                        value={formData.code}
-                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                        placeholder="WELCOME20"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="type">Discount Type *</Label>
-                      <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percentage">Percentage</SelectItem>
-                          <SelectItem value="flat">Flat Amount</SelectItem>
-                          <SelectItem value="free_shipping">Free Shipping</SelectItem>
-                          <SelectItem value="buy_x_get_y">Buy X Get Y</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+      {/* Header & Controls Card */}
+      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-luxury-sm border-border space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-heading font-bold text-foreground">Coupon Management</h1>
+            <p className="text-muted-foreground">Manage discount codes and promotional offers</p>
+          </div>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-royal-maroon text-white hover:bg-royal-maroon/90 shadow-lg px-6">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Coupon
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-xl bg-white border-border text-foreground rounded-3xl overflow-hidden shadow-luxury scrollbar-hide">
+              <DialogHeader className="border-b border-border pb-6">
+                <DialogTitle className="text-2xl font-heading font-bold text-foreground tracking-tight">
+                  Establish <span className="text-royal-maroon">Vault</span> Token
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground italic font-medium">
+                  Inscribe a new promotional privilege into the archives.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="space-y-6 py-6 max-h-[70vh] overflow-y-auto px-1 custom-scrollbar">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="code" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Archive Code *</Label>
+                    <Input
+                      id="code"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                      placeholder="e.g., HERITAGE20"
+                      className="bg-slate-50 border-border text-foreground placeholder:text-slate-400 focus:ring-royal-maroon/20 focus:border-royal-maroon/50 h-11 uppercase font-mono"
+                      required
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Privilege Type *</Label>
+                    <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                      <SelectTrigger className="bg-slate-50 border-border text-foreground focus:ring-royal-maroon/20 h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-border text-foreground">
+                        <SelectItem value="percentage" className="focus:bg-slate-100 focus:text-foreground text-xs">Percentage (%)</SelectItem>
+                        <SelectItem value="flat" className="focus:bg-slate-100 focus:text-foreground text-xs">Flat Valuation (₹)</SelectItem>
+                        <SelectItem value="free_shipping" className="focus:bg-slate-100 focus:text-foreground text-xs">Free Logistics</SelectItem>
+                        <SelectItem value="buy_x_get_y" className="focus:bg-slate-100 focus:text-foreground text-xs">BOGO / Volume</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="value">Discount Value *</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="value" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Privilege Valuation *</Label>
+                    <Input
+                      id="value"
+                      type="number"
+                      step="0.01"
+                      value={formData.value}
+                      onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                      placeholder="e.g., 20"
+                      className="bg-slate-50 border-border text-foreground placeholder:text-slate-400 focus:ring-royal-maroon/20 h-11 font-mono"
+                      required={formData.type !== 'free_shipping'}
+                    />
+                  </div>
+                  {formData.type === 'percentage' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="max_discount" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Ceiling Valuation</Label>
                       <Input
-                        id="value"
+                        id="max_discount"
                         type="number"
                         step="0.01"
-                        value={formData.value}
-                        onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                        placeholder="20"
-                        required={formData.type !== 'free_shipping'}
+                        value={formData.max_discount}
+                        onChange={(e) => setFormData({ ...formData, max_discount: e.target.value })}
+                        placeholder="e.g., 500"
+                        className="bg-slate-50 border-border text-foreground placeholder:text-slate-400 focus:ring-royal-maroon/20 h-11 font-mono"
                       />
                     </div>
-                    {formData.type === 'percentage' && (
-                      <div>
-                        <Label htmlFor="max_discount">Max Discount Amount</Label>
-                        <Input
-                          id="max_discount"
-                          type="number"
-                          step="0.01"
-                          value={formData.max_discount}
-                          onChange={(e) => setFormData({ ...formData, max_discount: e.target.value })}
-                          placeholder="200"
-                        />
-                      </div>
-                    )}
-                  </div>
+                  )}
+                </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="min_cart_value">Minimum Cart Value</Label>
-                      <Input
-                        id="min_cart_value"
-                        type="number"
-                        step="0.01"
-                        value={formData.min_cart_value}
-                        onChange={(e) => setFormData({ ...formData, min_cart_value: e.target.value })}
-                        placeholder="500"
-                      />
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 space-y-6">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
                     </div>
-                    <div>
-                      <Label htmlFor="usage_limit">Usage Limit</Label>
-                      <Input
-                        id="usage_limit"
-                        type="number"
-                        value={formData.usage_limit}
-                        onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value })}
-                        placeholder="100"
-                      />
-                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">Temporal Constraints</span>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="starts_at">Valid From</Label>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="starts_at" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Valid From</Label>
                       <Input
                         id="starts_at"
                         type="datetime-local"
                         value={formData.starts_at}
                         onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
+                        className="bg-white border-border text-foreground focus:ring-royal-maroon/20 h-10 text-xs custom-calendar-icon"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="expires_at">Expires At</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="expires_at" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Expires At</Label>
                       <Input
                         id="expires_at"
                         type="datetime-local"
                         value={formData.expires_at}
                         onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+                        className="bg-white border-border text-foreground focus:ring-royal-maroon/20 h-10 text-xs custom-calendar-icon"
                       />
                     </div>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="status">Status</Label>
-                      <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {formData.type === 'buy_x_get_y' && (
-                      <>
-                        <div>
-                          <Label htmlFor="buy_x_qty">Buy Quantity</Label>
-                          <Input
-                            id="buy_x_qty"
-                            type="number"
-                            value={formData.buy_x_qty}
-                            onChange={(e) => setFormData({ ...formData, buy_x_qty: e.target.value })}
-                            placeholder="2"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="get_y_qty">Get Quantity</Label>
-                          <Input
-                            id="get_y_qty"
-                            type="number"
-                            value={formData.get_y_qty}
-                            onChange={(e) => setFormData({ ...formData, get_y_qty: e.target.value })}
-                            placeholder="1"
-                          />
-                        </div>
-                      </>
-                    )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="min_cart_value" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Min acquisition Valuation</Label>
+                    <Input
+                      id="min_cart_value"
+                      type="number"
+                      step="0.01"
+                      value={formData.min_cart_value}
+                      onChange={(e) => setFormData({ ...formData, min_cart_value: e.target.value })}
+                      placeholder="e.g., 1000"
+                      className="bg-slate-50 border-border text-foreground h-11 font-mono"
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="usage_limit" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Reservation Limit</Label>
+                    <Input
+                      id="usage_limit"
+                      type="number"
+                      value={formData.usage_limit}
+                      onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value })}
+                      placeholder="e.g., 50"
+                      className="bg-slate-50 border-border text-foreground h-11 font-mono"
+                    />
+                  </div>
+                </div>
 
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={saving}>
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Coupon'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Filters */}
-          <div className="flex gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by code..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="percentage">Percentage</SelectItem>
-                <SelectItem value="flat">Flat</SelectItem>
-                <SelectItem value="free_shipping">Free Shipping</SelectItem>
-                <SelectItem value="buy_x_get_y">BOGO</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="status" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Initial Status</Label>
+                    <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                      <SelectTrigger className="bg-slate-50 border-border text-foreground h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-border text-foreground">
+                        <SelectItem value="active" className="focus:bg-slate-100 focus:text-foreground text-xs">Active (Public)</SelectItem>
+                        <SelectItem value="inactive" className="focus:bg-slate-100 focus:text-foreground text-xs">Inactive (Hidden)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.type === 'buy_x_get_y' && (
+                    <div className="col-span-2 grid grid-cols-2 gap-6 p-4 rounded-xl bg-amber-50 border border-amber-100">
+                      <div className="space-y-2">
+                        <Label htmlFor="buy_x_qty" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Buy Quantity</Label>
+                        <Input
+                          id="buy_x_qty"
+                          type="number"
+                          value={formData.buy_x_qty}
+                          onChange={(e) => setFormData({ ...formData, buy_x_qty: e.target.value })}
+                          className="bg-white border-border text-foreground h-10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="get_y_qty" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Privilege Quantity</Label>
+                        <Input
+                          id="get_y_qty"
+                          type="number"
+                          value={formData.get_y_qty}
+                          onChange={(e) => setFormData({ ...formData, get_y_qty: e.target.value })}
+                          className="bg-white border-border text-foreground h-10"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-          {/* Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
+                <DialogFooter className="border-t border-border pt-6">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => setShowCreateDialog(false)} 
+                    className="text-muted-foreground hover:text-foreground hover:bg-slate-100 px-6 font-bold uppercase tracking-widest text-[10px]"
+                  >
+                    Discard
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={saving} 
+                    className="bg-royal-maroon hover:bg-royal-maroon/90 text-white px-8 shadow-luxury font-bold uppercase tracking-widest text-[10px] rounded-xl border-none h-11"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Seal privilege'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-slate-50 border-border text-foreground placeholder:text-slate-400"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px] bg-slate-50 border-border text-foreground">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border-border text-foreground">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[150px] bg-slate-50 border-border text-foreground">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border-border text-foreground">
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="percentage">Percentage</SelectItem>
+              <SelectItem value="flat">Flat</SelectItem>
+              <SelectItem value="free_shipping">Free Shipping</SelectItem>
+              <SelectItem value="buy_x_get_y">BOGO</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Table */}
+        <div className="rounded-xl border border-border bg-white overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+          <Table className="min-w-[900px] lg:min-w-full">
+            <TableHeader className="bg-slate-50">
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground">Code</TableHead>
+                <TableHead className="text-muted-foreground">Type</TableHead>
+                <TableHead className="text-muted-foreground">Value</TableHead>
+                <TableHead className="text-muted-foreground">Min Cart</TableHead>
+                <TableHead className="text-muted-foreground">Usage</TableHead>
+                <TableHead className="text-muted-foreground">Valid Until</TableHead>
+                <TableHead className="text-muted-foreground">Status</TableHead>
+                <TableHead className="text-right text-muted-foreground">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Min Cart</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Valid Until</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableCell colSpan={8} className="h-24 text-center text-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+              ) : displayedCoupons.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    No coupons found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                displayedCoupons.map((coupon) => (
+                  <TableRow key={coupon.id} className="border-border hover:bg-slate-50">
+                    <TableCell className="font-mono font-bold text-foreground">{coupon.code}</TableCell>
+                    <TableCell className="capitalize text-slate-600">{coupon.type?.replace('_', ' ')}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="border-slate-200 text-foreground">{getTypeBadge(coupon.type, coupon.value)}</Badge>
+                    </TableCell>
+                    <TableCell className="text-slate-600">{coupon.min_cart_value ? `₹${coupon.min_cart_value}` : '₹0'}</TableCell>
+                    <TableCell className="text-slate-600">
+                      {coupon.used_count} / {coupon.usage_limit || '∞'}
+                    </TableCell>
+                    <TableCell className="text-slate-600">
+                      {coupon.expires_at ? new Date(coupon.expires_at).toLocaleDateString() : 'Never'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(coupon.status)} className="capitalize">
+                        {coupon.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(coupon)}
+                          className="text-slate-400 hover:text-foreground"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDeleteDialog(coupon)}
+                          className="text-red-400 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : displayedCoupons.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      No coupons found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  displayedCoupons.map((coupon) => (
-                    <TableRow key={coupon.id}>
-                      <TableCell className="font-mono font-bold text-primary">{coupon.code}</TableCell>
-                      <TableCell className="capitalize">{coupon.type?.replace('_', ' ')}</TableCell>
-                      <TableCell>
-                        <Badge variant="default">{getTypeBadge(coupon.type, coupon.value)}</Badge>
-                      </TableCell>
-                      <TableCell>{coupon.min_cart_value ? `₹${coupon.min_cart_value}` : '₹0'}</TableCell>
-                      <TableCell>
-                        {coupon.used_count} / {coupon.usage_limit || '∞'}
-                      </TableCell>
-                      <TableCell>
-                        {coupon.expires_at ? new Date(coupon.expires_at).toLocaleDateString() : 'Never'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusVariant(coupon.status)}>
-                          {coupon.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditDialog(coupon)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDeleteDialog(coupon)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-          {/* Pagination Controls */}
-          {!loading && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 px-2">
-              <div className="text-sm text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
-                <span className="font-medium text-foreground">
+        {/* Pagination Controls */}
+        {!loading && pagination.totalPages > 1 && (
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-2">
+            <div className="flex items-center gap-6">
+              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Showing <span className="text-foreground">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
+                <span className="text-foreground">
                   {Math.min(pagination.page * pagination.limit, pagination.total)}
                 </span>{' '}
-                of <span className="font-medium text-foreground">{pagination.total}</span> coupons
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page <= 1}
-                >
-                  Previous
-                </Button>
-                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                  let pageNum = pagination.page;
-                  if (pagination.totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (pagination.page <= 3) {
-                    pageNum = i + 1;
-                  } else if (pagination.page >= pagination.totalPages - 2) {
-                    pageNum = pagination.totalPages - 4 + i;
-                  } else {
-                    pageNum = pagination.page - 2 + i;
-                  }
-
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={pagination.page === pageNum ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNum)}
-                      className={pagination.page === pageNum ? 'bg-primary text-primary-foreground' : ''}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page >= pagination.totalPages}
-                >
-                  Next
-                </Button>
+                of <span className="text-foreground">{pagination.total}</span> coupons
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+                className="text-muted-foreground hover:text-foreground hover:bg-slate-100 font-bold uppercase tracking-widest text-[10px]"
+              >
+                Prev
+              </Button>
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNum = pagination.page;
+                if (pagination.totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (pagination.page <= 3) {
+                  pageNum = i + 1;
+                } else if (pagination.page >= pagination.totalPages - 2) {
+                  pageNum = pagination.totalPages - 4 + i;
+                } else {
+                  pageNum = pagination.page - 2 + i;
+                }
+
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pagination.page === pageNum ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`min-w-[32px] h-8 text-[11px] font-bold transition-all ${
+                      pagination.page === pageNum 
+                        ? 'bg-foreground text-white shadow-md scale-110' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-slate-100'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className="text-muted-foreground hover:text-foreground hover:bg-slate-100 font-bold uppercase tracking-widest text-[10px]"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Coupon</DialogTitle>
-            <DialogDescription>
-              Update coupon details
+        <DialogContent className="max-w-xl bg-white border-border text-foreground rounded-3xl overflow-hidden shadow-luxury scrollbar-hide">
+          <DialogHeader className="border-b border-border pb-6">
+            <DialogTitle className="text-2xl font-heading font-bold text-foreground tracking-tight">
+              Amend <span className="text-royal-maroon">Vault</span> Token
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground italic font-medium">
+              Updating historical promotional archives.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-code">Coupon Code *</Label>
+          <form onSubmit={handleEdit} className="space-y-6 py-8 max-h-[70vh] overflow-y-auto px-1 custom-scrollbar">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="edit-code" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Archive Code *</Label>
                 <Input
                   id="edit-code"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                  className="bg-slate-50 border-border text-foreground focus:ring-royal-maroon/20 h-11 uppercase font-mono"
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="edit-type">Discount Type *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Privilege Type *</Label>
                 <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-slate-50 border-border text-foreground h-11">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Percentage</SelectItem>
-                    <SelectItem value="flat">Flat Amount</SelectItem>
-                    <SelectItem value="free_shipping">Free Shipping</SelectItem>
-                    <SelectItem value="buy_x_get_y">Buy X Get Y</SelectItem>
+                  <SelectContent className="bg-white border-border text-foreground">
+                    <SelectItem value="percentage" className="focus:bg-slate-100 focus:text-foreground text-xs">Percentage (%)</SelectItem>
+                    <SelectItem value="flat" className="focus:bg-slate-100 focus:text-foreground text-xs">Flat Valuation (₹)</SelectItem>
+                    <SelectItem value="free_shipping" className="focus:bg-slate-100 focus:text-foreground text-xs">Free Logistics</SelectItem>
+                    <SelectItem value="buy_x_get_y" className="focus:bg-slate-100 focus:text-foreground text-xs">BOGO / Volume</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-value">Discount Value *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="edit-value" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Privilege Valuation *</Label>
                 <Input
                   id="edit-value"
                   type="number"
                   step="0.01"
                   value={formData.value}
                   onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                  className="bg-slate-50 border-border text-foreground h-11 font-mono"
                   required={formData.type !== 'free_shipping'}
                 />
               </div>
               {formData.type === 'percentage' && (
-                <div>
-                  <Label htmlFor="edit-max_discount">Max Discount Amount</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-max_discount" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Ceiling Valuation</Label>
                   <Input
                     id="edit-max_discount"
                     type="number"
                     step="0.01"
                     value={formData.max_discount}
                     onChange={(e) => setFormData({ ...formData, max_discount: e.target.value })}
+                    className="bg-slate-50 border-border text-foreground h-11 font-mono"
                   />
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-min_cart_value">Minimum Cart Value</Label>
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 space-y-6">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">Temporal Constraints</span>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-starts_at" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Valid From</Label>
+                  <Input
+                    id="edit-starts_at"
+                    type="datetime-local"
+                    value={formData.starts_at}
+                    onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
+                    className="bg-white border-border text-foreground h-10 text-xs custom-calendar-icon"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-expires_at" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Expires At</Label>
+                  <Input
+                    id="edit-expires_at"
+                    type="datetime-local"
+                    value={formData.expires_at}
+                    onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+                    className="bg-white border-border text-foreground h-10 text-xs custom-calendar-icon"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="edit-min_cart_value" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Min acquisition Valuation</Label>
                 <Input
                   id="edit-min_cart_value"
                   type="number"
                   step="0.01"
                   value={formData.min_cart_value}
                   onChange={(e) => setFormData({ ...formData, min_cart_value: e.target.value })}
+                  className="bg-slate-50 border-border text-foreground h-11 font-mono"
                 />
               </div>
-              <div>
-                <Label htmlFor="edit-usage_limit">Usage Limit</Label>
+              <div className="space-y-2">
+                <Label htmlFor="edit-usage_limit" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Reservation Limit</Label>
                 <Input
                   id="edit-usage_limit"
                   type="number"
                   value={formData.usage_limit}
                   onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-starts_at">Valid From</Label>
-                <Input
-                  id="edit-starts_at"
-                  type="datetime-local"
-                  value={formData.starts_at}
-                  onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-expires_at">Expires At</Label>
-                <Input
-                  id="edit-expires_at"
-                  type="datetime-local"
-                  value={formData.expires_at}
-                  onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
+                  className="bg-slate-50 border-border text-foreground h-11 font-mono"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="edit-status">Status</Label>
+              <Label htmlFor="edit-status" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Current Status</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-slate-50 border-border text-foreground h-11">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectContent className="bg-white border-border text-foreground">
+                  <SelectItem value="active" className="focus:bg-slate-100 focus:text-foreground text-xs">Active (Public)</SelectItem>
+                  <SelectItem value="inactive" className="focus:bg-slate-100 focus:text-foreground text-xs">Inactive (Hidden)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+            <DialogFooter className="border-t border-border pt-6">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => setShowEditDialog(false)} 
+                className="text-muted-foreground hover:text-foreground hover:bg-slate-100 px-6 font-bold uppercase tracking-widest text-[10px]"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+              <Button 
+                type="submit" 
+                disabled={saving} 
+                className="bg-royal-gold hover:bg-royal-gold/90 text-slate-900 px-8 shadow-luxury font-bold uppercase tracking-widest text-[10px] rounded-xl border-none h-11"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply Amendments'}
               </Button>
             </DialogFooter>
           </form>
@@ -757,19 +814,33 @@ const AdminCouponsPage = () => {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Coupon</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete coupon "{selectedCoupon?.code}"? This action cannot be undone.
+        <DialogContent className="max-w-md bg-white border border-rose-100 text-foreground rounded-3xl overflow-hidden shadow-2xl">
+          <DialogHeader className="pt-4 flex flex-col items-center text-center">
+            <div className="h-16 w-16 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-6">
+                <Trash2 className="w-8 h-8 text-rose-500" />
+            </div>
+            <DialogTitle className="text-2xl font-heading font-bold text-foreground tracking-tight">
+              Revoke <span className="text-rose-500">Privilege</span>?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground mt-4 px-4">
+              Are you certain you wish to purge the token <span className="text-foreground font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">"{selectedCoupon?.code}"</span> from the vault? This action is irreversible.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
+          <DialogFooter className="flex gap-3 pt-8 pb-4">
+            <Button 
+                variant="ghost" 
+                onClick={() => setShowDeleteDialog(false)} 
+                className="flex-1 text-muted-foreground hover:text-foreground hover:bg-slate-100 font-bold uppercase tracking-widest text-[10px] h-11"
+            >
+              Preserve
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}
+            <Button 
+                variant="destructive" 
+                onClick={handleDelete} 
+                disabled={saving}
+                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold uppercase tracking-widest text-[10px] h-11 rounded-xl shadow-lg border-none"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Dissolve Record'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -781,7 +852,7 @@ const AdminCouponsPage = () => {
 export default AdminCouponsPage;
 
 // Premium Stat Card Component
-const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext, indicator }) => {
+const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext }) => {
   const formatValue = () => {
     if (format === 'currency') {
       return new Intl.NumberFormat('en-IN', {
@@ -794,30 +865,23 @@ const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loadi
   };
 
   const schemeOptions = {
-    maroon: { bg: 'bg-indigo-900/40', text: 'text-indigo-100', iconColor: 'text-indigo-400', glow: 'shadow-luxury' },
-    emerald: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', iconColor: 'text-emerald-400', glow: 'shadow-emerald-500/10' },
-    gold: { bg: 'bg-amber-500/20', text: 'text-amber-400', iconColor: 'text-amber-400', glow: 'shadow-gold-glow' },
-    charcoal: { bg: 'bg-slate-700/40', text: 'text-white/80', iconColor: 'text-white/60', glow: 'shadow-glass' }
+    maroon: { bg: 'bg-royal-maroon/5', text: 'text-royal-maroon', iconColor: 'text-royal-maroon', glow: 'shadow-luxury' },
+    emerald: { bg: 'bg-emerald-500/5', text: 'text-emerald-600', iconColor: 'text-emerald-500', glow: 'shadow-emerald-500/10' },
+    gold: { bg: 'bg-amber-500/5', text: 'text-amber-600', iconColor: 'text-amber-500', glow: 'shadow-gold-glow' },
+    charcoal: { bg: 'bg-slate-50', text: 'text-foreground', iconColor: 'text-slate-400', glow: 'shadow-glass' }
   };
 
   const scheme = schemeOptions[color] || schemeOptions.charcoal;
 
   return (
-    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-glass backdrop-blur-luxury transition-all hover:scale-[1.02] hover:bg-white/10`}>
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/5 transition-transform group-hover:scale-150" />
+    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-border bg-white shadow-luxury-sm hover:scale-[1.02] transition-all`}>
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-slate-50 transition-transform group-hover:scale-150" />
       
-      <div className="relative z-10 space-y-4">
+      <div className="relative z-10 space-y-4 p-6">
         <div className="flex items-center justify-between">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${scheme.bg} backdrop-blur-md`}>
+          <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50`}>
             <Icon className={`h-6 w-6 ${scheme.iconColor}`} />
           </div>
-          {indicator && (
-            <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
-              indicator === 'red' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
-            }`}>
-              {indicator === 'red' ? 'Alert' : 'Warning'}
-            </span>
-          )}
           {trend && (
             <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-400">
               {trend}
@@ -826,7 +890,7 @@ const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loadi
         </div>
         
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-white/40">{title}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{title}</p>
           {loading ? (
             <div className="h-9 w-24 bg-white/10 animate-pulse rounded mt-1" />
           ) : (
@@ -834,7 +898,7 @@ const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loadi
               {formatValue()}
             </h3>
           )}
-          {subtext && <p className="text-[11px] text-white/40 mt-1">{subtext}</p>}
+          {subtext && <p className="text-[11px] text-slate-500 mt-1">{subtext}</p>}
         </div>
       </div>
     </div>

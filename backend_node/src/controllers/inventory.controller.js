@@ -26,7 +26,13 @@ const getStockLevels = async (req, res, next) => {
     const tenantId = req.tenantId || req.user?.tenantId || 1;
     const result = await inventoryService.getStockLevels(req.query, tenantId);
     
-    return paginatedResponse(res, result.items, result.pagination, 'Stock levels retrieved successfully');
+    return paginatedResponse(
+      res,
+      result.items,
+      result.pagination,
+      'Stock levels retrieved successfully',
+      { stats: result.stats }
+    );
   } catch (error) {
     next(error);
   }

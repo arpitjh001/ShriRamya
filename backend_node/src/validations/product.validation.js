@@ -71,7 +71,7 @@ const createProduct = {
       resourceId,
       Joi.array().items(resourceId)
     ).allow(null).optional(),
-    status: Joi.string().valid('draft', 'published', 'archived').default('published'),
+    status: Joi.string().valid('draft', 'published', 'publish', 'archived').default('published'),
     attributes: Joi.array().items(Joi.object({
       name: Joi.string().required(),
       values: Joi.array().items(Joi.string()).required()
@@ -117,7 +117,7 @@ const updateProduct = {
       resourceId,
       Joi.array().items(resourceId)
     ).allow(null).optional(),
-    status: Joi.string().valid('draft', 'published', 'archived').optional(),
+    status: Joi.string().valid('draft', 'published', 'publish', 'archived').optional(),
     attributes: Joi.array().items(Joi.object({
       name: Joi.string().required(),
       values: Joi.array().items(Joi.string()).required()

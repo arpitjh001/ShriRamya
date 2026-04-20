@@ -15,7 +15,40 @@ for (const envFile of envFiles) {
 
 dotenv.config();
 
+const sanitizeEnvValue = (value) => (
+  typeof value === 'string' ? value.trim() : value
+);
+
+const sanitizeEnvObject = (input) => Object.fromEntries(
+  Object.entries(input).map(([key, value]) => [key, sanitizeEnvValue(value)])
+);
+
+const buildNonSrvMongoConnectionUrl = (envVars) => {
+  const nonSrvHosts = envVars.MONGODB_NON_SRV_HOSTS;
+  if (!nonSrvHosts) {
+    return null;
+  }
+
+  const sourceUri = envVars.MONGODB_URI || envVars.MONGO_URL || '';
+  const authMatch = sourceUri.match(/mongodb(?:\+srv)?:\/\/([^@]+)@/);
+  if (!authMatch) {
+    return null;
+  }
+
+  const authPart = authMatch[1];
+  const dbName = envVars.DB_NAME || '';
+  const options = envVars.MONGODB_NON_SRV_OPTIONS
+    || 'tls=true&authSource=admin&retryWrites=true&w=majority';
+
+  return `mongodb://${authPart}@${nonSrvHosts}/${dbName}?${options}`;
+};
+
 const buildMongoConnectionUrl = (envVars) => {
+  const nonSrvMongoUri = buildNonSrvMongoConnectionUrl(envVars);
+  if (nonSrvMongoUri) {
+    return nonSrvMongoUri;
+  }
+
   const fullMongoUri = envVars.MONGODB_URI;
   if (fullMongoUri) {
     return fullMongoUri;
@@ -46,6 +79,8 @@ const envVarsSchema = Joi.object()
     PORT: Joi.number().default(8000),
     MONGO_URL: Joi.string().allow('', null).description('Mongo DB base url'),
     MONGODB_URI: Joi.string().allow('', null).description('Full Mongo DB connection uri'),
+    MONGODB_NON_SRV_HOSTS: Joi.string().allow('', null).description('Comma-separated MongoDB hosts for non-SRV fallback'),
+    MONGODB_NON_SRV_OPTIONS: Joi.string().allow('', null).description('Query string options for non-SRV MongoDB fallback'),
     DB_NAME: Joi.string().allow('', null),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
     CORS_ORIGINS: Joi.string().default('*'),
@@ -94,7 +129,9 @@ const envVarsSchema = Joi.object()
   })
   .unknown();
 
-const { value: envVars, error } = envVarsSchema.prefs({ errors: { label: 'key' } }).validate(process.env);
+const { value: envVars, error } = envVarsSchema
+  .prefs({ errors: { label: 'key' } })
+  .validate(sanitizeEnvObject(process.env));
 
 if (error) {
   throw new Error(`Config validation error: ${error.message}`);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { categoriesAPI, productsAPI } from '../services/api';
@@ -46,11 +46,11 @@ const CategoryPage = () => {
             }
 
             // Fetch products for this category
-            const params = { 
-                category: slug, 
-                per_page: 20, 
+            const params = {
+                category: slug,
+                per_page: 20,
                 page: pageNum,
-                sort: sortOption === 'newest' ? 'date' : sortOption === 'price_low' ? 'price' : sortOption === 'price_high' ? 'price-desc' : 'popularity'
+                sort: sortOption,
             };
             const prodRes = await productsAPI.getAll(params);
             const fetchedProducts = prodRes.data || [];
@@ -69,7 +69,10 @@ const CategoryPage = () => {
 
     useEffect(() => {
         if (slug) {
+            setError('');
+            setProducts([]);
             setPage(1);
+            setHasMore(true);
             fetchCategoryData(1, true);
         }
     }, [slug, sortOption, fetchCategoryData]);

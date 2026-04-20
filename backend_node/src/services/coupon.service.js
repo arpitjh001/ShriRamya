@@ -123,14 +123,16 @@ class CouponService {
   }
 
   async getAllCoupons(params = {}) {
-    const { page = 1, per_page = 20, status, type, search } = params;
-    const skip = (page - 1) * per_page;
+    const page = Math.max(parseInt(params.page, 10) || 1, 1);
+    const perPage = Math.max(parseInt(params.per_page || params.limit, 10) || 20, 1);
+    const { status, type, search } = params;
+    const skip = (page - 1) * perPage;
     const query = {};
     if (status) query.status = status;
     if (type) query.type = type;
     if (search) query.code = { $regex: search, $options: 'i' };
 
-    const coupons = await Coupon.find(query).sort({ created_at: -1 }).skip(skip).limit(parseInt(per_page, 10)).lean();
+    const coupons = await Coupon.find(query).sort({ created_at: -1 }).skip(skip).limit(perPage).lean();
     const total = await Coupon.countDocuments(query);
 
     // Calculate Global Stats
@@ -154,10 +156,11 @@ class CouponService {
         totalUsage
       },
       pagination: {
-        page: parseInt(page, 10),
-        perPage: parseInt(per_page, 10),
+        page,
+        perPage,
+        limit: perPage,
         total,
-        totalPages: Math.ceil(total / per_page)
+        totalPages: Math.max(Math.ceil(total / perPage), 1)
       }
     };
   }

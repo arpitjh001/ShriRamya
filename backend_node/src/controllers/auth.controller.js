@@ -3,6 +3,7 @@ const authService = require('../services/auth.service');
 const tokenService = require('../services/token.service');
 const { successResponse } = require('../utils/response');
 const config = require('../config/config');
+const ApiError = require('../utils/ApiError');
 
 const normalizeTenantId = (value) => {
     const numericTenantId = Number(value);
@@ -33,7 +34,9 @@ const register = async (req, res, next) => {
         return successResponse(res, {
             user: { id: user.id, name: user.name, email: user.email, role: user.role, tenantId },
             token: accessToken,
-            access_token: accessToken
+            access_token: accessToken,
+            refreshToken: encodedRT,
+            refresh_token: encodedRT
         }, "User registered successfully", httpStatus.CREATED);
     } catch (error) {
         next(error);
@@ -65,7 +68,9 @@ const login = async (req, res, next) => {
         return successResponse(res, {
             user: { id: user.id, name: user.name, email: user.email, role: user.role, tenantId },
             token: accessToken,
-            access_token: accessToken
+            access_token: accessToken,
+            refreshToken: encodedRT,
+            refresh_token: encodedRT
         }, "Logged in successfully");
     } catch (error) {
         next(error);
@@ -79,12 +84,13 @@ const refreshTokens = async (req, res, next) => {
     try {
         const refreshToken = req.cookies.refresh_token || req.body.refresh_token;
         const deviceId = req.headers['x-device-id'] || 'unknown_device';
+        const fallbackUserId = req.body.user_id || req.body.userId || req.body.sub;
 
         if (!refreshToken) {
             throw new Error('Refresh token missing');
         }
 
-        const tokens = await tokenService.refreshAuthTokens(refreshToken, deviceId);
+        const tokens = await tokenService.refreshAuthTokens(refreshToken, deviceId, fallbackUserId);
 
         res.cookie('refresh_token', tokens.refresh_token, {
             httpOnly: true,
@@ -94,9 +100,15 @@ const refreshTokens = async (req, res, next) => {
         });
 
         return successResponse(res, {
-            access_token: tokens.access_token
+            token: tokens.access_token,
+            access_token: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            refresh_token: tokens.refresh_token
         }, "Tokens refreshed successfully");
     } catch (error) {
+        if (/refresh token|session breach/i.test(error.message || '')) {
+            return next(new ApiError(httpStatus.UNAUTHORIZED, error.message));
+        }
         next(error);
     }
 };

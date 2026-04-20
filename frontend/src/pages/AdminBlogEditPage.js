@@ -250,250 +250,372 @@ const AdminBlogEditPage = () => {
     }
 
     return (
-        <div className="px-6 md:px-12 lg:px-24 py-12 max-w-5xl mx-auto">
-            <div className="mb-8 flex items-center justify-between">
-                <div>
-                    <Button variant="ghost" onClick={() => navigate('/admin/dashboard')} className="mb-4 text-muted-foreground hover:text-primary">
-                        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
-                    </Button>
-                    <h1 className="text-3xl font-heading font-medium tracking-tight">Edit Story</h1>
-                </div>
-                <Button onClick={handleSave} disabled={saving} className="gap-2">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
+        <div className="min-h-screen bg-slate-950 text-white font-body selection:bg-royal-maroon/30 pb-20">
+            {/* Background Accent */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-royal-maroon/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-royal-gold/5 rounded-full blur-[120px]" />
             </div>
 
-            <form onSubmit={handleSave} className="space-y-8">
-                <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="relative z-10 px-4 md:px-8 lg:px-12 py-8 max-w-7xl mx-auto space-y-8 animate-fade-in">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/10">
+                    <div className="space-y-4">
+                        <button 
+                            onClick={() => navigate('/admin/dashboard')} 
+                            className="group flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-royal-gold transition-colors"
+                        >
+                            <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" /> 
+                            Back to Sanctuary Dashboard
+                        </button>
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-heading font-bold text-white tracking-tight">
+                                Edit <span className="text-royal-maroon">Heritage</span> Story
+                            </h1>
+                            <p className="text-slate-400 italic mt-1 font-medium">Refining the chronicles of timeless elegance.</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <Button 
+                            onClick={() => navigate('/admin/blogs')} 
+                            variant="ghost" 
+                            className="rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 px-6 border-none"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleSave} 
+                            disabled={saving} 
+                            className="rounded-xl bg-royal-maroon hover:bg-royal-maroon/90 text-white px-8 h-12 shadow-luxury font-bold transition-all active:scale-95 disabled:opacity-50 border-none"
+                        >
+                            {saving ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sealing...</>
+                            ) : (
+                                <><Save className="w-4 h-4 mr-2" /> Seal Story</>
+                            )}
+                        </Button>
+                    </div>
+                </div>
 
-                        {/* Main Editor Section */}
-                        <div className="col-span-2 space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Post Title</label>
+                <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Main Content Column */}
+                    <div className="lg:col-span-8 space-y-8">
+                        {/* Title & Slug Card */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 shadow-luxury space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 ml-1">Archive Entry Title</label>
                                 <input
                                     type="text"
                                     name="title"
                                     value={postData.title}
                                     onChange={handleInputChange}
-                                    className="w-full px-4 py-2 bg-background border border-border rounded-lg text-lg font-heading"
-                                    placeholder="Enter title here"
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-xl font-heading font-bold text-white placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-royal-maroon/20 focus:border-royal-maroon/40 transition-all shadow-inner"
+                                    placeholder="The Tale of the Crimson Saree..."
                                     required
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium mb-2">URL Slug</label>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground text-sm">/blog/</span>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 ml-1">Permanent Resource Identifier (Slug)</label>
+                                <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 group focus-within:ring-2 focus-within:ring-royal-maroon/20 transition-all">
+                                    <span className="text-slate-600 text-sm font-mono select-none">/blog/</span>
                                     <input
                                         type="text"
                                         name="slug"
                                         value={postData.slug}
                                         onChange={handleInputChange}
-                                        className="flex-1 px-4 py-2 bg-background border border-border rounded-lg font-mono text-sm"
-                                        placeholder="auto-generated-from-title"
+                                        className="flex-1 bg-transparent border-none text-slate-300 font-mono text-sm focus:outline-none"
+                                        placeholder="timeless-heritage-crimson"
                                         required
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">This will be the URL path for your blog post</p>
                             </div>
+                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Content (Rich HTML/Text)</label>
-                                <div className="bg-background border border-border rounded-lg pb-10">
-                                    <ReactQuill 
-                                        ref={quillRef}
-                                        theme="snow" 
-                                        value={postData.content} 
-                                        onChange={(val) => setPostData(prev => ({ ...prev, content: val }))} 
-                                        modules={modules}
-                                        className="h-[400px]"
-                                    />
-                                </div>
+                        {/* Editor Card */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-luxury relative min-h-[600px] flex flex-col">
+                            <div className="p-6 border-b border-white/10 bg-white/5">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-royal-gold">Story Narrative (Chronicles)</label>
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Excerpt (Journal Summary)</label>
-                                <textarea
-                                    name="excerpt"
-                                    value={postData.excerpt}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-3 bg-background border border-border rounded-lg resize-y h-24"
-                                    placeholder="Brief summary used in cards..."
+                            
+                            {/* Dark Mode Quill Wrapper */}
+                            <div className="flex-1 quill-dark-container">
+                                <style>{`
+                                    .quill-dark-container .ql-toolbar {
+                                        background: rgba(255, 255, 255, 0.02);
+                                        border: none !important;
+                                        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+                                        padding: 12px 20px !important;
+                                    }
+                                    .quill-dark-container .ql-container {
+                                        border: none !important;
+                                        font-family: 'Inter', sans-serif !important;
+                                        font-size: 16px !important;
+                                        color: #e2e8f0 !important;
+                                    }
+                                    .quill-dark-container .ql-editor {
+                                        padding: 30px !important;
+                                        min-height: 450px !important;
+                                        line-height: 1.8 !important;
+                                    }
+                                    .quill-dark-container .ql-editor.ql-blank::before {
+                                        color: rgba(255, 255, 255, 0.1) !important;
+                                        font-style: italic !important;
+                                    }
+                                    .quill-dark-container .ql-stroke {
+                                        stroke: #94a3b8 !important;
+                                    }
+                                    .quill-dark-container .ql-fill {
+                                        fill: #94a3b8 !important;
+                                    }
+                                    .quill-dark-container .ql-picker {
+                                        color: #94a3b8 !important;
+                                    }
+                                    .quill-dark-container .ql-picker-options {
+                                        background-color: #0f172a !important;
+                                        border: 1px solid rgba(255,255,255,0.1) !important;
+                                        color: #e2e8f0 !important;
+                                    }
+                                `}</style>
+                                <ReactQuill 
+                                    ref={quillRef}
+                                    theme="snow" 
+                                    value={postData.content} 
+                                    onChange={(val) => setPostData(prev => ({ ...prev, content: val }))} 
+                                    modules={modules}
+                                    className="h-full"
                                 />
                             </div>
+                        </div>
 
-                            <div className="grid grid-cols-1 gap-6 pt-6 border-t border-border">
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 text-primary">SEO Title</label>
+                        {/* Excerpt Card */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 shadow-luxury space-y-4">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 ml-1">Abridged Narrative (Summary)</label>
+                            <textarea
+                                name="excerpt"
+                                value={postData.excerpt}
+                                onChange={handleInputChange}
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-slate-300 placeholder:text-slate-700 focus:outline-none focus:ring-2 focus:ring-royal-maroon/20 focus:border-royal-maroon/40 transition-all resize-none h-32 leading-relaxed font-body"
+                                placeholder="A brief whisper of the story to entice the readers..."
+                            />
+                        </div>
+
+                        {/* SEO Card */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 md:p-8 shadow-luxury space-y-6">
+                            <div className="flex items-center gap-3 pb-4 border-b border-white/5 mb-2">
+                                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                    <Search className="w-4 h-4 text-emerald-500" />
+                                </div>
+                                <h3 className="font-heading font-bold text-white uppercase tracking-widest text-xs">Search Visibility (SEO)</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 ml-1">Public Archive Index Title</label>
                                     <input
                                         type="text"
                                         name="seoTitle"
                                         value={postData.seoTitle}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-2 bg-background border border-border rounded-lg"
-                                        placeholder="Title for search engines"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-slate-300 placeholder:text-slate-700 focus:outline-none focus:border-royal-gold/40 transition-all font-medium"
+                                        placeholder="Title for Global Search Engines"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 ml-1">Public Archive Description</label>
+                                    <textarea
+                                        name="seoDescription"
+                                        value={postData.seoDescription}
+                                        onChange={handleInputChange}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-slate-300 placeholder:text-slate-700 focus:outline-none focus:border-royal-gold/40 transition-all h-24 resize-none text-sm font-medium font-body"
+                                        placeholder="A concise summary for public search results..."
                                     />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-2 text-primary">SEO Description</label>
-                                <textarea
-                                    name="seoDescription"
-                                    value={postData.seoDescription}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 bg-background border border-border rounded-lg h-24"
-                                    placeholder="Meta description for SEO"
-                                />
+                        </div>
+                    </div>
+
+                    {/* Sidebar Column */}
+                    <div className="lg:col-span-4 space-y-8">
+                        {/* Status Widget */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-luxury space-y-4">
+                            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-2">
+                                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Chronicle Status</label>
+                                {(() => {
+                                    const status = postData.status?.toLowerCase() || 'draft';
+                                    const dotColor = status === 'published' ? 'bg-emerald-500' : status === 'review' ? 'bg-amber-500' : 'bg-slate-500';
+                                    return <div className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />;
+                                })()}
+                            </div>
+                            <select
+                                name="status"
+                                value={postData.status}
+                                onChange={handleInputChange}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-royal-maroon/50 appearance-none cursor-pointer hover:bg-white/10 transition-colors"
+                            >
+                                <option value="draft" className="bg-slate-900 text-white">Draft (Sanctuary Only)</option>
+                                <option value="review" className="bg-slate-900 text-white">Under Review (Curator Check)</option>
+                                <option value="published" className="bg-slate-900 text-white">Published (Public Archives)</option>
+                                <option value="archived" className="bg-slate-900 text-white">Archived (Locked Vault)</option>
+                            </select>
+                        </div>
+
+                        {/* Heritage Style Toggle */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-luxury group transition-all">
+                            <label className="flex items-center gap-4 cursor-pointer">
+                                <div className={`relative w-12 h-6 rounded-full transition-colors border border-white/10 ${postData.isJournal ? 'bg-royal-maroon/40' : 'bg-slate-800'}`}>
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only outline-none"
+                                        checked={postData.isJournal}
+                                        onChange={(e) => setPostData(prev => ({ ...prev, isJournal: e.target.checked }))}
+                                    />
+                                    <div className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full transition-transform duration-300 ${postData.isJournal ? 'translate-x-6' : 'translate-x-0'}`} />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 select-none group-hover:text-white">Heritage Format</span>
+                                    <p className="text-[9px] text-slate-500 italic leading-tight">Enable premium editorial typography and ivory layouts.</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        {/* Imagery Widget */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-luxury space-y-6">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
+                                <ImageIcon className="w-3.5 h-3.5 text-royal-gold" /> Visual Chronicles
+                            </label>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex items-center justify-between mb-2 px-1">
+                                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Featured Artifact</p>
+                                        <button type="button" onClick={() => setFeaturedImageUrl('')} className="text-[9px] text-rose-500 hover:text-rose-400 font-bold uppercase tracking-widest opacity-0 hover:opacity-100 transition-opacity">Reset</button>
+                                    </div>
+                                    <div
+                                        className="aspect-[4/3] bg-slate-800/50 rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group hover:border-royal-gold/50 hover:bg-royal-gold/5 transition-all shadow-inner"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        {featuredImageUrl ? (
+                                            <>
+                                                <img src={featuredImageUrl} alt="Featured" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                    <div className="p-3 bg-white/10 rounded-full backdrop-blur-md">
+                                                       <Plus className="w-6 h-6 text-white" />
+                                                    </div>
+                                                    <span className="text-white text-[10px] font-bold uppercase tracking-widest font-heading">Replace Imagery</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-center space-y-3 p-4">
+                                                {uploadingImage ? (
+                                                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-royal-maroon" />
+                                                ) : (
+                                                    <>
+                                                        <div className="p-4 bg-white/5 rounded-full mx-auto w-16 h-16 flex items-center justify-center border border-white/5 group-hover:bg-royal-gold/10 group-hover:border-royal-gold/20 transition-all shadow-inner">
+                                                            <ImageIcon className="w-8 h-8 text-slate-600 group-hover:text-royal-gold" />
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Select Master Image</p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Gallery Fragments</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {postData.images && postData.images.map((img, idx) => (
+                                            <div key={idx} className="relative aspect-square rounded-xl border border-white/10 overflow-hidden group shadow-lg">
+                                                <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setPostData(prev => ({ 
+                                                        ...prev, 
+                                                        images: prev.images.filter((_, i) => i !== idx) 
+                                                    }))}
+                                                    className="absolute top-1 right-1 w-6 h-6 bg-rose-500/80 backdrop-blur-sm text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5 rotate-45" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {(postData.images?.length || 0) < 6 && (
+                                            <label className="aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-royal-gold/40 hover:bg-royal-gold/5 flex flex-col items-center justify-center cursor-pointer transition-all group shadow-inner">
+                                                <Plus className="w-6 h-6 text-slate-600 group-hover:text-royal-gold transition-colors" />
+                                                <input 
+                                                    type="file" 
+                                                    multiple 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    onChange={handleImageUpload} 
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Sidebar Settings Section */}
-                        <div className="space-y-6">
-
-                            {/* Image Upload Widget */}
-                            <div className="p-4 border border-border rounded-lg bg-background">
-                                <label className="block text-sm font-medium mb-4 flex items-center gap-2">
-                                    <ImageIcon className="w-4 h-4 text-primary" /> Story Imagery
-                                </label>
-                                
-                                <p className="text-xs font-medium text-muted-foreground mb-2">Featured Image</p>
-                                <div
-                                    className="aspect-video bg-muted/50 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group mb-4"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    {featuredImageUrl ? (
-                                        <>
-                                            <img src={featuredImageUrl} alt="Featured" className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <span className="text-white text-sm font-medium">Change Image</span>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="text-center p-4">
-                                            {uploadingImage ? (
-                                                <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
-                                            ) : (
-                                                <>
-                                                    <ImageIcon className="w-8 h-8 mx-auto text-muted-foreground mb-1" />
-                                                    <span className="text-[10px] text-muted-foreground">Select Main Image</span>
-                                                </>
-                                            )}
+                        {/* Categories Widget */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-luxury space-y-6">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 ml-1">Archive Categories</label>
+                            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-2 custom-scrollbar Scrollbar-hide">
+                                {categories.map((cat, idx) => {
+                                    const catId = typeof cat === 'string' ? cat : cat.id;
+                                    const catName = typeof cat === 'string' ? cat : cat.name;
+                                    const isSelected = postData.categories?.includes(catId);
+                                    return (
+                                    <div
+                                        key={catId || idx}
+                                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${isSelected ? 'bg-royal-maroon/10 border-royal-maroon/30' : 'bg-transparent border-transparent hover:bg-white/5'}`}
+                                        onClick={() => handleCategoryChange(catId)}
+                                    >
+                                        <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${isSelected ? 'bg-royal-maroon border-royal-maroon shadow-lg shadow-royal-maroon/20 scale-110' : 'bg-slate-950/40 border-white/10'}`}>
+                                            {isSelected && <Check className="w-3 h-3 text-white" />}
                                         </div>
-                                    )}
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={handleImageUpload}
-                                    />
-                                </div>
-
-                                <p className="text-xs font-medium text-muted-foreground mb-2">Gallery Images</p>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {postData.images && postData.images.map((img, idx) => (
-                                        <div key={idx} className="relative aspect-square rounded border border-border overflow-hidden group">
-                                            <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
-                                            <button 
-                                                type="button"
-                                                onClick={() => setPostData(prev => ({ 
-                                                    ...prev, 
-                                                    images: prev.images.filter((_, i) => i !== idx) 
-                                                }))}
-                                                className="absolute top-1 right-1 w-5 h-5 bg-destructive/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Plus className="w-2.5 h-2.5 rotate-45" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {(postData.images?.length || 0) < 6 && (
-                                        <label className="aspect-square rounded border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center bg-accent/5 cursor-pointer transition-all">
-                                            <Plus className="w-5 h-5 text-muted-foreground" />
-                                            <input 
-                                                type="file" 
-                                                multiple 
-                                                accept="image/*" 
-                                                className="hidden" 
-                                                onChange={handleImageUpload} 
-                                            />
-                                        </label>
-                                    )}
-                                </div>
+                                        <span className={`text-xs font-bold uppercase tracking-widest ${isSelected ? 'text-white' : 'text-slate-500'}`}>{catName}</span>
+                                    </div>
+                                    );
+                                })}
+                                {categories.length === 0 && (
+                                    <div className="text-center py-6 space-y-2 opacity-20">
+                                        <div className="text-2xl">📁</div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest">Archives Empty</p>
+                                    </div>
+                                )}
                             </div>
+                        </div>
 
-                            {/* Categories Widget */}
-                            <div className="p-4 border border-border rounded-lg bg-background">
-                                <label className="block text-sm font-medium mb-4">Categories</label>
-                                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                    {categories.map((cat, idx) => {
-                                        const catId = typeof cat === 'string' ? cat : cat.id;
-                                        const catName = typeof cat === 'string' ? cat : cat.name;
-                                        return (
-                                        <label
-                                            key={catId || idx}
-                                            className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded cursor-pointer transition-colors"
-                                            onClick={() => handleCategoryChange(catId)}
-                                        >
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${postData.categories?.includes(catId) ? 'bg-primary border-primary' : 'bg-background border-border'}`}>
-                                                {postData.categories?.includes(catId) && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
-                                            </div>
-                                            <span className="text-sm">{catName}</span>
-                                        </label>
-                                        );
-                                    })}
-                                    {categories.length === 0 && <span className="text-sm text-muted-foreground block p-2">No categories available</span>}
-                                </div>
-                            </div>
-
-                            {/* Tags Widget */}
-                            <div className="p-4 border border-border rounded-lg bg-background">
-                                <label className="block text-sm font-medium mb-3">Tags (Comma separated)</label>
+                        {/* Tags Widget */}
+                        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-luxury space-y-4">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 ml-1">Meta Descriptors (Tags)</label>
+                            <div className="relative">
                                 <input
                                     type="text"
                                     value={tagsInput}
                                     onChange={(e) => setTagsInput(e.target.value)}
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm"
-                                    placeholder="silk, saree, weaving..."
+                                    className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 placeholder:text-slate-700 focus:outline-none focus:border-royal-gold/40 transition-all font-medium italic font-body"
+                                    placeholder="silk, heritage, weave..."
                                 />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-20">
+                                    <Plus className="w-4 h-4" />
+                                </div>
                             </div>
-
-                            {/* Publish Setting Node */}
-                            <div className="p-4 border border-border rounded-lg bg-background">
-                                <label className="block text-sm font-medium mb-3">Workflow Status</label>
-                                <select
-                                    name="status"
-                                    value={postData.status}
-                                    onChange={handleInputChange}
-                                    className="w-full px-3 py-2 bg-background border border-border rounded text-sm"
-                                >
-                                    <option value="draft">Draft</option>
-                                    <option value="review">Under Review</option>
-                                    <option value="published">Published</option>
-                                    <option value="archived">Archived</option>
-                                </select>
-                            </div>
-
-                            <div className="p-4 border border-border rounded-lg bg-accent/5">
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={postData.isJournal}
-                                        onChange={(e) => setPostData(prev => ({ ...prev, isJournal: e.target.checked }))}
-                                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                    />
-                                    <span className="text-xs font-bold uppercase tracking-widest select-none">Heritage Journal Style</span>
-                                </label>
-                                <p className="text-[10px] text-muted-foreground mt-2 italic">Enable premium editorial formatting with ivory backgrounds and serif typography.</p>
-                            </div>
-
+                            <p className="text-[9px] text-slate-600 italic px-1 leading-tight">Separate distinct archives with commas.</p>
                         </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
+
     );
 };
 

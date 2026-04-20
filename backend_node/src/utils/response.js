@@ -52,7 +52,12 @@ const successResponse = (res, data = null, message = "Success", statusCode = 200
  * @example
  * return paginatedResponse(res, products, { page: 1, limit: 20, total: 100, totalPages: 5 }, 'Products retrieved');
  */
-const paginatedResponse = (res, data, pagination, message = "Success") => {
+const paginatedResponse = (res, data, pagination, message = "Success", meta = null) => {
+    const page = pagination.page || pagination.current_page || 1;
+    const limit = pagination.limit || pagination.per_page || 20;
+    const total = pagination.total || 0;
+    const totalPages = pagination.totalPages || pagination.total_pages || Math.max(Math.ceil(total / Math.max(limit, 1)), 1);
+
     return res.status(200).json({
         success: true,
         message,
@@ -60,13 +65,17 @@ const paginatedResponse = (res, data, pagination, message = "Success") => {
         error: null,
         meta: {
             pagination: {
-                page: pagination.page || 1,
-                limit: pagination.limit || 20,
-                total: pagination.total || 0,
-                totalPages: pagination.totalPages || 0,
-                hasNext: pagination.page < pagination.totalPages,
-                hasPrev: pagination.page > 1,
-            }
+                page,
+                limit,
+                total,
+                totalPages,
+                current_page: page,
+                per_page: limit,
+                total_pages: totalPages,
+                hasNext: totalPages > 0 ? page < totalPages : false,
+                hasPrev: page > 1,
+            },
+            ...(meta || {}),
         }
     });
 };

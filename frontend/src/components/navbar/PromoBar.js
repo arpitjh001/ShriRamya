@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const PromoBar = ({ 
   messages = ["FREE SHIPPING ON ORDERS OVER ₹5000", "NEW COLLECTION LIVE: LUXURY ETHNIC WEAR"], 
   interval = 5000,
+  variant = 'default',
   showDashboard = false,
   onDashboardClick
 }) => {
@@ -27,7 +28,11 @@ const PromoBar = ({
   }, [messages.length, interval]);
 
   return (
-    <div className="bg-charcoal text-ivory/90 py-1.5 px-4 text-[10px] md:text-xs font-bold tracking-[0.2em] overflow-hidden relative border-b border-ivory/5 shadow-sm z-50">
+    <div className={`py-1.5 px-4 text-[10px] md:text-xs font-bold tracking-[0.2em] overflow-hidden relative border-b shadow-sm z-50 ${
+      variant === 'warning'
+        ? 'bg-accent text-charcoal border-charcoal/10'
+        : 'bg-charcoal text-ivory/90 border-ivory/5'
+    }`}>
       <div className="max-w-7xl mx-auto flex justify-center items-center h-5">
         <AnimatePresence mode="wait">
           <motion.p

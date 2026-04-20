@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, CalendarDays, CheckCircle2, Crown, Loader2, Mail, Sparkles, Star } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, Crown, Loader2, Mail, Sparkles, Star } from 'lucide-react';
 import { insiderAPI, productsAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -149,7 +149,7 @@ const HomePage = () => {
     const fetchProducts = async () => {
       try {
         const [featured, trending] = await Promise.all([
-          productsAPI.getAll({ featured: true, limit: 4 }),
+          productsAPI.getAll({ category: 'regal', limit: 4 }),
           productsAPI.getAll({ category: 'most-desired', limit: 4 }),
         ]);
         setFeaturedProducts((featured.data || []).filter(p => p.status === 'published'));
@@ -209,6 +209,19 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-background selection:bg-accent/30">
+      {/* Development Mode Ribbon */}
+      <div className="bg-amber-100 border-b border-amber-200 py-2.5 px-4 text-center sticky top-0 z-[60] backdrop-blur-md bg-amber-100/90 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-center gap-3 animate-in fade-in slide-in-from-top-4 duration-700">
+          <AlertTriangle className="h-4 w-4 text-amber-700 animate-pulse" />
+          <p className="text-sm font-medium text-amber-900 tracking-wide">
+            Under Construction. Data Displayed is currently for testing purpose.
+          </p>
+          <div className="hidden md:flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-200/50 text-[10px] font-bold uppercase tracking-tight text-amber-800">
+            TEST MODE
+          </div>
+        </div>
+      </div>
+
       <SEOMeta 
         title="Premium Indian Handloom Sarees & Ethnic Wear"
         description="Shop authentic Banarasi silk sarees, designer kurtis, and handcrafted ethnic wear at ShriRamya. Free shipping on orders above Rs 999."

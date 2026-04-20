@@ -41,7 +41,7 @@ const productSchema = new mongoose.Schema(
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
     subcategoryValues: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubcategoryValue' }],
-    status: { type: String, enum: ['draft', 'published', 'publish'], default: 'draft' },
+    status: { type: String, enum: ['draft', 'published', 'publish', 'archived'], default: 'draft' },
     tenant_id: { type: Number, default: 1 },
     attributes: [{
       name: String,
@@ -67,6 +67,8 @@ productSchema.index({ tenant_id: 1 });
 productSchema.index({ categoryId: 1 });
 productSchema.index({ 'variants.sku': 1 });
 productSchema.index({ name: 'text', description: 'text' });
+productSchema.index({ tenant_id: 1, is_deleted: 1, status: 1 });
+productSchema.index({ 'variants.stock': 1 });
 
 const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
 module.exports = Product;

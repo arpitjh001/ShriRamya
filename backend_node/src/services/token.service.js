@@ -12,6 +12,67 @@ const hashToken = (token) => {
     return crypto.createHash('sha256').update(token).digest('hex');
 };
 
+const isLikelyUserId = (value) => {
+    return typeof value === 'string' && (/^[a-f0-9]{24}$/i.test(value) || /^\d+$/.test(value));
+};
+
+const decodeRefreshToken = (refreshToken, fallbackUserId = null) => {
+    const rawRefreshToken = String(refreshToken || '').trim();
+    const fallback = fallbackUserId ? String(fallbackUserId).trim() : null;
+    let userId = null;
+    let token = null;
+
+    try {
+        const decoded = Buffer.from(rawRefreshToken, 'base64').toString('utf8');
+        const separatorIndex = decoded.indexOf(':');
+        if (separatorIndex > 0) {
+            const decodedUserId = decoded.slice(0, separatorIndex);
+            const decodedToken = decoded.slice(separatorIndex + 1);
+
+            if (isLikelyUserId(decodedUserId) && decodedToken.length > 20) {
+                userId = decodedUserId;
+                token = decodedToken;
+            }
+        }
+    } catch (error) {
+        // Fall through to legacy raw token handling below.
+    }
+
+    if ((!userId || !token) && fallback) {
+        userId = fallback;
+        token = rawRefreshToken;
+    }
+
+    return { userId, token };
+};
+
+const getJwtSecret = () => config.jwt.secret.trim();
+
+const generateStatelessRefreshToken = (userId, deviceId) => {
+    return jwt.sign({
+        sub: String(userId),
+        user_id: String(userId),
+        deviceId,
+        type: 'refresh',
+    }, getJwtSecret(), {
+        expiresIn: `${config.jwt.refreshExpirationDays}d`,
+    });
+};
+
+const verifyStatelessRefreshToken = (token, deviceId) => {
+    try {
+        const payload = jwt.verify(token, getJwtSecret());
+        if (payload.type !== 'refresh') return null;
+        if (payload.deviceId !== deviceId) return null;
+
+        return {
+            userId: payload.user_id || payload.sub,
+        };
+    } catch (error) {
+        return null;
+    }
+};
+
 /**
  * Generate Access Token (Stateless)
  * Updated to include tenant_id and roles array for multi-tenant RBAC
@@ -34,6 +95,10 @@ const generateAccessToken = async (userId, role, deviceId, tenantId = 1) => {
         }
     }
 
+    if ((!Array.isArray(roles) || roles.length === 0) && role) {
+        roles = [role];
+    }
+
     const payload = {
         sub: userId,
         user_id: userId,
@@ -46,8 +111,7 @@ const generateAccessToken = async (userId, role, deviceId, tenantId = 1) => {
         iat: Math.floor(Date.now() / 1000),
         exp: expires,
     };
-    const secret = config.jwt.secret.trim();
-    return jwt.sign(payload, secret);
+    return jwt.sign(payload, getJwtSecret());
 };
 
 /**
@@ -65,18 +129,26 @@ const generateRefreshToken = async (userId, deviceId) => {
     // rt_family:{userId}:{deviceId} stores the active hashed token for rotation check
     const familyKey = `rt_family:${userId}:${deviceId}`;
 
+    let storedInRedis = false;
+
     // Store the active token in the family (use safe Redis wrapper)
     if (redis && redis.set) {
-        await redis.set(familyKey, hashedToken, { ex: expiresSeconds });
+        const familyStored = await redis.set(familyKey, hashedToken, { ex: expiresSeconds });
         // Store detailed token info
-        await redis.set(tokenKey, JSON.stringify({
+        const tokenStored = await redis.set(tokenKey, JSON.stringify({
             userId,
             deviceId,
             jti,
             iat: Date.now(),
         }), { ex: expiresSeconds });
+        storedInRedis = Boolean(familyStored && tokenStored);
     } else {
         console.warn('[TokenService] Redis unavailable, refresh token not stored');
+    }
+
+    if (!storedInRedis) {
+        console.warn('[TokenService] Using signed stateless refresh token fallback');
+        return generateStatelessRefreshToken(userId, deviceId);
     }
 
     return token;
@@ -85,9 +157,7 @@ const generateRefreshToken = async (userId, deviceId) => {
 /**
  * Verify Refresh Token and handle rotation
  */
-const refreshAuthTokens = async (oldRefreshToken, deviceId) => {
-    const hashedOld = hashToken(oldRefreshToken);
-
+const refreshAuthTokens = async (oldRefreshToken, deviceId, fallbackUserId = null) => {
     // Find who this token might belong to by scanning keys for the hashed value? 
     // No, better to have the token carry its own ID or we just scan the family keys for the user.
     // Let's assume the client sends the userId alongside or we encode userId in a wrapper?
@@ -95,7 +165,7 @@ const refreshAuthTokens = async (oldRefreshToken, deviceId) => {
 
     // Optimization: The client should send the userId or we decode it from the last AT (even if expired).
     // For now, let's use a composite RT: "base64(userId:token)"
-    const [userId, token] = Buffer.from(oldRefreshToken, 'base64').toString().split(':');
+    const { userId, token } = decodeRefreshToken(oldRefreshToken, fallbackUserId);
     if (!userId || !token) throw new Error('Invalid Refresh Token format');
 
     const hashedToken = hashToken(token);
@@ -107,8 +177,13 @@ const refreshAuthTokens = async (oldRefreshToken, deviceId) => {
         currentHashed = await redis.get(familyKey);
     }
 
-    // REPLAY DETECTION
-    if (!currentHashed || currentHashed !== hashedToken) {
+    if (!currentHashed) {
+        const statelessPayload = verifyStatelessRefreshToken(token, deviceId);
+        if (!statelessPayload || String(statelessPayload.userId) !== String(userId)) {
+            throw new Error('Invalid or expired refresh token');
+        }
+    } else if (currentHashed !== hashedToken) {
+        // REPLAY DETECTION
         // Replay detected or token revoked! Invalidate entire family.
         if (redis && redis.del) {
             await redis.del(familyKey);

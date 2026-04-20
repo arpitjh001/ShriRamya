@@ -10,6 +10,7 @@ const couponService = require('../services/coupon.service');
 const analyticsService = require('../services/analytics/analytics.service');
 const { successResponse } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
+const { buildTenantScope, andQuery } = require('../utils/tenantScope');
 
 /**
  * Generate unique order number
@@ -21,6 +22,10 @@ function generateOrderNumber() {
     return `ORD-${year}-${timestamp}`;
 }
 
+function escapeRegex(value = '') {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Create Order (Customer)
  */
@@ -30,6 +35,7 @@ const createOrder = async (req, res, next) => {
             items,
             billing,
             shipping,
+            shipping_address, // Added support for frontend field name
             paymentMethod,
             customerNotes,
             couponCode,
@@ -57,21 +63,27 @@ const createOrder = async (req, res, next) => {
                 throw new ApiError(httpStatus.NOT_FOUND, `Product ${item.productId} not found`);
             }
 
-            let unitPrice = product.basePrice || 0;
+            let unitPrice = product.basePrice || product.price || 0;
+            let salePrice = product.salePrice || unitPrice;
             
-            const itemTotal = unitPrice * item.quantity;
+            const itemTotal = (item.quantity || 1) * (salePrice || unitPrice);
             subtotal += itemTotal;
 
             processedItems.push({
                 productId: item.productId,
                 variantId: item.variantId,
-                productName: product.name,
-                productSku: product.sku,
+                name: product.name,
+                sku: product.sku,
+                thumbnail: product.thumbnail || (product.images && product.images[0]),
                 quantity: item.quantity,
-                unitPrice,
+                price: unitPrice,
+                salePrice: salePrice,
+                priceSnapshot: salePrice || unitPrice, // Mapping mandatory field
+                size: item.size || '',
+                color: item.color || '',
                 subtotal: itemTotal,
-                taxAmount: itemTotal * 0.18,
-                total: itemTotal
+                total: itemTotal,
+                taxAmount: 0 // Explicitly set to 0 to avoid NaN
             });
         }
 
@@ -94,43 +106,69 @@ const createOrder = async (req, res, next) => {
             }
         }
 
-        const taxTotal = processedItems.reduce((sum, i) => sum + i.taxAmount, 0);
-        const shippingCost = subtotal > 5000 ? 0 : 100;
+        // Handle shipping address mapping
+        const resolvedShipping = shipping || shipping_address;
+        const shippingToSave = {
+            name: (resolvedShipping?.first_name ? `${resolvedShipping.first_name} ${resolvedShipping.last_name || ''}` : resolvedShipping?.name) || '',
+            email: resolvedShipping?.email || user.email,
+            phone: resolvedShipping?.phone || '',
+            address: resolvedShipping?.address_1 || resolvedShipping?.address_line1 || '',
+            address2: resolvedShipping?.address_2 || resolvedShipping?.address_line2 || '',
+            city: resolvedShipping?.city || '',
+            state: resolvedShipping?.state || '',
+            pincode: resolvedShipping?.postcode || resolvedShipping?.pincode || '',
+            country: resolvedShipping?.country || 'India'
+        };
+
+        const taxTotal = processedItems.reduce((sum, i) => sum + (i.taxAmount || 0), 0);
+        // Standardized shipping logic: Free above 1000, else 100
+        const shippingCost = subtotal > 1000 ? 0 : 100;
         const grandTotal = subtotal - discountTotal + taxTotal + shippingCost;
 
         const order = await Order.create({
             userId,
-            tenantId,
-            orderNumber: generateOrderNumber(),
+            tenant_id: tenantId, // Match model field name
+            orderId: generateOrderNumber(), // Match model field name
             status: 'pending',
             paymentStatus: 'pending',
-            fulfillmentStatus: 'unfulfilled',
+            fulfillment_status: 'unfulfilled', // Match model field name
             items: processedItems,
             subtotal,
+            discount: discountTotal,
             discountTotal,
+            tax: taxTotal,
             taxTotal,
+            shipping: shippingCost,
             shippingCost,
-            grandTotal,
+            total: grandTotal,
+            total_amount: grandTotal,
             finalTotal: grandTotal,
             couponId: appliedCouponId,
             couponCode: appliedCouponCode,
             paymentMethod: paymentMethod || 'cod',
+            userEmail: user.email, // Match model field name
+            userName: user.name, // Match model field name
             customerEmail: user.email,
-            customerPhone: user.phone || (billing ? billing.phone : ''),
-            billing,
-            shipping,
+            customerPhone: user.phone || shippingToSave.phone,
+            billing: shippingToSave, // Default billing to shipping for simplicity
+            shippingAddress: shippingToSave,
+            shipping_address: resolvedShipping, // Save raw if provided
             customerNotes
         });
 
-        // Log order created event
-        await orderEventService.logEvent(
-            order._id,
-            'order_created',
-            `Order ${order.orderNumber} created`,
-            { grandTotal },
-            userId,
-            'customer'
-        );
+        // Log order created event with fail-safe
+        try {
+            await orderEventService.logEvent(
+                order._id,
+                'order_created',
+                `Order ${order.orderId} created`,
+                { grandTotal },
+                userId,
+                'customer'
+            );
+        } catch (eventError) {
+            console.error('Failed to log order event:', eventError.message);
+        }
 
         return successResponse(res, order, 'Order created successfully', httpStatus.CREATED);
     } catch (error) {
@@ -222,48 +260,102 @@ const cancelOrder = async (req, res, next) => {
  */
 const getAllOrders = async (req, res, next) => {
     try {
-        const { page = 1, limit = 20, status, tenantId } = req.query;
-        const filter = {};
-        if (status) filter.status = status;
-        if (tenantId) filter.tenantId = tenantId;
+        const { page = 1, limit = 20, status, tenantId, search } = req.query;
+        const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+        const parsedLimit = Math.max(parseInt(limit, 10) || 20, 1);
 
-        const total = await Order.countDocuments(filter);
-        const orders = await Order.find(filter)
-            .sort({ created_at: -1 })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
+        const resolvedTenantId = [tenantId, req.tenantId, req.user?.tenantId, req.user?.tenant_id, 1]
+            .map((value) => Number(value))
+            .find((value) => Number.isFinite(value) && value > 0);
 
-        // Calculate Global Stats
-        const [totalCount, pendingCount, shippedCount, revenueResult] = await Promise.all([
-            Order.countDocuments({}),
-            Order.countDocuments({ status: 'pending' }),
-            Order.countDocuments({ status: 'shipped' }),
+        const tenantFilter = resolvedTenantId ? buildTenantScope(resolvedTenantId) : {};
+        const listFilters = [tenantFilter];
+
+        if (status && status !== 'all') {
+            listFilters.push({ status });
+        }
+
+        const normalizedSearch = typeof search === 'string' ? search.trim() : '';
+        if (normalizedSearch) {
+            const searchRegex = new RegExp(escapeRegex(normalizedSearch), 'i');
+            listFilters.push({ $or: [
+                { orderId: searchRegex },
+                { userName: searchRegex },
+                { userEmail: searchRegex },
+                { 'shippingAddress.name': searchRegex },
+                { couponCode: searchRegex }
+            ] });
+        }
+
+        const listFilter = andQuery(...listFilters);
+
+        const revenueField = {
+            $ifNull: [
+                '$total',
+                {
+                    $ifNull: [
+                        '$total_amount',
+                        {
+                            $ifNull: [
+                                '$grandTotal',
+                                { $ifNull: ['$finalTotal', 0] }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const [total, orders, totalCount, pendingCount, shippedCount, revenueResult] = await Promise.all([
+            Order.countDocuments(listFilter),
+            Order.find(listFilter)
+                .sort({ created_at: -1 })
+                .skip((parsedPage - 1) * parsedLimit)
+                .limit(parsedLimit),
+            Order.countDocuments(tenantFilter),
+            Order.countDocuments(andQuery(
+                tenantFilter,
+                { status: { $in: ['pending', 'pending_payment'] } }
+            )),
+            Order.countDocuments(andQuery(
+                tenantFilter,
+                { status: 'shipped' }
+            )),
             Order.aggregate([
-                { $match: { status: { $ne: 'cancelled' } } },
-                { $group: { _id: null, totalRevenue: { $sum: '$finalTotal' } } }
+                {
+                    $match: andQuery(
+                        tenantFilter,
+                        { status: { $nin: ['cancelled', 'payment_failed', 'refunded'] } }
+                    )
+                },
+                { $group: { _id: null, totalRevenue: { $sum: revenueField } } }
             ])
         ]);
 
         const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
 
-        return res.status(200).json({
-            success: true,
-            data: orders,
-            stats: {
-                total: totalCount,
-                pending: pendingCount,
-                shipped: shippedCount,
-                totalRevenue
+        return successResponse(
+            res,
+            {
+                orders,
+                stats: {
+                    total: totalCount,
+                    pending: pendingCount,
+                    shipped: shippedCount,
+                    totalRevenue
+                }
             },
-            meta: {
+            'Orders retrieved successfully',
+            httpStatus.OK,
+            {
                 pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
+                    page: parsedPage,
+                    limit: parsedLimit,
                     total,
-                    totalPages: Math.ceil(total / limit)
+                    totalPages: Math.max(Math.ceil(total / parsedLimit), 1)
                 }
             }
-        });
+        );
     } catch (error) {
         next(error);
     }
@@ -274,13 +366,14 @@ const getAllOrders = async (req, res, next) => {
  */
 const updateOrderStatus = async (req, res, next) => {
     try {
-        const { status, paymentStatus, fulfillmentStatus } = req.body;
+        const { status, paymentStatus, fulfillmentStatus, internalNotes } = req.body;
         const order = await Order.findById(req.params.id);
         if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
 
         if (status) order.status = status;
         if (paymentStatus) order.paymentStatus = paymentStatus;
         if (fulfillmentStatus) order.fulfillmentStatus = fulfillmentStatus;
+        if (internalNotes !== undefined) order.internalNotes = internalNotes;
 
         await order.save();
 

@@ -101,7 +101,8 @@ const orderSchema = new mongoose.Schema(
     shipped_at: Date,
     delivered_at: Date,
     cancelled_at: Date,
-    status_history: [orderStatusHistorySchema]
+    status_history: [orderStatusHistorySchema],
+    internalNotes: { type: String, default: '' }
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
@@ -113,6 +114,7 @@ orderSchema.index({ orderId: 1 });
 orderSchema.index({ tenant_id: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ created_at: -1 });
+orderSchema.index({ tenant_id: 1, status: 1, created_at: -1 });
 
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 module.exports = Order;

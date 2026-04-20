@@ -10,8 +10,8 @@ const RazorpayGateway = require('./payments/RazorpayGateway');
 const couponService = require('./coupon.service');
 
 const DEFAULT_COUNTRY = 'India';
-const FREE_SHIPPING_THRESHOLD = 999;
-const DEFAULT_SHIPPING_CHARGE = 99;
+const FREE_SHIPPING_THRESHOLD = 1000;
+const DEFAULT_SHIPPING_CHARGE = 100;
 const DEFAULT_RAZORPAY_KEY = 'rzp_test_mock_key';
 
 class StorefrontCheckoutService {
@@ -503,6 +503,8 @@ class StorefrontCheckoutService {
     const forceReal = payload.forceRazorpay === true || payload.forceRealPayment === true;
 
     let isMock = false;
+    const isLiveKey = keyId.startsWith('rzp_live');
+
     if (forceReal) {
       isMock = false;
     } else if (forceMock) {
@@ -515,6 +517,10 @@ class StorefrontCheckoutService {
         error.code = 'RAZORPAY_NOT_CONFIGURED';
         throw error;
       }
+      isMock = true;
+    } else if (isLiveKey && !isProductionRuntime) {
+      // Safety: Use mock if live keys are present but we are not in production environment
+      console.warn('[Checkout] Live Razorpay keys detected in non-production environment. Defaulting to Mock mode for safety.');
       isMock = true;
     }
 

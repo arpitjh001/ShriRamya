@@ -3,10 +3,12 @@ const productService = require('../services/product.service');
 const catalogReadService = require('../services/catalog-read.service');
 const { successResponse, paginatedResponse } = require('../utils/response');
 const redis = require('../config/integrations/redis');
+const { Product } = require('../models');
+const { buildTenantScopedQuery, andQuery } = require('../utils/tenantScope');
 
 // Cache TTL for product list - 60 seconds
 const PRODUCTS_CACHE_TTL = 60;
-const PRODUCTS_CACHE_KEY = 'api:products:list';
+const PRODUCTS_CACHE_KEY = 'api:products:list:v3';
 
 /**
  * Generate cache key based on query params
@@ -21,6 +23,66 @@ const getCacheKey = (prefix, params) => {
  */
 const getTenantId = (req) => {
   return req.tenantId || req.user?.tenantId || 1;
+};
+
+const buildProductListMeta = async (tenantId, payload = {}) => {
+  const baseQuery = buildTenantScopedQuery(tenantId, {
+    is_deleted: { $ne: true }
+  });
+  const publishedStatusQuery = {
+    $or: [
+      { status: { $in: ['published', 'publish'] } },
+      { status: { $exists: false } },
+      { status: null }
+    ]
+  };
+
+  const [totalCount, publishedCount, draftCount, outOfStockResult] = await Promise.all([
+    Product.countDocuments(baseQuery),
+    Product.countDocuments(andQuery(baseQuery, publishedStatusQuery)),
+    Product.countDocuments(andQuery(baseQuery, { status: 'draft' })),
+    Product.aggregate([
+      { $match: baseQuery },
+      {
+        $addFields: {
+          totalVariantStock: {
+            $sum: {
+              $map: {
+                input: { $ifNull: ['$variants', []] },
+                as: 'variant',
+                in: { $ifNull: ['$$variant.stock', 0] }
+              }
+            }
+          }
+        }
+      },
+      { $match: { totalVariantStock: { $lte: 0 } } },
+      { $count: 'count' }
+    ])
+  ]);
+
+  return {
+    filters: payload.filters || {},
+    sortOptions: payload.sortOptions || [],
+    appliedFilters: payload.appliedFilters || {},
+    stats: {
+      total: totalCount,
+      published: publishedCount,
+      draft: draftCount,
+      outOfStock: outOfStockResult[0]?.count || 0
+    }
+  };
+};
+
+const sendProductsResponse = async (res, payload, tenantId) => {
+  const meta = await buildProductListMeta(tenantId, payload);
+  return paginatedResponse(
+    res,
+    payload.products,
+    payload.pagination,
+    'Products retrieved successfully',
+    meta
+  );
 };
 
 /**
@@ -52,7 +114,7 @@ const getProducts = async (req, res, next) => {
         if (cached) {
           const parsed = JSON.parse(cached);
           console.log(`[ProductController] Cache hit for products: ${cacheKey}`);
-          return res.json({ success: true, data: parsed });
+          return sendProductsResponse(res, parsed, tenantId);
         }
       } catch (cacheErr) {
         console.error('[ProductController] Redis cache read error:', cacheErr.message);
@@ -69,17 +131,13 @@ const getProducts = async (req, res, next) => {
     // Store in Redis cache with TTL
     if (redis) {
       try {
-
-    // Store in Redis cache with TTL
-    if (redis) {
-      try {
         await redis.set(cacheKey, JSON.stringify(data), { ex: PRODUCTS_CACHE_TTL });
       } catch (cacheErr) {
         console.error('[ProductController] Redis cache write error:', cacheErr.message);
       }
     }
 
-    return paginatedResponse(res, data.products, data.pagination, 'Products retrieved successfully');
+    return sendProductsResponse(res, data, tenantId);
 
   } catch (error) {
     next(error);

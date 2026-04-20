@@ -10,7 +10,7 @@ const MainLayout = () => {
 
     return (
         <div className="App min-h-screen flex flex-col">
-            <Navbar />
+            <Navbar isHome={isHome} />
             {/* 
                 Main content overlaps under the floating Navbar on HomePage, 
                 but uses padding for safe clearance on other pages.

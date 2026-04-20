@@ -82,15 +82,22 @@ export const transformWooProduct = (product) => {
 
   return {
     id: product.id,
+    _id: product._id,
+    productId: product.productId,
     name: product.name,
     slug: product.slug || product.name?.toLowerCase().replace(/\s+/g, '-'),
     description: product.description,
     short_description: product.short_description || product.description?.substring(0, 50),
 
+    sku: product.sku || normalizedVariants[0]?.sku || null,
+    basePrice,
     price: regularPrice,
     sale_price: salePrice,
 
     category: product.categories?.[0]?.name || product.categoryName || product.category || null,
+    categoryId: product.categoryId || product.categories?.[0]?.id || product.categories?.[0]?._id || null,
+    categoryName: product.categoryName || product.categories?.[0]?.name || product.category || null,
+    categorySlug: product.categorySlug || product.categories?.[0]?.slug || null,
     subcategory: product.subcategory || null,
     categories: product.categories || [],
 
@@ -98,6 +105,8 @@ export const transformWooProduct = (product) => {
 
     in_stock: totalStock > 0 || product.status === "publish" || product.status === "published",
     stock_quantity: totalStock,
+    stock: totalStock,
+    totalStock,
 
     status: product.status,
 

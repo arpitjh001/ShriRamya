@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { Product, Category } = require('../models');
 const productService = require('./product.service');
+const { buildTenantScope } = require('../utils/tenantScope');
 
 const PUBLIC_PRODUCT_STATUS_FILTER = ['published', 'publish'];
 
@@ -28,6 +29,10 @@ class CatalogReadService {
   getTenantId(tenantId) {
     const parsedTenantId = Number(tenantId);
     return Number.isInteger(parsedTenantId) && parsedTenantId > 0 ? parsedTenantId : 1;
+  }
+
+  buildTenantScope(tenantId) {
+    return buildTenantScope(tenantId);
   }
 
   normalizeAttributes(attributes) {
@@ -211,6 +216,7 @@ class CatalogReadService {
       id: this.toStringId(formattedProduct.id || formattedProduct._id || formattedProduct.productId),
       _id: this.toStringId(formattedProduct._id || formattedProduct.id || formattedProduct.productId),
       productId: formattedProduct.productId ?? formattedProduct.id ?? formattedProduct._id,
+      status: this.getProductStatus(formattedProduct),
       categoryId: this.toStringId(formattedProduct.categoryId || categories[0]?.id),
       categories,
       categoryName,
@@ -235,11 +241,12 @@ class CatalogReadService {
         : [...new Set(variants.map((variant) => variant.size).filter(Boolean))],
       created_at: formattedProduct.created_at || formattedProduct.createdAt || null,
       updated_at: formattedProduct.updated_at || formattedProduct.updatedAt || null,
+      sku: formattedProduct.sku || variants[0]?.sku || 'N/A',
     };
   }
 
   getProductStatus(product) {
-    return String(product.status || '').toLowerCase();
+    return String(product.status || 'published').toLowerCase();
   }
 
   isVisibleProduct(product, user) {
@@ -249,8 +256,8 @@ class CatalogReadService {
 
   async getBaseProducts({ tenantId, user }) {
     const baseQuery = {
-      tenant_id: this.getTenantId(tenantId),
-      is_deleted: { $ne: true },
+      is_deleted: false,
+      ...this.buildTenantScope(tenantId),
     };
 
     const rawProducts = await Product.find(baseQuery)
@@ -569,10 +576,11 @@ class CatalogReadService {
       lookup.slug = stringIdentifier;
     }
 
-    lookup.tenant_id = this.getTenantId(tenantId);
-    lookup.is_deleted = { $ne: true };
-
-    const product = await Product.findOne(lookup).populate('categories').lean();
+    const product = await Product.findOne({
+      ...lookup,
+      is_deleted: { $ne: true },
+      ...this.buildTenantScope(tenantId),
+    }).populate('categories').lean();
     if (!product) {
       return null;
     }
@@ -607,8 +615,8 @@ class CatalogReadService {
 
   async getCategoryDocument(identifier, tenantId = 1) {
     const query = {
-      tenant_id: this.getTenantId(tenantId),
       is_deleted: { $ne: true },
+      ...this.buildTenantScope(tenantId),
     };
     const stringIdentifier = String(identifier).trim();
 
@@ -642,8 +650,8 @@ class CatalogReadService {
   async listCategories({ tenantId = 1, user = null } = {}) {
     const categoryCounts = await this.getCategoryCounts({ tenantId, user });
     const categories = await Category.find({
-      tenant_id: this.getTenantId(tenantId),
       is_deleted: { $ne: true },
+      ...this.buildTenantScope(tenantId),
     })
       .sort({ menu_order: 1, name: 1 })
       .lean();
