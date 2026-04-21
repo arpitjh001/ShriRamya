@@ -1,0 +1,145 @@
+{
+  "summary": {
+    "total": 39,
+    "passed": 23,
+    "failed": 16,
+    "skipped": 0
+  },
+  "phases": {
+    "phase1": {
+      "name": "Environment Validation",
+      "tests": []
+    },
+    "phase2": {
+      "name": "Create Test Users",
+      "tests": []
+    },
+    "phase3": {
+      "name": "Admin Flow Test",
+      "tests": []
+    },
+    "phase4": {
+      "name": "Editor Flow Test",
+      "tests": []
+    },
+    "phase5": {
+      "name": "Customer Flow Test",
+      "tests": []
+    },
+    "phase6": {
+      "name": "Permission Validation",
+      "tests": []
+    },
+    "phase7": {
+      "name": "Frontend UI Validation",
+      "tests": []
+    },
+    "phase8": {
+      "name": "Performance Test",
+      "tests": []
+    }
+  },
+  "bugs": [
+    {
+      "test": "Frontend Availability",
+      "error": "Unknown error",
+      "timestamp": "2026-03-08T04:08:39.290Z"
+    },
+    {
+      "test": "Create Kanjeevaram Silk Saree Product",
+      "error": "\"body.attributes\" must be an array, \"body.tenantId\" is not allowed, \"body.categoryIds\" is not allowed, \"body.images\" is not allowed",
+      "timestamp": "2026-03-08T04:08:39.739Z"
+    },
+    {
+      "test": "Fetch Product Details",
+      "error": "No products created yet",
+      "timestamp": "2026-03-08T04:08:39.748Z"
+    },
+    {
+      "test": "Editor Create Product (Banarasi Silk Saree)",
+      "error": "\"body.attributes\" must be an array, \"body.tenantId\" is not allowed, \"body.categoryIds\" is not allowed, \"body.images\" is not allowed",
+      "timestamp": "2026-03-08T04:08:39.758Z"
+    },
+    {
+      "test": "Editor Create Blog Post",
+      "error": "Unknown column 'meta_title' in 'field list'",
+      "timestamp": "2026-03-08T04:08:39.769Z"
+    },
+    {
+      "test": "Fetch Blogs (Public)",
+      "error": "Table 'shriramya.blog_category_mapping' doesn't exist",
+      "timestamp": "2026-03-08T04:08:39.780Z"
+    },
+    {
+      "test": "Fetch Blog Details",
+      "error": "No blogs created yet",
+      "timestamp": "2026-03-08T04:08:39.780Z"
+    },
+    {
+      "test": "Customer Add to Cart",
+      "error": "No products available to add to cart",
+      "timestamp": "2026-03-08T04:08:39.791Z"
+    },
+    {
+      "test": "Customer Create Order",
+      "error": "No cart available for checkout",
+      "timestamp": "2026-03-08T04:08:39.808Z"
+    },
+    {
+      "test": "Verify Inventory Reduction",
+      "error": "No orders created",
+      "timestamp": "2026-03-08T04:08:39.808Z"
+    },
+    {
+      "test": "Customer View Order Details",
+      "error": "No orders to view",
+      "timestamp": "2026-03-08T04:08:39.817Z"
+    },
+    {
+      "test": "Admin Create Shipment",
+      "error": "No orders to ship",
+      "timestamp": "2026-03-08T04:08:39.817Z"
+    },
+    {
+      "test": "Customer View Tracking",
+      "error": "No orders to track",
+      "timestamp": "2026-03-08T04:08:39.818Z"
+    },
+    {
+      "test": "Editor Cannot Delete Product (403 Expected)",
+      "error": "No products to test deletion",
+      "timestamp": "2026-03-08T04:08:39.818Z"
+    },
+    {
+      "test": "Customer Cannot Create Product (403 Expected)",
+      "error": "Customer was able to create product (should be forbidden)",
+      "timestamp": "2026-03-08T04:08:39.851Z"
+    },
+    {
+      "test": "Admin Can Access All Endpoints",
+      "error": "Insufficient permissions",
+      "timestamp": "2026-03-08T04:08:39.875Z"
+    }
+  ],
+  "fixes": [],
+  "credentials": {
+    "admin": {
+      "email": "admin.test.1772942919158@test.com",
+      "password": "AdminPass123!",
+      "role": "Admin",
+      "id": "69acf6456c8691bc23f12624"
+    },
+    "editor": {
+      "email": "editor.test.1772942919158@test.com",
+      "password": "EditorPass123!",
+      "role": "Editor",
+      "id": "69acf6456c8691bc23f12627"
+    },
+    "customer": {
+      "email": "customer.test.1772942919158@test.com",
+      "password": "CustomerPass123!",
+      "role": "Customer",
+      "id": "69acf6456c8691bc23f1262a"
+    }
+  }
+}

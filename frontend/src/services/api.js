@@ -1,5 +1,7 @@
 import axios from "axios";
 import { transformWooProducts, transformWooProduct } from "../utils/productTransformer";
+import { tokenStorage, decodeToken as decodeJwtPayload } from "../utils/tokenStorage";
+
 import { getBackendBaseUrl } from "../utils/apiBase";
 
 /* =========================
@@ -26,41 +28,22 @@ let isRefreshingToken = false;
 let refreshQueue = [];
 
 const getStoredToken = (key) => {
-  if (typeof localStorage === 'undefined') return null;
-  return localStorage.getItem(key);
+  if (key === 'refresh_token') return tokenStorage.getRefreshToken();
+  return tokenStorage.getToken();
 };
 
 const setStoredToken = (key, value) => {
-  if (typeof localStorage === 'undefined' || !value) return;
-  localStorage.setItem(key, value);
+  if (key === 'refresh_token') tokenStorage.setRefreshToken(value);
+  else tokenStorage.setToken(value);
 };
 
 const clearStoredTokens = () => {
-  if (typeof localStorage === 'undefined') return;
-  localStorage.removeItem('token');
-  localStorage.removeItem('refresh_token');
+  tokenStorage.removeToken();
 };
 
-const decodeJwtPayload = (token) => {
-  if (!token || typeof window === 'undefined' || typeof window.atob !== 'function') {
-    return null;
-  }
 
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
+// Reusing decodeToken from tokenStorage utility as decodeJwtPayload
 
-    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const paddedPayload = normalizedPayload.padEnd(
-      normalizedPayload.length + ((4 - normalizedPayload.length % 4) % 4),
-      '='
-    );
-
-    return JSON.parse(window.atob(paddedPayload));
-  } catch (error) {
-    return null;
-  }
-};
 
 const resolveRefreshQueue = (error, token = null) => {
   refreshQueue.forEach(({ resolve, reject }) => {
@@ -155,9 +138,35 @@ api.interceptors.response.use(
       } catch (refreshError) {
         resolveRefreshQueue(refreshError, null);
         clearStoredTokens();
+        // Notify the app that authentication has failed
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth-failure', { 
+            detail: { message: refreshError.message || 'Session expired' } 
+          }));
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshingToken = false;
+      }
+    }
+
+    // Also handle immediate 401/403 for non-retryable requests or when refresh fails
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const message = error.response?.data?.message || error.message || 'Authentication failed';
+      const currentUrl = typeof window !== 'undefined' ? window.location.pathname : '';
+      
+      if (currentUrl.includes('/admin')) {
+         console.warn(`Unauthorized access to ${currentUrl}: ${message}`);
+      }
+
+      // If it's a 401, it's a clear authentication failure
+      if (error.response?.status === 401) {
+        clearStoredTokens();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth-failure', { 
+            detail: { message } 
+          }));
+        }
       }
     }
 
@@ -175,6 +184,11 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      if (process.env.NODE_ENV === 'production' && config.url.includes('/admin')) {
+        console.log(`[API] Attached token for admin request: ${config.url}`);
+      }
+    } else {
+      console.warn(`[API] MISSING token for request: ${config.url}`);
     }
 
     return config;
@@ -234,11 +248,15 @@ export const authAPI = {
 ========================= */
 
 const normalizePagination = (res, params = {}) => {
-  const paginationData = res.meta?.pagination || res.data?.pagination || {};
-  const page = paginationData.page || paginationData.current_page || res.data?.page || 1;
-  const limit = paginationData.limit || paginationData.per_page || res.data?.perPage || params.limit || params.per_page || 20;
-  const total = paginationData.total || res.data?.total || 0;
-  const totalPages = paginationData.totalPages || paginationData.total_pages || res.data?.totalPages || 
+  // If the interceptor already mapped res.data to response.data.data, 
+  // then pagination info might be in res.meta or res.data.meta
+  const meta = res.meta || res.data?.meta || {};
+  const paginationData = meta.pagination || res.pagination || {};
+  
+  const page = paginationData.page || paginationData.current_page || params.page || 1;
+  const limit = paginationData.limit || paginationData.per_page || params.limit || 20;
+  const total = paginationData.total || 0;
+  const totalPages = paginationData.totalPages || paginationData.total_pages || 
                     Math.max(Math.ceil(total / limit), 1);
 
   return { page, limit, total, totalPages };
@@ -559,20 +577,21 @@ export const ordersAPI = {
   getAll: async (params = {}) => {
     try {
       const res = await api.get("/orders/admin/all", { params });
-      const rawOrders = res.data?.orders || res.orders || res.data || [];
-      const orders = Array.isArray(rawOrders) ? rawOrders : [];
+      
+      // After interceptor, res.data is already the 'data' part of the response
+      const orders = Array.isArray(res.data) ? res.data : (res.data?.orders || []);
       const pagination = normalizePagination(res, params);
+      const meta = res.meta || {};
       
       return {
-        ...res,
         orders,
         pagination,
-        stats: res.data?.stats || res.meta?.stats || {},
-        data: res.data
+        stats: meta.stats || {},
+        success: true
       };
     } catch (err) {
       handleError(err);
-      return { orders: [], pagination: {}, data: [] };
+      return { orders: [], pagination: {}, stats: {} };
     }
   },
 
@@ -920,11 +939,16 @@ export const inventoryAPI = {
   getStockLevels: async (params = {}) => {
     try {
       const res = await api.get("/admin/inventory/stock-levels", { params });
-      const rawItems = res.data?.items || res.items || res.data || [];
+      
+      // After interceptor, res.data is already the 'data' part of the response
+      const items = Array.isArray(res.data) ? res.data : (res.data?.items || []);
+      const pagination = normalizePagination(res, params);
+      const meta = res.meta || {};
+
       return {
-        items: Array.isArray(rawItems) ? rawItems : [],
-        pagination: normalizePagination(res, params),
-        stats: res.meta?.stats || res.data?.stats || null
+        items,
+        pagination,
+        stats: meta.stats || null
       };
     } catch (err) {
       handleError(err);
@@ -966,9 +990,9 @@ export const inventoryAPI = {
 ========================= */
 
 export const analyticsAPI = {
-  getOverview: async () => {
+  getOverview: async (params = {}) => {
     try {
-      return await api.get("/admin/analytics/overview");
+      return await api.get("/admin/analytics/overview", { params });
     } catch (err) {
       handleError(err);
     }

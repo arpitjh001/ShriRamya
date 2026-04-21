@@ -81,6 +81,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [productSearch, setProductSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
   const [categorySearch, setCategorySearch] = useState('');
   const [pagination, setPagination] = useState({
     page: 1,
@@ -181,7 +183,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
       loadProducts(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [productSearch]);
+  }, [productSearch, filterStatus, filterCategory]);
 
   const loadProducts = async (page = 1, targetLimit = pagination.limit) => {
     try {
@@ -190,8 +192,16 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         page,
         limit: targetLimit,
         q: productSearch,
-        all_statuses: true
+        all_statuses: filterStatus === 'all'
       };
+
+      if (filterStatus !== 'all') {
+        searchParams.status = filterStatus;
+      }
+
+      if (filterCategory !== 'all') {
+        searchParams.category = filterCategory;
+      }
 
       const response = await productsAPI.getAll(searchParams);
       const productsData = response.products || response.data || [];
@@ -681,14 +691,44 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <Input
-                    placeholder="Search products..."
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                    className="pl-10 w-full bg-slate-50 border-border text-foreground focus:ring-royal-maroon focus:border-royal-maroon placeholder:text-slate-500"
-                  />
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <Input
+                      placeholder="Search products..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="pl-10 w-full bg-slate-50 border-border text-foreground focus:ring-royal-maroon focus:border-royal-maroon placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  {/* Status Filter */}
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-full sm:w-[140px] bg-slate-50 border-border text-xs font-medium">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Category Filter */}
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger className="w-full sm:w-[160px] bg-slate-50 border-border text-xs font-medium">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id || cat.slug} value={cat.slug || cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button
                   onClick={() => handleOpenProductModal()}

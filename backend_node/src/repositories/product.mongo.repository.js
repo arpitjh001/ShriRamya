@@ -239,6 +239,51 @@ class ProductMongoRepository {
     await product.save();
     return true;
   }
+
+  /**
+   * Atomic stock decrement for a specific variant
+   * @param {string} productId - Product ID/Slug
+   * @param {string} variantId - Specific Variant ID
+   * @param {number} quantity - Quantity to decrement (usually positive)
+   * @returns {Promise<boolean>} Success status
+   */
+  async decrementStock(productId, variantId, quantity) {
+    const prodId = this.normalizeCategoryIdentifier(productId);
+    const varId = this.normalizeCategoryIdentifier(variantId);
+
+    const result = await Product.updateOne(
+      { 
+        _id: prodId, 
+        variants: {
+          $elemMatch: {
+            _id: varId,
+            stock: { $gte: quantity }
+          }
+        }
+      },
+      { $inc: { 'variants.$.stock': -quantity } }
+    );
+
+    return result.modifiedCount > 0;
+  }
+
+  /**
+   * Atomic stock increment (restock) for a specific variant
+   * @param {string|ObjectId} productId
+   * @param {string|ObjectId} variantId
+   * @param {number} quantity
+   */
+  async incrementStock(productId, variantId, quantity) {
+    const prodId = this.normalizeCategoryIdentifier(productId);
+    const varId = this.normalizeCategoryIdentifier(variantId);
+
+    const result = await Product.updateOne(
+      { _id: prodId, 'variants._id': varId },
+      { $inc: { 'variants.$.stock': quantity } }
+    );
+
+    return result.modifiedCount > 0;
+  }
 }
 
 module.exports = new ProductMongoRepository();

@@ -1,0 +1,87 @@
+{
+  "total": 17,
+  "passed": 6,
+  "failed": 11,
+  "passRate": "35.29",
+  "tests": [
+    {
+      "name": "Health endpoint",
+      "passed": true
+    },
+    {
+      "name": "Create Tenants",
+      "passed": false,
+      "error": "Request failed with status code 500"
+    },
+    {
+      "name": "Create Users",
+      "passed": false,
+      "error": "Tenant A not created"
+    },
+    {
+      "name": "Login & JWT",
+      "passed": false,
+      "error": "Cannot read properties of null (reading 'email')"
+    },
+    {
+      "name": "Admin Role Tests",
+      "passed": false,
+      "error": "Request failed with status code 401"
+    },
+    {
+      "name": "Editor Role Tests",
+      "passed": false,
+      "error": "Request failed with status code 401"
+    },
+    {
+      "name": "Customer: View Products",
+      "passed": true
+    },
+    {
+      "name": "Customer: Create Product (should fail)",
+      "passed": false,
+      "error": "Request failed with status code 401"
+    },
+    {
+      "name": "Customer: Create Blog (should fail)",
+      "passed": false,
+      "error": "Request failed with status code 401"
+    },
+    {
+      "name": "Customer: Access Admin API (should fail)",
+      "passed": true
+    },
+    {
+      "name": "Tenant Isolation",
+      "passed": false,
+      "error": "Tenants not created"
+    },
+    {
+      "name": "Customer: View Cart",
+      "passed": true
+    },
+    {
+      "name": "Customer: Place Order Endpoint",
+      "passed": true
+    },
+    {
+      "name": "Order Flow Tests",
+      "passed": false,
+      "error": "Request failed with status code 404"
+    },
+    {
+      "name": "Security: Customer cannot access /admin/users",
+      "passed": false,
+      "error": "Request failed with status code 404"
+    },
+    {
+      "name": "Security: Invalid token rejected",
+      "passed": false,
+      "error": "Invalid token accepted"
+    },
+    {
+      "name": "Security: Unauthenticated access blocked",
+      "passed": true
+    }
+  ]
+}

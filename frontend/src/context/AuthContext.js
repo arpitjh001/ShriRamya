@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI, blogAPI } from '../services/api';
+import { tokenStorage, decodeToken } from '../utils/tokenStorage';
 
 const AuthContext = createContext(null);
 
@@ -97,21 +98,6 @@ export const AuthProvider = ({ children }) => {
     delete_posts: false
   });
 
-  // Decode JWT token to get roles and permissions
-  const decodeToken = (token) => {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-      );
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      return null;
-    }
-  };
-
   const fetchCapabilities = async () => {
     try {
       const response = await blogAPI.getCapabilities();
@@ -124,14 +110,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const loadUserFromToken = async () => {
-    const token = localStorage.getItem('token');
+    const token = tokenStorage.getToken();
     if (!token) {
       setLoading(false);
       return;
     }
 
     try {
-      // Decode token to get user info including roles and tenant
       const decoded = decodeToken(token);
 
       if (decoded) {
@@ -150,7 +135,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error loading user from token:', error);
-      localStorage.removeItem('token');
+      tokenStorage.removeToken();
     } finally {
       setLoading(false);
     }
@@ -158,19 +143,28 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     loadUserFromToken();
+
+    // Listen for global auth failure events from api service
+    const handleAuthFailure = (event) => {
+      console.warn('Authentication failure detected:', event.detail?.message);
+      logout();
+    };
+
+    window.addEventListener('auth-failure', handleAuthFailure);
+    return () => window.removeEventListener('auth-failure', handleAuthFailure);
   }, []);
 
   const login = async (email, password, tenantId = 1) => {
     const response = await authAPI.login({ email, password, tenantId });
     const accessToken = response.data.token || response.data.access_token;
-    const refreshToken = response.data.refresh_token || response.data.refreshToken;
+    const refreshToken = response.data.refreshToken || response.data.refresh_token;
 
-    localStorage.setItem('token', accessToken);
+    tokenStorage.setToken(accessToken);
     if (refreshToken) {
-      localStorage.setItem('refresh_token', refreshToken);
+      tokenStorage.setRefreshToken(refreshToken);
     }
 
-    // Decode token to get full user info
+
     const decoded = decodeToken(accessToken);
     const userData = {
       id: decoded.user_id || decoded.sub,
@@ -190,14 +184,14 @@ export const AuthProvider = ({ children }) => {
   const register = async (data) => {
     const response = await authAPI.register(data);
     const accessToken = response.data.token || response.data.access_token;
-    const refreshToken = response.data.refresh_token || response.data.refreshToken;
+    const refreshToken = response.data.refreshToken || response.data.refresh_token;
 
-    localStorage.setItem('token', accessToken);
+    tokenStorage.setToken(accessToken);
     if (refreshToken) {
-      localStorage.setItem('refresh_token', refreshToken);
+      tokenStorage.setRefreshToken(refreshToken);
     }
 
-    // Decode token to get full user info
+
     const decoded = decodeToken(accessToken);
     const userData = {
       id: decoded.user_id || decoded.sub,
@@ -214,8 +208,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refresh_token');
+    tokenStorage.removeToken();
     setUser(null);
     setCapabilities({
       edit_posts: false,

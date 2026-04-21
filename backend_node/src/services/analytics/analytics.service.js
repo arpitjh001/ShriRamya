@@ -65,7 +65,7 @@ class AnalyticsService {
         break;
     }
 
-    const validStatuses = ['placed', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+    const validStatuses = ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
     const tenantFilter = getTenantFilter(params.tenant_id);
 
     // Parallelize online and offline aggregations
@@ -82,8 +82,8 @@ class AnalyticsService {
           $group: {
             _id: groupFormat,
             orderCount: { $sum: 1 },
-            totalRevenue: { $sum: "$total_amount" },
-            avgOrderValue: { $avg: "$total_amount" },
+            totalRevenue: { $sum: { $ifNull: ['$total_amount', 0] } },
+            avgOrderValue: { $avg: { $ifNull: ['$total_amount', 0] } },
             uniqueCustomers: { $addToSet: "$userId" }
           }
         },
@@ -368,10 +368,10 @@ class AnalyticsService {
           $group: {
             _id: null,
             totalOrders: { $sum: 1 },
-            grossRevenue: { $sum: "$total_amount" },
-            refunds: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, "$total_amount", 0] } },
-            netRevenue: { $sum: { $cond: [{ $in: ["$status", validStatuses] }, "$total_amount", 0] } },
-            avgOrderValue: { $avg: "$total_amount" }
+            grossRevenue: { $sum: { $ifNull: ['$total_amount', 0] } },
+            refunds: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, { $ifNull: ['$total_amount', 0] }, 0] } },
+            netRevenue: { $sum: { $cond: [{ $in: ["$status", validStatuses] }, { $ifNull: ['$total_amount', 0] }, 0] } },
+            avgOrderValue: { $avg: { $ifNull: ['$total_amount', 0] } }
           }
         }
       ]),
@@ -405,7 +405,7 @@ class AnalyticsService {
           $group: {
             _id: "$payment_method",
             orderCount: { $sum: 1 },
-            totalRevenue: { $sum: "$total_amount" }
+            totalRevenue: { $sum: { $ifNull: ['$total_amount', 0] } }
           }
         },
         {
@@ -429,7 +429,7 @@ class AnalyticsService {
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
-            revenue: { $sum: "$total_amount" },
+            revenue: { $sum: { $ifNull: ['$total_amount', 0] } },
             orders: { $sum: 1 }
           }
         },
@@ -579,7 +579,7 @@ class AnalyticsService {
     }
 
     const tenantFilter = buildTenantScope(tenantId);
-    const validStatuses = ['placed', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+    const validStatuses = ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -590,38 +590,57 @@ class AnalyticsService {
 
     const productBaseFilter = buildTenantScopedQuery(tenantId, { is_deleted: { $ne: true } });
 
-    // Parallelize all 7 database queries for maximum performance
+    // Custom range calculation
+    const rangeStart = params.start_date ? new Date(params.start_date) : null;
+    const rangeEnd = params.end_date ? new Date(params.end_date) : new Date();
+
+    // Parallelize all database queries for maximum performance
     const [
       todayOnlineStats,
       todayOfflineStats,
       monthOnlineStats,
       monthOfflineStats,
+      rangeOnlineStats,
+      rangeOfflineStats,
       productCount,
+      totalProductCount,
       customerCount,
       lowStockCount
     ] = await Promise.all([
       // Today's online stats
       Order.aggregate([
         { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: todayStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: "$total_amount" } } }
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }] } } } }
       ]),
       // Today's offline stats
       OfflineSale.aggregate([
         { $match: { ...tenantFilter, soldAt: { $gte: todayStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } } } }
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $multiply: [{ $ifNull: ["$quantity", 1] }, { $ifNull: ["$salePrice", 0] }] } } } }
       ]),
       // Month's online stats
       Order.aggregate([
         { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: monthStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: "$total_amount" } } }
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }] } } } }
       ]),
       // Month's offline stats
       OfflineSale.aggregate([
         { $match: { ...tenantFilter, soldAt: { $gte: monthStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } } } }
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $multiply: [{ $ifNull: ["$quantity", 1] }, { $ifNull: ["$salePrice", 0] }] } } } }
       ]),
+      // Custom range online stats
+      rangeStart ? Order.aggregate([
+        { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: rangeStart, $lte: rangeEnd } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }] } } } }
+      ]) : Promise.resolve([]),
+      // Custom range offline stats
+      rangeStart ? OfflineSale.aggregate([
+        { $match: { ...tenantFilter, soldAt: { $gte: rangeStart, $lte: rangeEnd } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $multiply: [{ $ifNull: ["$quantity", 1] }, { $ifNull: ["$salePrice", 0] }] } } } }
+      ]) : Promise.resolve([]),
       // "Active products"
       Product.countDocuments(andQuery(productBaseFilter, PUBLISHED_PRODUCT_SCOPE)),
+      // Total products
+      Product.countDocuments(productBaseFilter),
       // Active customers
       User.countDocuments({ is_active: { $ne: false }, role: { $in: ['user', 'customer'] } }),
       // Low stock items
@@ -636,6 +655,8 @@ class AnalyticsService {
     const todayOffline = todayOfflineStats[0] || { orders: 0, revenue: 0 };
     const monthOnline = monthOnlineStats[0] || { orders: 0, revenue: 0 };
     const monthOffline = monthOfflineStats[0] || { orders: 0, revenue: 0 };
+    const rangeOnline = (rangeOnlineStats && rangeOnlineStats[0]) || { orders: 0, revenue: 0 };
+    const rangeOffline = (rangeOfflineStats && rangeOfflineStats[0]) || { orders: 0, revenue: 0 };
 
     const result = {
       today: {
@@ -654,8 +675,19 @@ class AnalyticsService {
         onlineRevenue: monthOnline.revenue,
         offlineRevenue: monthOffline.revenue
       },
+      range: rangeStart ? {
+        orders: rangeOnline.orders + rangeOffline.orders,
+        onlineOrders: rangeOnline.orders,
+        offlineOrders: rangeOffline.orders,
+        revenue: rangeOnline.revenue + rangeOffline.revenue,
+        onlineRevenue: rangeOnline.revenue,
+        offlineRevenue: rangeOffline.revenue,
+        startDate: rangeStart,
+        endDate: rangeEnd
+      } : null,
       totals: {
-        products: productCount,
+        products: totalProductCount,
+        activeProducts: productCount,
         customers: customerCount,
         lowStockItems: lowStockCount
       }
@@ -685,7 +717,7 @@ class AnalyticsService {
       {
         $match: {
           created_at: { $gte: startOfDay, $lte: endOfDay },
-          status: { $in: ['paid', 'processing', 'shipped', 'delivered'] }
+          status: { $in: ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'] }
         }
       },
       {
@@ -706,7 +738,7 @@ class AnalyticsService {
       {
         $match: {
           created_at: { $gte: startOfDay, $lte: endOfDay },
-          status: { $in: ['paid', 'processing', 'shipped', 'delivered'] }
+          status: { $in: ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'] }
         }
       },
       { $unwind: "$items" },

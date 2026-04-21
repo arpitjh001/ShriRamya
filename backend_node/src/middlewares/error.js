@@ -26,30 +26,30 @@ const errorConverter = (err, req, res, next) => {
 
 const errorHandler = (err, req, res, next) => {
   let { statusCode, message } = err;
-  /* if (config.env === 'production' && !err.isOperational) {
+  
+  if (config.env === 'production' && !err.isOperational) {
     statusCode = httpStatus.INTERNAL_SERVER_ERROR;
-    message = httpStatus[httpStatus.INTERNAL_SERVER_ERROR];
-  } */
+    message = 'Internal server error';
+  }
 
   res.locals.errorMessage = err.message;
 
   const response = {
     success: false,
     message: message || httpStatus[statusCode],
-    error: err.stack && config.env === 'development' ? err.stack : undefined,
+    ...(config.env === 'development' && { stack: err.stack }),
   };
 
-  // Always log error details to console in production for Vercel logging
+  // Log error details securely
   if (config.env === 'production') {
-    console.error('[ErrorHandler] Error details:', {
+    console.error('[ErrorHandler]', {
       message: err.message,
-      stack: err.stack,
       statusCode: err.statusCode,
-      isOperational: err.isOperational
+      isOperational: err.isOperational,
+      path: req.path,
+      method: req.method
     });
-  }
-
-  if (config.env === 'development') {
+  } else {
     console.error(err);
   }
 

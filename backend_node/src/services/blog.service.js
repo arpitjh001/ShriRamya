@@ -84,7 +84,7 @@ class BlogService {
         const limit = parseInt(perPage || per_page || 10);
         const skip = (parseInt(page) - 1) * limit;
 
-        const query = {};
+        const query = { tenantId };
         if (status && status !== 'all') {
             query.status = status;
         }
@@ -117,25 +117,32 @@ class BlogService {
         };
     }
 
-    async getPostById(id) {
-        const post = await Blog.findById(id).lean();
+    async getPostById(id, tenantId) {
+        const query = { _id: id };
+        if (tenantId) query.tenantId = tenantId;
+        const post = await Blog.findOne(query).lean();
         return this.formatPost(post);
     }
 
-    async getPostBySlug(slug) {
-        const post = await Blog.findOne({ slug }).lean();
+    async getPostBySlug(slug, tenantId = 1) {
+        const query = { slug };
+        if (tenantId) query.tenantId = tenantId;
+        const post = await Blog.findOne(query).lean();
         return this.formatPost(post);
     }
 
-    async getRelatedPosts(postId, limit = 3) {
+    async getRelatedPosts(postId, limit = 3, tenantId = 1) {
         const post = await Blog.findById(postId);
         if (!post) return [];
 
-        const posts = await Blog.find({
+        const query = {
             _id: { $ne: postId },
             categories: { $in: post.categories },
             status: 'published'
-        }).limit(limit).lean();
+        };
+        if (tenantId) query.tenantId = tenantId;
+
+        const posts = await Blog.find(query).limit(limit).sort({ publishedAt: -1 }).lean();
         return posts.map((relatedPost) => this.formatPost(relatedPost));
     }
 
@@ -163,17 +170,18 @@ class BlogService {
         }));
     }
 
-    async createPost(data) {
+    async createPost(data, tenantId = 1) {
         const normalizedData = this.normalizePostPayload(data);
         const post = new Blog({
             ...normalizedData,
+            tenantId: tenantId,
             publishedAt: normalizedData.status === 'published' ? new Date() : null
         });
         await post.save();
         return this.formatPost(post);
     }
 
-    async updatePost(id, data) {
+    async updatePost(id, data, tenantId = 1) {
         const updateData = { ...data };
 
         if (data.slug != null) {
@@ -210,15 +218,23 @@ class BlogService {
         delete updateData.seo_description;
         delete updateData.meta_description;
 
-        if (data.status === 'published') {
-            updateData.publishedAt = new Date();
+        if (updateData.status === 'published') {
+            const existing = await Blog.findById(id).select('publishedAt').lean();
+            if (!existing?.publishedAt) {
+                updateData.publishedAt = new Date();
+            }
         }
-        const post = await Blog.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+
+        const post = await Blog.findOneAndUpdate(
+            { _id: id, tenantId },
+            { $set: updateData },
+            { new: true }
+        );
         return this.formatPost(post);
     }
 
-    async deletePost(id) {
-        await Blog.findByIdAndDelete(id);
+    async deletePost(id, tenantId) {
+        await Blog.findOneAndDelete({ _id: id, tenantId });
         return { id, deleted: true };
     }
 
@@ -226,13 +242,15 @@ class BlogService {
         await Blog.findByIdAndUpdate(id, { $inc: { views: 1 } });
     }
 
-    async getAnalytics() {
+    async getAnalytics(tenantId = 1) {
+        const query = { tenantId };
         const [totalPosts, publishedPosts, draftPosts, archivedPosts, totalViewsResult] = await Promise.all([
-            Blog.countDocuments(),
-            Blog.countDocuments({ status: 'published' }),
-            Blog.countDocuments({ status: 'draft' }),
-            Blog.countDocuments({ status: 'archived' }),
+            Blog.countDocuments(query),
+            Blog.countDocuments({ ...query, status: 'published' }),
+            Blog.countDocuments({ ...query, status: 'draft' }),
+            Blog.countDocuments({ ...query, status: 'archived' }),
             Blog.aggregate([
+                { $match: query },
                 { $group: { _id: null, totalViews: { $sum: '$views' } } }
             ])
         ]);

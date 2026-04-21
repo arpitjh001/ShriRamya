@@ -74,7 +74,8 @@ const getRevenueAnalytics = async (req, res, next) => {
  */
 const getDashboardOverview = async (req, res, next) => {
   try {
-    const result = await analyticsService.getDashboardOverview({ tenant_id: req.user.tenant_id });
+    const params = { ...req.query, tenant_id: req.user.tenant_id };
+    const result = await analyticsService.getDashboardOverview(params);
     return successResponse(res, result);
   } catch (error) {
     console.error('Analytics error (overview):', error.message);

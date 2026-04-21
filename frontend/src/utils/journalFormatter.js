@@ -45,7 +45,16 @@ export const formatJournalContent = (html) => {
     }
   }
 
-  // 2. Handle Image Alignments and Alternating Layouts
+  // 2. Remove any paragraphs that only contain image URLs (common editor artifact)
+  paragraphs.forEach((p) => {
+    const text = p.textContent.trim();
+    // Check if paragraph only contains a URL pattern
+    if (/^https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)(\?[^\s]*)?$/i.test(text)) {
+      p.remove();
+    }
+  });
+
+  // 3. Handle Image Alignments and Alternating Layouts
   const images = body.querySelectorAll('img');
   images.forEach((img, index) => {
     const layoutClass = index % 2 === 0 ? 'journal-img-right' : 'journal-img-left';
@@ -57,23 +66,43 @@ export const formatJournalContent = (html) => {
     let targetToReplace = img;
     const parent = img.parentElement;
     
+    // If image is wrapped in a paragraph or div, replace the wrapper
     if (parent && (parent.tagName === 'P' || parent.tagName === 'DIV') && parent.children.length === 1 && parent.textContent.trim() === '') {
       targetToReplace = parent;
     }
     
+    // Remove inline width/height to allow responsive sizing
     img.style.width = ''; 
     img.style.height = '';
+    img.removeAttribute('width');
+    img.removeAttribute('height');
     
     if (targetToReplace.parentNode) {
       targetToReplace.parentNode.replaceChild(figure, targetToReplace);
       figure.appendChild(img);
       
-      if (img.alt && img.alt.length > 3 && !img.alt.includes('untitled')) {
+      // Only add caption if alt text is meaningful (not a URL or generic text)
+      if (img.alt && img.alt.length > 3 && !img.alt.includes('untitled') && !/^https?:\/\//i.test(img.alt)) {
         const caption = doc.createElement('figcaption');
         caption.className = 'journal-caption';
         caption.textContent = img.alt;
         figure.appendChild(caption);
       }
+    }
+  });
+
+  // 4. Clean up any remaining URL-only text nodes after images
+  const allTextNodes = [];
+  const walker = doc.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
+  let node;
+  while (node = walker.nextNode()) {
+    allTextNodes.push(node);
+  }
+  
+  allTextNodes.forEach((textNode) => {
+    const text = textNode.textContent.trim();
+    if (/^https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)(\?[^\s]*)?$/i.test(text)) {
+      textNode.remove();
     }
   });
 

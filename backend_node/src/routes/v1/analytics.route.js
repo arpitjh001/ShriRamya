@@ -1,12 +1,13 @@
 const express = require('express');
-const auth = require('../../middlewares/auth');
+const { auth, requireRole } = require('../../middlewares/authRBAC');
 const { apiLimiter } = require('../../middlewares/rateLimit.middleware');
 const analyticsController = require('../../controllers/analytics.controller');
 
 const router = express.Router();
 
 router.use(apiLimiter);
-router.use(auth(['admin']));
+router.use(auth);
+router.use(requireRole('admin'));
 
 /**
  * Analytics endpoints (Admin only)

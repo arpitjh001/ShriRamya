@@ -34,37 +34,44 @@ const AdminAnalyticsPage = () => {
   const [customerData, setCustomerData] = useState([]);
 
   useEffect(() => {
-    // Check if user has Admin role
-    const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
-    const isAuthorized = userRoles.includes('admin') || user?.role?.toLowerCase() === 'admin';
-    
-    if (!user || !isAuthorized) {
-      toast.error('Access denied');
-      navigate('/');
-      return;
+    if (user) {
+      loadAnalytics();
     }
-    loadAnalytics();
   }, [user, timeRange]);
 
   const loadAnalytics = async () => {
     setLoading(true);
     try {
+      // Calculate date range based on selection
+      const now = new Date();
+      const startDate = new Date();
+      startDate.setDate(now.getDate() - parseInt(timeRange));
+      
+      const rangeParams = {
+        start_date: startDate.toISOString(),
+        end_date: now.toISOString()
+      };
+
       const [overviewRes, salesRes, productsRes, revenueRes, customersRes] = await Promise.all([
-        analyticsAPI.getOverview(),
-        analyticsAPI.getSales({ group_by: 'day' }),
-        analyticsAPI.getProducts({ limit: 10 }),
-        analyticsAPI.getRevenue(),
-        analyticsAPI.getTopCustomers({ limit: 10 })
+        analyticsAPI.getOverview(rangeParams),
+        analyticsAPI.getSales({ ...rangeParams, group_by: 'day' }),
+        analyticsAPI.getProducts({ ...rangeParams, limit: 10 }),
+        analyticsAPI.getRevenue(rangeParams),
+        analyticsAPI.getTopCustomers({ ...rangeParams, limit: 10 })
       ]);
 
-      setOverview(overviewRes.data);
-      setSalesData(salesRes.data?.data || []);
-      setProductData(productsRes.data?.products || []);
-      setRevenueData(revenueRes.data);
-      setCustomerData(customersRes.data?.customers || []);
+      // Handle both raw data and .data wrapped responses from api.js
+      setOverview(overviewRes?.data || overviewRes || {});
+      setSalesData(salesRes?.data?.data || salesRes?.data || salesRes || []);
+      setProductData(productsRes?.data?.products || productsRes?.products || []);
+      setRevenueData(revenueRes?.data || revenueRes || {});
+      setCustomerData(customersRes?.data?.customers || customersRes?.customers || []);
     } catch (error) {
       console.error('Failed to load analytics:', error);
-      toast.error('Failed to load analytics data');
+      // Let the global api interceptor and AdminProtectedRoute handle 401/403
+      if (error.response?.status !== 401 && error.response?.status !== 403) {
+        toast.error('Failed to load analytics dashboard');
+      }
     } finally {
       setLoading(false);
     }
@@ -162,45 +169,46 @@ const AdminAnalyticsPage = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             <StatCard
-              title="Total Revenue"
-              value={overview?.month?.revenue || 0}
+              title="Range Revenue"
+              value={overview?.range?.revenue || overview?.month?.revenue || 0}
               format="currency"
               icon={DollarSign}
               trend="+12.5%"
               delay="delay-0"
               color="maroon"
               loading={loading}
-              subtext={`Online: ${overview?.month?.onlineRevenue ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(overview.month.onlineRevenue) : '₹0'}`}
+              subtext={`Online: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.onlineRevenue || overview?.month?.onlineRevenue || 0))} | Offline: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.offlineRevenue || overview?.month?.offlineRevenue || 0))}`}
             />
             <StatCard
-              title="Offline Revenue"
-              value={overview?.month?.offlineRevenue || 0}
-              format="currency"
-              icon={ShoppingCart}
-              trend="+8.2%"
-              delay="delay-75"
-              color="emerald"
-              loading={loading}
-            />
-            <StatCard
-              title="Total Orders"
-              value={overview?.month?.orders || 0}
+              title="Range Orders"
+              value={overview?.range?.orders || overview?.month?.orders || 0}
               format="number"
               icon={ShoppingCart}
               trend="+8.2%"
               delay="delay-150"
               color="emerald"
               loading={loading}
-              subtext={`Online: ${overview?.month?.onlineOrders || 0} | Offline: ${overview?.month?.offlineOrders || 0}`}
+              subtext={`Online: ${overview?.range?.onlineOrders || overview?.month?.onlineOrders || 0} | Offline: ${overview?.range?.offlineOrders || overview?.month?.offlineOrders || 0}`}
             />
             <StatCard
-              title="Active Products"
+              title="Today's Revenue"
+              value={overview?.today?.revenue || 0}
+              format="currency"
+              icon={TrendingUp}
+              delay="delay-75"
+              color="emerald"
+              loading={loading}
+              subtext={`Online: ${overview?.today?.onlineOrders || 0} orders`}
+            />
+            <StatCard
+              title="Total Products"
               value={overview?.totals?.products || 0}
               format="number"
               icon={Package}
               delay="delay-200"
               color="gold"
               loading={loading}
+              subtext={`${overview?.totals?.activeProducts || 0} Active / Published`}
             />
             <StatCard
               title="Total Customers"
@@ -306,6 +314,7 @@ const AdminAnalyticsPage = () => {
                           </div>
                           <div>
                             <p className="text-sm font-bold text-foreground group-hover:text-royal-maroon transition-colors">{product.name}</p>
+                            <p className="text-[9px] font-mono font-bold text-royal-maroon/60 uppercase tracking-tighter">SKU: {product.sku || 'N/A'}</p>
                             <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">
                               {product.totalQuantity} Pieces Crafted
                             </p>

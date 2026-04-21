@@ -8,6 +8,52 @@ const router = express.Router();
 const { productCatalog, FILTER_OPTIONS } = require('./productCatalog');
 const crypto = require('crypto');
 
+// CSRF Protection Middleware
+const csrfProtection = (req, res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const token = req.headers['x-csrf-token'] || req.body._csrf;
+    const sessionToken = req.headers['x-session-id'];
+    
+    if (!token || !sessionToken) {
+      return res.status(403).json({ success: false, message: 'CSRF token missing' });
+    }
+    
+    const expectedToken = crypto.createHash('sha256').update(sessionToken + process.env.JWT_SECRET || 'mock-secret').digest('hex');
+    if (token !== expectedToken) {
+      return res.status(403).json({ success: false, message: 'Invalid CSRF token' });
+    }
+  }
+  next();
+};
+
+router.use(csrfProtection);
+
+// Authentication Middleware
+const requireAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      req.user = payload;
+      return next();
+    }
+  } catch (e) {}
+  return res.status(401).json({ success: false, message: 'Invalid token' });
+};
+
+const requireAdmin = (req, res, next) => {
+  if (!req.user || (req.user.role !== 'admin' && !req.user.roles?.includes('admin'))) {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+  next();
+};
+
 // ==========================================
 // RAZORPAY SETUP (real or mock)
 // ==========================================
@@ -1198,7 +1244,7 @@ router.get('/blogs/:id', (req, res) => {
 });
 
 // POST create blog
-router.post('/blogs', (req, res) => {
+router.post('/blogs', requireAuth, requireAdmin, (req, res) => {
   const { title, content, excerpt, status, slug, tags, categories, featured_image, seo_title, seo_description } = req.body;
   if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
 
@@ -1227,7 +1273,7 @@ router.post('/blogs', (req, res) => {
 });
 
 // PUT update blog
-router.put('/blogs/:id', (req, res) => {
+router.put('/blogs/:id', requireAuth, requireAdmin, (req, res) => {
   const idx = blogPostsStore.findIndex(p => p.id === req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Post not found' });
 
@@ -1236,7 +1282,7 @@ router.put('/blogs/:id', (req, res) => {
 });
 
 // POST publish blog
-router.post('/blogs/:id/publish', (req, res) => {
+router.post('/blogs/:id/publish', requireAuth, requireAdmin, (req, res) => {
   const post = blogPostsStore.find(p => p.id === req.params.id);
   if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
   post.status = 'published';
@@ -1246,7 +1292,7 @@ router.post('/blogs/:id/publish', (req, res) => {
 });
 
 // POST archive blog
-router.post('/blogs/:id/archive', (req, res) => {
+router.post('/blogs/:id/archive', requireAuth, requireAdmin, (req, res) => {
   const post = blogPostsStore.find(p => p.id === req.params.id);
   if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
   post.status = 'archived';
@@ -1255,7 +1301,7 @@ router.post('/blogs/:id/archive', (req, res) => {
 });
 
 // DELETE blog
-router.delete('/blogs/:id', (req, res) => {
+router.delete('/blogs/:id', requireAuth, requireAdmin, (req, res) => {
   const idx = blogPostsStore.findIndex(p => p.id === req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Post not found' });
   blogPostsStore.splice(idx, 1);
@@ -1283,7 +1329,7 @@ router.post('/blogs/:id/comment', (req, res) => {
 // ANALYTICS ENDPOINTS (Admin)
 // Both /analytics/* and /admin/analytics/* paths supported
 // ==========================================
-router.get('/admin/analytics/overview', (req, res) => {
+router.get('/admin/analytics/overview', requireAuth, requireAdmin, (req, res) => {
   res.json({
     success: true,
     data: {
@@ -1299,7 +1345,7 @@ router.get('/admin/analytics/overview', (req, res) => {
   });
 });
 
-router.get('/admin/analytics/revenue', (req, res) => {
+router.get('/admin/analytics/revenue', requireAuth, requireAdmin, (req, res) => {
   const months = ['Jan', 'Feb', 'Mar'];
   res.json({
     success: true,
@@ -1311,7 +1357,7 @@ router.get('/admin/analytics/revenue', (req, res) => {
   });
 });
 
-router.get('/admin/analytics/sales', (req, res) => {
+router.get('/admin/analytics/sales', requireAuth, requireAdmin, (req, res) => {
   res.json({
     success: true,
     data: {
@@ -1321,7 +1367,7 @@ router.get('/admin/analytics/sales', (req, res) => {
   });
 });
 
-router.get('/admin/analytics/products', (req, res) => {
+router.get('/admin/analytics/products', requireAuth, requireAdmin, (req, res) => {
   res.json({
     success: true,
     data: {
@@ -1339,7 +1385,7 @@ router.get('/admin/analytics/products', (req, res) => {
 });
 
 // Admin warehouse & inventory
-router.get('/admin/warehouses', (req, res) => {
+router.get('/admin/warehouses', requireAuth, requireAdmin, (req, res) => {
   res.json({
     success: true,
     data: [
@@ -1349,7 +1395,7 @@ router.get('/admin/warehouses', (req, res) => {
   });
 });
 
-router.get('/admin/inventory/low-stock', (req, res) => {
+router.get('/admin/inventory/low-stock', requireAuth, requireAdmin, (req, res) => {
   const lowStock = productCatalog.filter(p => p.stock <= 10).slice(0, 10).map(p => ({
     id: p.id, name: p.name, stock: p.stock, category: p.categoryName, thumbnail: p.thumbnail
   }));
@@ -1415,7 +1461,7 @@ router.get('/analytics/products', (req, res) => {
 // ==========================================
 // USER MANAGEMENT (Admin)
 // ==========================================
-router.get('/users', (req, res) => {
+router.get('/users', requireAuth, requireAdmin, (req, res) => {
   const users = Object.values(mockUsers).map(u => {
     const { password, ...user } = u;
     return { ...user, createdAt: '2026-01-15T10:00:00.000Z', orders_count: Math.floor(Math.random() * 5) };
@@ -1426,7 +1472,7 @@ router.get('/users', (req, res) => {
 // ==========================================
 // ORDER STATUS UPDATE (Admin)
 // ==========================================
-router.put('/orders/:id/status', (req, res) => {
+router.put('/orders/:id/status', requireAuth, requireAdmin, (req, res) => {
   const order = ordersStore[req.params.id];
   if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
   order.status = req.body.status || order.status;
@@ -1434,7 +1480,7 @@ router.put('/orders/:id/status', (req, res) => {
   res.json({ success: true, data: order });
 });
 
-router.patch('/orders/admin/:id/status', (req, res) => {
+router.patch('/orders/admin/:id/status', requireAuth, requireAdmin, (req, res) => {
   const order = ordersStore[req.params.id];
   if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
   order.status = req.body.status || order.status;
@@ -1443,13 +1489,13 @@ router.patch('/orders/admin/:id/status', (req, res) => {
 });
 
 // Admin shipment stubs
-router.get('/orders/admin/shipments', (req, res) => {
+router.get('/orders/admin/shipments', requireAuth, requireAdmin, (req, res) => {
   res.json({ success: true, data: { shipments: [], total: 0 } });
 });
-router.get('/orders/admin/shipments/ready-to-ship', (req, res) => {
+router.get('/orders/admin/shipments/ready-to-ship', requireAuth, requireAdmin, (req, res) => {
   res.json({ success: true, data: [] });
 });
-router.get('/orders/admin/shipments/pending', (req, res) => {
+router.get('/orders/admin/shipments/pending', requireAuth, requireAdmin, (req, res) => {
   res.json({ success: true, data: [] });
 });
 
@@ -1579,14 +1625,14 @@ router.post('/orders/:orderId/payment', (req, res) => {
 });
 
 // Get user orders
-router.get('/orders/my', (req, res) => {
+router.get('/orders/my', requireAuth, (req, res) => {
   const orders = Object.values(ordersStore)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json({ success: true, data: orders });
 });
 
 // Get all orders (admin)
-router.get('/orders/admin/all', (req, res) => {
+router.get('/orders/admin/all', requireAuth, requireAdmin, (req, res) => {
   const orders = Object.values(ordersStore)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json({ success: true, data: { orders, total: orders.length } });
@@ -1620,7 +1666,7 @@ router.get('/orders/:orderNumber/tracking', (req, res) => {
 });
 
 // Cancel order
-router.post('/orders/my/:id/cancel', (req, res) => {
+router.post('/orders/my/:id/cancel', requireAuth, (req, res) => {
   const order = ordersStore[req.params.id];
   if (!order) {
     return res.status(404).json({ success: false, message: 'Order not found' });

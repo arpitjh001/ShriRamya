@@ -40,12 +40,28 @@ if (config.env !== 'test') {
  * Security Headers
  */
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  frameguard: { action: 'deny' },
+  noSniff: true,
+  xssFilter: true
 }));
 
-// Body Parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Body Parsing with size limits
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(cookieParser());
 
 /**
@@ -84,12 +100,13 @@ app.get('/api/v1/health', (req, res) => {
     timestamp: new Date().toISOString(),
     requestId: req.requestId,
   });
-});
+  });
 
 /**
- * Debug Endpoint - Check Database and Redis Connection
+ * Debug Endpoint - Check Database and Redis Connection (Development Only)
  */
-app.get('/api/v1/debug/status', async (req, res) => {
+if (config.env === 'development') {
+  app.get('/api/v1/debug/status', async (req, res) => {
   try {
     const { Product, Order } = require('./models');
     const mongoose = require('mongoose');
@@ -140,6 +157,7 @@ app.get('/api/v1/debug/status', async (req, res) => {
     });
   }
 });
+}
 
 /**
  * API Documentation (Swagger)
@@ -169,7 +187,7 @@ const dbRoutes = require('./routes/dbRoutes');
 // DB-backed routes handle products, categories, cart, search, auth, orders, blogs, wishlist, admin
 app.use('/api/v1', dbRoutes);
 
-// Original routes for any remaining features
+// Original v1 routes for modern controller-based features
 app.use('/api/v1', routes);
 
 /**

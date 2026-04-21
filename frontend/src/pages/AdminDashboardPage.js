@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { authAPI, productsAPI, analyticsAPI, warehouseAPI, couponsAPI, ordersAPI, categoriesAPI, userManagementService, uploadAPI } from '../services/api';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';

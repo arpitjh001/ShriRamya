@@ -1,0 +1,420 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - paragraph [ref=e7]: FREE SHIPPING ON ORDERS OVER ₹5000
+    - navigation [ref=e8]:
+      - generic [ref=e10]:
+        - link "Shri Ramya" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - img "Shri Ramya" [ref=e13]
+        - generic [ref=e14]:
+          - button "Women Wear" [ref=e15] [cursor=pointer]: Women Wear
+          - button "Luxury Collection" [ref=e16] [cursor=pointer]: Luxury Collection
+          - button "Regional Collections" [ref=e17] [cursor=pointer]: Regional Collections
+          - button "Home & Lifestyle" [ref=e18] [cursor=pointer]: Home & Lifestyle
+          - button "Jewellery" [ref=e19] [cursor=pointer]: Jewellery
+          - link "Journal" [ref=e20] [cursor=pointer]:
+            - /url: /blog
+            - text: Journal
+        - generic [ref=e22]:
+          - button "Search" [ref=e23] [cursor=pointer]:
+            - img [ref=e24]
+          - generic [ref=e27]:
+            - button "Account" [ref=e28] [cursor=pointer]:
+              - img [ref=e29]
+            - link "Wishlist" [ref=e33] [cursor=pointer]:
+              - /url: /wishlist
+              - img [ref=e34]
+          - link "Cart" [ref=e37] [cursor=pointer]:
+            - /url: /cart
+            - img [ref=e38]
+            - generic [ref=e41]: "0"
+  - main [ref=e42]:
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - img "Royal Indian traditional fashion" [ref=e45]
+        - generic [ref=e50]:
+          - paragraph [ref=e51]: Luxury Indian Atelier
+          - heading "Timeless Elegance" [level=1] [ref=e52]:
+            - text: Timeless
+            - text: Elegance
+          - paragraph [ref=e53]: Discover handcrafted sarees inspired by tradition and designed for modern royalty. Each piece tells a story of heritage craftsmanship.
+          - generic [ref=e54]:
+            - link "Shop Sarees" [ref=e55] [cursor=pointer]:
+              - /url: /category/sarees
+              - text: Shop Sarees
+              - img
+            - link "Explore Collection" [ref=e56] [cursor=pointer]:
+              - /url: /products
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - paragraph [ref=e60]: The Heritage Edit
+            - heading "Regal Masterpieces" [level=2] [ref=e61]
+          - link "View Entire Trousseau" [ref=e62] [cursor=pointer]:
+            - /url: /products
+        - generic [ref=e63]:
+          - link [ref=e66] [cursor=pointer]:
+            - /url: /products/6
+            - article [ref=e67]:
+              - generic [ref=e68]:
+                - img "Bridal Lehenga" [ref=e69]
+                - generic [ref=e70]:
+                  - button "Add to wishlist" [ref=e71]:
+                    - img
+                  - button "Quick view" [ref=e72]:
+                    - img
+                - button "Add To Cart" [ref=e74]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e75]:
+                - paragraph [ref=e76]: Lehengas
+                - heading "Bridal Lehenga" [level=3] [ref=e77]
+                - generic [ref=e79]: ₹12,999
+          - link [ref=e82] [cursor=pointer]:
+            - /url: /products/1
+            - article [ref=e83]:
+              - generic [ref=e84]:
+                - img "Banarasi Silk Saree" [ref=e85]
+                - generic [ref=e86]:
+                  - button "Add to wishlist" [ref=e87]:
+                    - img
+                  - button "Quick view" [ref=e88]:
+                    - img
+                - button "Add To Cart" [ref=e90]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e91]:
+                - paragraph [ref=e92]: Sarees
+                - heading "Banarasi Silk Saree" [level=3] [ref=e93]
+                - generic [ref=e95]: ₹5,999
+          - link [ref=e98] [cursor=pointer]:
+            - /url: /products/2
+            - article [ref=e99]:
+              - generic [ref=e100]:
+                - img "Cotton Kurti" [ref=e101]
+                - generic [ref=e102]:
+                  - button "Add to wishlist" [ref=e103]:
+                    - img
+                  - button "Quick view" [ref=e104]:
+                    - img
+                - button "Add To Cart" [ref=e106]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e107]:
+                - paragraph [ref=e108]: Kurtis
+                - heading "Cotton Kurti" [level=3] [ref=e109]
+                - generic [ref=e111]: ₹899
+          - link [ref=e114] [cursor=pointer]:
+            - /url: /products/3
+            - article [ref=e115]:
+              - generic [ref=e116]:
+                - img "Bridal Lehenga" [ref=e117]
+                - generic [ref=e118]:
+                  - button "Add to wishlist" [ref=e119]:
+                    - img
+                  - button "Quick view" [ref=e120]:
+                    - img
+                - button "Add To Cart" [ref=e122]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e123]:
+                - paragraph [ref=e124]: Lehengas
+                - heading "Bridal Lehenga" [level=3] [ref=e125]
+                - generic [ref=e127]: ₹12,999
+      - generic [ref=e128]:
+        - generic [ref=e130]:
+          - generic [ref=e131]:
+            - paragraph [ref=e132]: Featured Collections
+            - heading "Curated For Grand Occasions" [level=2] [ref=e133]
+            - paragraph [ref=e134]: Hand-picked ensembles that define the essence of luxury and celebration.
+          - link "Explore Luxury Edit" [ref=e135] [cursor=pointer]:
+            - /url: /luxury-collection
+            - text: Explore Luxury Edit
+            - img
+        - generic [ref=e136]:
+          - link "Wedding Couture Wedding Couture Regal silhouettes for grand ceremonies Discover" [ref=e138] [cursor=pointer]:
+            - /url: /luxury-collection
+            - img "Wedding Couture" [ref=e139]
+            - generic [ref=e141]:
+              - heading "Wedding Couture" [level=3] [ref=e142]
+              - paragraph [ref=e143]: Regal silhouettes for grand ceremonies
+              - generic [ref=e144]:
+                - text: Discover
+                - img [ref=e145]
+          - link "Heirloom Sarees Heirloom Sarees Handloom drapes with intricate zari work Discover" [ref=e148] [cursor=pointer]:
+            - /url: /category/sarees
+            - img "Heirloom Sarees" [ref=e149]
+            - generic [ref=e151]:
+              - heading "Heirloom Sarees" [level=3] [ref=e152]
+              - paragraph [ref=e153]: Handloom drapes with intricate zari work
+              - generic [ref=e154]:
+                - text: Discover
+                - img [ref=e155]
+          - link "Festive Classics Festive Classics Curated edits for every celebration Discover" [ref=e158] [cursor=pointer]:
+            - /url: /category/festive-wear
+            - img "Festive Classics" [ref=e159]
+            - generic [ref=e161]:
+              - heading "Festive Classics" [level=3] [ref=e162]
+              - paragraph [ref=e163]: Curated edits for every celebration
+              - generic [ref=e164]:
+                - text: Discover
+                - img [ref=e165]
+      - generic [ref=e168]:
+        - generic [ref=e169]:
+          - paragraph [ref=e170]: Category Showcase
+          - heading "Lookbook Highlights" [level=2] [ref=e171]
+        - generic [ref=e173]:
+          - link "Kurta Sets Kurta Sets" [ref=e175] [cursor=pointer]:
+            - /url: /category/kurta-sets
+            - img "Kurta Sets" [ref=e176]
+            - generic [ref=e178]:
+              - heading "Kurta Sets" [level=3] [ref=e179]
+              - img [ref=e181]
+          - link "Sarees Sarees" [ref=e184] [cursor=pointer]:
+            - /url: /category/sarees
+            - img "Sarees" [ref=e185]
+            - generic [ref=e187]:
+              - heading "Sarees" [level=3] [ref=e188]
+              - img [ref=e190]
+          - link "Lehengas Lehengas" [ref=e193] [cursor=pointer]:
+            - /url: /category/lehengas
+            - img "Lehengas" [ref=e194]
+            - generic [ref=e196]:
+              - heading "Lehengas" [level=3] [ref=e197]
+              - img [ref=e199]
+          - link "Festive Wear Festive Wear" [ref=e202] [cursor=pointer]:
+            - /url: /category/festive-wear
+            - img "Festive Wear" [ref=e203]
+            - generic [ref=e205]:
+              - heading "Festive Wear" [level=3] [ref=e206]
+              - img [ref=e208]
+      - generic [ref=e211]:
+        - generic [ref=e212]:
+          - paragraph [ref=e213]: The Home Atelier
+          - heading "Living In Grandeur" [level=2] [ref=e214]
+          - paragraph [ref=e215]: From artisanal textiles to heritage accents, discover luxury pieces choreographed to elevate your sanctuary.
+        - generic [ref=e216]:
+          - link "Bedsheets Bedsheets" [ref=e218] [cursor=pointer]:
+            - /url: /category/bedsheets
+            - img "Bedsheets" [ref=e219]
+            - heading "Bedsheets" [level=3] [ref=e222]
+          - link "Pillow Covers Pillow Covers" [ref=e224] [cursor=pointer]:
+            - /url: /category/pillow-covers
+            - img "Pillow Covers" [ref=e225]
+            - heading "Pillow Covers" [level=3] [ref=e228]
+          - link "Cushion Covers Cushion Covers" [ref=e230] [cursor=pointer]:
+            - /url: /category/cushion-covers
+            - img "Cushion Covers" [ref=e231]
+            - heading "Cushion Covers" [level=3] [ref=e234]
+      - generic [ref=e235]:
+        - generic [ref=e236]:
+          - img [ref=e238]
+          - paragraph [ref=e240]: Heritage Ornamentation
+          - heading "Semi Precious Jewellery" [level=2] [ref=e241]
+          - paragraph [ref=e242]: Ethereal craftsmanship meets modern brilliance. Each ornament is a tribute to the storied traditions of Indian royale.
+        - generic [ref=e243]:
+          - link "Statement Collections Statement Collections Legacy Collection" [ref=e245] [cursor=pointer]:
+            - /url: /category/jewellery
+            - img "Statement Collections" [ref=e247]
+            - generic [ref=e250]:
+              - heading "Statement Collections" [level=3] [ref=e251]
+              - generic [ref=e252]:
+                - generic [ref=e253]: Legacy Collection
+                - img [ref=e254]
+          - link "Earrings & Jhumkas Earrings & Jhumkas Legacy Collection" [ref=e257] [cursor=pointer]:
+            - /url: /category/earrings
+            - img "Earrings & Jhumkas" [ref=e259]
+            - generic [ref=e262]:
+              - heading "Earrings & Jhumkas" [level=3] [ref=e263]
+              - generic [ref=e264]:
+                - generic [ref=e265]: Legacy Collection
+                - img [ref=e266]
+          - link "Luxury Bangles Luxury Bangles Legacy Collection" [ref=e269] [cursor=pointer]:
+            - /url: /category/bangles
+            - img "Luxury Bangles" [ref=e271]
+            - generic [ref=e274]:
+              - heading "Luxury Bangles" [level=3] [ref=e275]
+              - generic [ref=e276]:
+                - generic [ref=e277]: Legacy Collection
+                - img [ref=e278]
+      - generic [ref=e280]:
+        - generic [ref=e281]:
+          - generic [ref=e282]:
+            - paragraph [ref=e283]: Trending Right Now
+            - heading "The Modern Muse" [level=2] [ref=e284]
+            - paragraph [ref=e285]: Curated pieces that are defining contemporary luxury across the globe.
+          - generic [ref=e287]: Limited Edition Weekly
+        - generic [ref=e288]:
+          - link [ref=e291] [cursor=pointer]:
+            - /url: /products/6
+            - article [ref=e292]:
+              - generic [ref=e293]:
+                - img "Bridal Lehenga" [ref=e294]
+                - generic [ref=e295]:
+                  - button "Add to wishlist" [ref=e296]:
+                    - img
+                  - button "Quick view" [ref=e297]:
+                    - img
+                - button "Add To Cart" [ref=e299]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e300]:
+                - paragraph [ref=e301]: Lehengas
+                - heading "Bridal Lehenga" [level=3] [ref=e302]
+                - generic [ref=e304]: ₹12,999
+          - link [ref=e307] [cursor=pointer]:
+            - /url: /products/1
+            - article [ref=e308]:
+              - generic [ref=e309]:
+                - img "Banarasi Silk Saree" [ref=e310]
+                - generic [ref=e311]:
+                  - button "Add to wishlist" [ref=e312]:
+                    - img
+                  - button "Quick view" [ref=e313]:
+                    - img
+                - button "Add To Cart" [ref=e315]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e316]:
+                - paragraph [ref=e317]: Sarees
+                - heading "Banarasi Silk Saree" [level=3] [ref=e318]
+                - generic [ref=e320]: ₹5,999
+          - link [ref=e323] [cursor=pointer]:
+            - /url: /products/2
+            - article [ref=e324]:
+              - generic [ref=e325]:
+                - img "Cotton Kurti" [ref=e326]
+                - generic [ref=e327]:
+                  - button "Add to wishlist" [ref=e328]:
+                    - img
+                  - button "Quick view" [ref=e329]:
+                    - img
+                - button "Add To Cart" [ref=e331]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e332]:
+                - paragraph [ref=e333]: Kurtis
+                - heading "Cotton Kurti" [level=3] [ref=e334]
+                - generic [ref=e336]: ₹899
+          - link [ref=e339] [cursor=pointer]:
+            - /url: /products/3
+            - article [ref=e340]:
+              - generic [ref=e341]:
+                - img "Bridal Lehenga" [ref=e342]
+                - generic [ref=e343]:
+                  - button "Add to wishlist" [ref=e344]:
+                    - img
+                  - button "Quick view" [ref=e345]:
+                    - img
+                - button "Add To Cart" [ref=e347]:
+                  - img
+                  - text: Add To Cart
+              - generic [ref=e348]:
+                - paragraph [ref=e349]: Lehengas
+                - heading "Bridal Lehenga" [level=3] [ref=e350]
+                - generic [ref=e352]: ₹12,999
+      - generic [ref=e355]:
+        - generic [ref=e356]:
+          - paragraph [ref=e357]: Royal Traditions
+          - heading "Seasonal Atelier Highlights" [level=2] [ref=e358]:
+            - text: Seasonal
+            - text: Atelier Highlights
+          - paragraph [ref=e359]: Limited-edition capsule releases inspired by the rhythmic beauty of our heritage. Rare hand-embroidery, pure gold zari, and fabrics sourced from India's most legendary looms.
+          - link "Our Craft Story" [ref=e360] [cursor=pointer]:
+            - /url: /about
+        - generic [ref=e361]:
+          - generic [ref=e362]:
+            - paragraph [ref=e363]:
+              - img [ref=e364]
+              - text: Royal Wedding Edit
+            - paragraph [ref=e366]: Exclusive bridal arrivals with hand embroidery and pure silk.
+          - generic [ref=e367]:
+            - paragraph [ref=e368]:
+              - img [ref=e369]
+              - text: Spring Festive Capsule
+            - paragraph [ref=e371]: Statement pieces in jewel tones with limited seasonal drops.
+          - generic [ref=e372]:
+            - paragraph [ref=e373]:
+              - img [ref=e374]
+              - text: Artisan Signature Week
+            - paragraph [ref=e376]: Spotlight on handcrafted pieces from regional ateliers.
+      - generic [ref=e378]:
+        - img [ref=e380]
+        - heading "Become An Insider" [level=2] [ref=e382]
+        - paragraph [ref=e383]: Gain early access to heirloom drops, private festive previews, and exclusive style notes from our head designer.
+        - generic [ref=e384]:
+          - textbox "Your royal email" [ref=e385]
+          - button "Join Circle" [ref=e386] [cursor=pointer]
+        - paragraph [ref=e387]: Privacy is our philosophy. Unsubscribe at any time.
+  - contentinfo [ref=e388]:
+    - generic [ref=e391]:
+      - generic [ref=e392]:
+        - generic [ref=e393]:
+          - link "Shri Ramya" [ref=e394] [cursor=pointer]:
+            - /url: /
+            - img "Shri Ramya" [ref=e395]
+          - paragraph [ref=e396]: House of handcrafted Indian attire curated for weddings, festivities, and timeless celebrations.
+          - generic [ref=e397]:
+            - link [ref=e398] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e399]
+            - link [ref=e401] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e402]
+            - link [ref=e405] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e406]
+        - generic [ref=e408]:
+          - heading "Shop Collections" [level=4] [ref=e409]
+          - list [ref=e410]:
+            - listitem [ref=e411]:
+              - link "Sarees" [ref=e412] [cursor=pointer]:
+                - /url: /products?category=Sarees
+            - listitem [ref=e413]:
+              - link "Lehengas" [ref=e414] [cursor=pointer]:
+                - /url: /products?category=Lehengas
+            - listitem [ref=e415]:
+              - link "Suits" [ref=e416] [cursor=pointer]:
+                - /url: /products?category=Suits
+            - listitem [ref=e417]:
+              - link "Dupattas" [ref=e418] [cursor=pointer]:
+                - /url: /products?category=Dupattas
+            - listitem [ref=e419]:
+              - link "Lookbook" [ref=e420] [cursor=pointer]:
+                - /url: /lookbook
+        - generic [ref=e421]:
+          - heading "Guest Relations" [level=4] [ref=e422]
+          - list [ref=e423]:
+            - listitem [ref=e424]:
+              - link "Our Heritage" [ref=e425] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e426]:
+              - link "Track Your Order" [ref=e427] [cursor=pointer]:
+                - /url: /track-order
+            - listitem [ref=e428]:
+              - link "Artisanal Care Guide" [ref=e429] [cursor=pointer]:
+                - /url: /fabric-care
+            - listitem [ref=e430]:
+              - link "Visit Our Studio" [ref=e431] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e432]:
+              - link "The Heritage Blog" [ref=e433] [cursor=pointer]:
+                - /url: /blog
+        - generic [ref=e434]:
+          - heading "Stay Connected" [level=4] [ref=e435]
+          - list [ref=e436]:
+            - listitem [ref=e437]:
+              - img [ref=e438]
+              - generic [ref=e441]: The Royal Studio, 123 Ethnic Street, Jaipur, Rajasthan 302001
+            - listitem [ref=e442]:
+              - img [ref=e443]
+              - generic [ref=e445]: +91 98765 43210
+            - listitem [ref=e446]:
+              - img [ref=e447]
+              - generic [ref=e450]: concierge@shriramya.com
+      - paragraph [ref=e452]: © 2026 Shri Ramya. Handcrafted in India.
+  - region "Notifications alt+T"
+```

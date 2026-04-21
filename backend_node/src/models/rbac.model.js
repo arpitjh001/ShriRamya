@@ -237,6 +237,16 @@ class TenantSettingsService {
     }
 
     static async setSetting(tenantId, key, value) {
+        // Validate and sanitize key to prevent NoSQL injection
+        if (typeof key !== 'string' || !key.match(/^[a-zA-Z0-9_-]+$/)) {
+            throw new Error('Invalid setting key format');
+        }
+        
+        // Validate tenantId is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(tenantId)) {
+            throw new Error('Invalid tenant ID');
+        }
+        
         const update = {};
         update[`settings.${key}`] = value;
         await Tenant.findByIdAndUpdate(tenantId, { $set: update });
@@ -244,6 +254,16 @@ class TenantSettingsService {
     }
 
     static async deleteSetting(tenantId, key) {
+        // Validate and sanitize key to prevent NoSQL injection
+        if (typeof key !== 'string' || !key.match(/^[a-zA-Z0-9_-]+$/)) {
+            throw new Error('Invalid setting key format');
+        }
+        
+        // Validate tenantId is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(tenantId)) {
+            throw new Error('Invalid tenant ID');
+        }
+        
         const update = {};
         update[`settings.${key}`] = 1;
         await Tenant.findByIdAndUpdate(tenantId, { $unset: update });

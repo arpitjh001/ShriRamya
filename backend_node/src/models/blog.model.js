@@ -17,6 +17,7 @@ const blogSchema = new mongoose.Schema({
   commentsCount: { type: Number, default: 0 },
   isJournal: { type: Boolean, default: false },
   publishedAt: Date,
+  tenantId: { type: Number, default: 1, index: true },
 }, { timestamps: true });
 
 const Blog = mongoose.models.Blog || mongoose.model('Blog', blogSchema);

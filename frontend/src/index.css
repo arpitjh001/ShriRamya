@@ -455,53 +455,102 @@
     @apply font-editorial leading-[1.8] tracking-normal;
     text-align: justify;
     hyphens: auto;
-    overflow-wrap: break-word; /* Safety against overflow */
+    overflow-wrap: break-word;
     word-wrap: break-word;
+    word-break: break-word;
     orphans: 3;
     widows: 3;
-    background-color: #fcfaf7; /* High-end cream/ivory background */
-    padding: 3rem 4rem; /* Generous journal-like padding */
+    background-color: #fcfaf7;
+    padding: 3rem 2rem;
     border-radius: 12px;
     border: 1px solid rgba(200, 169, 106, 0.15);
-    color: #1a1a1a; /* Higher contrast for premium reading */
+    color: #1a1a1a;
     box-shadow: 
       0 1px 3px rgba(0,0,0,0.05),
-      inset 0 0 40px rgba(200, 169, 106, 0.03); /* Subtle paper texture feel */
+      inset 0 0 40px rgba(200, 169, 106, 0.03);
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  @media (min-width: 768px) {
+    .journal-content {
+      padding: 3rem 4rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .journal-content {
+      padding: 4rem 6rem;
+    }
   }
 
   .journal-content p {
     @apply mb-8;
-    font-size: 1.25rem; /* Larger, readable journal size */
+    font-size: 1.125rem;
+    line-height: 1.8;
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  @media (min-width: 768px) {
+    .journal-content p {
+      font-size: 1.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .journal-content p {
+      font-size: 1.375rem;
+    }
+  }
+
+  /* Hide any stray URLs that might appear as text */
+  .journal-content p:has(> a[href*=".jpg"]),
+  .journal-content p:has(> a[href*=".jpeg"]),
+  .journal-content p:has(> a[href*=".png"]),
+  .journal-content p:has(> a[href*=".gif"]),
+  .journal-content p:has(> a[href*=".webp"]) {
+    display: none;
   }
 
   /* Intro Paragraph styling */
   .journal-content .journal-intro {
     @apply font-medium text-deep-emerald/90 border-b border-accent/10 pb-8 mb-12;
     font-size: 1.5rem;
-    line-height: 1.5;
+    line-height: 1.6;
   }
 
-  /* Drop Cap Styling - Now even more pronounced */
+  /* Drop Cap Styling - Premium editorial style */
   .journal-dropcap {
-    @apply float-left text-primary font-heading leading-[0.6] mr-4 mt-2;
+    @apply float-left text-primary font-heading leading-[0.65] mr-4 mt-2;
     font-size: 5.5rem;
     font-weight: 700;
     text-shadow: 1px 1px 0px rgba(255,255,255,0.8), 2px 2px 0px rgba(200, 169, 106, 0.1);
   }
 
-  /* Image Layouts - Modern wrapping */
+  /* Image Layouts - Modern wrapping with refined spacing */
   .journal-figure {
-    @apply mb-12 mt-6 max-w-full lg:max-w-[48%] rounded-sm overflow-hidden shadow-luxury border border-ivory p-1 bg-white;
+    @apply mb-12 mt-6 max-w-full rounded-sm overflow-hidden shadow-luxury border border-ivory p-1 bg-white;
     transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+    clear: both;
+    width: 100%;
+  }
+
+  @media (min-width: 1024px) {
+    .journal-figure {
+      max-width: 48%;
+    }
   }
 
   @media (min-width: 1024px) {
     .journal-figure.journal-img-right {
-      @apply float-right ml-10 -mr-16;
+      @apply float-right ml-8;
+      margin-right: 0;
     }
     
     .journal-figure.journal-img-left {
-      @apply float-left mr-10 -ml-16;
+      @apply float-left mr-8;
+      margin-left: 0;
     }
     
     .journal-figure:hover {
@@ -511,17 +560,22 @@
 
   .journal-figure img {
     @apply w-full h-auto block grayscale-[0.1] hover:grayscale-0 transition-all duration-700;
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
   }
 
   .journal-caption {
-    @apply bg-background p-4 text-[10px] italic text-muted-foreground border-t border-border/10 text-center uppercase tracking-[0.2em] font-body;
+    @apply bg-background p-4 text-[11px] italic text-muted-foreground border-t border-border/10 text-center uppercase tracking-[0.15em] font-body;
+    font-weight: 500;
   }
 
-  /* Editorial Headers */
+  /* Editorial Headers with refined spacing */
   .journal-content h1, 
   .journal-content h2, 
   .journal-content h3 {
     @apply font-heading text-primary mb-8 mt-16 first:mt-0;
+    clear: both;
   }
 
   .journal-content h2 {
@@ -571,14 +625,30 @@
   /* Responsive Adjustments */
   @media (max-width: 1023px) {
     .journal-content {
-      @apply p-8;
-      text-align: left; /* Better for mobile */
-    }
-    .journal-content p {
-      font-size: 1.125rem;
+      text-align: left;
     }
     .journal-figure {
       @apply float-none w-full mx-0 mb-8;
+      max-width: 100% !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .journal-content {
+      padding: 2rem 1.25rem;
+    }
+    .journal-dropcap {
+      font-size: 4rem;
+      margin-right: 0.75rem;
+    }
+    .journal-content h2 {
+      @apply text-2xl;
+    }
+    .journal-content h3 {
+      @apply text-xl;
+    }
+    .journal-content blockquote {
+      @apply px-6 py-8 text-xl;
     }
   }
 }

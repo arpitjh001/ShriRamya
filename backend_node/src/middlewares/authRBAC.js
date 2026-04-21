@@ -48,11 +48,12 @@ const auth = async (req, res, next) => {
         }
 
         // Attach to request - Enhanced with multi-tenant RBAC data
+        const tenantId = parseInt(payload.tenant_id || payload.tenantId || 1, 10) || 1;
         req.user = {
-            id: payload.user_id || payload.sub,
-            userId: payload.user_id || payload.sub,
-            tenantId: payload.tenant_id || 1,
-            tenant_id: payload.tenant_id || 1,
+            id: String(payload.user_id || payload.sub),
+            userId: String(payload.user_id || payload.sub),
+            tenantId,
+            tenant_id: tenantId,
             roles: payload.roles || (payload.role ? [payload.role] : []),
             role: payload.roles?.[0] || payload.role, // Primary role for legacy
             permissions: payload.permissions || [],

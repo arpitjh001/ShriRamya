@@ -236,7 +236,7 @@ const BlogPostPage = () => {
 
             {/* Content */}
             <motion.div
-                className="max-w-3xl mx-auto px-6"
+                className="max-w-5xl mx-auto px-4 sm:px-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}

@@ -1,0 +1,174 @@
+[Redis] TLS enabled for secure connection
+[36mINFO [0m [2026-04-19T05:23:32.271Z]  Server initializing {
+  "env": "development",
+  "port": 8000,
+  "frontendUrl": "*",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-19T05:23:32.516Z]  Swagger documentation enabled {
+  "path": "/api/docs",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+MongoDB connected: mongodb://localhost:27017/shriramya
+Categories ready: 23
+Products ready: 158 total (0 inserted this run)
+Seeded/Verified users in MongoDB
+Blogs already seeded: 10 found
+Backfilled product-category links for 0 products
+Database seeding complete!
+Background job queues initialized
+Server running on port 8000
+Environment: development
+[90mDEBUG[0m [2026-04-19T05:23:44.638Z] [3e96b676-98aa-4e9c-86c5-dcd8d0ba1ae0] API Request Started {
+  "method": "GET",
+  "path": "/api/v1/health",
+  "query": {},
+  "params": {},
+  "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.8115",
+  "ip": "::1",
+  "requestId": "3e96b676-98aa-4e9c-86c5-dcd8d0ba1ae0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-19T05:23:44.647Z] [3e96b676-98aa-4e9c-86c5-dcd8d0ba1ae0] API Request Completed {
+  "method": "GET",
+  "path": "/api/v1/health",
+  "statusCode": 200,
+  "duration": "11ms",
+  "requestId": "3e96b676-98aa-4e9c-86c5-dcd8d0ba1ae0",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mGET /api/v1/health [32m200[0m 4.538 ms - 120[0m
+[90mDEBUG[0m [2026-04-19T05:23:49.733Z] [f98ffb25-c386-4565-bde1-e7df4b2ca7bb] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/auth/login",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::1",
+  "requestId": "f98ffb25-c386-4565-bde1-e7df4b2ca7bb",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-19T05:23:49.858Z] [f98ffb25-c386-4565-bde1-e7df4b2ca7bb] API Request Completed {
+  "method": "POST",
+  "path": "/auth/login",
+  "statusCode": 200,
+  "duration": "125ms",
+  "requestId": "f98ffb25-c386-4565-bde1-e7df4b2ca7bb",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/auth/login [32m200[0m 123.084 ms - -[0m
+[90mDEBUG[0m [2026-04-19T05:23:49.874Z] [0c914011-0c66-44fe-98e6-41dd8798d074] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/products",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::1",
+  "requestId": "0c914011-0c66-44fe-98e6-41dd8798d074",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[ProductService] Initiating creation for product: "COD Test Checkout Saree 1776576229871" (Tenant: 1)
+[ProductService] Step 1: Normalizing product data...
+[ProductService] Step 2: Ensuring category assignment...
+[ProductService] Ensuring default 'Uncategorized' category for tenant: 1
+[ProductService] Default category 'Uncategorized' (69d791eb8d12f0831e3d4378) assigned.
+[ProductService] Step 3: Saving to MongoDB repository...
+[ProductService] Step 4: Fetching created product (ID: 69e466e56c7f95a6d1e81874)...
+[ProductService] Step 5: Updating search index...
+[ProductService] Success: Product "COD Test Checkout Saree 1776576229871" created successfully.
+[36mINFO [0m [2026-04-19T05:23:49.936Z] [0c914011-0c66-44fe-98e6-41dd8798d074] API Request Completed {
+  "method": "POST",
+  "path": "/",
+  "statusCode": 201,
+  "duration": "62ms",
+  "requestId": "0c914011-0c66-44fe-98e6-41dd8798d074",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/products [32m201[0m 59.997 ms - -[0m
+[90mDEBUG[0m [2026-04-19T05:23:49.941Z] [425ed85e-2cd9-44f7-8bf7-d6984a0b8575] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/cart/add",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::1",
+  "requestId": "425ed85e-2cd9-44f7-8bf7-d6984a0b8575",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-19T05:23:49.961Z] [425ed85e-2cd9-44f7-8bf7-d6984a0b8575] API Request Completed {
+  "method": "POST",
+  "path": "/cart/add",
+  "statusCode": 200,
+  "duration": "20ms",
+  "requestId": "425ed85e-2cd9-44f7-8bf7-d6984a0b8575",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/cart/add [32m200[0m 19.512 ms - 871[0m
+[90mDEBUG[0m [2026-04-19T05:23:49.967Z] [a9034612-3f19-43d5-a777-2d8e55f5ef7e] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/orders",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::1",
+  "requestId": "a9034612-3f19-43d5-a777-2d8e55f5ef7e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-19T05:23:50.012Z] [a9034612-3f19-43d5-a777-2d8e55f5ef7e] API Request Completed {
+  "method": "POST",
+  "path": "/orders",
+  "statusCode": 201,
+  "duration": "45ms",
+  "requestId": "a9034612-3f19-43d5-a777-2d8e55f5ef7e",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/orders [32m201[0m 43.449 ms - 487[0m
+[90mDEBUG[0m [2026-04-19T05:23:50.015Z] [25cfb109-ee6b-4277-877f-361fc0747d23] API Request Started {
+  "method": "POST",
+  "path": "/api/v1/orders/ORD-1776576229972-73C9/payment",
+  "query": {},
+  "params": {},
+  "userAgent": "node",
+  "ip": "::1",
+  "requestId": "25cfb109-ee6b-4277-877f-361fc0747d23",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[36mINFO [0m [2026-04-19T05:23:50.064Z] [25cfb109-ee6b-4277-877f-361fc0747d23] API Request Completed {
+  "method": "POST",
+  "path": "/orders/ORD-1776576229972-73C9/payment",
+  "statusCode": 200,
+  "duration": "49ms",
+  "requestId": "25cfb109-ee6b-4277-877f-361fc0747d23",
+  "environment": "development",
+  "service": "shriramya-backend",
+  "version": "2.0.0"
+}
+[0mPOST /api/v1/orders/ORD-1776576229972-73C9/payment [32m200[0m 48.453 ms - 133[0m
+Email: Order confirmation sent to codex.test@example.com
+Email: Admin notification sent to admin@shriramya.com

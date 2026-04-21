@@ -9,8 +9,7 @@ const catalogReadService = require('../services/catalog-read.service');
 const storefrontCheckoutService = require('../services/storefront-checkout.service');
 const shipmentController = require('../controllers/shipment.controller');
 const { insiderService, INSIDER_INTERESTS } = require('../services/insider.service');
-const auth = require('../middlewares/auth');
-const { optionalAuth } = require('../middlewares/authRBAC');
+const { auth, requireRole, optionalAuth } = require('../middlewares/authRBAC');
 const tokenService = require('../services/token.service');
 
 const isAdminOrEditor = (user) => {
@@ -89,14 +88,23 @@ const getBlogDisplayImage = (post) => {
   return getNonEmptyString(extractFirstImageSrc(post?.content));
 };
 
+const ensureHttps = (url) => {
+  if (!url) return '';
+  const stringUrl = String(url).trim();
+  if (stringUrl.startsWith('//')) return `https:${stringUrl}`;
+  if (stringUrl.startsWith('http://')) return stringUrl.replace('http://', 'https://');
+  return stringUrl;
+};
+
 const formatBlogPostForResponse = (post) => {
   if (!post) return post;
 
   const id = post._id?.toString?.() || String(post._id || post.slug || '');
-  const featuredImage =
+  const featuredImage = ensureHttps(
     getNonEmptyString(post.featuredImage) ||
-    getNonEmptyString(post.featured_image);
-  const image = getBlogDisplayImage(post);
+    getNonEmptyString(post.featured_image)
+  );
+  const image = ensureHttps(getBlogDisplayImage(post));
   const seoTitle = getNonEmptyString(post.seoTitle) || getNonEmptyString(post.seo_title);
   const seoDescription = getNonEmptyString(post.seoDescription) || getNonEmptyString(post.seo_description);
   const authorName = getNonEmptyString(post.author_name) || getNonEmptyString(post.author?.name) || 'Shri Ramya Team';
@@ -112,14 +120,9 @@ const formatBlogPostForResponse = (post) => {
     seoDescription,
     seo_description: seoDescription,
     author_name: authorName,
-    created_at: post.createdAt || post.created_at || null,
-    updated_at: post.updatedAt || post.updated_at || null,
-    published_at: post.publishedAt || post.published_at || null,
   };
 };
 
-router.use('/admin', auth(['admin']));
-router.use('/orders/admin', auth(['admin']));
 
 // ==========================================
 // AUTH ENDPOINTS
@@ -602,7 +605,7 @@ router.delete('/cart', async (req, res) => {
 // ==========================================
 // ORDERS ENDPOINTS
 // ==========================================
-router.get('/orders/my', auth(), async (req, res) => {
+router.get('/orders/my', auth, async (req, res) => {
   try {
     const userId = req.user?.user_id || req.user?.sub;
     const data = await storefrontCheckoutService.getOrders({ userId, page: 1, limit: 100 });
@@ -765,26 +768,6 @@ router.get('/blogs/stats', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.post('/blogs', auth(['admin', 'editor']), async (req, res) => {
-  try {
-    const { title, slug, content, excerpt, status = 'draft', categories = [], tags = [], featuredImage, images = [], seoTitle, seoDescription } = req.body;
-    const blogSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const blog = await Blog.create({
-      title, slug: blogSlug, content, excerpt,
-      author: { id: req.user?.user_id || req.user?.sub || 'unknown', name: req.user?.name || 'Admin' },
-      categories: Array.isArray(categories) ? categories : [],
-      tags: Array.isArray(tags) ? tags : (tags || '').split(',').map(t => t.trim()).filter(Boolean),
-      status, featuredImage, seoTitle, seoDescription,
-      images: Array.isArray(images) ? images : [],
-      publishedAt: status === 'published' ? new Date() : null,
-    });
-    const blogData = blog.toObject();
-    const blogId = blogData._id?.toString();
-    delete blogData.__v;
-    res.status(201).json({ success: true, data: { ...blogData, id: blogId || blogSlug }, message: 'Blog post created successfully' });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
-
 router.get('/blogs/tags', async (req, res) => {
   try {
     const tags = await Blog.distinct('tags');
@@ -810,7 +793,27 @@ router.get('/blogs/search', optionalAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/blogs/:idOrSlug', optionalAuth, async (req, res) => {
+router.post('/blogs', auth, requireRole('admin', 'editor'), async (req, res) => {
+  try {
+    const { title, slug, content, excerpt, status = 'draft', categories = [], tags = [], featuredImage, images = [], seoTitle, seoDescription } = req.body;
+    const blogSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const blog = await Blog.create({
+      title, slug: blogSlug, content, excerpt,
+      author: { id: req.user?.user_id || req.user?.sub || 'unknown', name: req.user?.name || 'Admin' },
+      categories: Array.isArray(categories) ? categories : [],
+      tags: Array.isArray(tags) ? tags : (tags || '').split(',').map(t => t.trim()).filter(Boolean),
+      status, featuredImage, seoTitle, seoDescription,
+      images: Array.isArray(images) ? images : [],
+      publishedAt: status === 'published' ? new Date() : null,
+    });
+    const blogData = blog.toObject();
+    const blogId = blogData._id?.toString();
+    delete blogData.__v;
+    res.status(201).json({ success: true, data: { ...blogData, id: blogId || blogSlug }, message: 'Blog post created successfully' });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+router.get('/blogs/:idOrSlug([a-f\\d]{24}|[a-z0-9-]+)', optionalAuth, async (req, res) => {
   try {
     const blog = await Blog.findOne({ $or: [{ slug: req.params.idOrSlug }, { _id: req.params.idOrSlug.match(/^[0-9a-fA-F]{24}$/) ? req.params.idOrSlug : undefined }] }, { __v: 0 }).lean();
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
@@ -821,7 +824,7 @@ router.get('/blogs/:idOrSlug', optionalAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.put('/blogs/:idOrSlug', auth(['admin', 'editor']), async (req, res) => {
+router.put('/blogs/:idOrSlug([a-f\\d]{24}|[a-z0-9-]+)', auth, requireRole('admin', 'editor'), async (req, res) => {
   try {
     const lookup = [{ slug: req.params.idOrSlug }];
     if (req.params.idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
@@ -837,7 +840,7 @@ router.put('/blogs/:idOrSlug', auth(['admin', 'editor']), async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.delete('/blogs/:idOrSlug', auth(['admin']), async (req, res) => {
+router.delete('/blogs/:idOrSlug([a-f\\d]{24}|[a-z0-9-]+)', auth, requireRole('admin'), async (req, res) => {
   try {
     const lookup = [{ slug: req.params.idOrSlug }];
     if (req.params.idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
@@ -1159,12 +1162,11 @@ router.get('/admin/warehouses', (req, res) => {
   ] });
 });
 
-router.get('/admin/inventory/low-stock', async (req, res) => {
-  try {
-    const items = await Product.find({ stock: { $lte: 10 } }, { _id: 0, productId: 1, name: 1, stock: 1, categoryName: 1, thumbnail: 1 }).limit(10).lean();
-    res.json({ success: true, data: items });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+// Admin Inventory Passthroughs (hand off to v1 controllers)
+router.get('/admin/inventory/low-stock', (req, res, next) => next());
+router.get('/admin/inventory/stock-levels', (req, res, next) => next());
+router.post('/admin/inventory/offline-sale', (req, res, next) => next());
+router.put('/admin/inventory/:variantId', (req, res, next) => next());
 
 // Admin users
 router.get('/admin/users', async (req, res) => {
@@ -1176,35 +1178,10 @@ router.get('/admin/users', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// Admin orders
-router.get('/admin/orders', async (req, res) => {
-  try {
-    const data = await storefrontCheckoutService.getOrders(req.query);
-    const stats = await storefrontCheckoutService.getOrderStats();
-    res.json({
-      success: true, data: {
-        orders: data.orders,
-        pagination: data.pagination,
-        stats,
-      }
-    });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
-
-router.patch('/admin/orders/:orderId/status', async (req, res) => {
-  try {
-    const order = await storefrontCheckoutService.updateOrderStatus(req.params.orderId, req.body);
-    res.json({ success: true, data: order });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
-
-router.get('/admin/orders/:orderId', async (req, res) => {
-  try {
-    const order = await storefrontCheckoutService.getOrderByOrderId(req.params.orderId);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    res.json({ success: true, data: order });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+// Admin orders - Handed off to v1 controllers
+router.get('/admin/orders', (req, res, next) => next());
+router.patch('/admin/orders/:orderId/status', (req, res, next) => next());
+router.get('/admin/orders/:orderId', (req, res, next) => next());
 
 // Admin blog stats
 router.get('/admin/blogs/stats', async (req, res) => {
@@ -1216,18 +1193,19 @@ router.get('/admin/blogs/stats', async (req, res) => {
 });
 
 // Shipment management
-router.get('/orders/admin/shipments', shipmentController.getAllShipments);
-router.get('/orders/admin/shipments/ready-to-ship', shipmentController.getReadyToShip);
-router.get('/orders/admin/shipments/pending', shipmentController.getPendingShipments);
-router.post('/orders/admin/:id/shipments', shipmentController.createShipment);
-router.patch('/orders/admin/shipments/:id/tracking', shipmentController.updateTracking);
-router.post('/orders/admin/shipments/:id/ship', shipmentController.markAsShipped);
-router.post('/orders/admin/shipments/:id/deliver', shipmentController.markAsDelivered);
-router.post('/orders/admin/shipments/:id/sync', shipmentController.syncShipment);
-router.post('/orders/admin/shipments/:id/cancel', shipmentController.cancelShipment);
-router.delete('/orders/admin/shipments/:id', shipmentController.deleteShipment);
-router.get('/orders/admin/shipping/xpressbees/couriers', shipmentController.getXpressbeesCouriers);
-router.post('/orders/admin/shipping/xpressbees/serviceability', shipmentController.checkXpressbeesServiceability);
+// Shipment management handed off to v1 controllers
+router.get('/orders/admin/shipments', (req, res, next) => next());
+router.get('/orders/admin/shipments/ready-to-ship', (req, res, next) => next());
+router.get('/orders/admin/shipments/pending', (req, res, next) => next());
+router.post('/orders/admin/:id/shipments', (req, res, next) => next());
+router.patch('/orders/admin/shipments/:id/tracking', (req, res, next) => next());
+router.post('/orders/admin/shipments/:id/ship', (req, res, next) => next());
+router.post('/orders/admin/shipments/:id/deliver', (req, res, next) => next());
+router.post('/orders/admin/shipments/:id/sync', (req, res, next) => next());
+router.post('/orders/admin/shipments/:id/cancel', (req, res, next) => next());
+router.delete('/orders/admin/shipments/:id', (req, res, next) => next());
+router.get('/orders/admin/shipping/xpressbees/couriers', (req, res, next) => next());
+router.post('/orders/admin/shipping/xpressbees/serviceability', (req, res, next) => next());
 
 // ==========================================
 // COUPONS

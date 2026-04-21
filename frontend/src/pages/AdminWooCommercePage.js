@@ -23,7 +23,7 @@ const VIEW_MODES = {
 };
 
 const AdminDashboardPage = () => {
-    const { user, login } = useAuth();
+    const { user, login, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('Native Products');
     const [viewMode, setViewMode] = useState(VIEW_MODES.DETAILED); // Default to detailed view (View B)
@@ -84,6 +84,11 @@ const AdminDashboardPage = () => {
 
     // Resolve the access gate immediately from the decoded token when possible.
     useEffect(() => {
+        if (authLoading) {
+            setAdminCheck('checking');
+            return;
+        }
+
         if (!user) {
             setAdminCheck('login');
             return;
@@ -95,9 +100,11 @@ const AdminDashboardPage = () => {
         }
 
         checkAdminAccess();
-    }, [user]);
+    }, [user, authLoading]);
 
     const checkAdminAccess = async () => {
+        if (authLoading) return;
+
         if (!user) {
             setAdminCheck('login');
             return;

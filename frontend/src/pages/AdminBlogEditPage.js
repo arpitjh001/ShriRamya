@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { blogAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
-import { Loader2, ArrowLeft, Image as ImageIcon, Save, Check, Plus } from 'lucide-react';
+import { Loader2, ArrowLeft, Image as ImageIcon, Save, Check, Plus, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const AdminBlogEditPage = () => {
@@ -451,7 +451,7 @@ const AdminBlogEditPage = () => {
                                 name="status"
                                 value={postData.status}
                                 onChange={handleInputChange}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-royal-maroon/50 appearance-none cursor-pointer hover:bg-white/10 transition-colors"
+                                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-royal-maroon/50 appearance-none cursor-pointer hover:bg-slate-800 transition-colors"
                             >
                                 <option value="draft" className="bg-slate-900 text-white">Draft (Sanctuary Only)</option>
                                 <option value="review" className="bg-slate-900 text-white">Under Review (Curator Check)</option>

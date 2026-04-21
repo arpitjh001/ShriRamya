@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Login Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a2e; color: #eee; }
+        .container { max-width: 400px; margin: 0 auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #16213e; border: 1px solid #0f3460; color: #eee; border-radius: 5px; }
+        button { width: 100%; padding: 12px; background: #e94560; border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #ff6b6b; }
+        #result { margin-top: 20px; padding: 15px; background: #16213e; border-radius: 5px; display: none; }
+        .success { border-left: 4px solid #4caf50; }
+        .error { border-left: 4px solid #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Admin Login Test</h1>
+        <p>Test login without browser cache issues</p>
+        
+        <form id="loginForm">
+            <label>Email:</label>
+            <input type="email" id="email" value="admin@shriramya.com" required>
+            
+            <label>Password:</label>
+            <input type="password" id="password" value="Admin@123" required>
+            
+            <button type="submit">Login</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = '';
+            resultDiv.innerHTML = '⏳ Logging in...';
+            
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Login Successful!</h3>
+                        <p><strong>Email:</strong> ${data.data.user.email}</p>
+                        <p><strong>Role:</strong> ${data.data.user.role}</p>
+                        <p><strong>Name:</strong> ${data.data.user.name}</p>
+                        <p><strong>Token:</strong> ${data.data.access_token.substring(0, 50)}...</p>
+                        <p style="margin-top:15px"><a href="/admin/dashboard" style="color:#4caf50">Go to Admin Dashboard →</a></p>
+                    `;
+                    
+                    // Save token
+                    localStorage.setItem('token', data.data.access_token);
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Login Failed</h3>
+                        <p>${data.message || 'Unknown error'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${error.message}</p>
+                    <p>Check browser console for details</p>
+                `;
+                console.error('Login error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -11,6 +11,32 @@ const PRODUCTS_CACHE_TTL = 60;
 const PRODUCTS_CACHE_KEY = 'api:products:list:v3';
 
 /**
+ * Safely parse JSON with validation
+ */
+const safeJSONParse = (data, schema = null) => {
+  if (typeof data !== 'string' || data.length > 1024 * 1024) {
+    throw new Error('Invalid data format or size');
+  }
+  
+  const parsed = JSON.parse(data);
+  
+  // Validate schema if provided
+  if (schema) {
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Parsed data is not an object');
+    }
+    
+    for (const [key, validator] of Object.entries(schema)) {
+      if (!validator(parsed[key])) {
+        throw new Error(`Invalid data structure: ${key}`);
+      }
+    }
+  }
+  
+  return parsed;
+};
+
+/**
  * Generate cache key based on query params
  */
 const getCacheKey = (prefix, params) => {
@@ -112,12 +138,17 @@ const getProducts = async (req, res, next) => {
       try {
         const cached = await redis.get(cacheKey);
         if (cached) {
-          const parsed = JSON.parse(cached);
+          // Safely parse and validate cached data
+          const parsed = safeJSONParse(cached, {
+            products: (val) => Array.isArray(val),
+            pagination: (val) => val && typeof val === 'object'
+          });
+          
           console.log(`[ProductController] Cache hit for products: ${cacheKey}`);
           return sendProductsResponse(res, parsed, tenantId);
         }
       } catch (cacheErr) {
-        console.error('[ProductController] Redis cache read error:', cacheErr.message);
+        console.error('[ProductController] Redis cache read/parse error:', cacheErr.message);
       }
     }
 

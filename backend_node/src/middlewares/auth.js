@@ -55,7 +55,7 @@ const auth = (roles = []) => async (req, res, next) => {
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      return next(new ApiError(httpStatus.UNAUTHORIZED, 'Token expired'));
+      return next(new ApiError(httpStatus.UNAUTHORIZED, 'Session expired'));
     }
     return next(new ApiError(httpStatus.UNAUTHORIZED, 'Invalid authentication'));
   }

@@ -27,7 +27,7 @@ const statusBadge = (item) => {
 };
 
 const AdminInventoryPage = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [inventory, setInventory] = useState([]);
@@ -55,18 +55,20 @@ const AdminInventoryPage = () => {
   const [serverStats, setServerStats] = useState(null);
 
   useEffect(() => {
-    loadInventory(1);
-  }, []);
+    if (user) {
+      loadInventory(1);
+    }
+  }, [user]);
 
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Internal page state is not explicitly managed as a single 'page' variable here
-      // but passed to loadInventory. We'll reset by calling loadInventory(1).
-      loadInventory(1);
+      if (user) {
+        loadInventory(1);
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, user]);
 
   const loadInventory = async (page = 1, limit = pagination.limit) => {
     setLoading(true);
@@ -78,9 +80,8 @@ const AdminInventoryPage = () => {
       };
       const response = await inventoryAPI.getStockLevels(params);
       
-      // inventoryAPI.getStockLevels returns { items, pagination, stats }
-      const items = response.items || [];
-      setInventory(Array.isArray(items) ? items : []);
+      const items = response.items || (Array.isArray(response) ? response : []);
+      setInventory(items);
       
       if (response.stats) {
         setServerStats(response.stats);
@@ -96,7 +97,10 @@ const AdminInventoryPage = () => {
       }
     } catch (error) {
       console.error('Failed to load inventory:', error);
-      toast.error('Failed to load inventory');
+      // Let the global api interceptor and AdminProtectedRoute handle 401/403
+      if (error.response?.status !== 401 && error.response?.status !== 403) {
+        toast.error('Failed to load inventory data');
+      }
     } finally {
       setLoading(false);
     }
@@ -319,7 +323,22 @@ const AdminInventoryPage = () => {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs font-medium max-w-[180px]">{item.categoryName || 'Uncategorized'}</TableCell>
+                        <TableCell>
+                          <div className="flex max-w-[180px] flex-wrap gap-1">
+                            {item.categories && item.categories.length > 0 ? (
+                              item.categories.map((cat) => (
+                                <span
+                                  key={`${item.id}-${cat.id || cat._id}`}
+                                  className="px-1.5 py-0.5 bg-slate-50 text-slate-600 rounded-full text-[9px] font-bold border border-border whitespace-nowrap"
+                                >
+                                  {cat.name}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground text-xs font-medium">{item.categoryName || 'Uncategorized'}</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-semibold text-xs text-foreground">{item.color || 'Default'}</span>

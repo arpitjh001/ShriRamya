@@ -1,0 +1,32 @@
+{
+  "autonomousMode": {
+    "enabled": true,
+    "requireApproval": false,
+    "alwaysAutoRun": [
+      "npm install",
+      "npm run build",
+      "docker compose up",
+      "docker build",
+      "git commit",
+      "git push",
+      "npm run test",
+      "npm start"
+    ],
+    "autoRunSafeActions": {
+      "fileCreation": true,
+      "fileDeletions": false,
+      "fileUpdates": true,
+      "codeEdits": true,
+      "refactoring": true,
+      "databaseDestructiveOps": false,
+      "systemFileDeletions": false
+    },
+    "selfHealing": {
+      "enabled": true,
+      "analyzeProject": true,
+      "detectIssues": true,
+      "fixIssuesAutomatically": true,
+      "verifyBuilds": true
+    }
+  }
+}

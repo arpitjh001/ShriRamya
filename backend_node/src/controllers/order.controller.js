@@ -8,6 +8,7 @@ const { Order, User, Product, OrderEvent } = require('../models');
 const orderEventService = require('../services/events/orderEvent.service');
 const couponService = require('../services/coupon.service');
 const analyticsService = require('../services/analytics/analytics.service');
+const productService = require('../services/product.service');
 const { successResponse } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
 const { buildTenantScope, andQuery } = require('../utils/tenantScope');
@@ -63,27 +64,38 @@ const createOrder = async (req, res, next) => {
                 throw new ApiError(httpStatus.NOT_FOUND, `Product ${item.productId} not found`);
             }
 
-            let unitPrice = product.basePrice || product.price || 0;
-            let salePrice = product.salePrice || unitPrice;
+            // Find specific variant if variantId provided
+            const variant = item.variantId ? product.variants.id(item.variantId) : null;
             
-            const itemTotal = (item.quantity || 1) * (salePrice || unitPrice);
+            // Use variant price if available, fallback to product base price
+            let unitPrice = variant ? (Number(variant.price) || 0) : (Number(product.basePrice || product.price) || 0);
+            
+            // Calculate effective sale price (ignoring complicated schedules for now for simplicity, matching CartService)
+            let salePrice = unitPrice;
+            if (variant && variant.discountPrice != null && variant.discountPrice > 0 && variant.discountPrice < unitPrice) {
+                salePrice = Number(variant.discountPrice);
+            } else if (!variant && product.salePrice != null && product.salePrice > 0 && product.salePrice < unitPrice) {
+                salePrice = Number(product.salePrice);
+            }
+            
+            const itemTotal = (item.quantity || 1) * salePrice;
             subtotal += itemTotal;
 
             processedItems.push({
                 productId: item.productId,
                 variantId: item.variantId,
                 name: product.name,
-                sku: product.sku,
-                thumbnail: product.thumbnail || (product.images && product.images[0]),
+                sku: variant ? (variant.sku || product.sku) : product.sku,
+                thumbnail: variant?.image || product.thumbnail || (product.images && product.images[0]),
                 quantity: item.quantity,
                 price: unitPrice,
                 salePrice: salePrice,
-                priceSnapshot: salePrice || unitPrice, // Mapping mandatory field
-                size: item.size || '',
-                color: item.color || '',
+                priceSnapshot: salePrice, // Correctly set to the price charged
+                size: item.size || variant?.size || '',
+                color: item.color || variant?.color || '',
                 subtotal: itemTotal,
                 total: itemTotal,
-                taxAmount: 0 // Explicitly set to 0 to avoid NaN
+                taxAmount: 0 
             });
         }
 
@@ -155,13 +167,22 @@ const createOrder = async (req, res, next) => {
             shipping_address: resolvedShipping, // Save raw if provided
             customerNotes
         });
+        
+        // Handle stock management for COD orders immediately
+        if (paymentMethod === 'cod') {
+            for (const item of processedItems) {
+                if (item.variantId) {
+                    await productService.decrementStock(item.productId, item.variantId, item.quantity);
+                }
+            }
+        }
 
         // Log order created event with fail-safe
         try {
             await orderEventService.logEvent(
                 order._id,
                 'order_created',
-                `Order ${order.orderId} created`,
+                `Order ${order.orderId} created (${paymentMethod === 'cod' ? 'COD' : 'Online'})`,
                 { grandTotal },
                 userId,
                 'customer'
@@ -170,7 +191,54 @@ const createOrder = async (req, res, next) => {
             console.error('Failed to log order event:', eventError.message);
         }
 
-        return successResponse(res, order, 'Order created successfully', httpStatus.CREATED);
+        // Initialize Razorpay payment if payment method is not COD
+        let razorpayData = null;
+        if (paymentMethod !== 'cod') {
+            const RazorpayGateway = require('../services/payments/RazorpayGateway');
+            
+            if (RazorpayGateway.isConfigured()) {
+                const paymentResult = await RazorpayGateway.createPayment({
+                    orderId: order._id,
+                    orderNumber: order.orderId,
+                    userId,
+                    amount: grandTotal,
+                    currency: 'INR',
+                    receipt: `order_${order._id}_${Date.now()}`
+                });
+
+                if (paymentResult.success) {
+                    razorpayData = {
+                        razorpay_order_id: paymentResult.orderId,
+                        razorpayOrderId: paymentResult.orderId,
+                        amount: paymentResult.amount * 100, // Convert to paise
+                        currency: paymentResult.currency,
+                        razorpay_key_id: process.env.RAZORPAY_KEY_ID,
+                        key: process.env.RAZORPAY_KEY_ID
+                    };
+                }
+            } else {
+                // Mock payment for development
+                razorpayData = {
+                    razorpay_order_id: `order_mock_${Date.now()}`,
+                    razorpayOrderId: `order_mock_${Date.now()}`,
+                    amount: grandTotal * 100,
+                    currency: 'INR',
+                    razorpay_key_id: 'rzp_test_mock_key',
+                    key: 'rzp_test_mock_key',
+                    is_mock: true,
+                    isMock: true
+                };
+            }
+        }
+
+        const responseData = {
+            ...order.toObject(),
+            order_id: order._id,
+            orderId: order._id,
+            ...(razorpayData || {})
+        };
+
+        return successResponse(res, responseData, 'Order created successfully', httpStatus.CREATED);
     } catch (error) {
         next(error);
     }
@@ -289,24 +357,9 @@ const getAllOrders = async (req, res, next) => {
 
         const listFilter = andQuery(...listFilters);
 
-        const revenueField = {
-            $ifNull: [
-                '$total',
-                {
-                    $ifNull: [
-                        '$total_amount',
-                        {
-                            $ifNull: [
-                                '$grandTotal',
-                                { $ifNull: ['$finalTotal', 0] }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        };
+        const revenueField = { $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }] };
 
-        const [total, orders, totalCount, pendingCount, shippedCount, revenueResult] = await Promise.all([
+        const [total, orders, totalCount, pendingCount, shippedCount, revenueResult, todayCount] = await Promise.all([
             Order.countDocuments(listFilter),
             Order.find(listFilter)
                 .sort({ created_at: -1 })
@@ -329,10 +382,15 @@ const getAllOrders = async (req, res, next) => {
                     )
                 },
                 { $group: { _id: null, totalRevenue: { $sum: revenueField } } }
-            ])
+            ]),
+            // Today's orders count
+            Order.countDocuments(andQuery(
+                tenantFilter,
+                { created_at: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }
+            ))
         ]);
 
-        const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+        const totalRevenue = revenueResult.length > 0 ? (revenueResult[0].totalRevenue || 0) : 0;
 
         return successResponse(
             res,
@@ -342,7 +400,8 @@ const getAllOrders = async (req, res, next) => {
                     total: totalCount,
                     pending: pendingCount,
                     shipped: shippedCount,
-                    totalRevenue
+                    totalRevenue,
+                    today: todayCount || 0
                 }
             },
             'Orders retrieved successfully',
@@ -405,10 +464,80 @@ const getOrderAnalytics = async (req, res, next) => {
     }
 };
 
+/**
+ * Confirm Payment (Customer)
+ */
+const confirmPayment = async (req, res, next) => {
+    try {
+        const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+        const order = await Order.findById(req.params.id);
+        
+        if (!order) {
+            throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+        }
+
+        if (order.userId.toString() !== req.user.id) {
+            throw new ApiError(httpStatus.FORBIDDEN, 'Not authorized');
+        }
+
+        // Check if it's mock payment
+        const isMockPayment = razorpay_signature === 'mock_signature' || razorpay_payment_id?.includes('mock');
+
+        if (!isMockPayment) {
+            // Verify Razorpay signature
+            const RazorpayGateway = require('../services/payments/RazorpayGateway');
+            const verification = RazorpayGateway.verifyPayment(
+                razorpay_order_id,
+                razorpay_payment_id,
+                razorpay_signature
+            );
+
+            if (!verification.success) {
+                throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid payment signature');
+            }
+        }
+
+        // Update order status
+        order.paymentStatus = 'paid';
+        order.status = 'processing';
+        order.paymentMethod = 'razorpay';
+        order.transactionId = razorpay_payment_id;
+        await order.save();
+
+        // Decrement stock for online products upon payment confirmation
+        try {
+            for (const item of order.items) {
+                if (item.variantId) {
+                    const decremented = await productService.decrementStock(item.productId, item.variantId, item.quantity);
+                    if (!decremented) {
+                        console.warn(`[OrderController] Failed to decrement stock for product ${item.productId}, variant ${item.variantId}. Possibly insufficient stock.`);
+                    }
+                }
+            }
+        } catch (stockError) {
+            console.error('[OrderController] Stock decrement error:', stockError.message);
+        }
+
+        await orderEventService.logEvent(
+            order._id,
+            'payment_confirmed',
+            `Payment confirmed for order ${order.orderId}`,
+            { razorpay_payment_id, razorpay_order_id },
+            req.user.id,
+            'customer'
+        );
+
+        return successResponse(res, order, 'Payment confirmed successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createOrder,
     getCustomerOrders,
     getOrder,
+    confirmPayment,
     cancelOrder,
     getAllOrders,
     updateOrderStatus,

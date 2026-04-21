@@ -207,7 +207,9 @@ class CatalogReadService {
     const images = this.normalizeImages({ ...formattedProduct, variants });
     const { regularPrice, salePrice } = this.computePricing({ ...formattedProduct, variants });
     const totalStock = this.getTotalStock({ ...formattedProduct, variants });
-    const categoryName = categories[0]?.name || formattedProduct.categoryName || formattedProduct.category || null;
+    const categoryName = categories.length > 0
+      ? categories.map(c => c.name).join(', ')
+      : (formattedProduct.categoryName || formattedProduct.category || null);
     const categorySlug = categories[0]?.slug || formattedProduct.categorySlug || null;
     const thumbnail = formattedProduct.thumbnail || images[0] || null;
 
@@ -361,10 +363,12 @@ class CatalogReadService {
         const haystack = [
           product.name,
           product.description,
+          product.sku,
           product.fabric,
           product.occasion,
           product.categoryName,
-          ...(product.categories || []).map((category) => category.name),
+          ...(product.categories || []).filter(Boolean).map((category) => category.name),
+          ...(product.variants || []).filter(Boolean).map((variant) => variant.sku),
         ]
           .filter(Boolean)
           .join(' ')

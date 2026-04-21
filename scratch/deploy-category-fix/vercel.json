@@ -1,0 +1,57 @@
+{
+  "version": 2,
+  "buildCommand": "cd frontend && yarn install && yarn build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "cd backend_node && npm install --production && cd ../frontend && yarn install",
+  "framework": null,
+  "env": {
+    "PORT": "8000",
+    "DB_NAME": "test",
+    "NODE_ENV": "production",
+    "MONGO_URL": "mongodb+srv://arpitjh001:DpyoKp8in9QBhoqW@shriramya-cluster.wwimqmj.mongodb.net/?appName=ShriRamya-Cluster",
+    "MONGODB_NON_SRV_HOSTS": "ac-e7drapw-shard-00-00.wwimqmj.mongodb.net:27017,ac-e7drapw-shard-00-01.wwimqmj.mongodb.net:27017,ac-e7drapw-shard-00-02.wwimqmj.mongodb.net:27017",
+    "MONGODB_NON_SRV_OPTIONS": "tls=true&authSource=admin&replicaSet=atlas-10ml3p-shard-0&retryWrites=true&w=majority&appName=ShriRamya-Cluster",
+    "JWT_SECRET": "shriramya_production_secret_2026",
+    "REDIS_URL": "rediss://default:gQAAAAAAAV3qAAIncDJmMjk0NTEyN2ZmYWM0ZThjOTRmN2UyNDM0NjRiMTQyOHAyODk1Nzg@on-turkey-89578.upstash.io:6379",
+    "CORS_ORIGINS": "https://www.shriramya.com",
+    "PUBLIC_BASE_URL": "https://www.shriramya.com",
+    "COOKIE_SECURE": "true",
+    "SMS_PROVIDER": "twilio",
+    "REACT_APP_BACKEND_URL": "https://www.shriramya.com",
+    "CRON_SECRET": "insider_cron_Jh7s9Qm3wX2kP8rL5dN1aF6u"
+  },
+  "rewrites": [
+    { "source": "/api/v1/(.*)", "destination": "/api/v1/index" },
+    { "source": "/api/(.*)", "destination": "/api/v1/index" },
+    { "source": "/((?!api/|.well-known/).*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/cron/insiders/weekly-digest",
+      "schedule": "0 9 * * 1"
+    }
+  ],
+  "functions": {
+    "api/v1/index.js": {
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": "backend_node/**"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization,x-session-id,x-user-id" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}

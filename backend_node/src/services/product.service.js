@@ -532,6 +532,14 @@ class ProductService {
       throw error;
     }
   }
+
+  async decrementStock(productId, variantId, quantity) {
+    return await mongoProductRepository.decrementStock(productId, variantId, quantity);
+  }
+
+  async incrementStock(productId, variantId, quantity) {
+    return await mongoProductRepository.incrementStock(productId, variantId, quantity);
+  }
 }
 
 module.exports = new ProductService();

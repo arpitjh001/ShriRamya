@@ -12,6 +12,7 @@
 
 import axios from 'axios';
 import { getBackendBaseUrl } from '../utils/apiBase';
+import { tokenStorage } from '../utils/tokenStorage';
 
 // Configuration
 const API_BASE_URL = getBackendBaseUrl();
@@ -34,29 +35,28 @@ const REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
  */
 const tokenManager = {
   getToken() {
-    return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    return tokenStorage.getToken();
   },
 
   setToken(token) {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    tokenStorage.setToken(token);
   },
 
   getRefreshToken() {
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
+    return sessionStorage.getItem(REFRESH_TOKEN_KEY);
   },
 
   setRefreshToken(token) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
   },
 
   getTokenExpiry() {
-    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+    const expiry = sessionStorage.getItem(TOKEN_EXPIRY_KEY);
     return expiry ? parseInt(expiry, 10) : null;
   },
 
   setTokenExpiry(expiry) {
-    localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
+    sessionStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toString());
   },
 
   isTokenExpired() {
@@ -66,10 +66,9 @@ const tokenManager = {
   },
 
   clearTokens() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(LEGACY_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    tokenStorage.removeToken();
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
   },
 
   // Decode JWT to get expiry

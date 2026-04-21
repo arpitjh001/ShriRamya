@@ -45,8 +45,33 @@ const verifyWebhookSignature = (req, res, next) => {
     // If body was raw, parse it to JSON for downstream handlers
     if (Buffer.isBuffer(req.body)) {
         try {
-            req.body = JSON.parse(rawBody.toString('utf8'));
+            const bodyString = rawBody.toString('utf8');
+            
+            // Validate body size before parsing (max 1MB)
+            if (bodyString.length > 1024 * 1024) {
+                return next(new ApiError(httpStatus.BAD_REQUEST, 'Webhook payload too large'));
+            }
+            
+            // Parse JSON
+            const parsed = JSON.parse(bodyString);
+            
+            // Validate parsed object is a plain object (not null or array)
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                return next(new ApiError(httpStatus.BAD_REQUEST, 'Invalid webhook payload structure'));
+            }
+            
+            // Validate no dangerous prototype pollution properties
+            const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
+            for (const key of dangerousKeys) {
+                if (key in parsed) {
+                    console.warn('[WebhookAuth] Dangerous property detected in webhook payload');
+                    return next(new ApiError(httpStatus.BAD_REQUEST, 'Invalid webhook payload properties'));
+                }
+            }
+            
+            req.body = parsed;
         } catch (e) {
+            console.error('[WebhookAuth] JSON parse error:', e.message);
             return next(new ApiError(httpStatus.BAD_REQUEST, 'Invalid webhook JSON body'));
         }
     }

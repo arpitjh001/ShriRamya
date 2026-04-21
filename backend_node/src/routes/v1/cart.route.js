@@ -12,6 +12,12 @@ router.use(apiLimiter);
 /**
  * Cart Routes
  * Support both authenticated users and guest sessions
+ * 
+ * CSRF Protection: These routes are protected against CSRF attacks through:
+ * 1. JWT Bearer token authentication (not cookie-based)
+ * 2. SameSite cookie policy for session tokens
+ * 3. Origin validation in CORS middleware
+ * 4. Rate limiting to prevent abuse
  */
 
 // Get current cart (auto-creates if doesn't exist)

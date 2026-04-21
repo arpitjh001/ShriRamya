@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
+import AdminProtectedRoute from '../components/auth/AdminProtectedRoute';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -68,14 +69,54 @@ const AppRoutes = () => {
                     <Route path="/fabric-care" element={<FabricCarePage />} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                    <Route path="/admin/products" element={<AdminProductsPage />} />
-                    <Route path="/admin/categories" element={<AdminProductsPage initialTab="categories" />} />
-                    <Route path="/admin/inventory" element={<AdminInventoryPage />} />
-                    <Route path="/admin/coupons" element={<AdminCouponsPage />} />
-                    <Route path="/admin/orders" element={<AdminOrdersPage />} />
-                    <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
-                    <Route path="/admin/blogs" element={<AdminBlogsPage />} />
-                    <Route path="/admin/blog/:id/edit" element={<AdminBlogEditPage />} />
+                    
+                    <Route path="/admin/products" element={
+                        <AdminProtectedRoute>
+                            <AdminProductsPage />
+                        </AdminProtectedRoute>
+                    } />
+                    
+                    <Route path="/admin/categories" element={
+                        <AdminProtectedRoute>
+                            <AdminProductsPage initialTab="categories" />
+                        </AdminProtectedRoute>
+                    } />
+                    
+                    <Route path="/admin/inventory" element={
+                        <AdminProtectedRoute>
+                            <AdminInventoryPage />
+                        </AdminProtectedRoute>
+                    } />
+                    
+                    <Route path="/admin/coupons" element={
+                        <AdminProtectedRoute>
+                            <AdminCouponsPage />
+                        </AdminProtectedRoute>
+                    } />
+                    
+                    <Route path="/admin/orders" element={
+                        <AdminProtectedRoute>
+                            <AdminOrdersPage />
+                        </AdminProtectedRoute>
+                    } />
+                    
+                    <Route path="/admin/analytics" element={
+                        <AdminProtectedRoute>
+                            <AdminAnalyticsPage />
+                        </AdminProtectedRoute>
+                    } />
+                    
+                    <Route path="/admin/blogs" element={
+                        <AdminProtectedRoute>
+                            <AdminBlogsPage />
+                        </AdminProtectedRoute>
+                    } />
+                    
+                    <Route path="/admin/blog/:id/edit" element={
+                        <AdminProtectedRoute>
+                            <AdminBlogEditPage />
+                        </AdminProtectedRoute>
+                    } />
                     <Route path="/all-products" element={<ProductsPage />} />
                     <Route path="/category/:slug" element={<CategoryPage />} />
                     <Route path="*" element={<NotFoundPage />} />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, Search, Filter, ChevronDown, Eye, Truck, CheckCircle, XCircle, 
@@ -35,6 +36,9 @@ const STATUS_CONFIG = {
 };
 
 const AdminOrdersPage = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -55,6 +59,16 @@ const AdminOrdersPage = () => {
   const [tempStatus, setTempStatus] = useState('');
   const [limit, setLimit] = useState(20);
 
+  useEffect(() => {
+    if (user) {
+      const timer = setTimeout(() => {
+        setPage(1);
+        fetchOrders(1);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [search, filter, user]);
+
   const fetchOrders = useCallback(async (targetPage = page, targetLimit = limit) => {
     setLoading(true);
     try {
@@ -65,7 +79,7 @@ const AdminOrdersPage = () => {
       const response = await ordersAPI.getAll(params);
       
       if (response) {
-        setOrders(response.orders || []);
+        setOrders(response.orders || (Array.isArray(response) ? response : []));
         setStats(response.stats || {});
         
         const paginationData = response.pagination || {};
@@ -78,18 +92,13 @@ const AdminOrdersPage = () => {
       }
     } catch (err) { 
       console.error('Fetch orders error:', err);
-      toast.error('Failed to load orders');
+      // Let the global api interceptor and AdminProtectedRoute handle 401/403
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        toast.error('Failed to load orders');
+      }
     }
     setLoading(false);
   }, [filter, search, page, limit]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1);
-      fetchOrders(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search, filter]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > pagination.totalPages) return;
@@ -522,6 +531,7 @@ const AdminOrdersPage = () => {
                                 </div>
                                 <div className="space-y-1">
                                   <p className="text-sm font-bold text-foreground leading-tight">{item.name}</p>
+                                  <p className="text-[10px] font-mono font-bold text-royal-maroon/70 uppercase tracking-tighter">SKU: {item.sku || 'N/A'}</p>
                                   <div className="flex items-center gap-2">
                                     <Badge variant="outline" className="text-[8px] font-bold border-border bg-white text-slate-500 rounded-md py-0 px-1.5 h-4">
                                       QTY: {item.quantity}
