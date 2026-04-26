@@ -6,7 +6,7 @@ import { ordersAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { formatPrice } from '../utils';
+import { formatPrice, getCartItemPrice, getShippingCharge } from '../utils';
 import { toast } from 'sonner';
 import { Tag, X, Loader2 } from 'lucide-react';
 
@@ -31,7 +31,7 @@ const CheckoutPage = () => {
 
   // Use cart item data directly — items already include name, image, price, attributes
   const subtotal = calculateSubtotal();
-  const shipping = subtotal > 1000 ? 0 : 100;
+  const shipping = getShippingCharge(subtotal);
   const total = Math.max(0, subtotal - discountAmount + shipping);
 
   const handleRemoveCoupon = async () => {
@@ -235,7 +235,7 @@ const CheckoutPage = () => {
 
               <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
                 {cart.items.map((item) => {
-                  const price = item.price || 0;
+                  const price = getCartItemPrice(item);
                   const productId = item.productId || item.id;
                   const itemImage = item.image || item.thumbnail || '/uploads/woocommerce-placeholder.webp';
 
@@ -284,7 +284,7 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span data-testid="checkout-shipping">{shipping === 0 ? 'Free' : formatPrice(shipping)}</span>
+                  <span data-testid="checkout-shipping">{formatPrice(shipping)}</span>
                 </div>
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-green-600">

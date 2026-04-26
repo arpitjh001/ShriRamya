@@ -71,7 +71,11 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
     setAddingToCart(true);
     try {
       const variantId = selectedVariant?.id || null;
-      await addToCart(product.id, quantity, variantId);
+      await addToCart(product.id, quantity, variantId ? {
+        variantId,
+        color: selectedColor,
+        size: selectedSize,
+      } : null);
       toast.success('Added to cart!');
       onOpenChange(false);
     } catch {

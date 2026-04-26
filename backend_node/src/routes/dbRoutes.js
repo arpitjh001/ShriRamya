@@ -621,6 +621,11 @@ router.post('/orders', optionalAuth, async (req, res) => {
     });
     res.status(201).json({ success: true, data });
   } catch (err) {
+    console.error('[Checkout] Order creation failed', {
+      code: err.code || null,
+      message: err.message,
+      statusCode: err.statusCode || 500,
+    });
     const statusCode = err.statusCode || 500;
     res.status(statusCode).json({
       success: false,
@@ -636,6 +641,12 @@ router.post('/orders/:orderId/payment', async (req, res) => {
     const order = await storefrontCheckoutService.confirmPayment(req.params.orderId, req.body);
     res.json({ success: true, message: 'Payment verified', data: { orderId: order.orderId, status: order.status, paymentStatus: order.paymentStatus } });
   } catch (err) {
+    console.error('[Checkout] Payment confirmation failed', {
+      orderId: req.params.orderId,
+      code: err.code || null,
+      message: err.message,
+      statusCode: err.statusCode || 500,
+    });
     const statusCode = err.statusCode || 500;
     res.status(statusCode).json({
       success: false,

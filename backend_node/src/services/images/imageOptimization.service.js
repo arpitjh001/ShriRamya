@@ -31,6 +31,24 @@ const QUALITY_SETTINGS = {
   original: 90
 };
 
+const sanitizePathSegment = (value, fallback) => {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  return normalized || fallback;
+};
+
+const assertSafeFilename = (filename) => {
+  const base = path.basename(String(filename || ''));
+  if (!base || base !== filename || base.includes('..')) {
+    throw new Error('Invalid filename');
+  }
+  return base;
+};
+
 class ImageOptimizationService {
   constructor() {
     // Check if running in Vercel (serverless environment)
@@ -64,7 +82,33 @@ class ImageOptimizationService {
   }
 
   _generateStaticUploadUrl(base, filename) {
-    return this._joinUrl(base, `/uploads/images/${filename}`);
+    return this._joinUrl(base, `/uploads/images/${assertSafeFilename(filename)}`);
+  }
+
+  _resolveUploadPath(filename) {
+    const safeFilename = assertSafeFilename(filename);
+    const baseDir = path.resolve(this.uploadDir);
+    const targetPath = path.resolve(baseDir, safeFilename);
+
+    if (targetPath !== baseDir && !targetPath.startsWith(`${baseDir}${path.sep}`)) {
+      throw new Error('Invalid upload path');
+    }
+
+    return targetPath;
+  }
+
+  _resolveExistingUploadPath(filePath, label = 'path') {
+    const rawPath = String(filePath || '');
+    const baseDir = path.resolve(this.uploadDir);
+    const targetPath = path.isAbsolute(rawPath) || /[\\/]/.test(rawPath)
+      ? path.resolve(rawPath)
+      : this._resolveUploadPath(rawPath);
+
+    if (targetPath !== baseDir && !targetPath.startsWith(`${baseDir}${path.sep}`)) {
+      throw new Error(`Invalid ${label}`);
+    }
+
+    return targetPath;
   }
 
   /**
@@ -90,7 +134,8 @@ class ImageOptimizationService {
   async processImage(file, category = 'products') {
     const imageId = uuidv4();
     const ext = path.extname(file.originalname).toLowerCase();
-    const baseName = `${category}_${imageId}`;
+    const safeCategory = sanitizePathSegment(category, 'products');
+    const baseName = `${safeCategory}_${imageId}`;
 
     // Validate file type
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
@@ -110,7 +155,7 @@ class ImageOptimizationService {
       if (sizeName === 'original') {
         // Store original
         const filename = `${baseName}_orig${outputExt}`;
-        const originalPath = path.join(this.uploadDir, filename);
+        const originalPath = this._resolveUploadPath(filename);
         const originalBuffer = await this._processImage(file.buffer, null, null, QUALITY_SETTINGS.original, outputFormat);
         processedImages.original = originalBuffer;
         await this._saveImage(originalPath, originalBuffer);
@@ -121,7 +166,7 @@ class ImageOptimizationService {
       } else {
         // Generate resized versions
         const filename = `${baseName}${sizeConfig.suffix}${outputExt}`;
-        const sizedPath = path.join(this.uploadDir, filename);
+        const sizedPath = this._resolveUploadPath(filename);
         const sizedBuffer = await this._processImage(file.buffer, sizeConfig.width, sizeConfig.height, QUALITY_SETTINGS[sizeName], outputFormat);
         processedImages[sizeName] = sizedBuffer;
         await this._saveImage(sizedPath, sizedBuffer);
@@ -137,7 +182,7 @@ class ImageOptimizationService {
       try {
         const imageDoc = new Image({
           imageId,
-          category,
+          category: safeCategory,
           originalName: file.originalname,
           images: {
             thumbnail: processedImages.thumbnail?.toString('base64') || null,
@@ -178,7 +223,7 @@ class ImageOptimizationService {
     // Store metadata
     results.metadata = {
       imageId,
-      category,
+      category: safeCategory,
       originalName: file.originalname,
       format: outputFormat,
       sizes: Object.keys(IMAGE_SIZES),
@@ -299,7 +344,7 @@ class ImageOptimizationService {
   async deleteImage(imageUrl) {
     try {
       // Extract filename from URL
-      const filename = imageUrl.split('/').pop();
+      const filename = assertSafeFilename(String(imageUrl || '').split('/').pop());
       const baseName = filename.replace(/\.(webp|jpg|jpeg|png|gif)$/, '');
       
       // Delete all size variants
@@ -325,10 +370,13 @@ class ImageOptimizationService {
    * Find files matching pattern
    */
   async _findFilesByPattern(pattern) {
+    const safePattern = sanitizePathSegment(pattern, '');
+    if (!safePattern) return [];
+
     const files = await fs.readdir(this.uploadDir);
     return files
-      .filter(f => f.startsWith(pattern))
-      .map(f => path.join(this.uploadDir, f));
+      .filter(f => f.startsWith(safePattern))
+      .map(f => this._resolveUploadPath(f));
   }
 
   /**
@@ -360,7 +408,10 @@ class ImageOptimizationService {
       format = 'webp'
     } = options;
 
-    let pipeline = sharp(inputPath);
+    const safeInputPath = this._resolveExistingUploadPath(inputPath, 'input path');
+    const safeOutputPath = this._resolveExistingUploadPath(outputPath, 'output path');
+
+    let pipeline = sharp(safeInputPath);
 
     if (width && height) {
       pipeline = pipeline.resize(width, height, {
@@ -375,11 +426,11 @@ class ImageOptimizationService {
       pipeline = pipeline.jpeg({ quality });
     }
 
-    await pipeline.toFile(outputPath);
+    await pipeline.toFile(safeOutputPath);
 
     return {
-      inputPath,
-      outputPath,
+      inputPath: safeInputPath,
+      outputPath: safeOutputPath,
       format,
       quality
     };
@@ -445,7 +496,7 @@ class ImageOptimizationService {
 
     // Local filesystem fallback
     const filename = `placeholder_${imageId}.webp`;
-    const outputPath = path.join(this.uploadDir, filename);
+    const outputPath = this._resolveUploadPath(filename);
     try {
       await fs.writeFile(outputPath, placeholderBuffer);
     } catch (error) {
@@ -465,6 +516,7 @@ class ImageOptimizationService {
    * Get CDN URL for image
    */
   getCdnUrl(filename, size = 'medium') {
+    filename = assertSafeFilename(filename);
     const sizeConfig = IMAGE_SIZES[size];
     
     if (!sizeConfig) {

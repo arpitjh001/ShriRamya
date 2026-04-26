@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Trash2, Plus, Minus, ShoppingBag, Loader2, Tag, X } from 'lucide-react';
-import { formatPrice, getSessionId } from '../utils';
+import { formatPrice, getCartItemOriginalPrice, getCartItemPrice, getSessionId, getShippingCharge } from '../utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -89,7 +89,7 @@ const CartPage = () => {
   };
 
   const subtotal = calculateSubtotal();
-  const shipping = subtotal > 999 ? 0 : 99;
+  const shipping = getShippingCharge(subtotal);
   const total = subtotal - discountAmount + shipping;
 
   // Coupon handlers
@@ -164,8 +164,8 @@ const CartPage = () => {
                 const itemKey = getItemKey(item);
                 const isUpdating = updatingItems.has(itemKey);
                 const isRemoving = removingItems.has(itemKey);
-                const price = item.price || 0;
-                const originalPrice = item.originalPrice || item.price || 0;
+                const price = getCartItemPrice(item);
+                const originalPrice = getCartItemOriginalPrice(item);
                 const itemImage = item.image || item.thumbnail || '/uploads/woocommerce-placeholder.webp';
                 const productId = item.productId || item.id;
 
@@ -356,11 +356,7 @@ const CartPage = () => {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Shipping</span>
                 <span data-testid="cart-shipping" className="font-medium">
-                  {shipping === 0 ? (
-                    <span className="text-green-600">Free</span>
-                  ) : (
-                    formatPrice(shipping)
-                  )}
+                  {formatPrice(shipping)}
                 </span>
               </div>
               {discountAmount > 0 && (
@@ -372,15 +368,6 @@ const CartPage = () => {
                   <span className="text-muted-foreground">Discount</span>
                   <span data-testid="cart-discount" className="font-medium">-{formatPrice(discountAmount)}</span>
                 </motion.div>
-              )}
-              {subtotal < 999 && shipping > 0 && (
-                <motion.p
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="text-sm text-muted-foreground bg-accent p-3 rounded"
-                >
-                  Add {formatPrice(999 - subtotal)} more for free shipping! 🎉
-                </motion.p>
               )}
               <div className="pt-3 border-t border-border flex justify-between text-lg font-medium">
                 <span>Total</span>

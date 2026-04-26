@@ -248,7 +248,8 @@ class CatalogReadService {
   }
 
   getProductStatus(product) {
-    return String(product.status || 'published').toLowerCase();
+    const normalizedStatus = productService.normalizeProductStatus(product?.status);
+    return String(normalizedStatus || 'published').toLowerCase();
   }
 
   isVisibleProduct(product, user) {
@@ -318,6 +319,17 @@ class CatalogReadService {
     return Math.round(((regularPrice - salePrice) / regularPrice) * 100);
   }
 
+  getProductStats(products) {
+    const productList = Array.isArray(products) ? products : [];
+
+    return {
+      total: productList.length,
+      published: productList.filter((product) => ['published', 'publish'].includes(this.getProductStatus(product))).length,
+      draft: productList.filter((product) => this.getProductStatus(product) === 'draft').length,
+      outOfStock: productList.filter((product) => Number(product.stock_quantity ?? product.stock ?? 0) <= 0).length,
+    };
+  }
+
   filterByCategory(products, categoryFilters) {
     if (categoryFilters.length === 0) return products;
     if (categoryFilters.includes('most-desired')) return products;
@@ -351,8 +363,19 @@ class CatalogReadService {
     const rating = query.rating != null ? Number(query.rating) : null;
     const inStock = query.in_stock === true || query.in_stock === 'true';
     const categoryIdFilter = query.category_id ? [String(query.category_id)] : [];
+    const statusFilters = this.normalizeListValue(query.status).map((entry) => {
+      const normalizedStatus = productService.normalizeProductStatus(entry);
+      return String(normalizedStatus || entry).toLowerCase();
+    });
 
     let filteredProducts = [...products];
+
+    if (statusFilters.length > 0) {
+      filteredProducts = filteredProducts.filter((product) => {
+        const status = this.getProductStatus(product);
+        return statusFilters.includes(status) || (statusFilters.includes('published') && status === 'publish');
+      });
+    }
 
     if (categoryFilters.length > 0 || categoryIdFilter.length > 0) {
       filteredProducts = this.filterByCategory(filteredProducts, [...categoryFilters, ...categoryIdFilter]);
@@ -538,8 +561,10 @@ class CatalogReadService {
   async listProducts(query = {}, { tenantId = 1, user = null } = {}) {
     const visibleProducts = await this.getBaseProducts({ tenantId, user });
     const filterMetadata = this.buildFilterMetadata(visibleProducts);
+    const filteredProducts = this.applyFilters(visibleProducts, query);
+    const stats = this.getProductStats(filteredProducts);
     const categoryFilters = this.normalizeListValue(query.category);
-    const sortedProducts = this.sortProducts(this.applyFilters(visibleProducts, query), query.sort, categoryFilters);
+    const sortedProducts = this.sortProducts(filteredProducts, query.sort, categoryFilters);
 
     const currentPage = Math.max(parseInt(query.page || 1, 10) || 1, 1);
     const perPage = Math.max(parseInt(query.per_page || query.limit || 20, 10) || 20, 1);
@@ -559,6 +584,7 @@ class CatalogReadService {
         hasPrev: currentPage > 1,
       },
       filters: filterMetadata,
+      stats,
       sortOptions: SORT_OPTIONS,
       appliedFilters: { ...query },
       totalProducts,

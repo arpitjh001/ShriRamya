@@ -164,7 +164,7 @@ const collaborationValidation = {
   getLogs: {
     params: Joi.object({
       sessionId: Joi.string()
-        .pattern(/^session_\d+_[a-zA-Z0-9]+$/)
+        .pattern(/^[a-zA-Z0-9_-]{1,120}$/)
         .required()
         .description('Session ID to retrieve logs for')
     }).required()

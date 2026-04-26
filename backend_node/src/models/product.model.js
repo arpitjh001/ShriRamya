@@ -18,6 +18,13 @@ const productVariantSchema = new mongoose.Schema({
   attributes_hash: { type: String, trim: true }
 });
 
+const materialGuideSchema = new mongoose.Schema({
+  description: { type: String, trim: true, default: '' },
+  properties: [{ type: String, trim: true }],
+  care: [{ type: String, trim: true }],
+  origin: { type: String, trim: true, default: '' }
+}, { _id: false });
+
 const productSchema = new mongoose.Schema(
   {
     productId: { type: Number },
@@ -26,6 +33,9 @@ const productSchema = new mongoose.Schema(
     sku: { type: String, trim: true },
     description: { type: String, trim: true },
     fabric: { type: String, trim: true },
+    modelWears: { type: String, trim: true },
+    modelHeight: { type: String, trim: true },
+    materialGuide: { type: materialGuideSchema, default: null },
     color: { type: String, trim: true },
     occasion: { type: String, trim: true },
     work: { type: String, trim: true },

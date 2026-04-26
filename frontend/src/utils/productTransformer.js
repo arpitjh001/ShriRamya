@@ -114,6 +114,9 @@ export const transformWooProduct = (product) => {
     handmade: product.handmade === true,
 
     fabric: product.fabric || null,
+    modelWears: product.modelWears || null,
+    modelHeight: product.modelHeight || null,
+    materialGuide: product.materialGuide || null,
     craft_style: product.craft_style || null,
     state_of_origin: product.state_of_origin || null,
     occasion: product.occasion || null,

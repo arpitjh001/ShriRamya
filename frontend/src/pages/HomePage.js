@@ -224,7 +224,7 @@ const HomePage = () => {
 
       <SEOMeta 
         title="Premium Indian Handloom Sarees & Ethnic Wear"
-        description="Shop authentic Banarasi silk sarees, designer kurtis, and handcrafted ethnic wear at ShriRamya. Free shipping on orders above Rs 999."
+        description="Shop authentic Banarasi silk sarees, designer kurtis, and handcrafted ethnic wear at ShriRamya."
         url="/"
         type="website"
       />

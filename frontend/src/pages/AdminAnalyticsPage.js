@@ -170,25 +170,25 @@ const AdminAnalyticsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             <StatCard
               title="Range Revenue"
-              value={overview?.range?.revenue || overview?.month?.revenue || 0}
+              value={overview?.range?.revenue ?? overview?.month?.revenue ?? 0}
               format="currency"
               icon={DollarSign}
               trend="+12.5%"
               delay="delay-0"
               color="maroon"
               loading={loading}
-              subtext={`Online: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.onlineRevenue || overview?.month?.onlineRevenue || 0))} | Offline: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.offlineRevenue || overview?.month?.offlineRevenue || 0))}`}
+              subtext={`Online: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.onlineRevenue ?? overview?.month?.onlineRevenue ?? 0))} | Offline: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.offlineRevenue ?? overview?.month?.offlineRevenue ?? 0))}`}
             />
             <StatCard
               title="Range Orders"
-              value={overview?.range?.orders || overview?.month?.orders || 0}
+              value={overview?.range?.orders ?? overview?.month?.orders ?? 0}
               format="number"
               icon={ShoppingCart}
               trend="+8.2%"
               delay="delay-150"
               color="emerald"
               loading={loading}
-              subtext={`Online: ${overview?.range?.onlineOrders || overview?.month?.onlineOrders || 0} | Offline: ${overview?.range?.offlineOrders || overview?.month?.offlineOrders || 0}`}
+              subtext={`Online: ${overview?.range?.onlineOrders ?? overview?.month?.onlineOrders ?? 0} | Offline: ${overview?.range?.offlineOrders ?? overview?.month?.offlineOrders ?? 0}`}
             />
             <StatCard
               title="Today's Revenue"

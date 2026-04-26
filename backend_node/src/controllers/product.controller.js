@@ -52,6 +52,16 @@ const getTenantId = (req) => {
 };
 
 const buildProductListMeta = async (tenantId, payload = {}) => {
+  // Use stats from payload if available (already computed by catalogReadService)
+  if (payload.stats) {
+    return {
+      filters: payload.filters || {},
+      sortOptions: payload.sortOptions || [],
+      appliedFilters: payload.appliedFilters || {},
+      stats: payload.stats
+    };
+  }
+
   const baseQuery = buildTenantScopedQuery(tenantId, {
     is_deleted: { $ne: true }
   });
@@ -79,10 +89,27 @@ const buildProductListMeta = async (tenantId, payload = {}) => {
                 in: { $ifNull: ['$$variant.stock', 0] }
               }
             }
+          },
+          variantCount: {
+            $size: { $ifNull: ['$variants', []] }
+          },
+          productStock: {
+            $ifNull: ['$stock', { $ifNull: ['$stock_quantity', 0] }]
           }
         }
       },
-      { $match: { totalVariantStock: { $lte: 0 } } },
+      {
+        $addFields: {
+          effectiveStock: {
+            $cond: [
+              { $gt: ['$variantCount', 0] },
+              '$totalVariantStock',
+              '$productStock'
+            ]
+          }
+        }
+      },
+      { $match: { effectiveStock: { $lte: 0 } } },
       { $count: 'count' }
     ])
   ]);

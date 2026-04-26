@@ -101,13 +101,42 @@ const apiClient = axios.create({
   withCredentials: true, // For cookie-based refresh token
 });
 
+let csrfInitPromise = null;
+let csrfTokenCache = null;
+
+const getCsrfToken = () => {
+  if (typeof document === 'undefined') return csrfTokenCache;
+  const match = document.cookie.match(/csrf-token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : csrfTokenCache;
+};
+
+const initializeCsrfToken = async () => {
+  if (csrfInitPromise) return csrfInitPromise;
+
+  csrfInitPromise = axios.get(`${API_BASE_URL}${API_VERSION}/csrf-token`, {
+    timeout: 30000,
+    withCredentials: true,
+  })
+    .then((response) => {
+      csrfTokenCache = response.data?.data?.csrf_token || response.data?.csrf_token || csrfTokenCache;
+    })
+    .catch((error) => {
+      console.warn('[API Client] Failed to initialize CSRF token:', error.message);
+    })
+    .finally(() => {
+      csrfInitPromise = null;
+    });
+
+  return csrfInitPromise;
+};
+
 /**
  * Request Interceptor
  * - Attach JWT token
  * - Add device ID header
  */
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = tokenManager.getToken();
     
     if (token) {
@@ -121,6 +150,18 @@ apiClient.interceptors.request.use(
       sessionStorage.setItem('device_id', deviceId);
     }
     config.headers['X-Device-ID'] = deviceId;
+
+    if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      let csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        await initializeCsrfToken();
+        csrfToken = getCsrfToken();
+      }
+
+      if (csrfToken) {
+        config.headers['x-csrf-token'] = csrfToken;
+      }
+    }
 
     return config;
   },
@@ -154,7 +195,7 @@ apiClient.interceptors.response.use(
     // Handle standard response format { success, message, data }
     if (response.data && response.data.hasOwnProperty('success')) {
       if (response.data.success) {
-        return { ...response, data: response.data.data };
+        return { ...response, data: response.data.data, meta: response.data.meta || {} };
       }
     }
     return response;
@@ -186,10 +227,19 @@ apiClient.interceptors.response.use(
           throw new Error('No refresh token available');
         }
 
+        let csrfToken = getCsrfToken();
+        if (!csrfToken) {
+          await initializeCsrfToken();
+          csrfToken = getCsrfToken();
+        }
+
         const response = await axios.post(
           `${API_BASE_URL}${API_VERSION}/auth/refresh`,
           { refresh_token: refreshToken },
-          { withCredentials: true }
+          {
+            withCredentials: true,
+            headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
+          }
         );
 
         const { access_token } = response.data.data || response.data;

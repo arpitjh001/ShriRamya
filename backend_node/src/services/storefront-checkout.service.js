@@ -10,7 +10,6 @@ const RazorpayGateway = require('./payments/RazorpayGateway');
 const couponService = require('./coupon.service');
 
 const DEFAULT_COUNTRY = 'India';
-const FREE_SHIPPING_THRESHOLD = 1000;
 const DEFAULT_SHIPPING_CHARGE = 100;
 const DEFAULT_RAZORPAY_KEY = 'rzp_test_mock_key';
 
@@ -75,8 +74,28 @@ class StorefrontCheckoutService {
     return `guest_${crypto.randomBytes(12).toString('hex')}`;
   }
 
+  toFiniteNumber(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  }
+
+  getRegularPrice(product, variant = null) {
+    const variantPrice = this.toFiniteNumber(variant?.price);
+    if (variantPrice > 0) {
+      return variantPrice;
+    }
+
+    return this.toFiniteNumber(
+      product?.basePrice
+        ?? product?.base_price
+        ?? product?.price
+        ?? product?.regular_price
+        ?? 0
+    );
+  }
+
   getEffectivePrice(product, variant = null) {
-    const regularPrice = Number(variant?.price ?? product?.basePrice ?? product?.price ?? 0) || 0;
+    const regularPrice = this.getRegularPrice(product, variant);
     const discountPrice = variant?.discountPrice === '' || variant?.discountPrice == null
       ? null
       : Number(variant.discountPrice);
@@ -92,6 +111,11 @@ class StorefrontCheckoutService {
     const withinEnd = endsAt == null || Number.isNaN(endsAt) || now <= endsAt;
 
     return withinStart && withinEnd ? discountPrice : regularPrice;
+  }
+
+  getOriginalPrice(product, variant = null, fallbackPrice = 0) {
+    const regularPrice = this.getRegularPrice(product, variant);
+    return regularPrice > 0 ? regularPrice : this.toFiniteNumber(fallbackPrice);
   }
 
   getProductImage(product, variant = null) {
@@ -212,8 +236,8 @@ class StorefrontCheckoutService {
         sessionId: null,
         items: [],
         subtotal: 0,
-        shipping: DEFAULT_SHIPPING_CHARGE,
-        total: DEFAULT_SHIPPING_CHARGE,
+        shipping: 0,
+        total: 0,
         itemCount: 0,
         totalItems: 0,
       };
@@ -231,6 +255,8 @@ class StorefrontCheckoutService {
       : [];
     const productsById = new Map(products.map((product) => [String(product._id), product]));
 
+    let repairedPriceSnapshots = false;
+
     const items = (cart.items || []).map((item) => {
       const product = productsById.get(String(item.productId));
       if (!product) return null;
@@ -239,12 +265,19 @@ class StorefrontCheckoutService {
         ? (product.variants || []).find((entry) => String(entry._id) === String(item.variantId))
         : null;
       const attributes = this.getVariantAttributes(variant || {});
-      const effectivePrice = Number(item.priceSnapshot ?? this.getEffectivePrice(product, variant)) || 0;
-      const originalPrice = Number(variant?.price ?? product.basePrice ?? product.price ?? effectivePrice) || effectivePrice;
+      const computedPrice = this.getEffectivePrice(product, variant);
+      const snapshotPrice = this.toFiniteNumber(item.priceSnapshot);
+      const effectivePrice = snapshotPrice > 0 ? snapshotPrice : computedPrice;
+      const originalPrice = this.getOriginalPrice(product, variant, effectivePrice);
       const color = attributes.color || '';
       const size = attributes.size || '';
       const productId = String(product._id);
       const variantId = variant?._id ? String(variant._id) : (item.variantId ? String(item.variantId) : null);
+
+      if (snapshotPrice <= 0 && computedPrice > 0) {
+        item.priceSnapshot = computedPrice;
+        repairedPriceSnapshots = true;
+      }
 
       return {
         id: item._id?.toString() || null,
@@ -266,7 +299,15 @@ class StorefrontCheckoutService {
     }).filter(Boolean);
 
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const shipping = subtotal > FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : DEFAULT_SHIPPING_CHARGE;
+    const shipping = subtotal > 0 ? DEFAULT_SHIPPING_CHARGE : 0;
+
+    if (repairedPriceSnapshots && typeof cart.save === 'function') {
+      try {
+        await cart.save();
+      } catch (error) {
+        console.warn('[Cart] Failed to repair zero price snapshots:', error.message);
+      }
+    }
 
     return {
       id: cart._id?.toString() || null,
@@ -447,7 +488,7 @@ class StorefrontCheckoutService {
       }
 
       const attributes = this.getVariantAttributes(variant || {});
-      const price = Number(variant?.price ?? product.basePrice ?? product.price ?? 0) || 0;
+      const price = this.getOriginalPrice(product, variant);
       const salePrice = this.getEffectivePrice(product, variant);
       const color = attributes.color || '';
       const size = attributes.size || '';
@@ -476,7 +517,7 @@ class StorefrontCheckoutService {
     const requestedTax = Math.max(0, Number(payload.tax || 0) || 0);
     const computedSubtotal = orderItems.reduce((sum, item) => sum + (item.salePrice * item.quantity), 0);
     const subtotal = computedSubtotal;
-    const shipping = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_CHARGE;
+    const shipping = subtotal > 0 ? DEFAULT_SHIPPING_CHARGE : 0;
     let requestedDiscount = 0;
 
     if (couponCode) {
@@ -492,6 +533,7 @@ class StorefrontCheckoutService {
 
     const orderId = this.buildOrderId();
     const razorpayConfigured = RazorpayGateway.isConfigured();
+    const keyId = (config.razorpay?.keyId || process.env.RAZORPAY_KEY_ID || DEFAULT_RAZORPAY_KEY);
     const vercelEnv = String(process.env.VERCEL_ENV || '').toLowerCase();
     const nodeEnv = String(config.env || process.env.NODE_ENV || '').toLowerCase();
     const isProductionRuntime = nodeEnv === 'production' || vercelEnv === 'production';
@@ -524,7 +566,6 @@ class StorefrontCheckoutService {
       isMock = true;
     }
 
-    const keyId = (config.razorpay?.keyId || process.env.RAZORPAY_KEY_ID || DEFAULT_RAZORPAY_KEY);
     const razorpayOrderId = isMock ? this.buildMockRazorpayOrderId() : '';
 
     const order = await Order.create({

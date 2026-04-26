@@ -100,7 +100,7 @@ function orderConfirmationEmail(order) {
           <table style="width:100%;font-size:14px;color:#5c3a28;">
             <tr><td style="padding:4px 0;">Subtotal</td><td style="text-align:right;">${formatPrice(order.subtotal)}</td></tr>
             ${order.discount ? `<tr><td style="padding:4px 0;color:#4caf50;">Discount</td><td style="text-align:right;color:#4caf50;">-${formatPrice(order.discount)}</td></tr>` : ''}
-            <tr><td style="padding:4px 0;">Shipping</td><td style="text-align:right;">${order.shipping ? formatPrice(order.shipping) : 'Free'}</td></tr>
+            <tr><td style="padding:4px 0;">Shipping</td><td style="text-align:right;">${formatPrice(order.shipping)}</td></tr>
             ${order.tax ? `<tr><td style="padding:4px 0;">Tax</td><td style="text-align:right;">${formatPrice(order.tax)}</td></tr>` : ''}
             <tr style="border-top:2px solid #2d1810;"><td style="padding:12px 0;font-weight:700;font-size:16px;color:#2d1810;">Total</td><td style="text-align:right;font-weight:700;font-size:16px;color:#2d1810;">${formatPrice(order.total)}</td></tr>
           </table>

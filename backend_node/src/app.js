@@ -13,6 +13,7 @@ const { errorConverter, errorHandler } = require('./middlewares/error');
 const requestId = require('./middlewares/requestId');
 const logger = require('./utils/logger');
 const ApiError = require('./utils/ApiError');
+const { csrfProtection, getCSRFToken } = require('./middlewares/csrf.middleware');
 
 const cookieParser = require('cookie-parser');
 const { authLimiter } = require('./middlewares/rateLimit.middleware');
@@ -103,6 +104,11 @@ app.get('/api/v1/health', (req, res) => {
   });
 
 /**
+ * CSRF Token Endpoint
+ */
+app.get('/api/v1/csrf-token', getCSRFToken);
+
+/**
  * Debug Endpoint - Check Database and Redis Connection (Development Only)
  */
 if (config.env === 'development') {
@@ -183,6 +189,9 @@ if (config.env === 'development' || config.env === 'test') {
  * DB-backed routes take priority (MongoDB-powered)
  */
 const dbRoutes = require('./routes/dbRoutes');
+
+// Protect state-changing browser requests before dbRoutes, which owns many active handlers.
+app.use('/api/v1', csrfProtection);
 
 // DB-backed routes handle products, categories, cart, search, auth, orders, blogs, wishlist, admin
 app.use('/api/v1', dbRoutes);

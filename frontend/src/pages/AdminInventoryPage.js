@@ -416,7 +416,7 @@ const AdminInventoryPage = () => {
                       <SelectTrigger className="h-8 w-[70px] bg-white border-border text-foreground text-xs font-bold focus:ring-1 focus:ring-royal-maroon/20">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-slate-900 border-white/10 text-white">
                         <SelectItem value="10">10</SelectItem>
                         <SelectItem value="20">20</SelectItem>
                         <SelectItem value="50">50</SelectItem>

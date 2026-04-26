@@ -32,6 +32,13 @@ const variantSchema = Joi.object({
   barcode: Joi.string().allow('', null).optional(),
 });
 
+const materialGuideSchema = Joi.object({
+  description: Joi.string().allow('', null).optional(),
+  properties: Joi.array().items(Joi.string().allow('', null)).optional(),
+  care: Joi.array().items(Joi.string().allow('', null)).optional(),
+  origin: Joi.string().allow('', null).optional(),
+}).allow(null);
+
 const getProducts = {
   query: Joi.object().keys({
     page: Joi.number().integer().min(1).default(1),
@@ -64,6 +71,9 @@ const createProduct = {
     sku: Joi.string().allow('', null).optional(),
     description: Joi.string().allow('').optional(),
     fabric: Joi.string().allow('', null).optional(),
+    modelWears: Joi.string().allow('', null).optional(),
+    modelHeight: Joi.string().allow('', null).optional(),
+    materialGuide: materialGuideSchema.optional(),
     occasion: Joi.string().allow('', null).optional(),
     basePrice: Joi.number().min(0).optional(),
     categoryId: resourceId.allow(null).optional(),
@@ -110,6 +120,9 @@ const updateProduct = {
     sku: Joi.string().allow('', null).optional(),
     description: Joi.string().allow('').optional(),
     fabric: Joi.string().allow('', null).optional(),
+    modelWears: Joi.string().allow('', null).optional(),
+    modelHeight: Joi.string().allow('', null).optional(),
+    materialGuide: materialGuideSchema.optional(),
     occasion: Joi.string().allow('', null).optional(),
     basePrice: Joi.number().min(0).optional(),
     categoryId: resourceId.allow(null).optional(),

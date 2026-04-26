@@ -217,12 +217,12 @@ const optionalAuth = async (req, res, next) => {
 
         if (token) {
             try {
-                const payload = jwt.verify(token, config.jwt.secret);
+                const payload = jwt.verify(token, config.jwt.secret.trim());
                 req.user = {
                     id: payload.user_id || payload.sub,
                     userId: payload.user_id || payload.sub,
-                    tenantId: payload.tenant_id || 1,
-                    tenant_id: payload.tenant_id || 1,
+                    tenantId: payload.tenant_id || payload.tenantId || 1,
+                    tenant_id: payload.tenant_id || payload.tenantId || 1,
                     roles: payload.roles || (payload.role ? [payload.role] : []),
                     role: payload.roles?.[0] || payload.role,
                     permissions: payload.permissions || [],

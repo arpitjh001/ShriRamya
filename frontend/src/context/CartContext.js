@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { cartAPI, couponsAPI } from '../services/api';
-import { getSessionId } from '../utils';
+import { getCartItemPrice, getSessionId, getShippingCharge } from '../utils';
 import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
@@ -50,12 +50,17 @@ export const CartProvider = ({ children }) => {
       const storedSessionId = getSessionId() || sessionId;
       
       const payload = { quantity };
+      const variantPayload = typeof variation === 'string' || typeof variation === 'number'
+        ? { variantId: variation }
+        : variation;
       
-      if (variation && variation.variantId) {
+      const variantId = variantPayload?.variantId || variantPayload?.id || variantPayload?._id;
+
+      if (variantId) {
         payload.productId = productIdOrVariantId;
-        payload.variantId = variation.variantId;
-        if (variation.color) payload.color = variation.color;
-        if (variation.size) payload.size = variation.size;
+        payload.variantId = variantId;
+        if (variantPayload.color) payload.color = variantPayload.color;
+        if (variantPayload.size) payload.size = variantPayload.size;
       } else {
         payload.productId = productIdOrVariantId;
       }
@@ -182,14 +187,14 @@ export const CartProvider = ({ children }) => {
   // Calculate totals with discount
   const calculateSubtotal = () => {
     return cart.items?.reduce((sum, item) => {
-      const price = item.price || item.variant?.price || item.product?.price || 0;
+      const price = getCartItemPrice(item);
       return sum + (price * item.quantity);
     }, 0) || 0;
   };
 
   const calculateFinalTotal = () => {
     const subtotal = calculateSubtotal();
-    const shipping = subtotal > 999 ? 0 : 99;
+    const shipping = getShippingCharge(subtotal);
     return subtotal - discountAmount + shipping;
   };
 

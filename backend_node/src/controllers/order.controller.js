@@ -133,8 +133,7 @@ const createOrder = async (req, res, next) => {
         };
 
         const taxTotal = processedItems.reduce((sum, i) => sum + (i.taxAmount || 0), 0);
-        // Standardized shipping logic: Free above 1000, else 100
-        const shippingCost = subtotal > 1000 ? 0 : 100;
+        const shippingCost = subtotal > 0 ? 100 : 0;
         const grandTotal = subtotal - discountTotal + taxTotal + shippingCost;
 
         const order = await Order.create({

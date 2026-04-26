@@ -3,11 +3,12 @@
  * Provides sales, product, revenue, and conversion analytics
  */
 
-const { Product, Order, User, Review, DailyStats, ProductPerformance, OfflineSale } = require('../../models');
+const { Product, Order, User, DailyStats, OfflineSale } = require('../../models');
 const redis = require('../../config/integrations/redis');
 const { buildTenantScope, buildTenantScopedQuery, andQuery, normalizeTenantId } = require('../../utils/tenantScope');
 
-const ANALYTICS_CACHE_VERSION = 'v2';
+const ANALYTICS_CACHE_VERSION = 'v4';
+const REVENUE_STATUSES = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 const PUBLISHED_PRODUCT_SCOPE = {
   $or: [
     { status: { $in: ['published', 'publish'] } },
@@ -20,6 +21,99 @@ const getTenantFilter = (tenantId) => (
   tenantId ? buildTenantScope(tenantId) : {}
 );
 
+const parseAnalyticsDate = (value, boundary = 'start') => {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === 'string') {
+    const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch.map(Number);
+      const date = new Date(year, month - 1, day);
+      if (boundary === 'end') {
+        date.setHours(23, 59, 59, 999);
+      } else {
+        date.setHours(0, 0, 0, 0);
+      }
+      return date;
+    }
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getDateRange = ({ start_date, end_date } = {}, defaultStartFactory) => {
+  const now = new Date();
+  const startDate = parseAnalyticsDate(start_date, 'start') || defaultStartFactory(now);
+  const endDate = parseAnalyticsDate(end_date, 'end') || now;
+
+  return { startDate, endDate };
+};
+
+const startOfCurrentMonth = (now) => new Date(now.getFullYear(), now.getMonth(), 1);
+
+const getOrderRevenueExpression = () => ({
+  $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }]
+});
+
+const getOrderItemUnitPriceExpression = () => ({
+  $let: {
+    vars: {
+      snapshot: { $ifNull: ['$items.priceSnapshot', 0] },
+      price: { $ifNull: ['$items.price', 0] },
+      salePrice: { $ifNull: ['$items.salePrice', 0] }
+    },
+    in: {
+      $cond: [
+        { $gt: ['$$snapshot', 0] },
+        '$$snapshot',
+        {
+          $cond: [
+            { $gt: ['$$price', 0] },
+            '$$price',
+            '$$salePrice'
+          ]
+        }
+      ]
+    }
+  }
+});
+
+const getOrderItemRevenueExpression = () => ({
+  $multiply: [
+    { $ifNull: ['$items.quantity', 1] },
+    getOrderItemUnitPriceExpression()
+  ]
+});
+
+const getOfflineRevenueExpression = () => ({
+  $multiply: [
+    { $ifNull: ['$quantity', 1] },
+    { $ifNull: ['$salePrice', 0] }
+  ]
+});
+
+const getPeriodGroupExpression = (dateField, groupBy) => {
+  switch (groupBy) {
+    case 'week':
+      return {
+        $dateToString: {
+          format: '%G-W%V',
+          date: dateField
+        }
+      };
+    case 'month':
+      return { $dateToString: { format: '%Y-%m', date: dateField } };
+    case 'day':
+    default:
+      return { $dateToString: { format: '%Y-%m-%d', date: dateField } };
+  }
+};
+
 class AnalyticsService {
   /**
    * Get sales analytics (Online + Offline)
@@ -31,8 +125,9 @@ class AnalyticsService {
       end_date,
       group_by = 'day'
     } = params;
+    const tenantId = normalizeTenantId(params.tenant_id || 1);
 
-    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:sales:${start_date}:${end_date}:${group_by}`;
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:sales:${tenantId}:${start_date}:${end_date}:${group_by}`;
 
     // Try cache
     if (redis) {
@@ -46,27 +141,10 @@ class AnalyticsService {
       }
     }
 
-    const now = new Date();
-    const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = end_date ? new Date(end_date) : now;
-
-    // Build aggregation pipeline
-    let groupFormat;
-    switch (group_by) {
-      case 'week':
-        groupFormat = { $concat: [{ $substr: [{ $year: "$created_at" }, 0, -1] }, "-", { $substr: [{ $week: "$created_at" }, 0, -1] }] };
-        break;
-      case 'month':
-        groupFormat = { $dateToString: { format: "%Y-%m", date: "$created_at" } };
-        break;
-      case 'day':
-      default:
-        groupFormat = { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } };
-        break;
-    }
-
-    const validStatuses = ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
-    const tenantFilter = getTenantFilter(params.tenant_id);
+    const { startDate, endDate } = getDateRange({ start_date, end_date }, startOfCurrentMonth);
+    const onlineGroupFormat = getPeriodGroupExpression('$created_at', group_by);
+    const offlineGroupFormat = getPeriodGroupExpression('$soldAt', group_by);
+    const tenantFilter = getTenantFilter(tenantId);
 
     // Parallelize online and offline aggregations
     const [onlineAggregation, offlineAggregation] = await Promise.all([
@@ -74,16 +152,16 @@ class AnalyticsService {
         {
           $match: {
             ...tenantFilter,
-            status: { $in: validStatuses },
+            status: { $in: REVENUE_STATUSES },
             created_at: { $gte: startDate, $lte: endDate }
           }
         },
         {
           $group: {
-            _id: groupFormat,
+            _id: onlineGroupFormat,
             orderCount: { $sum: 1 },
-            totalRevenue: { $sum: { $ifNull: ['$total_amount', 0] } },
-            avgOrderValue: { $avg: { $ifNull: ['$total_amount', 0] } },
+            totalRevenue: { $sum: getOrderRevenueExpression() },
+            avgOrderValue: { $avg: getOrderRevenueExpression() },
             uniqueCustomers: { $addToSet: "$userId" }
           }
         },
@@ -108,10 +186,10 @@ class AnalyticsService {
         },
         {
           $group: {
-            _id: groupFormat.replace ? groupFormat.replace('$created_at', '$soldAt') : { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
+            _id: offlineGroupFormat,
             orderCount: { $sum: 1 },
-            totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
-            avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+            totalRevenue: { $sum: getOfflineRevenueExpression() },
+            avgOrderValue: { $avg: getOfflineRevenueExpression() },
             quantity: { $sum: "$quantity" }
           }
         },
@@ -184,6 +262,7 @@ class AnalyticsService {
         existing.totalOrders = existing.onlineOrders + item.orderCount;
         existing.totalRevenue = existing.onlineRevenue + item.totalRevenue;
         existing.avgOrderValue = (existing.onlineRevenue + item.totalRevenue) / (existing.onlineOrders + item.orderCount);
+        existing.avgValue = existing.avgOrderValue;
       } else {
         merged.set(item.period, {
           period: item.period,
@@ -215,8 +294,10 @@ class AnalyticsService {
       limit = 20,
       sort_by = 'revenue'
     } = params;
+    const tenantId = normalizeTenantId(params.tenant_id || 1);
+    const parsedLimit = Math.max(parseInt(limit, 10) || 20, 1);
 
-    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:products:${start_date}:${end_date}:${sort_by}:${limit}`;
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:products:${tenantId}:${start_date}:${end_date}:${sort_by}:${parsedLimit}`;
 
     if (redis) {
       try {
@@ -229,64 +310,148 @@ class AnalyticsService {
       }
     }
 
-    const now = new Date();
-    const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = end_date ? new Date(end_date) : now;
+    const { startDate, endDate } = getDateRange({ start_date, end_date }, startOfCurrentMonth);
 
-    // Sort order
-    let sortQuery = {};
-    switch (sort_by) {
-      case 'quantity':
-        sortQuery = { totalQuantity: -1 };
-        break;
-      case 'views':
-        sortQuery = { views: -1 };
-        break;
-      case 'rating':
-        sortQuery = { avgRating: -1 };
-        break;
-      case 'revenue':
-      default:
-        sortQuery = { totalRevenue: -1 };
-        break;
-    }
+    const tenantFilter = getTenantFilter(tenantId);
 
-    const tenantFilter = getTenantFilter(params.tenant_id);
+    const [onlineProductSales, offlineProductSales] = await Promise.all([
+      Order.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            status: { $in: REVENUE_STATUSES },
+            created_at: { $gte: startDate, $lte: endDate }
+          }
+        },
+        { $unwind: '$items' },
+        { $match: { 'items.productId': { $ne: null } } },
+        {
+          $group: {
+            _id: '$items.productId',
+            orderIds: { $addToSet: '$_id' },
+            name: { $first: '$items.name' },
+            sku: { $first: '$items.sku' },
+            totalQuantity: { $sum: { $ifNull: ['$items.quantity', 1] } },
+            totalRevenue: { $sum: getOrderItemRevenueExpression() }
+          }
+        },
+        {
+          $project: {
+            productId: '$_id',
+            name: 1,
+            sku: 1,
+            totalOrders: { $size: '$orderIds' },
+            totalQuantity: 1,
+            totalRevenue: 1,
+            _id: 0
+          }
+        }
+      ]),
+      OfflineSale.aggregate([
+        {
+          $match: {
+            ...tenantFilter,
+            soldAt: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: '$productId',
+            totalOrders: { $sum: 1 },
+            totalQuantity: { $sum: { $ifNull: ['$quantity', 1] } },
+            totalRevenue: { $sum: getOfflineRevenueExpression() }
+          }
+        },
+        {
+          $project: {
+            productId: '$_id',
+            totalOrders: 1,
+            totalQuantity: 1,
+            totalRevenue: 1,
+            _id: 0
+          }
+        }
+      ])
+    ]);
 
-    // This is a complex query in MongoDB. We'll simplify for now.
-    // In a production app, we'd use the ProductPerformance collection.
-    const performanceData = await ProductPerformance.find({
-      ...tenantFilter,
-      date: { $gte: startDate.toISOString().split('T')[0], $lte: endDate.toISOString().split('T')[0] }
-    }).populate('productId');
-
-    // Grouping by product
     const productStats = new Map();
-    for (const item of performanceData) {
-      if (!item.productId) continue;
-      const pid = item.productId._id.toString();
-      if (!productStats.has(pid)) {
-        productStats.set(pid, {
-          id: item.productId.productId || item.productId._id,
-          name: item.productId.name,
-          slug: item.productId.slug,
-          price: item.productId.price || item.productId.basePrice || 0,
+
+    const ensureProductStats = (productId, fallback = {}) => {
+      const key = String(productId || '');
+      if (!key) return null;
+
+      if (!productStats.has(key)) {
+        productStats.set(key, {
+          id: key,
+          productId,
+          name: fallback.name || 'Unknown product',
+          slug: null,
+          sku: fallback.sku || 'N/A',
+          price: 0,
           totalOrders: 0,
           totalQuantity: 0,
           totalRevenue: 0,
+          onlineOrders: 0,
+          onlineQuantity: 0,
+          onlineRevenue: 0,
+          offlineOrders: 0,
+          offlineQuantity: 0,
+          offlineRevenue: 0,
           views: 0,
           addToCart: 0,
-          avgRating: item.productId.rating || 0,
-          reviewCount: item.productId.reviewCount || 0
+          avgRating: 0,
+          reviewCount: 0
         });
       }
-      
-      const stats = productStats.get(pid);
-      stats.totalOrders += item.purchases;
-      stats.totalQuantity += item.purchases; // Assuming 1 quantity per purchase for simple analytics
-      stats.totalRevenue += item.revenue;
-      stats.views += item.views;
-      stats.addToCart += item.add_to_cart;
+
+      return productStats.get(key);
+    };
+
+    onlineProductSales.forEach((item) => {
+      const stats = ensureProductStats(item.productId, item);
+      if (!stats) return;
+
+      stats.name = item.name || stats.name;
+      stats.sku = item.sku || stats.sku;
+      stats.totalOrders += Number(item.totalOrders || 0);
+      stats.totalQuantity += Number(item.totalQuantity || 0);
+      stats.totalRevenue += Number(item.totalRevenue || 0);
+      stats.onlineOrders += Number(item.totalOrders || 0);
+      stats.onlineQuantity += Number(item.totalQuantity || 0);
+      stats.onlineRevenue += Number(item.totalRevenue || 0);
+    });
+
+    offlineProductSales.forEach((item) => {
+      const stats = ensureProductStats(item.productId);
+      if (!stats) return;
+
+      stats.totalOrders += Number(item.totalOrders || 0);
+      stats.totalQuantity += Number(item.totalQuantity || 0);
+      stats.totalRevenue += Number(item.totalRevenue || 0);
+      stats.offlineOrders += Number(item.totalOrders || 0);
+      stats.offlineQuantity += Number(item.totalQuantity || 0);
+      stats.offlineRevenue += Number(item.totalRevenue || 0);
+    });
+
+    const productIds = Array.from(productStats.keys());
+    if (productIds.length > 0) {
+      const productDocuments = await Product.find({
+        ...tenantFilter,
+        _id: { $in: productIds }
+      }).lean();
+
+      productDocuments.forEach((product) => {
+        const stats = productStats.get(String(product._id));
+        if (!stats) return;
+
+        stats.id = product.productId || product._id;
+        stats.name = product.name || stats.name;
+        stats.slug = product.slug || null;
+        stats.sku = product.sku || product.variants?.[0]?.sku || stats.sku || 'N/A';
+        stats.price = product.price || product.basePrice || product.variants?.[0]?.price || 0;
+        stats.avgRating = product.rating || 0;
+        stats.reviewCount = product.reviewCount || 0;
+      });
     }
 
     let products = Array.from(productStats.values());
@@ -297,7 +462,7 @@ class AnalyticsService {
       return b[field] - a[field];
     });
 
-    products = products.slice(0, limit).map(p => ({
+    products = products.slice(0, parsedLimit).map(p => ({
       ...p,
       avgRating: parseFloat(p.avgRating).toFixed(1),
       conversionRate: p.views > 0 ? ((p.totalQuantity / p.views) * 100).toFixed(2) : 0
@@ -327,8 +492,9 @@ class AnalyticsService {
    */
   async getRevenueAnalytics(params = {}) {
     const { start_date, end_date } = params;
+    const tenantId = normalizeTenantId(params.tenant_id || 1);
 
-    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:revenue:${start_date}:${end_date}`;
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:revenue:${tenantId}:${start_date}:${end_date}`;
 
     if (redis) {
       try {
@@ -341,12 +507,8 @@ class AnalyticsService {
       }
     }
 
-    const now = new Date();
-    const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = end_date ? new Date(end_date) : now;
-
-    const tenantFilter = getTenantFilter(params.tenant_id);
-    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
+    const { startDate, endDate } = getDateRange({ start_date, end_date }, startOfCurrentMonth);
+    const tenantFilter = getTenantFilter(tenantId);
 
     // Parallelize all revenue metrics and trends
     const [
@@ -367,11 +529,11 @@ class AnalyticsService {
         {
           $group: {
             _id: null,
-            totalOrders: { $sum: 1 },
-            grossRevenue: { $sum: { $ifNull: ['$total_amount', 0] } },
-            refunds: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, { $ifNull: ['$total_amount', 0] }, 0] } },
-            netRevenue: { $sum: { $cond: [{ $in: ["$status", validStatuses] }, { $ifNull: ['$total_amount', 0] }, 0] } },
-            avgOrderValue: { $avg: { $ifNull: ['$total_amount', 0] } }
+            totalOrders: { $sum: { $cond: [{ $in: ["$status", REVENUE_STATUSES] }, 1, 0] } },
+            grossRevenue: { $sum: { $cond: [{ $in: ["$status", REVENUE_STATUSES] }, getOrderRevenueExpression(), 0] } },
+            refunds: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, getOrderRevenueExpression(), 0] } },
+            netRevenue: { $sum: { $cond: [{ $in: ["$status", REVENUE_STATUSES] }, getOrderRevenueExpression(), 0] } },
+            avgOrderValue: { $avg: { $cond: [{ $in: ["$status", REVENUE_STATUSES] }, getOrderRevenueExpression(), null] } }
           }
         }
       ]),
@@ -387,8 +549,8 @@ class AnalyticsService {
           $group: {
             _id: null,
             totalOrders: { $sum: 1 },
-            totalRevenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
-            avgOrderValue: { $avg: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } }
+            totalRevenue: { $sum: getOfflineRevenueExpression() },
+            avgOrderValue: { $avg: getOfflineRevenueExpression() }
           }
         }
       ]),
@@ -397,7 +559,7 @@ class AnalyticsService {
         {
           $match: {
             ...tenantFilter,
-            status: { $in: validStatuses },
+            status: { $in: REVENUE_STATUSES },
             created_at: { $gte: startDate, $lte: endDate }
           }
         },
@@ -405,7 +567,7 @@ class AnalyticsService {
           $group: {
             _id: "$payment_method",
             orderCount: { $sum: 1 },
-            totalRevenue: { $sum: { $ifNull: ['$total_amount', 0] } }
+            totalRevenue: { $sum: getOrderRevenueExpression() }
           }
         },
         {
@@ -422,14 +584,14 @@ class AnalyticsService {
         {
           $match: {
             ...tenantFilter,
-            status: { $in: validStatuses },
+            status: { $in: REVENUE_STATUSES },
             created_at: { $gte: startDate, $lte: endDate }
           }
         },
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
-            revenue: { $sum: { $ifNull: ['$total_amount', 0] } },
+            revenue: { $sum: getOrderRevenueExpression() },
             orders: { $sum: 1 }
           }
         },
@@ -456,7 +618,7 @@ class AnalyticsService {
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$soldAt" } },
-            revenue: { $sum: { $cond: [{ $eq: ["$salePrice", null] }, 0, "$salePrice"] } },
+            revenue: { $sum: getOfflineRevenueExpression() },
             orders: { $sum: 1 }
           }
         },
@@ -565,7 +727,7 @@ class AnalyticsService {
    */
   async getDashboardOverview(params = {}) {
     const tenantId = normalizeTenantId(params.tenant_id || 1);
-    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:dashboard:overview:${tenantId}`;
+    const cacheKey = `analytics:${ANALYTICS_CACHE_VERSION}:dashboard:overview:${tenantId}:${params.start_date || ''}:${params.end_date || ''}`;
 
     if (redis) {
       try {
@@ -579,7 +741,6 @@ class AnalyticsService {
     }
 
     const tenantFilter = buildTenantScope(tenantId);
-    const validStatuses = ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -591,8 +752,8 @@ class AnalyticsService {
     const productBaseFilter = buildTenantScopedQuery(tenantId, { is_deleted: { $ne: true } });
 
     // Custom range calculation
-    const rangeStart = params.start_date ? new Date(params.start_date) : null;
-    const rangeEnd = params.end_date ? new Date(params.end_date) : new Date();
+    const rangeStart = parseAnalyticsDate(params.start_date, 'start');
+    const rangeEnd = parseAnalyticsDate(params.end_date, 'end') || new Date();
 
     // Parallelize all database queries for maximum performance
     const [
@@ -609,33 +770,33 @@ class AnalyticsService {
     ] = await Promise.all([
       // Today's online stats
       Order.aggregate([
-        { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: todayStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }] } } } }
+        { $match: { ...tenantFilter, status: { $in: REVENUE_STATUSES }, created_at: { $gte: todayStart } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: getOrderRevenueExpression() } } }
       ]),
       // Today's offline stats
       OfflineSale.aggregate([
         { $match: { ...tenantFilter, soldAt: { $gte: todayStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $multiply: [{ $ifNull: ["$quantity", 1] }, { $ifNull: ["$salePrice", 0] }] } } } }
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: getOfflineRevenueExpression() } } }
       ]),
       // Month's online stats
       Order.aggregate([
-        { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: monthStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }] } } } }
+        { $match: { ...tenantFilter, status: { $in: REVENUE_STATUSES }, created_at: { $gte: monthStart } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: getOrderRevenueExpression() } } }
       ]),
       // Month's offline stats
       OfflineSale.aggregate([
         { $match: { ...tenantFilter, soldAt: { $gte: monthStart } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $multiply: [{ $ifNull: ["$quantity", 1] }, { $ifNull: ["$salePrice", 0] }] } } } }
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: getOfflineRevenueExpression() } } }
       ]),
       // Custom range online stats
       rangeStart ? Order.aggregate([
-        { $match: { ...tenantFilter, status: { $in: validStatuses }, created_at: { $gte: rangeStart, $lte: rangeEnd } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $ifNull: ['$total_amount', { $ifNull: ['$total', 0] }] } } } }
+        { $match: { ...tenantFilter, status: { $in: REVENUE_STATUSES }, created_at: { $gte: rangeStart, $lte: rangeEnd } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: getOrderRevenueExpression() } } }
       ]) : Promise.resolve([]),
       // Custom range offline stats
       rangeStart ? OfflineSale.aggregate([
         { $match: { ...tenantFilter, soldAt: { $gte: rangeStart, $lte: rangeEnd } } },
-        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $multiply: [{ $ifNull: ["$quantity", 1] }, { $ifNull: ["$salePrice", 0] }] } } } }
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: getOfflineRevenueExpression() } } }
       ]) : Promise.resolve([]),
       // "Active products"
       Product.countDocuments(andQuery(productBaseFilter, PUBLISHED_PRODUCT_SCOPE)),
@@ -717,15 +878,15 @@ class AnalyticsService {
       {
         $match: {
           created_at: { $gte: startOfDay, $lte: endOfDay },
-          status: { $in: ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'] }
+          status: { $in: REVENUE_STATUSES }
         }
       },
       {
         $group: {
           _id: null,
           total_orders: { $sum: 1 },
-          total_revenue: { $sum: "$total_amount" },
-          average_order_value: { $avg: "$total_amount" },
+          total_revenue: { $sum: getOrderRevenueExpression() },
+          average_order_value: { $avg: getOrderRevenueExpression() },
           new_customers: { $addToSet: "$userId" } // Simplified, should check if first order
         }
       }
@@ -738,7 +899,7 @@ class AnalyticsService {
       {
         $match: {
           created_at: { $gte: startOfDay, $lte: endOfDay },
-          status: { $in: ['pending', 'pending_payment', 'confirmed', 'paid', 'processing', 'shipped', 'delivered'] }
+          status: { $in: REVENUE_STATUSES }
         }
       },
       { $unwind: "$items" },
@@ -789,14 +950,13 @@ class AnalyticsService {
   async getOrderAnalytics(params = {}) {
     const tenantId = params.tenant_id || params.tenantId;
     const filter = getTenantFilter(tenantId);
-    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
     // Parallelize count and revenue aggregation
     const [totalOrders, revenueResult, byStatus] = await Promise.all([
       Order.countDocuments(filter),
       Order.aggregate([
-        { $match: { ...filter, status: { $in: validStatuses } } },
-        { $group: { _id: null, total: { $sum: '$total_amount' } } }
+        { $match: { ...filter, status: { $in: REVENUE_STATUSES } } },
+        { $group: { _id: null, total: { $sum: getOrderRevenueExpression() } } }
       ]),
       Order.aggregate([
         { $match: filter },
@@ -824,11 +984,14 @@ class AnalyticsService {
       };
     }
 
+    const totalOrders = rows.reduce((sum, row) => sum + (row.totalOrders || row.orderCount || 0), 0);
+    const totalRevenue = rows.reduce((sum, row) => sum + (row.totalRevenue || 0), 0);
+
     return {
-      totalOrders: rows.reduce((sum, row) => sum + row.orderCount, 0),
-      totalRevenue: rows.reduce((sum, row) => sum + row.totalRevenue, 0),
-      avgOrderValue: rows.reduce((sum, row) => sum + row.avgOrderValue, 0) / rows.length,
-      totalCustomers: rows.reduce((sum, row) => sum + row.uniqueCustomers, 0)
+      totalOrders,
+      totalRevenue,
+      avgOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+      totalCustomers: rows.reduce((sum, row) => sum + (row.uniqueCustomers || row.onlineCustomers || 0), 0)
     };
   }
   /**
@@ -837,44 +1000,88 @@ class AnalyticsService {
    */
   async getTopCustomers(params = {}) {
     const { limit = 10, start_date, end_date } = params;
+    const parsedLimit = Math.max(parseInt(limit, 10) || 10, 1);
     
-    const now = new Date();
-    const startDate = start_date ? new Date(start_date) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = end_date ? new Date(end_date) : now;
+    const { startDate, endDate } = getDateRange({ start_date, end_date }, startOfCurrentMonth);
     
     const tenantFilter = getTenantFilter(params.tenant_id);
-    const validStatuses = ['confirmed', 'paid', 'processing', 'shipped', 'delivered'];
 
     const customers = await Order.aggregate([
       {
         $match: {
           ...tenantFilter,
-          status: { $in: validStatuses },
+          status: { $in: REVENUE_STATUSES },
           created_at: { $gte: startDate, $lte: endDate }
         }
       },
       {
+        $addFields: {
+          customerEmail: {
+            $ifNull: [
+              '$userEmail',
+              { $ifNull: ['$billing_address.email', '$shippingAddress.email'] }
+            ]
+          },
+          customerName: {
+            $ifNull: [
+              '$userName',
+              {
+                $ifNull: [
+                  '$shippingAddress.name',
+                  {
+                    $trim: {
+                      input: {
+                        $concat: [
+                          { $ifNull: ['$billing_address.first_name', ''] },
+                          ' ',
+                          { $ifNull: ['$billing_address.last_name', ''] }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          customerKey: {
+            $ifNull: [
+              { $toString: '$userId' },
+              {
+                $ifNull: [
+                  '$userEmail',
+                  { $ifNull: ['$billing_address.email', '$shippingAddress.email'] }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      { $match: { customerKey: { $nin: [null, ''] } } },
+      {
         $group: {
-          _id: "$userId",
+          _id: "$customerKey",
+          userId: { $first: "$userId" },
+          name: { $first: "$customerName" },
+          email: { $first: "$customerEmail" },
           orderCount: { $sum: 1 },
-          totalSpent: { $sum: "$total_amount" },
+          totalSpent: { $sum: getOrderRevenueExpression() },
           lastOrder: { $max: "$created_at" }
         }
       },
       {
         $lookup: {
           from: "users",
-          localField: "_id",
+          localField: "userId",
           foreignField: "_id",
           as: "userDetails"
         }
       },
-      { $unwind: "$userDetails" },
+      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
       {
         $project: {
           id: "$_id",
-          name: "$userDetails.name",
-          email: "$userDetails.email",
+          name: { $ifNull: ["$userDetails.name", "$name"] },
+          email: { $ifNull: ["$userDetails.email", "$email"] },
           orderCount: 1,
           totalSpent: 1,
           lastOrder: 1,
@@ -882,7 +1089,7 @@ class AnalyticsService {
         }
       },
       { $sort: { totalSpent: -1 } },
-      { $limit: parseInt(limit) }
+      { $limit: parsedLimit }
     ]);
 
     return {

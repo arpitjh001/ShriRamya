@@ -4,21 +4,30 @@ const cartValidation = require('../../validations/cart.validation');
 const cartController = require('../../controllers/cart.controller');
 const auth = require('../../middlewares/auth');
 const { apiLimiter, cartLimiter } = require('../../middlewares/rateLimit.middleware');
+const { csrfProtection } = require('../../middlewares/csrf.middleware');
 
 const router = express.Router();
 
 router.use(apiLimiter);
 
 /**
- * Cart Routes
- * Support both authenticated users and guest sessions
+ * Cart Routes with CSRF Protection
+ *
+ * CSRF Protection Strategy:
+ * 1. Double-Submit Cookie Pattern: CSRF token set in cookie and validated from header
+ * 2. JWT Bearer Authentication: Not vulnerable to CSRF as tokens are in Authorization header
+ * 3. SameSite Cookie Policy: Prevents cross-site cookie sending
+ * 4. Origin Validation: CORS middleware validates request origin
+ * 5. Rate Limiting: Prevents brute-force attacks
  * 
- * CSRF Protection: These routes are protected against CSRF attacks through:
- * 1. JWT Bearer token authentication (not cookie-based)
- * 2. SameSite cookie policy for session tokens
- * 3. Origin validation in CORS middleware
- * 4. Rate limiting to prevent abuse
+ * All state-changing operations (POST, PUT, DELETE) require:
+ * - Valid CSRF token in x-csrf-token header matching csrf-token cookie
+ * - Valid JWT token in Authorization header (for authenticated users)
+ * - Request from allowed origin (CORS)
  */
+
+// Apply CSRF protection to all cart routes
+router.use(csrfProtection);
 
 // Get current cart (auto-creates if doesn't exist)
 router.get('/', cartController.getCart);

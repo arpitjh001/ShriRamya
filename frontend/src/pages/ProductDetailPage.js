@@ -16,6 +16,29 @@ import { addToRecentlyViewed } from '../components/RecentlyViewed';
 import { getFabricGuide } from '../utils/fabricGuide';
 import SEOMeta from '../components/SEOMeta';
 
+const SHIPPING_DELIVERY_COPY = 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. Shipping charges are calculated at checkout.';
+
+const normalizeMaterialGuide = (guide) => {
+  if (!guide || typeof guide !== 'object') return null;
+
+  const description = typeof guide.description === 'string' ? guide.description.trim() : '';
+  const origin = typeof guide.origin === 'string' ? guide.origin.trim() : '';
+  const normalizeList = (value) => (
+    Array.isArray(value)
+      ? value.map((entry) => String(entry || '').trim()).filter(Boolean)
+      : []
+  );
+
+  const properties = normalizeList(guide.properties);
+  const care = normalizeList(guide.care);
+
+  if (!description && !origin && properties.length === 0 && care.length === 0) {
+    return null;
+  }
+
+  return { description, origin, properties, care };
+};
+
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -332,6 +355,13 @@ const ProductDetailPage = () => {
     : Number(product.sale_price || 0);
   const hasDiscount = salePrice > 0 && salePrice < regularPrice;
   const displayPrice = hasDiscount ? salePrice : regularPrice;
+  const modelDetails = [
+    product.modelWears ? { label: 'Model wears', value: product.modelWears } : null,
+    product.modelHeight ? { label: 'Height', value: product.modelHeight } : null,
+  ].filter(Boolean);
+  const customMaterialGuide = normalizeMaterialGuide(product.materialGuide);
+  const materialGuide = customMaterialGuide || getFabricGuide(product.fabric);
+  const materialGuideLabel = product.fabric || 'Material Guide';
 
   const toggleAccordion = (id) => {
     setActiveAccordion(activeAccordion === id ? null : id);
@@ -433,19 +463,21 @@ const ProductDetailPage = () => {
               </div>
             </div>
 
-            {/* Model Info (Inspiration from Maybell) */}
-            <div className="bg-white/40 border border-white/60 p-5 rounded-2xl flex flex-wrap items-center gap-4 sm:gap-6">
-              <div className="flex flex-col">
-                <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">Model wears</span>
-                <span className="text-sm font-medium text-charcoal">Size S (Medium)</span>
+            {/* Model Info */}
+            {modelDetails.length > 0 && (
+              <div className="bg-white/40 border border-white/60 p-5 rounded-2xl flex flex-wrap items-center gap-4 sm:gap-6">
+                {modelDetails.map((detail, index) => (
+                  <React.Fragment key={detail.label}>
+                    {index > 0 && <div className="hidden sm:block w-[1px] h-8 bg-charcoal/10" />}
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">{detail.label}</span>
+                      <span className="text-sm font-medium text-charcoal">{detail.value}</span>
+                    </div>
+                  </React.Fragment>
+                ))}
+                <Sparkles className="sm:ml-auto w-5 h-5 text-royal-maroon/30 animate-pulse" />
               </div>
-              <div className="hidden sm:block w-[1px] h-8 bg-charcoal/10" />
-              <div className="flex flex-col">
-                <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">Height</span>
-                <span className="text-sm font-medium text-charcoal">5'9" ft</span>
-              </div>
-              <Sparkles className="sm:ml-auto w-5 h-5 text-royal-maroon/30 animate-pulse" />
-            </div>
+            )}
 
             {/* Selection Options - Variant Matrix System */}
             <div className="space-y-8">
@@ -602,16 +634,14 @@ const ProductDetailPage = () => {
             <div className="border-t border-charcoal/10 pt-4 space-y-2 text-charcoal/80">
               {[
                 { id: 'description', title: 'Product Details', content: product.description },
-                ...(product.fabric ? [{
+                ...(materialGuide ? [{
                   id: 'fabric-guide',
                   title: 'Material Guide',
                   isFabricGuide: true,
                 }] : []),
-                { id: 'shipping', title: 'Shipping & Delivery', content: 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. We offer free shipping on prepaid orders over ₹999.' },
+                { id: 'shipping', title: 'Shipping & Delivery', content: SHIPPING_DELIVERY_COPY },
                 { id: 'return', title: 'Returns & Exchanges', content: 'This product is returnable within 14 days of delivery. Returns are not applicable on styles under Sale Section. Please ensure labels are intact.' }
               ].map((item) => {
-                const fabricGuide = item.isFabricGuide ? getFabricGuide(product.fabric) : null;
-
                 return (
                 <div key={item.id} className="group">
                   <button
@@ -635,48 +665,57 @@ const ProductDetailPage = () => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        {item.isFabricGuide && fabricGuide ? (
+                        {item.isFabricGuide && materialGuide ? (
                           <div data-testid="fabric-guide-content" className="pb-6 space-y-5">
-                            {/* Fabric Name & Description */}
-                            <div>
-                              <span className="inline-block text-xs font-bold uppercase tracking-widest text-royal-maroon/70 bg-royal-maroon/5 px-3 py-1 rounded-full mb-3">
-                                {product.fabric}
-                              </span>
-                              <p className="text-sm leading-relaxed text-charcoal/60 font-medium">
-                                {fabricGuide.description}
-                              </p>
-                            </div>
+                            {(product.fabric || materialGuide.description) && (
+                              <div>
+                                {product.fabric && (
+                                  <span className="inline-block text-xs font-bold uppercase tracking-widest text-royal-maroon/70 bg-royal-maroon/5 px-3 py-1 rounded-full mb-3">
+                                    {materialGuideLabel}
+                                  </span>
+                                )}
+                                {materialGuide.description && (
+                                  <p className="text-sm leading-relaxed text-charcoal/60 font-medium">
+                                    {materialGuide.description}
+                                  </p>
+                                )}
+                              </div>
+                            )}
 
                             {/* Properties */}
-                            <div>
-                              <h4 className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 mb-2">Key Properties</h4>
-                              <div className="flex flex-wrap gap-2">
-                                {fabricGuide.properties.map((prop, i) => (
-                                  <span key={i} className="text-xs font-medium text-charcoal/70 bg-charcoal/[0.03] border border-charcoal/8 px-3 py-1.5 rounded-lg">
-                                    {prop}
-                                  </span>
-                                ))}
+                            {materialGuide.properties.length > 0 && (
+                              <div>
+                                <h4 className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 mb-2">Key Properties</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {materialGuide.properties.map((prop, i) => (
+                                    <span key={i} className="text-xs font-medium text-charcoal/70 bg-charcoal/[0.03] border border-charcoal/8 px-3 py-1.5 rounded-lg">
+                                      {prop}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             {/* Care Instructions */}
-                            <div>
-                              <h4 className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 mb-2">Care Instructions</h4>
-                              <ul className="space-y-1.5">
-                                {fabricGuide.care.map((instruction, i) => (
-                                  <li key={i} className="text-sm text-charcoal/60 font-medium flex items-start gap-2">
-                                    <span className="w-1 h-1 rounded-full bg-royal-maroon/40 mt-2 flex-shrink-0" />
-                                    {instruction}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
+                            {materialGuide.care.length > 0 && (
+                              <div>
+                                <h4 className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 mb-2">Care Instructions</h4>
+                                <ul className="space-y-1.5">
+                                  {materialGuide.care.map((instruction, i) => (
+                                    <li key={i} className="text-sm text-charcoal/60 font-medium flex items-start gap-2">
+                                      <span className="w-1 h-1 rounded-full bg-royal-maroon/40 mt-2 flex-shrink-0" />
+                                      {instruction}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
 
                             {/* Origin */}
-                            {fabricGuide.origin && (
+                            {materialGuide.origin && (
                               <div className="pt-2 border-t border-charcoal/5">
                                 <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/30">Origin: </span>
-                                <span className="text-xs font-medium text-charcoal/50">{fabricGuide.origin}</span>
+                                <span className="text-xs font-medium text-charcoal/50">{materialGuide.origin}</span>
                               </div>
                             )}
                           </div>

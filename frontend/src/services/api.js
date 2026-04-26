@@ -21,11 +21,14 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json"
   },
-  timeout: 30000
+  timeout: 30000,
+  withCredentials: true // Enable sending cookies with requests
 });
 
 let isRefreshingToken = false;
 let refreshQueue = [];
+let csrfInitPromise = null;
+let csrfTokenCache = null;
 
 const getStoredToken = (key) => {
   if (key === 'refresh_token') return tokenStorage.getRefreshToken();
@@ -62,6 +65,16 @@ const refreshAccessToken = async () => {
     throw new Error('No refresh token available');
   }
 
+  let csrfToken = getCsrfToken();
+  if (!csrfToken) {
+    const csrfResponse = await axios.get(`${API}/csrf-token`, {
+      timeout: 30000,
+      withCredentials: true,
+    });
+    csrfTokenCache = csrfResponse.data?.data?.csrf_token || csrfResponse.data?.csrf_token || csrfTokenCache;
+    csrfToken = getCsrfToken();
+  }
+
   const currentToken = getStoredToken('token');
   const decodedToken = decodeJwtPayload(currentToken);
   const userId = decodedToken?.user_id || decodedToken?.sub;
@@ -74,8 +87,12 @@ const refreshAccessToken = async () => {
   const response = await axios.post(`${API}/auth/refresh`, {
     ...refreshPayload,
   }, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+    },
     timeout: 30000,
+    withCredentials: true,
   });
 
   const payload = response.data?.data || response.data || {};
@@ -179,7 +196,7 @@ api.interceptors.response.use(
 ========================= */
 
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = getStoredToken("token");
 
     if (token) {
@@ -191,10 +208,56 @@ api.interceptors.request.use(
       console.warn(`[API] MISSING token for request: ${config.url}`);
     }
 
+    // Add CSRF token for state-changing requests
+    if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      let csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        await initializeCsrfToken();
+        csrfToken = getCsrfToken();
+      }
+      if (csrfToken) {
+        config.headers['x-csrf-token'] = csrfToken;
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
+
+/**
+ * Get CSRF token from cookie
+ */
+const getCsrfToken = () => {
+  if (typeof document === 'undefined') return csrfTokenCache;
+  const match = document.cookie.match(/csrf-token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : csrfTokenCache;
+};
+
+/**
+ * Initialize CSRF token by making a GET request
+ */
+const initializeCsrfToken = async () => {
+  if (csrfInitPromise) return csrfInitPromise;
+
+  csrfInitPromise = (async () => {
+    try {
+      const response = await api.get('/csrf-token');
+      csrfTokenCache = response?.data?.csrf_token || csrfTokenCache;
+    } catch (error) {
+      console.warn('Failed to initialize CSRF token:', error.message);
+    } finally {
+      csrfInitPromise = null;
+    }
+  })();
+
+  return csrfInitPromise;
+};
+
+// Initialize CSRF token on module load
+if (typeof window !== 'undefined') {
+  initializeCsrfToken();
+}
 
 /* =========================
    Response Error Handler
@@ -251,15 +314,49 @@ const normalizePagination = (res, params = {}) => {
   // If the interceptor already mapped res.data to response.data.data, 
   // then pagination info might be in res.meta or res.data.meta
   const meta = res.meta || res.data?.meta || {};
-  const paginationData = meta.pagination || res.pagination || {};
+  const paginationData = meta.pagination || res.pagination || res.data?.pagination || {};
   
   const page = paginationData.page || paginationData.current_page || params.page || 1;
-  const limit = paginationData.limit || paginationData.per_page || params.limit || 20;
-  const total = paginationData.total || 0;
+  const limit = paginationData.limit || paginationData.per_page || res.data?.perPage || params.per_page || params.limit || 20;
+  const total = paginationData.total || res.data?.totalProducts || res.data?.total || 0;
   const totalPages = paginationData.totalPages || paginationData.total_pages || 
                     Math.max(Math.ceil(total / limit), 1);
 
   return { page, limit, total, totalPages };
+};
+
+const parseNumericValue = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeOrderStats = (rawStats, orders = [], pagination = {}) => {
+  const stats = rawStats && typeof rawStats === "object" ? rawStats : {};
+  const derivedRevenue = orders.reduce(
+    (sum, order) => sum + parseNumericValue(order?.total_amount ?? order?.total, 0),
+    0
+  );
+  const pendingStatuses = new Set(["pending", "pending_payment"]);
+
+  return {
+    total: parseNumericValue(
+      stats.total ?? stats.totalOrders ?? pagination.total ?? orders.length,
+      0
+    ),
+    pending: parseNumericValue(
+      stats.pending ?? stats.pendingOrders ?? orders.filter((order) => pendingStatuses.has(order?.status)).length,
+      0
+    ),
+    shipped: parseNumericValue(
+      stats.shipped ?? stats.shippedOrders ?? orders.filter((order) => order?.status === "shipped").length,
+      0
+    ),
+    totalRevenue: parseNumericValue(
+      stats.totalRevenue ?? stats.revenue ?? stats.grossRevenue ?? derivedRevenue,
+      0
+    ),
+    today: parseNumericValue(stats.today ?? stats.todayOrders, 0)
+  };
 };
 
 /* =========================
@@ -270,14 +367,18 @@ export const productsAPI = {
   /* ---- Get All Products ---- */
   getAll: async (params = {}) => {
     try {
-      const res = await api.get("/products", { params });
+      const requestParams = {
+        ...params,
+        per_page: params.per_page || params.limit,
+      };
+      const res = await api.get("/products", { params: requestParams });
 
       // Handle both standard paginated response and old wrapper format
       const rawProducts = Array.isArray(res.data) 
         ? res.data 
         : (res.data?.products || res.data?.items || []);
       
-      const pagination = normalizePagination(res, params);
+      const pagination = normalizePagination(res, requestParams);
 
       const filters = res.meta?.filters || res.data?.filters || res.data?.filterMetadata || {};
 
@@ -576,17 +677,28 @@ export const ordersAPI = {
 
   getAll: async (params = {}) => {
     try {
-      const res = await api.get("/orders/admin/all", { params });
+      let res;
+
+      try {
+        res = await api.get("/admin/orders", { params });
+      } catch (primaryError) {
+        const status = primaryError?.response?.status;
+        if (status === 401 || status === 403) {
+          throw primaryError;
+        }
+        res = await api.get("/orders/admin/all", { params });
+      }
       
       // After interceptor, res.data is already the 'data' part of the response
       const orders = Array.isArray(res.data) ? res.data : (res.data?.orders || []);
       const pagination = normalizePagination(res, params);
       const meta = res.meta || {};
+      const stats = normalizeOrderStats(res.data?.stats || meta.stats || null, orders, pagination);
       
       return {
         orders,
         pagination,
-        stats: meta.stats || {},
+        stats,
         success: true
       };
     } catch (err) {
@@ -995,6 +1107,7 @@ export const analyticsAPI = {
       return await api.get("/admin/analytics/overview", { params });
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
@@ -1003,6 +1116,7 @@ export const analyticsAPI = {
       return await api.get("/admin/analytics/sales", { params });
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
@@ -1011,6 +1125,7 @@ export const analyticsAPI = {
       return await api.get("/admin/analytics/products", { params });
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
@@ -1019,6 +1134,7 @@ export const analyticsAPI = {
       return await api.get("/admin/analytics/revenue", { params });
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
@@ -1027,6 +1143,7 @@ export const analyticsAPI = {
       return await api.get("/admin/analytics/customers", { params });
     } catch (err) {
       handleError(err);
+      throw err;
     }
   }
 };

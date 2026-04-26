@@ -9,10 +9,32 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../../config/ai-collaboration.config');
 
+const SAFE_SESSION_ID_RE = /^[a-zA-Z0-9_-]{1,120}$/;
+
+const sanitizeSessionId = (sessionId) => {
+  const value = String(sessionId || '');
+  if (!SAFE_SESSION_ID_RE.test(value)) {
+    throw new Error('Invalid collaboration session ID');
+  }
+  return value;
+};
+
+const resolveInside = (baseDir, childPath) => {
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedChild = path.resolve(resolvedBase, childPath);
+
+  if (resolvedChild !== resolvedBase && !resolvedChild.startsWith(`${resolvedBase}${path.sep}`)) {
+    throw new Error('Invalid log path');
+  }
+
+  return resolvedChild;
+};
+
 class CollaborationLogger {
   constructor(sessionId = null) {
-    this.sessionId = sessionId || this._generateSessionId();
-    this.logDir = path.join(process.cwd(), config.logging.directory, this.sessionId);
+    this.baseLogDir = path.resolve(process.cwd(), config.logging.directory);
+    this.sessionId = sanitizeSessionId(sessionId || this._generateSessionId());
+    this.logDir = resolveInside(this.baseLogDir, this.sessionId);
     this.iterationCount = 0;
     
     this._ensureLogDirectory();
@@ -35,7 +57,12 @@ class CollaborationLogger {
   _writeLog(filename, data) {
     if (!config.logging.enabled) return;
     
-    const filePath = path.join(this.logDir, filename);
+    const safeFilename = path.basename(filename);
+    if (safeFilename !== filename || !safeFilename.endsWith('.json')) {
+      throw new Error('Invalid log filename');
+    }
+
+    const filePath = resolveInside(this.logDir, safeFilename);
     const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     
     fs.writeFileSync(filePath, content, 'utf8');
@@ -161,7 +188,7 @@ class CollaborationLogger {
       .filter(f => f.endsWith('.json'))
       .map(f => ({
         filename: f,
-        content: JSON.parse(fs.readFileSync(path.join(this.logDir, f), 'utf8'))
+        content: JSON.parse(fs.readFileSync(resolveInside(this.logDir, f), 'utf8'))
       }));
   }
 }

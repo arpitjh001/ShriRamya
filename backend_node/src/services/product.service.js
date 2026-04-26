@@ -5,6 +5,42 @@ const categoryService = require('./category.service');
 const searchService = require('./search/search.service');
 
 class ProductService {
+  normalizeOptionalString(value) {
+    if (value == null) return null;
+    const normalizedValue = String(value).trim();
+    return normalizedValue || '';
+  }
+
+  normalizeMaterialGuide(materialGuide) {
+    if (!materialGuide || typeof materialGuide !== 'object') {
+      return null;
+    }
+
+    const description = this.normalizeOptionalString(materialGuide.description);
+    const origin = this.normalizeOptionalString(materialGuide.origin);
+    const normalizeStringList = (values) => (
+      Array.isArray(values)
+        ? values
+            .map((value) => this.normalizeOptionalString(value))
+            .filter(Boolean)
+        : []
+    );
+
+    const properties = normalizeStringList(materialGuide.properties);
+    const care = normalizeStringList(materialGuide.care);
+
+    if (!description && !origin && properties.length === 0 && care.length === 0) {
+      return null;
+    }
+
+    return {
+      description: description || '',
+      properties,
+      care,
+      origin: origin || '',
+    };
+  }
+
   normalizeIdentifier(value) {
     if (value == null) return null;
     if (typeof value === 'object' && typeof value.toString === 'function') {
@@ -214,6 +250,12 @@ class ProductService {
 
   normalizeProductData(productData = {}) {
     const normalizedProductData = { ...productData };
+    const basePrice = Number(
+      normalizedProductData.basePrice
+        ?? normalizedProductData.base_price
+        ?? normalizedProductData.price
+        ?? 0
+    ) || 0;
 
     if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'categories')) {
       const categories = Array.isArray(normalizedProductData.categories)
@@ -234,13 +276,31 @@ class ProductService {
       normalizedProductData.status = this.normalizeProductStatus(normalizedProductData.status);
     }
 
+    if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'modelWears')) {
+      normalizedProductData.modelWears = this.normalizeOptionalString(normalizedProductData.modelWears);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'modelHeight')) {
+      normalizedProductData.modelHeight = this.normalizeOptionalString(normalizedProductData.modelHeight);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'materialGuide')) {
+      normalizedProductData.materialGuide = this.normalizeMaterialGuide(normalizedProductData.materialGuide);
+    }
+
     // Normalize lowStockThreshold
     if (Object.prototype.hasOwnProperty.call(normalizedProductData, 'lowStockThreshold')) {
       normalizedProductData.lowStockThreshold = Math.max(0, parseInt(normalizedProductData.lowStockThreshold || 5, 10)) || 5;
     }
 
     if (Array.isArray(normalizedProductData.variants)) {
-      normalizedProductData.variants = normalizedProductData.variants.map((variant) => this.normalizeVariantForPersistence(variant));
+      normalizedProductData.variants = normalizedProductData.variants.map((variant) => {
+        const normalizedVariant = this.normalizeVariantForPersistence(variant);
+        if ((Number(normalizedVariant.price || 0) || 0) <= 0 && basePrice > 0) {
+          normalizedVariant.price = basePrice;
+        }
+        return normalizedVariant;
+      });
     }
 
     return normalizedProductData;
@@ -387,11 +447,41 @@ class ProductService {
       
       // Use a separate count for stats or an aggregation if we want detailed break down
       // For now, let's get the standard counts
-      const [totalCount, publishedCount, draftCount, outOfStockCount] = await Promise.all([
+      const [totalCount, publishedCount, draftCount, outOfStockResult] = await Promise.all([
         Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true } }),
         Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true }, status: 'published' }),
         Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true }, status: 'draft' }),
-        Product.countDocuments({ tenant_id: tenantId, is_deleted: { $ne: true }, stock: 0 })
+        Product.aggregate([
+          { $match: { tenant_id: tenantId, is_deleted: { $ne: true } } },
+          {
+            $addFields: {
+              variantCount: { $size: { $ifNull: ['$variants', []] } },
+              totalVariantStock: {
+                $sum: {
+                  $map: {
+                    input: { $ifNull: ['$variants', []] },
+                    as: 'variant',
+                    in: { $ifNull: ['$$variant.stock', 0] }
+                  }
+                }
+              },
+              productStock: { $ifNull: ['$stock', { $ifNull: ['$stock_quantity', 0] }] }
+            }
+          },
+          {
+            $addFields: {
+              effectiveStock: {
+                $cond: [
+                  { $gt: ['$variantCount', 0] },
+                  '$totalVariantStock',
+                  '$productStock'
+                ]
+              }
+            }
+          },
+          { $match: { effectiveStock: { $lte: 0 } } },
+          { $count: 'count' }
+        ])
       ]);
 
       return {
@@ -403,7 +493,7 @@ class ProductService {
           total: totalCount,
           published: publishedCount,
           draft: draftCount,
-          outOfStock: outOfStockCount
+          outOfStock: outOfStockResult[0]?.count || 0
         }
       };
     } catch (error) {

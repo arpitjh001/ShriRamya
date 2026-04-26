@@ -39,6 +39,22 @@ const normalizeProductStatus = (status, fallback = 'draft') => {
   return PRODUCT_STATUS_VALUES[normalized] || fallback;
 };
 
+const getProductStatusBadgeClass = (status) => {
+  switch (normalizeProductStatus(status, 'draft')) {
+    case 'published':
+      return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+    case 'archived':
+      return 'bg-amber-50 text-amber-600 border-amber-100';
+    default:
+      return 'bg-slate-50 text-muted-foreground border-border';
+  }
+};
+
+const formatProductStatusLabel = (status) => {
+  const normalized = normalizeProductStatus(status, 'draft');
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const getProductCategoryLabels = (product) => {
   const labels = Array.isArray(product?.categories)
     ? product.categories
@@ -57,6 +73,17 @@ const getProductCategoryLabels = (product) => {
   const fallback = product?.categoryName || product?.category;
   return fallback ? [fallback] : ['Uncategorized'];
 };
+
+const serializeMaterialGuideList = (values = []) => (
+  Array.isArray(values) ? values.filter(Boolean).join('\n') : ''
+);
+
+const parseMaterialGuideList = (value = '') => (
+  String(value)
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+);
 
 const AdminProductsPage = ({ initialTab = 'products' }) => {
   const { user, loading: authLoading } = useAuth();
@@ -120,6 +147,12 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
     basePrice: '',
     status: 'published',
     fabric: '',
+    modelWears: '',
+    modelHeight: '',
+    materialGuideDescription: '',
+    materialGuideProperties: '',
+    materialGuideCare: '',
+    materialGuideOrigin: '',
     occasion: '',
     images: [],
     variants: [],
@@ -232,6 +265,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
 
         return {
           ...product,
+          status: normalizeProductStatus(product.status, 'published'),
           images: uniqueImages,
           basePrice: basePrice,
           sku: product.sku || (product.variants?.[0]?.sku || 'N/A'),
@@ -297,6 +331,12 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         basePrice: product.basePrice?.toString() || '',
         status: normalizeProductStatus(product.status),
         fabric: product.fabric || '',
+        modelWears: product.modelWears || '',
+        modelHeight: product.modelHeight || '',
+        materialGuideDescription: product.materialGuide?.description || '',
+        materialGuideProperties: serializeMaterialGuideList(product.materialGuide?.properties),
+        materialGuideCare: serializeMaterialGuideList(product.materialGuide?.care),
+        materialGuideOrigin: product.materialGuide?.origin || '',
         occasion: product.occasion || '',
         images: product.images || [],
         variants: product.variants?.map(v => ({
@@ -318,6 +358,12 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         basePrice: '',
         status: 'draft',
         fabric: '',
+        modelWears: '',
+        modelHeight: '',
+        materialGuideDescription: '',
+        materialGuideProperties: '',
+        materialGuideCare: '',
+        materialGuideOrigin: '',
         occasion: '',
         images: [],
         variants: [],
@@ -370,10 +416,31 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         (productForm.categories || []).map((categoryId) => String(categoryId)).filter(Boolean)
       ));
 
+      const materialGuide = (() => {
+        const description = productForm.materialGuideDescription?.trim() || '';
+        const properties = parseMaterialGuideList(productForm.materialGuideProperties);
+        const care = parseMaterialGuideList(productForm.materialGuideCare);
+        const origin = productForm.materialGuideOrigin?.trim() || '';
+
+        if (!description && !origin && properties.length === 0 && care.length === 0) {
+          return null;
+        }
+
+        return {
+          description,
+          properties,
+          care,
+          origin
+        };
+      })();
+
       const productData = {
         name: productForm.name,
         description: productForm.description,
         fabric: productForm.fabric,
+        modelWears: productForm.modelWears?.trim() || '',
+        modelHeight: productForm.modelHeight?.trim() || '',
+        materialGuide,
         occasion: productForm.occasion,
         basePrice: parseFloat(productForm.basePrice) || 0,
         status: normalizeProductStatus(productForm.status, 'published'),
@@ -610,8 +677,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
 
     return {
       total: pagination.total || products.length,
-      published: products.filter((product) => ['published', 'publish'].includes(String(product.status || '').toLowerCase())).length,
-      draft: products.filter((product) => String(product.status || '').toLowerCase() === 'draft').length,
+      published: products.filter((product) => normalizeProductStatus(product.status, 'published') === 'published').length,
+      draft: products.filter((product) => normalizeProductStatus(product.status, 'published') === 'draft').length,
       outOfStock: products.filter((product) => Number(product.stock || 0) <= 0).length
     };
   }, [stats, pagination.total, products]);
@@ -707,7 +774,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                     <SelectTrigger className="w-full sm:w-[140px] bg-slate-50 border-border text-xs font-medium">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-slate-900 border-white/10 text-white">
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="published">Published</SelectItem>
                       <SelectItem value="draft">Draft</SelectItem>
@@ -720,7 +787,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                     <SelectTrigger className="w-full sm:w-[160px] bg-slate-50 border-border text-xs font-medium">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-slate-900 border-white/10 text-white">
                       <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id || cat.slug} value={cat.slug || cat.id}>
@@ -803,12 +870,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`${
-                            product.status === 'published' 
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                              : 'bg-slate-50 text-muted-foreground border-border'
-                          } border text-[10px] font-bold transition-all`}>
-                            {product.status}
+                          <Badge className={`${getProductStatusBadgeClass(product.status)} border text-[10px] font-bold transition-all`}>
+                            {formatProductStatusLabel(product.status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -1147,6 +1210,78 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Model Wears</Label>
+                <Input
+                  value={productForm.modelWears}
+                  onChange={(e) => setProductForm({ ...productForm, modelWears: e.target.value })}
+                  placeholder="e.g., Size S"
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Model Height</Label>
+                <Input
+                  value={productForm.modelHeight}
+                  onChange={(e) => setProductForm({ ...productForm, modelHeight: e.target.value })}
+                  placeholder="e.g., 5'9&quot;"
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Material Guide</Label>
+                <p className="text-[10px] text-slate-500 ml-1">These values override the default fabric guide on the product details page.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Guide Description</Label>
+                <Textarea
+                  value={productForm.materialGuideDescription}
+                  onChange={(e) => setProductForm({ ...productForm, materialGuideDescription: e.target.value })}
+                  placeholder="Describe the material, texture, drape, and what makes it special."
+                  rows={3}
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Key Properties</Label>
+                  <Textarea
+                    value={productForm.materialGuideProperties}
+                    onChange={(e) => setProductForm({ ...productForm, materialGuideProperties: e.target.value })}
+                    placeholder={'One property per line\nBreathable\nSoft drape'}
+                    rows={4}
+                    className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50 resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Care Instructions</Label>
+                  <Textarea
+                    value={productForm.materialGuideCare}
+                    onChange={(e) => setProductForm({ ...productForm, materialGuideCare: e.target.value })}
+                    placeholder={'One instruction per line\nDry clean only\nStore in muslin cloth'}
+                    rows={4}
+                    className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Material Origin</Label>
+                <Input
+                  value={productForm.materialGuideOrigin}
+                  onChange={(e) => setProductForm({ ...productForm, materialGuideOrigin: e.target.value })}
+                  placeholder="e.g., Varanasi, Uttar Pradesh"
+                  className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Archive Classification</Label>
               <Select
@@ -1156,7 +1291,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                 <SelectTrigger className="bg-white/5 border-white/10 text-foreground focus:ring-royal-maroon/20">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 text-foreground">
+                <SelectContent className="bg-slate-900 border-white/10 text-white">
                   <SelectItem value="draft" className="focus:bg-white/10 focus:text-foreground">Draft (Hidden)</SelectItem>
                   <SelectItem value="published" className="focus:bg-white/10 focus:text-foreground">Published (Public)</SelectItem>
                   <SelectItem value="archived" className="focus:bg-white/10 focus:text-foreground">Archived (Lock)</SelectItem>

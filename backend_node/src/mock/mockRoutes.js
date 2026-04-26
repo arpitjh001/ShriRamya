@@ -7,24 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { productCatalog, FILTER_OPTIONS } = require('./productCatalog');
 const crypto = require('crypto');
-
-// CSRF Protection Middleware
-const csrfProtection = (req, res, next) => {
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const token = req.headers['x-csrf-token'] || req.body._csrf;
-    const sessionToken = req.headers['x-session-id'];
-    
-    if (!token || !sessionToken) {
-      return res.status(403).json({ success: false, message: 'CSRF token missing' });
-    }
-    
-    const expectedToken = crypto.createHash('sha256').update(sessionToken + process.env.JWT_SECRET || 'mock-secret').digest('hex');
-    if (token !== expectedToken) {
-      return res.status(403).json({ success: false, message: 'Invalid CSRF token' });
-    }
-  }
-  next();
-};
+const { csrfProtection } = require('../middlewares/csrf.middleware');
 
 router.use(csrfProtection);
 
