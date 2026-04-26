@@ -240,6 +240,41 @@ const ProductsPage = () => {
         </div>
       </div>
 
+      {/* Unstitched Suits Fabric Ribbon */}
+      {selectedFilters.category?.length === 1 && selectedFilters.category[0] === 'unstitched-suits' && (
+        <div className="bg-background border-b border-accent/5">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap mr-2">
+                Subcategories
+              </span>
+              {['Chanderi', 'Maheshwari', 'Linen', 'Kota Doria'].map((fabric) => {
+                const isSelected = selectedFilters.fabric?.includes(fabric);
+                return (
+                  <button
+                    key={fabric}
+                    onClick={() => {
+                      const currentFabrics = selectedFilters.fabric || [];
+                      const newFabrics = isSelected 
+                        ? currentFabrics.filter(f => f !== fabric)
+                        : [...currentFabrics, fabric];
+                      handleFilterChange({ fabric: newFabrics.length > 0 ? newFabrics : undefined });
+                    }}
+                    className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      isSelected 
+                        ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20' 
+                        : 'bg-accent/5 text-primary hover:bg-accent/15 border border-accent/10'
+                    }`}
+                  >
+                    {fabric}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Applied Filter Chips */}
       {chips.length > 0 && (
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 border-b border-accent/5">

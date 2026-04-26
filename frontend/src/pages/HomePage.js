@@ -36,24 +36,34 @@ const featuredCollectionTiles = [
 
 const categoryTiles = [
   {
-    name: 'Kurta Sets',
-    category: 'kurta-sets',
-    image: '/images/premium/homepage/kurta_sets.png',
+    name: 'Unstitched Suits',
+    category: 'unstitched-suits',
+    image: '/images/premium/homepage/lookbook-unstitched-suits.png',
+  },
+  {
+    name: 'Co-ord Sets',
+    category: 'coord-sets',
+    image: '/images/premium/homepage/lookbook-coord-sets.png',
   },
   {
     name: 'Sarees',
     category: 'sarees',
-    image: '/images/premium/homepage/sarees.png',
+    image: '/images/premium/homepage/lookbook-sarees.png',
   },
   {
-    name: 'Kurti Material',
-    category: 'kurti-material',
-    image: 'https://images.unsplash.com/photo-1773846012458-e6a66c26e49f?auto=format&fit=crop&w=1400&q=80',
+    name: 'Ready-to-Wear Sarees',
+    category: 'ready-to-wear-sarees',
+    image: '/images/premium/homepage/lookbook-ready-to-wear-sarees.png',
   },
   {
-    name: 'Festive Wear',
-    category: 'festive-wear',
-    image: '/images/premium/homepage/festive_wear.png',
+    name: 'Kurta Sets',
+    category: 'kurta-sets',
+    image: '/images/premium/homepage/lookbook-kurta-sets.png',
+  },
+  {
+    name: 'Short Kurtis',
+    category: 'short-kurtis',
+    image: '/images/premium/homepage/lookbook-short-kurtis.png',
   },
 ];
 
@@ -283,126 +293,6 @@ const HomePage = () => {
         </motion.div>
       </section>
 
-      {/* Luxury Collection / Heritage Edit */}
-      <section id="women-wear" className="luxury-section bg-gradient-to-b from-primary to-charcoal px-6 text-primary-foreground md:px-12 lg:px-20 py-32">
-        <div className="mb-16 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-accent font-bold">The Heritage Edit</p>
-            <h2 className="text-5xl font-medium md:text-6xl tracking-tight">Regal Masterpieces</h2>
-          </div>
-          <Button data-testid="view-all-products-button" asChild variant="outline" className="btn-luxury-outline text-primary-foreground border-accent/40 hover:bg-accent/10 rounded-full px-8">
-            <Link to="/products">View Entire Trousseau</Link>
-          </Button>
-        </div>
-
-        {loading ? (
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="glass-luxury h-[480px] animate-pulse rounded-[2rem]" />
-            ))}
-          </div>
-        ) : (
-          <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            plugins={[
-              Autoplay({
-                delay: 1500,
-                stopOnInteraction: false,
-              }),
-            ]}
-            className="w-full"
-          >
-            <CarouselContent className="-ml-4 md:-ml-8" data-testid="featured-products-grid">
-              {featuredProducts.map((product, index) => (
-                <CarouselItem key={product.id} className="pl-4 md:pl-8 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true, amount: 0.2 }}
-                    transition={{ duration: 0.8, delay: index * 0.1, ease: "easeOut" }}
-                  >
-                    <div className="transform transition-transform hover:-translate-y-2 duration-500">
-                       <ProductCard product={product} />
-                    </div>
-                  </motion.div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-        )}
-      </section>
-
-      {/* Featured Collections / Luxury Showcase */}
-      <section id="luxury-collection" className="luxury-section px-6 md:px-12 lg:px-20 py-32 relative">
-        {/* Clip decorative glow so it never creates horizontal page overflow (hides navbar icons on mobile/Chrome). */}
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-0 right-0 h-full w-1/3 translate-x-1/2 bg-accent/5 blur-3xl opacity-30" />
-        </div>
-        <div className="mb-16 flex items-end justify-between gap-8 border-b border-charcoal/5 pb-8">
-          <div className="max-w-2xl">
-            <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">Featured Collections</p>
-            <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">Curated For Grand Occasions</h2>
-            <p className="mt-4 text-muted-foreground text-lg">Hand-picked ensembles that define the essence of luxury and celebration.</p>
-          </div>
-          <Button asChild variant="ghost" className="hidden md:inline-flex group transition-all hover:bg-royal-maroon/5 text-royal-maroon font-bold tracking-widest uppercase text-xs">
-            <Link to="/luxury-collection" className="flex items-center gap-2">
-              Explore Luxury Edit <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </Button>
-        </div>
-
-        <Carousel
-          opts={{
-            align: "start",
-            loop: true,
-          }}
-          plugins={[
-            Autoplay({
-              delay: 1500,
-              stopOnInteraction: false,
-            }),
-          ]}
-          className="w-full"
-        >
-          <CarouselContent className="-ml-4 md:-ml-10">
-            {featuredCollectionTiles.map((tile, index) => (
-              <CarouselItem key={tile.title} className="pl-4 md:pl-10 md:basis-1/3">
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.4 }}
-                  transition={{ duration: 0.9, delay: index * 0.15 }}
-                >
-                  <Link
-                    to={tile.link}
-                    className="group relative block overflow-hidden rounded-[2rem] border border-accent/10 shadow-luxury-hover transition-all duration-700 hover:shadow-2xl"
-                  >
-                    <img
-                      src={tile.image}
-                      alt={tile.title}
-                      className="h-[520px] w-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/20 to-transparent opacity-90" />
-                    <div className="absolute inset-x-0 bottom-0 p-10 text-primary-foreground transform transition-transform duration-500 group-hover:translate-y-[-10px]">
-                      <h3 className="mb-3 text-4xl font-medium tracking-tight leading-none">{tile.title}</h3>
-                      <p className="mb-6 text-base text-primary-foreground/75 font-body">{tile.subtitle}</p>
-                      <span className="inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-accent font-bold group-hover:text-white transition-colors">
-                        Discover <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
-                      </span>
-                    </div>
-                  </Link>
-                </motion.div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-      </section>
-
-      <div className="mx-6 md:mx-12 lg:mx-20 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
-
       {/* Category Lookbook Highlights */}
       <section id="lookbook" className="luxury-section px-6 md:px-12 lg:px-20 py-32 bg-charcoal/2">
         <div className="mb-20 text-center">
@@ -411,7 +301,7 @@ const HomePage = () => {
           <div className="w-24 h-1 bg-accent mx-auto mt-8 rounded-full" />
         </div>
 
-        <div className="grid gap-10 md:grid-cols-2">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
           {categoryTiles.map((tile, index) => (
             <motion.div
               key={tile.name}
@@ -440,64 +330,6 @@ const HomePage = () => {
             </motion.div>
           ))}
         </div>
-      </section>
-
-      {/* Regional Collections Placeholder Mapping */}
-      <section id="regional-collections" className="py-2"></section>
-
-      {/* Home & Lifestyle */}
-      <section id="home-lifestyle" className="luxury-section bg-primary-foreground/50 px-6 md:px-12 lg:px-20 py-32 border-y border-charcoal/5">
-        <div className="mb-16 text-center max-w-4xl mx-auto">
-          <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">The Home Atelier</p>
-          <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">Living In Grandeur</h2>
-          <p className="mt-8 text-lg text-muted-foreground leading-relaxed">
-            From artisanal textiles to heritage accents, discover luxury pieces choreographed to elevate your sanctuary.
-          </p>
-        </div>
-
-        <Carousel
-          opts={{
-            align: "start",
-            loop: true,
-          }}
-          plugins={[
-            Autoplay({
-              delay: 1500,
-              stopOnInteraction: false,
-            }),
-          ]}
-          className="w-full"
-        >
-          <CarouselContent className="-ml-4 md:-ml-8">
-            {homeLifestyleTiles.map((tile, index) => (
-              <CarouselItem key={tile.name} className="pl-4 md:pl-8 md:basis-1/3">
-                <motion.div
-                  whileHover={{ y: -10 }}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.8, delay: index * 0.1 }}
-                >
-                  <Link
-                    to={`/category/${encodeURIComponent(tile.category)}`}
-                    className="group relative block overflow-hidden rounded-3xl border border-accent/20 shadow-lg hover:shadow-2xl transition-all duration-500"
-                  >
-                    <img
-                      src={tile.image}
-                      alt={tile.name}
-                      className="h-[400px] w-full object-cover grayscale-[20%] transition-transform duration-1000 group-hover:scale-105 group-hover:grayscale-0"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/10 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 p-8 text-center">
-                      <h3 className="text-3xl font-medium text-primary-foreground">{tile.name}</h3>
-                      <div className="mt-4 h-0.5 w-12 bg-accent mx-auto transform scale-x-0 transition-transform duration-500 group-hover:scale-x-100" />
-                    </div>
-                  </Link>
-                </motion.div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
       </section>
 
       {/* Semi Precious Jewellery */}
@@ -567,6 +399,129 @@ const HomePage = () => {
         </Carousel>
       </section>
 
+      {/* Home & Lifestyle */}
+      <section id="home-lifestyle" className="luxury-section bg-primary-foreground/50 px-6 md:px-12 lg:px-20 py-32 border-y border-charcoal/5">
+        <div className="mb-16 text-center max-w-4xl mx-auto">
+          <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">The Home Atelier</p>
+          <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">Living In Grandeur</h2>
+          <p className="mt-8 text-lg text-muted-foreground leading-relaxed">
+            From artisanal textiles to heritage accents, discover luxury pieces choreographed to elevate your sanctuary.
+          </p>
+        </div>
+
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+          }}
+          plugins={[
+            Autoplay({
+              delay: 1500,
+              stopOnInteraction: false,
+            }),
+          ]}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4 md:-ml-8">
+            {homeLifestyleTiles.map((tile, index) => (
+              <CarouselItem key={tile.name} className="pl-4 md:pl-8 md:basis-1/3">
+                <motion.div
+                  whileHover={{ y: -10 }}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.8, delay: index * 0.1 }}
+                >
+                  <Link
+                    to={`/category/${encodeURIComponent(tile.category)}`}
+                    className="group relative block overflow-hidden rounded-3xl border border-accent/20 shadow-lg hover:shadow-2xl transition-all duration-500"
+                  >
+                    <img
+                      src={tile.image}
+                      alt={tile.name}
+                      className="h-[400px] w-full object-cover grayscale-[20%] transition-transform duration-1000 group-hover:scale-105 group-hover:grayscale-0"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/10 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-8 text-center">
+                      <h3 className="text-3xl font-medium text-primary-foreground">{tile.name}</h3>
+                      <div className="mt-4 h-0.5 w-12 bg-accent mx-auto transform scale-x-0 transition-transform duration-500 group-hover:scale-x-100" />
+                    </div>
+                  </Link>
+                </motion.div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </section>
+
+      <div className="mx-6 md:mx-12 lg:mx-20 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+
+      {/* Featured Collections / Luxury Showcase */}
+      <section id="luxury-collection" className="luxury-section px-6 md:px-12 lg:px-20 py-32 relative">
+        {/* Clip decorative glow so it never creates horizontal page overflow (hides navbar icons on mobile/Chrome). */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute top-0 right-0 h-full w-1/3 translate-x-1/2 bg-accent/5 blur-3xl opacity-30" />
+        </div>
+        <div className="mb-16 flex items-end justify-between gap-8 border-b border-charcoal/5 pb-8">
+          <div className="max-w-2xl">
+            <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-secondary font-bold">Featured Collections</p>
+            <h2 className="text-5xl font-medium text-primary md:text-6xl tracking-tight">Curated For Grand Occasions</h2>
+            <p className="mt-4 text-muted-foreground text-lg">Hand-picked ensembles that define the essence of luxury and celebration.</p>
+          </div>
+          <Button asChild variant="ghost" className="hidden md:inline-flex group transition-all hover:bg-royal-maroon/5 text-royal-maroon font-bold tracking-widest uppercase text-xs">
+            <Link to="/luxury-collection" className="flex items-center gap-2">
+              Explore Luxury Edit <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </Button>
+        </div>
+
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+          }}
+          plugins={[
+            Autoplay({
+              delay: 1500,
+              stopOnInteraction: false,
+            }),
+          ]}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4 md:-ml-10">
+            {featuredCollectionTiles.map((tile, index) => (
+              <CarouselItem key={tile.title} className="pl-4 md:pl-10 md:basis-1/3">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.4 }}
+                  transition={{ duration: 0.9, delay: index * 0.15 }}
+                >
+                  <Link
+                    to={tile.link}
+                    className="group relative block overflow-hidden rounded-[2rem] border border-accent/10 shadow-luxury-hover transition-all duration-700 hover:shadow-2xl"
+                  >
+                    <img
+                      src={tile.image}
+                      alt={tile.title}
+                      className="h-[520px] w-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-charcoal/20 to-transparent opacity-90" />
+                    <div className="absolute inset-x-0 bottom-0 p-10 text-primary-foreground transform transition-transform duration-500 group-hover:translate-y-[-10px]">
+                      <h3 className="mb-3 text-4xl font-medium tracking-tight leading-none">{tile.title}</h3>
+                      <p className="mb-6 text-base text-primary-foreground/75 font-body">{tile.subtitle}</p>
+                      <span className="inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-accent font-bold group-hover:text-white transition-colors">
+                        Discover <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                      </span>
+                    </div>
+                  </Link>
+                </motion.div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </section>
+
       {/* Trending Products */}
       <section className="luxury-section bg-background px-6 md:px-12 lg:px-20 py-32 border-t border-charcoal/5">
         <div className="mb-20 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
@@ -621,6 +576,61 @@ const HomePage = () => {
           </Carousel>
         )}
       </section>
+
+      {/* Luxury Collection / Heritage Edit */}
+      <section id="women-wear" className="luxury-section bg-gradient-to-b from-primary to-charcoal px-6 text-primary-foreground md:px-12 lg:px-20 py-32">
+        <div className="mb-16 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-4 text-[12px] uppercase tracking-[0.4em] text-accent font-bold">The Heritage Edit</p>
+            <h2 className="text-5xl font-medium md:text-6xl tracking-tight">Regal Masterpieces</h2>
+          </div>
+          <Button data-testid="view-all-products-button" asChild variant="outline" className="btn-luxury-outline text-primary-foreground border-accent/40 hover:bg-accent/10 rounded-full px-8">
+            <Link to="/products">View Entire Trousseau</Link>
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="glass-luxury h-[480px] animate-pulse rounded-[2rem]" />
+            ))}
+          </div>
+        ) : (
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            plugins={[
+              Autoplay({
+                delay: 1500,
+                stopOnInteraction: false,
+              }),
+            ]}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4 md:-ml-8" data-testid="featured-products-grid">
+              {featuredProducts.map((product, index) => (
+                <CarouselItem key={product.id} className="pl-4 md:pl-8 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 0.8, delay: index * 0.1, ease: "easeOut" }}
+                  >
+                    <div className="transform transition-transform hover:-translate-y-2 duration-500">
+                       <ProductCard product={product} />
+                    </div>
+                  </motion.div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+        )}
+      </section>
+
+      {/* Regional Collections Placeholder Mapping */}
+      <section id="regional-collections" className="py-2"></section>
 
       {/* Seasonal Promo */}
       <section className="luxury-section bg-primary px-6 text-primary-foreground md:px-12 lg:px-20 py-32 relative overflow-hidden">
