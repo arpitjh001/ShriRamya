@@ -65,6 +65,11 @@ const categoryTiles = [
     category: 'short-kurtis',
     image: '/images/premium/homepage/lookbook-short-kurtis.png',
   },
+  {
+    name: 'Dupattas',
+    category: 'dupattas',
+    image: '/images/premium/homepage/lookbook-dupattas.png',
+  },
 ];
 
 const homeLifestyleTiles = [
