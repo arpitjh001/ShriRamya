@@ -70,6 +70,11 @@ const categoryTiles = [
     category: 'dupattas',
     image: '/images/premium/homepage/lookbook-dupattas.png',
   },
+  {
+    name: 'Lounge Wear',
+    category: 'lounge-wear',
+    image: '/images/premium/homepage/lookbook-lounge-wear.png',
+  },
 ];
 
 const homeLifestyleTiles = [
@@ -245,8 +250,8 @@ const HomePage = () => {
       />
       <section className="relative min-h-[90vh] overflow-hidden">
         <img
-          src="/images/premium/homepage/wedding_couture.png"
-          alt="Royal Indian traditional fashion"
+          src="/images/premium/homepage/hero_luxury_atelier.jpg"
+          alt="Luxury Indian Atelier"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-[10000ms] hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/50" />
@@ -282,7 +287,7 @@ const HomePage = () => {
               transition={{ delay: 0.7 }}
               className="mb-10 max-w-xl text-lg text-primary-foreground/90 leading-relaxed"
             >
-              Discover handcrafted sarees inspired by tradition and designed for modern royalty. Each piece tells a story of heritage craftsmanship.
+              Discover ShriRamya, where Indian heritage meets modern elegance through timeless craftsmanship, refined beauty, and effortless grace.
             </motion.p>
             <div className="flex flex-col gap-5 sm:flex-row">
               <Button data-testid="hero-shop-button" asChild size="lg" className="btn-luxury px-10 rounded-full h-14 text-base shadow-luxury">
