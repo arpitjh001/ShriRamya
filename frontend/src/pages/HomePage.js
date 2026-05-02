@@ -254,7 +254,7 @@ const HomePage = () => {
           alt="Luxury Indian Atelier"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-[10000ms] hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/50" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-black/30" />
         <div className="hero-overlay absolute inset-0" />
         <div className="absolute inset-0 bg-mandala opacity-10 mix-blend-screen pulse" />
 
