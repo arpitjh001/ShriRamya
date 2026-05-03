@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { productsAPI } from '../services/api';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
 import FilterSidebar from '../components/FilterSidebar';
 import SortDropdown from '../components/SortDropdown';
 import MobileFilterDrawer from '../components/MobileFilterDrawer';
@@ -11,7 +11,7 @@ import SEOMeta from '../components/SEOMeta';
 
 const PER_PAGE = 20;
 const ARRAY_FILTER_KEYS = ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve', 'brand', 'material'];
-const ALL_FILTER_KEYS = [...ARRAY_FILTER_KEYS, 'discount', 'rating', 'price_min', 'price_max', 'in_stock'];
+const ALL_FILTER_KEYS = [...ARRAY_FILTER_KEYS, 'discount', 'rating', 'price_min', 'price_max', 'in_stock', 'search'];
 
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -183,6 +183,8 @@ const ProductsPage = () => {
         arr.push({ key, value: val, label: `${val}%+ off` });
       } else if (key === 'in_stock') {
         arr.push({ key, value: val, label: 'In Stock' });
+      } else if (key === 'search') {
+        arr.push({ key, value: val, label: `Search: ${val}` });
       } else if (key !== 'price_max') {
         arr.push({ key, value: val, label: String(val) });
       }
@@ -192,6 +194,7 @@ const ProductsPage = () => {
 
   // Title
   const pageTitle = useMemo(() => {
+    if (selectedFilters.search) return `Search results for "${selectedFilters.search}"`;
     const cats = selectedFilters.category;
     if (cats?.length === 1) return cats[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return 'All Products';
@@ -330,14 +333,9 @@ const ProductsPage = () => {
 
             {/* Loading */}
             {loading && (
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="product-skeleton">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-testid="product-skeleton">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="aspect-[3/4] bg-muted rounded-lg mb-3" />
-                    <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                    <div className="h-3 bg-muted rounded w-1/2 mb-2" />
-                    <div className="h-4 bg-muted rounded w-1/3" />
-                  </div>
+                  <ProductCardSkeleton key={i} />
                 ))}
               </div>
             )}
@@ -352,7 +350,7 @@ const ProductsPage = () => {
 
             {/* Products Grid */}
             {!loading && !error && products.length > 0 && (
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="product-grid">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-testid="product-grid">
                 {products.map((product, index) => (
                   <div
                     key={product.id || index}
@@ -367,13 +365,9 @@ const ProductsPage = () => {
 
             {/* Loading More */}
             {loadingMore && (
-              <div className="mt-6 grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={`more-${i}`} className="animate-pulse">
-                    <div className="aspect-[3/4] bg-muted rounded-lg mb-3" />
-                    <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                    <div className="h-4 bg-muted rounded w-1/3" />
-                  </div>
+                  <ProductCardSkeleton key={`more-${i}`} />
                 ))}
               </div>
             )}

@@ -7,7 +7,7 @@ const { Product } = require('../models');
 const { buildTenantScopedQuery, andQuery } = require('../utils/tenantScope');
 
 // Cache TTL for product list - 60 seconds
-const PRODUCTS_CACHE_TTL = 60;
+const PRODUCTS_CACHE_TTL = 300;
 const PRODUCTS_CACHE_KEY = 'api:products:list:v3';
 
 /**

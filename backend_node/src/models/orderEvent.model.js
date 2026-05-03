@@ -6,7 +6,7 @@ const orderEventSchema = new mongoose.Schema({
   message: String,
   payload: mongoose.Schema.Types.Mixed,
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  userType: { type: String, enum: ['customer', 'admin', 'system'], default: 'system' }
+  userType: { type: String, enum: ['customer', 'admin', 'system', 'guest'], default: 'system' }
 }, { timestamps: { createdAt: 'created_at', updatedAt: false } });
 
 const OrderEvent = mongoose.model('OrderEvent', orderEventSchema);

@@ -21,10 +21,10 @@ require('dotenv').config();
 
         // 2. Connect to MySQL
         const c = await mysql.createConnection({
-            host: 'mysql',
-            user: 'shriramya_user',
-            password: 'shriramya_password',
-            database: 'shriramya'
+            host: process.env.MYSQL_HOST || 'mysql',
+            user: process.env.MYSQL_USER || 'shriramya_user',
+            password: process.env.MYSQL_PASSWORD,
+            database: process.env.MYSQL_DATABASE || 'shriramya'
         });
         console.log('Connected to MySQL');
 

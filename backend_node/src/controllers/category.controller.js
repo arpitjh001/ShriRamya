@@ -2,6 +2,7 @@ const httpStatus = require('http-status');
 const { successResponse } = require('../utils/response');
 const categoryService = require('../services/category.service');
 const catalogReadService = require('../services/catalog-read.service');
+const redis = require('../config/integrations/redis');
 
 const createCategory = async (req, res, next) => {
     try {
@@ -54,10 +55,32 @@ const getCategoryBySlug = async (req, res, next) => {
 const getAllCategories = async (req, res, next) => {
     try {
         const tenantId = req.tenantId || req.user?.tenantId || 1;
+        const cacheKey = `api:categories:all:${tenantId}`;
+
+        if (redis && redis.get) {
+            try {
+                const cached = await redis.get(cacheKey);
+                if (cached) {
+                    return successResponse(res, JSON.parse(cached), 'Categories retrieved successfully (cached)');
+                }
+            } catch (err) {
+                console.error('[CategoryController] Redis read error:', err.message);
+            }
+        }
+
         const categories = await catalogReadService.listCategories({
             tenantId,
             user: req.user || null,
         });
+
+        if (redis && redis.set) {
+            try {
+                await redis.set(cacheKey, JSON.stringify(categories), { ex: 3600 }); // Cache for 1 hour
+            } catch (err) {
+                console.error('[CategoryController] Redis write error:', err.message);
+            }
+        }
+
         return successResponse(res, categories);
     } catch (error) {
         next(error);

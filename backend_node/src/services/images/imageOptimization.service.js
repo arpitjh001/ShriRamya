@@ -137,6 +137,7 @@ class ImageOptimizationService {
     const safeCategory = sanitizePathSegment(category, 'products');
     const baseName = `${safeCategory}_${imageId}`;
 
+
     // Validate file type
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
     if (!allowedTypes.includes(ext)) {
@@ -144,6 +145,8 @@ class ImageOptimizationService {
     }
 
     // Convert to WebP for better compression (except for GIF)
+    // For original size, we might want to preserve the original format if it's already a good web format
+    const isWebFriendly = ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
     const outputFormat = ext === '.gif' ? 'gif' : 'webp';
     const outputExt = outputFormat === 'gif' ? '.gif' : '.webp';
 
@@ -154,14 +157,18 @@ class ImageOptimizationService {
     for (const [sizeName, sizeConfig] of Object.entries(IMAGE_SIZES)) {
       if (sizeName === 'original') {
         // Store original
-        const filename = `${baseName}_orig${outputExt}`;
+        // Use original format if requested/appropriate
+        const actualFormat = isWebFriendly ? ext.slice(1) : outputFormat;
+        const actualExt = isWebFriendly ? ext : outputExt;
+        
+        const filename = `${baseName}_orig${actualExt}`;
         const originalPath = this._resolveUploadPath(filename);
-        const originalBuffer = await this._processImage(file.buffer, null, null, QUALITY_SETTINGS.original, outputFormat);
+        const originalBuffer = await this._processImage(file.buffer, null, null, QUALITY_SETTINGS.original, actualFormat);
         processedImages.original = originalBuffer;
         await this._saveImage(originalPath, originalBuffer);
 
         results.original = this.useDatabase
-          ? this._generateApiUrl(this.publicBaseUrl, imageId, 'original', outputExt)
+          ? this._generateApiUrl(this.publicBaseUrl, imageId, 'original', actualExt)
           : this._generateStaticUploadUrl(this.publicBaseUrl, filename);
       } else {
         // Generate resized versions
@@ -206,12 +213,15 @@ class ImageOptimizationService {
     }
 
     // Generate CDN URLs
+    // We need to define actualExt and outputExt properly for the CDN block
+    const actualExt = isWebFriendly ? ext : outputExt;
+
     results.cdn = this.useDatabase
       ? {
           thumbnail: this._generateApiUrl(this.cdnBaseUrl, imageId, 'thumbnail', outputExt),
           medium: this._generateApiUrl(this.cdnBaseUrl, imageId, 'medium', outputExt),
           large: this._generateApiUrl(this.cdnBaseUrl, imageId, 'large', outputExt),
-          original: this._generateApiUrl(this.cdnBaseUrl, imageId, 'original', outputExt),
+          original: this._generateApiUrl(this.cdnBaseUrl, imageId, 'original', actualExt),
         }
       : {
           thumbnail: results.thumbnail,
@@ -236,12 +246,16 @@ class ImageOptimizationService {
 
   /**
    * Process image buffer and return processed buffer
+   * Includes auto-rotation and metadata preservation
    */
   async _processImage(buffer, width, height, quality, format) {
     let pipeline = sharp(buffer);
 
-    // Get metadata
-    const metadata = await pipeline.metadata();
+    // Auto-rotate based on EXIF orientation metadata
+    pipeline = pipeline.rotate();
+
+    // Preserve metadata (including color profiles, etc.)
+    pipeline = pipeline.withMetadata();
 
     // Resize if dimensions specified
     if (width && height) {
@@ -254,7 +268,7 @@ class ImageOptimizationService {
     // Convert format and compress
     if (format === 'webp') {
       pipeline = pipeline.webp({ quality });
-    } else if (format === 'jpeg') {
+    } else if (format === 'jpeg' || format === 'jpg') {
       pipeline = pipeline.jpeg({ quality });
     } else if (format === 'png') {
       pipeline = pipeline.png({ quality: Math.floor(quality / 10) });
@@ -284,10 +298,8 @@ class ImageOptimizationService {
     }
   }
 
-  // Note: URL generation is handled by `_generateApiUrl` / `_generateStaticUploadUrl`.
 
-  /**
-   * Get image by ID and size (from database or filesystem)
+  // Note: URL generation is handled by `_generateApiUrl` / `_generateStaticUploadUrl`.
    */
   async getImage(imageId, sizeName = 'original') {
     if (this.useDatabase && Image) {

@@ -82,7 +82,7 @@ const RecentlyViewed = () => {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {products.map(product => (
-            <div key={product.id} className="flex-shrink-0 w-[220px]" data-testid={`rv-product-${product.id}`}>
+            <div key={product.id} className="w-[calc((100vw-3rem)/2)] max-w-[220px] flex-shrink-0 sm:w-[220px]" data-testid={`rv-product-${product.id}`}>
               <ProductCard product={product} />
             </div>
           ))}

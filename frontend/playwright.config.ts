@@ -5,7 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Tests all frontend flows and verifies API responses
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: '../tests/frontend',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

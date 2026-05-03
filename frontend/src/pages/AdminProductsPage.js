@@ -489,7 +489,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         formData.append('file', file);
         const response = await uploadAPI.uploadImage(formData);
         const uploaded = response?.data || {};
-        const imageUrl = uploaded?.cdn?.medium || uploaded?.medium || uploaded?.original || uploaded?.url;
+        const imageUrl = uploaded?.cdn?.original || uploaded?.original || uploaded?.cdn?.large || uploaded?.large || uploaded?.url;
         if (imageUrl) uploadedUrls.push(imageUrl);
       }
       

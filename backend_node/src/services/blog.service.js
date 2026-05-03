@@ -84,17 +84,18 @@ class BlogService {
         const limit = parseInt(perPage || per_page || 10);
         const skip = (parseInt(page) - 1) * limit;
 
-        const query = { tenantId };
+        const query = { tenantId: Number(tenantId) };
         if (status && status !== 'all') {
-            query.status = status;
+            query.status = String(status);
         }
 
-        if (category) query.categories = category;
-        if (tag) query.tags = tag;
+        if (category) query.categories = String(category);
+        if (tag) query.tags = String(tag);
         if (search) {
+            const searchStr = String(search);
             query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { content: { $regex: search, $options: 'i' } }
+                { title: { $regex: searchStr, $options: 'i' } },
+                { content: { $regex: searchStr, $options: 'i' } }
             ];
         }
 

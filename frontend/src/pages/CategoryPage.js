@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
 import { categoriesAPI, productsAPI } from '../services/api';
 
 const CategoryPage = () => {
@@ -138,7 +138,7 @@ const CategoryPage = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-testid="category-product-grid">
                             {products.map((product, index) => (
                                 <div key={`${product.id}-${index}`} ref={index === products.length - 1 ? lastProductRef : null}>
                                     <ProductCard product={product} />
@@ -147,8 +147,10 @@ const CategoryPage = () => {
                         </div>
 
                         {loadingMore && (
-                            <div className="flex justify-center py-12">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#181C14]"></div>
+                            <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-testid="category-loading-more">
+                                {[...Array(4)].map((_, i) => (
+                                    <ProductCardSkeleton key={`category-more-${i}`} />
+                                ))}
                             </div>
                         )}
                         

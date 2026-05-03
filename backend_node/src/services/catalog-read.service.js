@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { Product, Category } = require('../models');
 const productService = require('./product.service');
 const { buildTenantScope } = require('../utils/tenantScope');
+const redis = require('../config/integrations/redis');
 
 const PUBLIC_PRODUCT_STATUS_FILTER = ['published', 'publish'];
 
@@ -258,6 +259,20 @@ class CatalogReadService {
   }
 
   async getBaseProducts({ tenantId, user }) {
+    const isAdmin = this.isAdminOrEditor(user);
+    const cacheKey = `catalog:base_products:${tenantId}:${isAdmin ? 'admin' : 'public'}`;
+
+    if (redis && redis.get) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (err) {
+        console.error('[CatalogReadService] Redis read error:', err.message);
+      }
+    }
+
     const baseQuery = {
       is_deleted: { $ne: true },
       ...this.buildTenantScope(tenantId),
@@ -268,9 +283,19 @@ class CatalogReadService {
       .sort({ created_at: -1 })
       .lean();
 
-    return rawProducts
+    const result = rawProducts
       .map((product) => this.mapProduct(product))
       .filter((product) => this.isVisibleProduct(product, user));
+
+    if (redis && redis.set) {
+      try {
+        await redis.set(cacheKey, JSON.stringify(result), { ex: 300 }); // Cache for 5 minutes
+      } catch (err) {
+        console.error('[CatalogReadService] Redis write error:', err.message);
+      }
+    }
+
+    return result;
   }
 
   normalizeListValue(value) {

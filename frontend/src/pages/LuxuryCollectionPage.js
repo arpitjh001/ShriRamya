@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { productsAPI } from '../services/api';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
 import { motion } from 'framer-motion';
 import { Sparkles, Award, Users } from 'lucide-react';
 
@@ -104,9 +104,9 @@ const LuxuryCollectionPage = () => {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-[400px] bg-muted animate-pulse rounded" />
+              <ProductCardSkeleton key={i} />
             ))}
           </div>
         ) : products.length === 0 ? (
@@ -114,7 +114,7 @@ const LuxuryCollectionPage = () => {
             <p className="text-xl text-muted-foreground">No luxury products available at the moment</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="luxury-products-grid">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-testid="luxury-products-grid">
             {products.map((product, index) => (
               <motion.div
                 key={product.id}

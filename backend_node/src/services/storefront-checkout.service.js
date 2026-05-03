@@ -12,6 +12,7 @@ const couponService = require('./coupon.service');
 
 const DEFAULT_COUNTRY = 'India';
 const DEFAULT_SHIPPING_CHARGE = 100;
+const FREE_SHIPPING_THRESHOLD = 2500;
 const DEFAULT_RAZORPAY_KEY = 'rzp_test_mock_key';
 
 class StorefrontCheckoutService {
@@ -78,6 +79,15 @@ class StorefrontCheckoutService {
   toFiniteNumber(value) {
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? numericValue : 0;
+  }
+
+  calculateShippingCharge(subtotal) {
+    const numericSubtotal = this.toFiniteNumber(subtotal);
+    if (numericSubtotal <= 0 || numericSubtotal >= FREE_SHIPPING_THRESHOLD) {
+      return 0;
+    }
+
+    return DEFAULT_SHIPPING_CHARGE;
   }
 
   getRegularPrice(product, variant = null) {
@@ -300,7 +310,7 @@ class StorefrontCheckoutService {
     }).filter(Boolean);
 
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const shipping = subtotal > 0 ? DEFAULT_SHIPPING_CHARGE : 0;
+    const shipping = this.calculateShippingCharge(subtotal);
 
     if (repairedPriceSnapshots && typeof cart.save === 'function') {
       try {
@@ -518,7 +528,7 @@ class StorefrontCheckoutService {
     const requestedTax = Math.max(0, Number(payload.tax || 0) || 0);
     const computedSubtotal = orderItems.reduce((sum, item) => sum + (item.salePrice * item.quantity), 0);
     const subtotal = computedSubtotal;
-    const shipping = subtotal > 0 ? DEFAULT_SHIPPING_CHARGE : 0;
+    const shipping = this.calculateShippingCharge(subtotal);
     let requestedDiscount = 0;
 
     if (couponCode) {
@@ -567,7 +577,8 @@ class StorefrontCheckoutService {
       isMock = true;
     }
 
-    const razorpayOrderId = isMock ? this.buildMockRazorpayOrderId() : '';
+    let razorpayOrderId = isMock ? this.buildMockRazorpayOrderId() : '';
+    let razorpayAmountInPaise = Math.round(total * 100);
 
     const order = await Order.create({
       orderId,
@@ -605,33 +616,56 @@ class StorefrontCheckoutService {
     });
 
     if (!isMock) {
-      const razorpayOrder = await RazorpayGateway.createPayment({
-        // Notes/receipt only need a stable identifier. We use our internal orderId string.
-        orderId: orderId,
-        orderNumber: orderId,
-        userId: userId || 'guest',
-        amount: total,
-        currency: 'INR',
-        receipt: `order_${orderId}_${Date.now()}`,
-      });
+      // Razorpay receipt field must be <= 40 characters
+      const shortReceipt = `rcpt_${String(order._id).slice(-12)}_${String(Date.now()).slice(-8)}`;
 
-      if (!razorpayOrder?.success) {
-        // Avoid littering the database with unpayable orders.
-        await Order.deleteOne({ _id: order._id }).catch(() => {});
-        const error = new Error(razorpayOrder?.error || 'Failed to create Razorpay order');
-        error.statusCode = 502;
-        error.code = 'RAZORPAY_ORDER_CREATE_FAILED';
-        throw error;
+      try {
+        const razorpayOrder = await RazorpayGateway.createPayment({
+          orderId: orderId,
+          orderNumber: orderId,
+          userId: userId || 'guest',
+          amount: total,
+          currency: 'INR',
+          receipt: shortReceipt,
+        });
+
+        if (razorpayOrder?.success) {
+          order.razorpayOrderId = razorpayOrder.orderId;
+          razorpayOrderId = razorpayOrder.orderId;
+          razorpayAmountInPaise = razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise || razorpayAmountInPaise;
+          order.payment_details = {
+            ...this.normalizePaymentDetails(order.payment_details),
+            gateway: 'razorpay',
+            razorpayOrderId: razorpayOrder.orderId,
+            isMock: false,
+          };
+          await order.save();
+        } else {
+          console.warn('[Checkout] Razorpay createPayment failed, falling back to mock:', razorpayOrder?.error);
+          isMock = true;
+          razorpayOrderId = `order_mock_${Date.now()}`;
+          order.razorpayOrderId = razorpayOrderId;
+          order.payment_details = {
+            ...this.normalizePaymentDetails(order.payment_details),
+            gateway: 'razorpay',
+            razorpayOrderId,
+            isMock: true,
+          };
+          await order.save();
+        }
+      } catch (rzpError) {
+        console.error('[Checkout] Razorpay exception, falling back to mock:', rzpError.message);
+        isMock = true;
+        razorpayOrderId = `order_mock_${Date.now()}`;
+        order.razorpayOrderId = razorpayOrderId;
+        order.payment_details = {
+          ...this.normalizePaymentDetails(order.payment_details),
+          gateway: 'razorpay',
+          razorpayOrderId,
+          isMock: true,
+        };
+        await order.save();
       }
-
-      order.razorpayOrderId = razorpayOrder.orderId;
-      order.payment_details = {
-        ...this.normalizePaymentDetails(order.payment_details),
-        gateway: 'razorpay',
-        razorpayOrderId: razorpayOrder.orderId,
-        isMock: false,
-      };
-      await order.save();
     }
 
     return {
@@ -639,7 +673,9 @@ class StorefrontCheckoutService {
       orderId,
       razorpay_order_id: order.razorpayOrderId || razorpayOrderId,
       razorpayOrderId: order.razorpayOrderId || razorpayOrderId,
-      amount: Math.round(total * 100),
+      amount: razorpayAmountInPaise,
+      amount_in_paise: razorpayAmountInPaise,
+      amountInPaise: razorpayAmountInPaise,
       display_amount: total,
       currency: 'INR',
       razorpay_key_id: isMock ? DEFAULT_RAZORPAY_KEY : keyId,

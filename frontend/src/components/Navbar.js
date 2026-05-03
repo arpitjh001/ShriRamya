@@ -128,10 +128,10 @@ const Navbar = ({ isHome = false }) => {
   }, [location.pathname, location.hash]);
 
   return (
-    <header className="relative z-[110]">
+    <header className="sticky top-0 z-[110]">
       <PromoBar
-        messages={isHome ? ["Under Construction. Data Displayed is currently for testing purpose."] : undefined}
-        variant={isHome ? 'warning' : 'default'}
+        messages={isHome ? ["Free shipping on the orders above 2500"] : undefined}
+        variant="default"
         showDashboard={user && isAdmin()}
         onDashboardClick={() => navigate('/admin/dashboard')}
       />
@@ -147,10 +147,10 @@ const Navbar = ({ isHome = false }) => {
             : "0 26px 60px rgba(31, 31, 31, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
         }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className={`fixed left-0 right-0 w-full overflow-visible border-b backdrop-blur-[24px] transition-all duration-500 ${
+        className={`relative left-0 right-0 w-full overflow-visible border-b backdrop-blur-[24px] transition-all duration-500 ${
           isScrolled 
-            ? 'top-0 py-3' 
-            : (isAdminPage ? 'top-[32px] md:top-[34px] py-3' : 'top-[26px] md:top-[27px] py-4 md:py-5')
+            ? 'py-3' 
+            : (isAdminPage ? 'py-3' : 'py-4 md:py-5')
         }`}
       >
         <div className="max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-8 xl:px-12 h-full">

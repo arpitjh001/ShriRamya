@@ -79,6 +79,10 @@ export const transformWooProduct = (product) => {
   const totalStock = normalizedVariants.length > 0
     ? normalizedVariants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
     : (product.stock || 0);
+  const stockKnown = normalizedVariants.length > 0
+    || product.stock !== undefined
+    || product.stock_quantity !== undefined
+    || product.totalStock !== undefined;
 
   return {
     id: product.id,
@@ -107,11 +111,21 @@ export const transformWooProduct = (product) => {
     stock_quantity: totalStock,
     stock: totalStock,
     totalStock,
+    stockKnown,
+    lowStockThreshold: product.lowStockThreshold ?? product.low_stock_threshold ?? 5,
 
     status: product.status,
 
     luxury_collection: product.luxury_collection === true,
     handmade: product.handmade === true,
+    handcrafted: product.handcrafted === true,
+    isNew: product.isNew === true || product.is_new === true,
+    isFeatured: product.isFeatured === true || product.featured === true,
+    isTrending: product.isTrending === true || product.is_trending === true,
+    bestseller: product.bestseller === true || product.bestSeller === true,
+    created_at: product.created_at || product.createdAt || null,
+    createdAt: product.createdAt || product.created_at || null,
+    thumbnail: product.thumbnail || images[0] || null,
 
     fabric: product.fabric || null,
     modelWears: product.modelWears || null,

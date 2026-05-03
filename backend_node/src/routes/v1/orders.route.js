@@ -10,7 +10,7 @@ const refundController = require('../../controllers/refund.controller');
 const webhookController = require('../../controllers/webhook.controller');
 const validate = require('../../middlewares/validate');
 const orderValidation = require('../../validations/order.validation');
-const { auth, requireRole } = require('../../middlewares/authRBAC');
+const { auth, optionalAuth, requireRole } = require('../../middlewares/authRBAC');
 
 const router = express.Router();
 
@@ -18,16 +18,16 @@ const router = express.Router();
 // Customer Order Routes
 // ==========================================
 
-// Create order (primary route)
+// Create order (primary route) - Supports Guest Checkout
 router.post('/',
-    auth,
+    optionalAuth,
     validate(orderValidation.createOrder),
     orderController.createOrder
 );
 
 // Create order (alias for backward compatibility with frontend)
 router.post('/create',
-    auth,
+    optionalAuth,
     validate(orderValidation.createOrder),
     orderController.createOrder
 );
@@ -39,7 +39,7 @@ router.get('/my', auth, orderController.getCustomerOrders);
 router.get('/:id', auth, orderController.getOrder);
 
 // Confirm payment for order
-router.post('/:id/payment', auth, orderController.confirmPayment);
+router.post('/:id/payment', optionalAuth, orderController.confirmPayment);
 
 // Cancel order
 router.post('/my/:id/cancel',

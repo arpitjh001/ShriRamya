@@ -8,6 +8,23 @@ import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 import { ShoppingBag, Minus, Plus, Loader2, ChevronRight } from 'lucide-react';
 
+const getVariantId = (variant = {}) => {
+  const item = variant || {};
+  return item.id || item._id || item.variantId;
+};
+const getVariantColor = (variant = {}) => {
+  const item = variant || {};
+  return item.color || item.attributes?.color || item.attributes?.Color || null;
+};
+const getVariantSize = (variant = {}) => {
+  const item = variant || {};
+  return item.size || item.attributes?.size || item.attributes?.Size || null;
+};
+const getVariantStock = (variant = {}) => {
+  const item = variant || {};
+  return Number(item.stock ?? item.stock_quantity ?? 0) || 0;
+};
+
 const QuickViewModal = ({ open, onOpenChange, productId }) => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -33,8 +50,8 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
       setProduct(p);
       // Auto-select first color/size if available
       const variants = p.variants || [];
-      const colors = [...new Set(variants.map(v => v.color || v.attributes?.color).filter(Boolean))];
-      const sizes = [...new Set(variants.map(v => v.size || v.attributes?.size).filter(Boolean))];
+      const colors = [...new Set(variants.map(getVariantColor).filter(Boolean))];
+      const sizes = [...new Set(variants.map(getVariantSize).filter(Boolean))];
       if (colors.length === 1) setSelectedColor(colors[0]);
       if (sizes.length === 1) setSelectedSize(sizes[0]);
       setLoading(false);
@@ -45,36 +62,65 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
   }, [open, productId]);
 
   const variants = useMemo(() => product?.variants || [], [product]);
-  const colors = useMemo(() => [...new Set(variants.map(v => v.color || v.attributes?.color).filter(Boolean))], [variants]);
-  const sizes = useMemo(() => [...new Set(variants.map(v => v.size || v.attributes?.size).filter(Boolean))], [variants]);
+  const colors = useMemo(() => [...new Set(variants.map(getVariantColor).filter(Boolean))], [variants]);
+  const sizes = useMemo(() => [...new Set(variants.map(getVariantSize).filter(Boolean))], [variants]);
+  const visibleSizes = useMemo(
+    () => sizes.filter(size => String(size).toLowerCase() !== 'free size'),
+    [sizes]
+  );
 
   const selectedVariant = useMemo(() => {
     if (variants.length === 0) return null;
+    if (colors.length > 0 && !selectedColor) return null;
+    if (visibleSizes.length > 0 && !selectedSize) return null;
+
     return variants.find(v => {
-      const vc = v.color || v.attributes?.color;
-      const vs = v.size || v.attributes?.size;
+      const vc = getVariantColor(v);
+      const vs = getVariantSize(v);
       const colorMatch = !selectedColor || vc === selectedColor;
       const sizeMatch = !selectedSize || vs === selectedSize;
       return colorMatch && sizeMatch;
-    }) || variants[0];
-  }, [variants, selectedColor, selectedSize]);
+    }) || null;
+  }, [colors.length, variants, selectedColor, selectedSize, visibleSizes.length]);
 
-  const price = selectedVariant?.price || product?.basePrice || product?.price || 0;
-  const salePrice = selectedVariant?.discountPrice || selectedVariant?.effectivePrice || product?.salePrice || product?.sale_price || 0;
+  const pricingVariant = selectedVariant || variants[0] || null;
+  const price = pricingVariant?.price || product?.basePrice || product?.price || 0;
+  const salePrice = pricingVariant?.discountPrice || pricingVariant?.effectivePrice || product?.salePrice || product?.sale_price || 0;
   const displayPrice = salePrice && salePrice < price ? salePrice : price;
   const hasDiscount = salePrice > 0 && salePrice < price;
   const images = product?.images || [];
   const discount = hasDiscount ? Math.round(((price - salePrice) / price) * 100) : 0;
+  const missingOptions = variants.length > 0 && !selectedVariant;
+  const selectedStock = selectedVariant ? getVariantStock(selectedVariant) : 0;
+  const isOutOfStock = variants.length > 0 ? selectedVariant && selectedStock <= 0 : product?.in_stock === false;
+
+  const isColorAvailable = (color) => variants.some((variant) => (
+    getVariantColor(variant) === color && getVariantStock(variant) > 0
+  ));
+
+  const isSizeAvailable = (size) => variants.some((variant) => {
+    const colorMatch = !selectedColor || getVariantColor(variant) === selectedColor;
+    return colorMatch && getVariantSize(variant) === size && getVariantStock(variant) > 0;
+  });
 
   const handleAddToCart = async () => {
     if (!product) return;
+    if (variants.length > 0 && !selectedVariant) {
+      toast.error('Please select available options');
+      return;
+    }
+    if (isOutOfStock) {
+      toast.error('This variant is out of stock');
+      return;
+    }
+
     setAddingToCart(true);
     try {
-      const variantId = selectedVariant?.id || null;
+      const variantId = getVariantId(selectedVariant);
       await addToCart(product.id, quantity, variantId ? {
         variantId,
-        color: selectedColor,
-        size: selectedSize,
+        color: selectedColor || getVariantColor(selectedVariant),
+        size: selectedSize || getVariantSize(selectedVariant),
       } : null);
       toast.success('Added to cart!');
       onOpenChange(false);
@@ -175,7 +221,8 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
                         key={color}
                         data-testid={`qv-color-${color}`}
                         onClick={() => setSelectedColor(color)}
-                        className={`w-8 h-8 rounded-full border-2 transition-all ${selectedColor === color ? 'border-primary ring-2 ring-primary/30 scale-110' : 'border-border hover:scale-105'}`}
+                        disabled={!isColorAvailable(color)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${selectedColor === color ? 'border-primary ring-2 ring-primary/30 scale-110' : 'border-border hover:scale-105'} ${!isColorAvailable(color) ? 'opacity-35 cursor-not-allowed' : ''}`}
                         style={{ backgroundColor: COLOR_MAP[color] || '#999' }}
                         title={color}
                       />
@@ -185,22 +232,29 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
               )}
 
               {/* Size Selection */}
-              {sizes.length > 0 && !(sizes.length === 1 && sizes[0] === 'Free Size') && (
+              {visibleSizes.length > 0 && (
                 <div className="mb-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Size</p>
                   <div className="flex flex-wrap gap-2">
-                    {sizes.map(size => (
+                    {visibleSizes.map(size => (
                       <button
                         key={size}
                         data-testid={`qv-size-${size}`}
                         onClick={() => setSelectedSize(size)}
-                        className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${selectedSize === size ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-muted/80 border border-border'}`}
+                        disabled={!isSizeAvailable(size)}
+                        className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${selectedSize === size ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-muted/80 border border-border'} ${!isSizeAvailable(size) ? 'opacity-35 cursor-not-allowed line-through' : ''}`}
                       >
                         {size}
                       </button>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {selectedVariant && (
+                <p className={`mb-4 text-xs font-medium ${selectedStock <= 0 ? 'text-primary' : selectedStock <= 3 ? 'text-amber-700' : 'text-muted-foreground'}`}>
+                  {selectedStock <= 0 ? 'Out of stock' : selectedStock <= 3 ? `Only ${selectedStock} left` : 'In stock'}
+                </p>
               )}
 
               {/* Quantity */}
@@ -224,14 +278,20 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
                   className="w-full"
                   size="lg"
                   onClick={handleAddToCart}
-                  disabled={addingToCart}
+                  disabled={addingToCart || missingOptions || isOutOfStock}
                 >
                   {addingToCart ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : (
                     <ShoppingBag className="h-4 w-4 mr-2" />
                   )}
-                  {addingToCart ? 'Adding...' : `Add to Cart - ${formatPrice(displayPrice * quantity)}`}
+                  {addingToCart
+                    ? 'Adding...'
+                    : missingOptions
+                    ? 'Select Options'
+                    : isOutOfStock
+                    ? 'Out of Stock'
+                    : `Add to Cart - ${formatPrice(displayPrice * quantity)}`}
                 </Button>
                 <button
                   data-testid="qv-view-full"

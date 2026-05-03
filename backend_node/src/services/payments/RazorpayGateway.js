@@ -54,10 +54,10 @@ class RazorpayGateway {
                 };
             }
 
-            const amount = Math.round(order.amount * 100); // Convert to paise
+            const amountInPaise = Math.round(Number(order.amount || 0) * 100);
 
             const rzOrder = await razorpay.orders.create({
-                amount,
+                amount: amountInPaise,
                 currency: order.currency || 'INR',
                 receipt: order.receipt || `order_${order.orderId}_${Date.now()}`,
                 notes: {
@@ -71,6 +71,8 @@ class RazorpayGateway {
                 success: true,
                 orderId: rzOrder.id,
                 amount: rzOrder.amount / 100,
+                amountInPaise: rzOrder.amount,
+                amount_in_paise: rzOrder.amount,
                 currency: rzOrder.currency,
                 receipt: rzOrder.receipt,
                 status: rzOrder.status

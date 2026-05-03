@@ -73,7 +73,10 @@ const initiatePayment = async (req, res, next) => {
 
         return successResponse(res, {
             orderId: razorpayOrder.orderId,
-            amount: razorpayOrder.amount,
+            amount: razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise || Math.round(razorpayOrder.amount * 100),
+            amount_in_paise: razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise || Math.round(razorpayOrder.amount * 100),
+            amountInPaise: razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise || Math.round(razorpayOrder.amount * 100),
+            display_amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
             key: process.env.RAZORPAY_KEY_ID,
             receipt: razorpayOrder.receipt,

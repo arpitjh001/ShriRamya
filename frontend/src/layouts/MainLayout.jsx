@@ -15,7 +15,7 @@ const MainLayout = () => {
                 Main content overlaps under the floating Navbar on HomePage, 
                 but uses padding for safe clearance on other pages.
             */}
-            <main className={`flex-1 ${!isHome ? 'pt-28 md:pt-36' : ''}`}>
+            <main className="flex-1">
                 <Outlet />
             </main>
             <Footer />

@@ -7,7 +7,6 @@ const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 const config = require('../config/config');
 const redis = require('../config/integrations/redis');
-const { UserRoleService } = require('../models/rbac.model');
 
 /**
  * Authentication Middleware
@@ -26,7 +25,12 @@ const auth = async (req, res, next) => {
         }
 
         // Verify signature and expiry (Stateless)
-        const secret = config.jwt.secret.trim();
+        const secret = (config.jwt.secret || '').trim();
+        if (!secret) {
+            console.error('[Auth Middleware] JWT_SECRET is not configured');
+            return next(new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Authentication service misconfigured'));
+        }
+        
         const payload = jwt.verify(token, secret);
 
         // Check Blacklist in Redis (Stateful check for revoked tokens)
@@ -75,12 +79,6 @@ const auth = async (req, res, next) => {
 /**
  * Role-Based Authorization Middleware
  * Checks if user has at least one of the required roles
- * 
- * @param  {...string} roles - Required roles (e.g., 'Admin', 'Editor')
- * @returns {Function} Middleware function
- * 
- * Usage:
- * router.post("/products", auth, requireRole("Admin", "Editor"), productController.createProduct)
  */
 const requireRole = (...roles) => {
     return async (req, res, next) => {
@@ -108,13 +106,6 @@ const requireRole = (...roles) => {
 
 /**
  * Permission-Based Authorization Middleware
- * Checks if user has the required permission
- * 
- * @param {string} permission - Required permission (e.g., 'delete_product')
- * @returns {Function} Middleware function
- * 
- * Usage:
- * router.delete("/products/:id", auth, requirePermission('delete_product'), productController.deleteProduct)
  */
 const requirePermission = (permission) => {
     return async (req, res, next) => {
@@ -126,9 +117,7 @@ const requirePermission = (permission) => {
             const userPermissions = (req.user.permissions || []).map(p => p.toLowerCase());
             const targetPermission = permission.toLowerCase();
 
-            // Check if user has the permission
             if (!userPermissions.includes(targetPermission)) {
-                // Also check against legacy role for backward compatibility
                 const userRole = (req.user.role || '').toLowerCase();
                 const legacyPermissions = {
                     'admin': ['manage_products', 'manage_orders', 'manage_users', 'delete_product', 'delete_order'],
@@ -154,20 +143,13 @@ const requirePermission = (permission) => {
 
 /**
  * Optional Tenant Isolation Middleware
- * Works for both authenticated and public users
- * For public users, uses default tenant or header-provided tenant
- * 
- * Usage:
- * router.get("/products", optionalTenantIsolation, productController.getProducts)
  */
 const optionalTenantIsolation = (req, res, next) => {
     try {
         if (req.user && req.user.id) {
-            // Authenticated user - use their tenant
             req.tenantId = req.user.tenantId || 1;
             req.tenant_id = req.user.tenantId || 1;
         } else {
-            // Public user - use default tenant or header-provided tenant
             req.tenantId = parseInt(req.headers['x-tenant-id']) || 1;
             req.tenant_id = req.tenantId;
         }
@@ -179,12 +161,6 @@ const optionalTenantIsolation = (req, res, next) => {
 
 /**
  * Tenant Isolation Middleware
- * Ensures user can only access data from their own tenant
- * Automatically filters queries by tenant_id
- * REQUIRES authentication
- *
- * Usage:
- * router.get("/orders", auth, ensureTenantIsolation, orderController.getOrders)
  */
 const ensureTenantIsolation = (req, res, next) => {
     try {
@@ -192,7 +168,6 @@ const ensureTenantIsolation = (req, res, next) => {
             return next(new ApiError(httpStatus.UNAUTHORIZED, 'Authentication required'));
         }
 
-        // Attach tenant_id to request for repository layer to use
         req.tenantId = req.user.tenantId || 1;
         req.tenant_id = req.user.tenantId || 1;
 
@@ -205,7 +180,6 @@ const ensureTenantIsolation = (req, res, next) => {
 /**
  * Optional Auth Middleware
  * Attaches user info if token is present, but doesn't require it
- * Useful for endpoints that behave differently for logged-in users
  */
 const optionalAuth = async (req, res, next) => {
     try {
@@ -217,7 +191,9 @@ const optionalAuth = async (req, res, next) => {
 
         if (token) {
             try {
-                const payload = jwt.verify(token, config.jwt.secret.trim());
+                const secret = (config.jwt.secret || '').trim();
+                if (!secret) throw new Error('JWT_SECRET missing');
+                const payload = jwt.verify(token, secret);
                 req.user = {
                     id: payload.user_id || payload.sub,
                     userId: payload.user_id || payload.sub,
@@ -228,7 +204,6 @@ const optionalAuth = async (req, res, next) => {
                     permissions: payload.permissions || [],
                 };
             } catch (err) {
-                // Token invalid, continue without user info
                 req.user = null;
             }
         } else {

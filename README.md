@@ -77,8 +77,10 @@ npm test
 ```
 
 ## 📜 Documentation
-- [Final API Test Report](./API_FINAL_TEST_REPORT.md)
-- [System Architecture](./SYSTEM_AUDIT_ARCHITECTURE_MAP.md)
+- [System Architecture](./docs/architecture/SYSTEM_AUDIT_ARCHITECTURE_MAP.md)
+- [API Documentation](./docs/api/API_AUDIT_REPORT.md)
+- [Setup Guide](./docs/setup/CONTINUE_SETUP_GUIDE.md)
+- [Security Audit](./docs/security/security-audit-report.md)
 
 ---
 **Shri Ramya** - Redefining Luxury Ethnic Fashion.

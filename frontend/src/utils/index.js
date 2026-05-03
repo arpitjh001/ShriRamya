@@ -14,9 +14,15 @@ export function formatPrice(price) {
 }
 
 export const SHIPPING_CHARGE = 100;
+export const FREE_SHIPPING_THRESHOLD = 2500;
 
 export function getShippingCharge(subtotal) {
-  return Number(subtotal || 0) > 0 ? SHIPPING_CHARGE : 0;
+  const numericSubtotal = Number(subtotal || 0);
+  if (numericSubtotal <= 0 || numericSubtotal >= FREE_SHIPPING_THRESHOLD) {
+    return 0;
+  }
+
+  return SHIPPING_CHARGE;
 }
 
 export function firstPositiveNumber(...values) {

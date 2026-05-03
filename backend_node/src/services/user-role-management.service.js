@@ -65,6 +65,19 @@ class UserRoleManagementService {
      * Assign multiple roles to user
      */
     async assignMultipleRoles(userId, roleNames, tenantId) {
+        // If current user is Admin and we are removing Admin role, check if it's the last one
+        const user = await User.findById(userId);
+        if (user && user.roles.includes('Admin') && !roleNames.includes('Admin')) {
+            const adminCount = await User.countDocuments({ 
+                tenantId: tenantId, 
+                roles: 'Admin' 
+            });
+            
+            if (adminCount <= 1) {
+                throw new ApiError(httpStatus.BAD_REQUEST, 'Cannot remove the last Admin of this tenant');
+            }
+        }
+
         const success = await UserRoleService.syncUserRoles(userId, roleNames, tenantId);
         if (!success) {
             throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to sync roles');
@@ -81,6 +94,17 @@ class UserRoleManagementService {
      * Remove role from user
      */
     async removeRoleFromUser(userId, roleName, tenantId) {
+        if (roleName === 'Admin') {
+            const adminCount = await User.countDocuments({ 
+                tenantId: tenantId, 
+                roles: 'Admin' 
+            });
+            
+            if (adminCount <= 1) {
+                throw new ApiError(httpStatus.BAD_REQUEST, 'Cannot remove the last Admin of this tenant');
+            }
+        }
+        
         return UserRoleService.removeRoleFromUser(userId, roleName, tenantId);
     }
 

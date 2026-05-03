@@ -21,6 +21,7 @@ const VariantGridInput = ({
 }) => {
   const [bulkStockValue, setBulkStockValue] = useState('');
   const [showBulkInput, setShowBulkInput] = useState(false);
+  const [customColor, setCustomColor] = useState('');
 
   const normalizedLowStockThreshold = useMemo(() => {
     const parsed = parseInt(lowStockThreshold, 10);
@@ -51,6 +52,9 @@ const VariantGridInput = ({
   // Use provided available colors/sizes or derive from variants
   const colors = availableColors.length > 0 ? availableColors : variantColors;
   const sizes = availableSizes.length > 0 ? availableSizes : variantSizes;
+  const customColors = colors.filter(color => (
+    !predefinedColors.some(predefinedColor => predefinedColor.toLowerCase() === color.toLowerCase())
+  ));
 
   // Get or create variant for a specific color/size combination
   const getVariant = (color, size) => {
@@ -124,6 +128,45 @@ const VariantGridInput = ({
     setShowBulkInput(false);
   };
 
+  const addColorVariants = (color) => {
+    const sizesForColor = sizes.length > 0 ? sizes : predefinedSizes;
+    const newVariants = [...variants];
+
+    sizesForColor.forEach(size => {
+      if (!newVariants.some(v => v.color === color && v.size === size)) {
+        newVariants.push({
+          id: `new_${color}_${size}_${Date.now()}`,
+          color,
+          size,
+          stock: 0,
+          stock_quantity: 0,
+          price: basePrice,
+          attributes: { color, size },
+        });
+      }
+    });
+
+    onChange(newVariants);
+  };
+
+  const handleAddCustomColor = (event) => {
+    event.preventDefault();
+
+    const normalizedColor = customColor.trim().replace(/\s+/g, ' ');
+    if (!normalizedColor) return;
+
+    const existingColor = [...predefinedColors, ...colors].find(color => (
+      color.toLowerCase() === normalizedColor.toLowerCase()
+    ));
+    const colorToAdd = existingColor || normalizedColor;
+
+    if (!colors.includes(colorToAdd)) {
+      addColorVariants(colorToAdd);
+    }
+
+    setCustomColor('');
+  };
+
   // Toggle color selection
   const toggleColor = (color) => {
     if (colors.includes(color)) {
@@ -131,25 +174,7 @@ const VariantGridInput = ({
       const newVariants = variants.filter(v => v.color !== color);
       onChange(newVariants);
     } else {
-      // Add color with all sizes (create variants with 0 stock)
-      const newColors = [...colors, color];
-      const newVariants = [...variants];
-      
-      predefinedSizes.forEach(size => {
-        if (!getVariant(color, size)) {
-          newVariants.push({
-            id: `new_${color}_${size}_${Date.now()}`,
-            color,
-            size,
-            stock: 0,
-            stock_quantity: 0,
-            price: basePrice,
-            attributes: { color, size },
-          });
-        }
-      });
-      
-      onChange(newVariants);
+      addColorVariants(color);
     }
   };
 
@@ -209,6 +234,7 @@ const VariantGridInput = ({
         <div className="flex flex-wrap gap-2">
           {predefinedColors.map(color => (
             <button
+              type="button"
               key={color}
               onClick={() => toggleColor(color)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -221,6 +247,43 @@ const VariantGridInput = ({
             </button>
           ))}
         </div>
+        <form onSubmit={handleAddCustomColor} className="grid grid-cols-1 gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50/70 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div className="space-y-1.5">
+            <Label htmlFor="custom-color" className="text-xs font-medium text-gray-600">Enter New Color</Label>
+            <Input
+              id="custom-color"
+              value={customColor}
+              onChange={(e) => setCustomColor(e.target.value)}
+              placeholder="e.g. Peacock Blue"
+              className="h-9 bg-white"
+            />
+          </div>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!customColor.trim()}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Color
+          </Button>
+        </form>
+        {customColors.length > 0 && (
+          <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+            {customColors.map(color => (
+              <button
+                type="button"
+                key={color}
+                onClick={() => toggleColor(color)}
+                aria-label={`Remove ${color} color`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-md transition-all hover:bg-indigo-700"
+              >
+                {color}
+                <X className="w-3 h-3" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Size Selection */}
@@ -232,6 +295,7 @@ const VariantGridInput = ({
         <div className="flex flex-wrap gap-2">
           {predefinedSizes.map(size => (
             <button
+              type="button"
               key={size}
               onClick={() => toggleSize(size)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${

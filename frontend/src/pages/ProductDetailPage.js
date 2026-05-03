@@ -18,6 +18,23 @@ import SEOMeta from '../components/SEOMeta';
 
 const SHIPPING_DELIVERY_COPY = 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. Shipping charges are calculated at checkout.';
 
+const getVariantId = (variant = {}) => {
+  const item = variant || {};
+  return item.id || item._id || item.variantId;
+};
+const getVariantColor = (variant = {}) => {
+  const item = variant || {};
+  return item.color || item.attributes?.color || item.attributes?.Color || null;
+};
+const getVariantSize = (variant = {}) => {
+  const item = variant || {};
+  return item.size || item.attributes?.size || item.attributes?.Size || null;
+};
+const getVariantStock = (variant = {}) => {
+  const item = variant || {};
+  return Number(item.stock ?? item.stock_quantity ?? 0) || 0;
+};
+
 const normalizeMaterialGuide = (guide) => {
   if (!guide || typeof guide !== 'object') return null;
 
@@ -96,17 +113,17 @@ const ProductDetailPage = () => {
           setVariantMatrix(variants);
 
           // Extract unique colors and sizes from variant attributes
-          const colors = [...new Set(variants.map(v => v.attributes?.color || v.color).filter(Boolean))];
-          const sizes = [...new Set(variants.map(v => v.attributes?.size || v.size).filter(Boolean))];
+          const colors = [...new Set(variants.map(getVariantColor).filter(Boolean))];
+          const sizes = [...new Set(variants.map(getVariantSize).filter(Boolean))];
           setAvailableColors(colors);
           setAvailableSizes(sizes);
 
           // Auto-select variant only if both color and size exist
           if (variants.length > 0) {
-            const firstInStockVariant = variants.find(v => v.stock > 0) || variants[0];
+            const firstInStockVariant = variants.find(v => getVariantStock(v) > 0) || variants[0];
             if (firstInStockVariant) {
-              const variantColor = firstInStockVariant.attributes?.color || firstInStockVariant.color;
-              const variantSize = firstInStockVariant.attributes?.size || firstInStockVariant.size;
+              const variantColor = getVariantColor(firstInStockVariant);
+              const variantSize = getVariantSize(firstInStockVariant);
               
               // Only auto-select if the variant has these attributes
               if (variantColor && colors.length > 0) {
@@ -128,8 +145,8 @@ const ProductDetailPage = () => {
           if (variantsData.length > 0) {
             setSelectedVariation(variantsData[0]);
             // Extract colors and sizes from legacy variants
-            const colors = [...new Set(variantsData.map(v => v.attributes?.color).filter(Boolean))];
-            const sizes = [...new Set(variantsData.map(v => v.attributes?.size).filter(Boolean))];
+            const colors = [...new Set(variantsData.map(getVariantColor).filter(Boolean))];
+            const sizes = [...new Set(variantsData.map(getVariantSize).filter(Boolean))];
             setAvailableColors(colors);
             setAvailableSizes(sizes);
           }
@@ -165,14 +182,15 @@ const ProductDetailPage = () => {
 
   // Update variant stock when color/size changes
   const updateVariantStock = (color, size) => {
-    const variant = variantMatrix.find(v => v.color === color && v.size === size);
+    const variant = variantMatrix.find(v => getVariantColor(v) === color && getVariantSize(v) === size);
     if (variant) {
       const threshold = variant.lowStockThreshold || product.lowStockThreshold || 5;
+      const stock = getVariantStock(variant);
       setVariantStock({
-        stock: variant.stock,
-        isOutOfStock: variant.stock === 0,
-        isLowStock: variant.stock > 0 && variant.stock <= threshold,
-        stockStatus: variant.stock === 0 ? 'out_of_stock' : variant.stock <= threshold ? 'low_stock' : 'in_stock'
+        stock,
+        isOutOfStock: stock === 0,
+        isLowStock: stock > 0 && stock <= threshold,
+        stockStatus: stock === 0 ? 'out_of_stock' : stock <= threshold ? 'low_stock' : 'in_stock'
       });
     } else {
       setVariantStock(null);
@@ -188,8 +206,9 @@ const ProductDetailPage = () => {
     // Get available sizes for this color
     const sizesForColor = [...new Set(
       variantMatrix
-        .filter(v => v.color === color && v.stock > 0)
-        .map(v => v.size)
+        .filter(v => getVariantColor(v) === color && getVariantStock(v) > 0)
+        .map(getVariantSize)
+        .filter(Boolean)
     )];
 
     // Auto-select first available size if only one exists
@@ -204,7 +223,7 @@ const ProductDetailPage = () => {
     setSelectedSize(size);
     if (selectedColor) {
       updateVariantStock(selectedColor, size);
-      const variant = variantMatrix.find(v => v.color === selectedColor && v.size === size);
+      const variant = variantMatrix.find(v => getVariantColor(v) === selectedColor && getVariantSize(v) === size);
       setSelectedVariation(variant);
     }
   };
@@ -212,15 +231,15 @@ const ProductDetailPage = () => {
   // Check if a size is available for selected color
   const isSizeAvailable = (size) => {
     if (!selectedColor) return true;
-    const variant = variantMatrix.find(v => v.color === selectedColor && v.size === size);
-    return variant && variant.stock > 0;
+    const variant = variantMatrix.find(v => getVariantColor(v) === selectedColor && getVariantSize(v) === size);
+    return variant && getVariantStock(variant) > 0;
   };
 
   // Get stock count for a specific variant
   const getStockForSize = (size) => {
     if (!selectedColor) return 0;
-    const variant = variantMatrix.find(v => v.color === selectedColor && v.size === size);
-    return variant ? variant.stock : 0;
+    const variant = variantMatrix.find(v => getVariantColor(v) === selectedColor && getVariantSize(v) === size);
+    return variant ? getVariantStock(variant) : 0;
   };
 
   const handleAddToCart = async () => {
@@ -247,14 +266,36 @@ const ProductDetailPage = () => {
         toast.error('This variant is out of stock');
         return;
       }
+
+      if (hasColors || hasSizes) {
+        const matchedVariant = selectedVariation || variantMatrix.find(
+          (variant) => (
+            (!selectedColor || getVariantColor(variant) === selectedColor) &&
+            (!selectedSize || getVariantSize(variant) === selectedSize)
+          )
+        );
+
+        if (!matchedVariant || !getVariantId(matchedVariant)) {
+          toast.error('Please select an available variant');
+          return;
+        }
+
+        setSelectedVariation(matchedVariant);
+      }
     }
 
     try {
       let variation = null;
 
       if (hasVariants && (selectedColor || selectedSize)) {
+        const matchedVariant = selectedVariation || variantMatrix.find(
+          (variant) => (
+            (!selectedColor || getVariantColor(variant) === selectedColor) &&
+            (!selectedSize || getVariantSize(variant) === selectedSize)
+          )
+        );
         variation = {
-          variantId: selectedVariation?.id,
+          variantId: getVariantId(matchedVariant),
           color: selectedColor || null,
           size: selectedSize || null,
           stock: variantStock?.stock || product.totalStock || 0
@@ -489,7 +530,7 @@ const ProductDetailPage = () => {
                   </label>
                   <div className="flex flex-wrap gap-4">
                     {availableColors.map((color, index) => {
-                      const hasStock = variantMatrix.some(v => v.color === color && v.stock > 0);
+                      const hasStock = variantMatrix.some(v => getVariantColor(v) === color && getVariantStock(v) > 0);
                       const isSelected = selectedColor === color;
 
                       return (
@@ -823,7 +864,7 @@ const ProductDetailPage = () => {
         <section className="bg-white py-24">
           <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
             <h2 className="text-4xl font-heading text-center mb-16 tracking-tight">You May Also Like</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
               {recommendations.map((rec) => (
                 <ProductCard key={rec.id} product={rec} />
               ))}

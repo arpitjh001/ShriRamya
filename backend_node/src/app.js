@@ -80,25 +80,37 @@ app.use(compression());
 /**
  * CORS Configuration
  */
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const allowed = (config.frontendUrl || '').split(',').map(o => o.trim());
-      if (allowed.includes(origin) || allowed.includes('*')) return callback(null, true);
-      callback(null, false);
-    },
-    credentials: true,
-  })
-);
-app.options('*', cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const allowed = (config.frontendUrl || '').split(',').map(o => o.trim());
-    if (allowed.includes(origin) || allowed.includes('*')) return callback(null, true);
-    callback(null, false);
-  },
+const corsOptionsDelegate = (origin, callback) => {
+  // If no origin (like mobile apps or curl requests)
+  if (!origin) return callback(null, true);
+  
+  const corsConfig = config.cors || '*';
+  
+  // If wildcard, allow all
+  if (corsConfig === '*') return callback(null, true);
+  
+  // Split and trim allowed origins
+  const allowedOrigins = corsConfig.split(',').map(o => o.trim());
+  
+  if (allowedOrigins.includes(origin)) {
+    callback(null, true);
+  } else {
+    console.warn(`[CORS] Origin ${origin} not allowed. Allowed: ${corsConfig}`);
+    callback(new Error('Not allowed by CORS'));
+  }
+};
+
+app.use(cors({
+  origin: corsOptionsDelegate,
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-csrf-token', 'x-session-id']
+}));
+
+// Pre-flight requests
+app.options('*', cors({
+  origin: corsOptionsDelegate,
+  credentials: true
 }));
 
 /**
@@ -116,7 +128,7 @@ app.get('/api/v1/health', (req, res) => {
     timestamp: new Date().toISOString(),
     requestId: req.requestId,
   });
-  });
+});
 
 /**
  * CSRF Token Endpoint
@@ -128,56 +140,56 @@ app.get('/api/v1/csrf-token', getCSRFToken);
  */
 if (config.env === 'development') {
   app.get('/api/v1/debug/status', async (req, res) => {
-  try {
-    const { Product, Order } = require('./models');
-    const mongoose = require('mongoose');
-    
-    const status = {
-      timestamp: new Date().toISOString(),
-      mongoConnection: mongoose.connection.readyState,
-      mongoConnectionState: {
-        0: 'disconnected',
-        1: 'connected',
-        2: 'connecting',
-        3: 'disconnecting',
-      }[mongoose.connection.readyState],
-    };
-
-    // Test MongoDB with sample queries
-    if (mongoose.connection.readyState === 1) {
-      try {
-        const productCount = await Product.countDocuments();
-        const orderCount = await Order.countDocuments();
-        status.database = {
-          products: productCount,
-          orders: orderCount,
-        };
-      } catch (dbErr) {
-        status.database = { error: dbErr.message };
-      }
-    }
-
-    // Test Redis
     try {
-      const redis = require('./config/integrations/redis').getRedis();
-      if (redis) {
-        const ping = await redis.ping();
-        status.redis = ping === 'PONG' ? 'connected' : 'disconnected';
-      } else {
-        status.redis = 'not initialized';
-      }
-    } catch (redisErr) {
-      status.redis = { error: redisErr.message };
-    }
+      const { Product, Order } = require('./models');
+      const mongoose = require('mongoose');
+      
+      const status = {
+        timestamp: new Date().toISOString(),
+        mongoConnection: mongoose.connection.readyState,
+        mongoConnectionState: {
+          0: 'disconnected',
+          1: 'connected',
+          2: 'connecting',
+          3: 'disconnecting',
+        }[mongoose.connection.readyState],
+      };
 
-    res.json(status);
-  } catch (err) {
-    res.status(500).json({
-      error: err.message,
-      stack: config.env === 'development' ? err.stack : undefined,
-    });
-  }
-});
+      // Test MongoDB with sample queries
+      if (mongoose.connection.readyState === 1) {
+        try {
+          const productCount = await Product.countDocuments();
+          const orderCount = await Order.countDocuments();
+          status.database = {
+            products: productCount,
+            orders: orderCount,
+          };
+        } catch (dbErr) {
+          status.database = { error: dbErr.message };
+        }
+      }
+
+      // Test Redis
+      try {
+        const redis = require('./config/integrations/redis').getRedis();
+        if (redis) {
+          const ping = await redis.ping();
+          status.redis = ping === 'PONG' ? 'connected' : 'disconnected';
+        } else {
+          status.redis = 'not initialized';
+        }
+      } catch (redisErr) {
+        status.redis = { error: redisErr.message };
+      }
+
+      res.json(status);
+    } catch (err) {
+      res.status(500).json({
+        error: err.message,
+        stack: config.env === 'development' ? err.stack : undefined,
+      });
+    }
+  });
 }
 
 /**

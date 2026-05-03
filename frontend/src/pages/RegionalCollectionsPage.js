@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { productsAPI } from '../services/api';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
 import RegionalCollectionCard from '../components/RegionalCollectionCard';
 import { motion } from 'framer-motion';
 
@@ -98,9 +98,9 @@ const RegionalCollectionsPage = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-[400px] bg-muted animate-pulse rounded" />
+                <ProductCardSkeleton key={i} />
               ))}
             </div>
           ) : products.length === 0 ? (
@@ -108,7 +108,7 @@ const RegionalCollectionsPage = () => {
               <p className="text-xl text-muted-foreground">No products found from {selectedState}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="regional-products-grid">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-testid="regional-products-grid">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

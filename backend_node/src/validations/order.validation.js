@@ -21,111 +21,68 @@ const shippingDimensionsSchema = Joi.alternatives().try(
   })
 );
 
+/**
+ * Flexible shipping address schema that accepts multiple field naming conventions
+ * from the frontend (address_line1, address1, first_name/lastName, etc.)
+ */
+const flexibleAddressSchema = Joi.object().pattern(
+  Joi.string(),
+  Joi.alternatives().try(Joi.string().allow(''), Joi.number(), Joi.boolean(), Joi.allow(null))
+).optional();
+
 const createOrder = {
   body: Joi.object({
     items: Joi.array().items(
       Joi.object({
         productId: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
-        variantId: Joi.alternatives().try(Joi.number(), Joi.string()).optional(),
+        variantId: Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(null, ''),
         quantity: Joi.number().min(1).required(),
+        name: Joi.string().optional(),
+        price: Joi.number().optional(),
+        image: Joi.string().optional().allow(null, ''),
         attributes: Joi.object().optional(),
+        size: Joi.string().optional().allow(null, ''),
+        color: Joi.string().optional().allow(null, ''),
       })
     ).min(1).required(),
-    billing: Joi.object({
-      firstName: Joi.string().required(),
-      lastName: Joi.string().required(),
-      address1: Joi.string().required(),
-      address2: Joi.string().optional(),
-      city: Joi.string().required(),
-      state: Joi.string().required(),
-      postcode: Joi.string().required(),
-      country: Joi.string().default('IN'),
-      phone: Joi.string().optional(),
-      email: Joi.string().email().optional(),
-    }).required(),
-    shipping: Joi.object({
-      firstName: Joi.string().required(),
-      lastName: Joi.string().required(),
-      address1: Joi.string().required(),
-      address2: Joi.string().optional(),
-      city: Joi.string().required(),
-      state: Joi.string().required(),
-      postcode: Joi.string().required(),
-      country: Joi.string().default('IN'),
-    }).required(),
+    // Accept billing in multiple formats
+    billing: Joi.object().pattern(
+      Joi.string(),
+      Joi.alternatives().try(Joi.string().allow(''), Joi.number(), Joi.boolean(), Joi.allow(null))
+    ).optional(),
+    // Accept shipping in multiple formats
+    shipping: Joi.object().pattern(
+      Joi.string(),
+      Joi.alternatives().try(Joi.string().allow(''), Joi.number(), Joi.boolean(), Joi.allow(null))
+    ).optional(),
+    // Accept shipping_address (frontend format)
+    shipping_address: flexibleAddressSchema,
+    // Accept email at top level
+    email: Joi.string().email().optional(),
+    // Accept amount at top level
+    amount: Joi.number().optional(),
     paymentMethod: Joi.string().valid('razorpay', 'stripe', 'cod', 'card', 'upi', 'netbanking').default('cod'),
-    customerNotes: Joi.string().max(1000).optional(),
-    couponCode: Joi.string().optional(),
+    customerNotes: Joi.string().max(1000).optional().allow(''),
+    couponCode: Joi.string().optional().allow(null, ''),
+    tenantId: Joi.number().optional(),
   }),
 };
 
 const updateOrderStatus = {
   body: Joi.object({
     status: Joi.string().valid(
-      'pending',
-      'confirmed',
-      'pending_payment',
-      'payment_failed',
-      'paid',
-      'processing',
-      'shipped',
-      'delivered',
-      'cancelled',
-      'refunded'
+      'pending', 'pending_payment', 'processing', 'confirmed',
+      'shipped', 'out_for_delivery', 'delivered', 'cancelled',
+      'refunded', 'payment_failed', 'returned'
     ).optional(),
     paymentStatus: Joi.string().valid('pending', 'paid', 'failed', 'refunded').optional(),
-    fulfillmentStatus: Joi.string().valid('unfulfilled', 'processing', 'shipped', 'delivered').optional(),
-    reason: Joi.string().max(500).optional(),
-    internalNotes: Joi.string().max(2000).allow('').optional(),
-  }).or('status', 'paymentStatus', 'fulfillmentStatus', 'internalNotes'),
-};
-
-const createShipment = {
-  body: Joi.object({
-    carrier: Joi.string().trim().required(),
-    provider: Joi.string().trim().optional(),
-    trackingNumber: Joi.string().trim().optional(),
-    trackingUrl: Joi.string().uri().optional(),
-    shippingMethod: Joi.string().trim().optional(),
-    shippingWeight: Joi.number().positive().optional(),
-    shippingDimensions: shippingDimensionsSchema.optional(),
-    preventMultiple: Joi.boolean().default(true),
-    courierId: Joi.alternatives().try(Joi.string().trim(), Joi.number()).optional(),
-    xpressbeesCourierId: Joi.alternatives().try(Joi.string().trim(), Joi.number()).optional(),
-    paymentType: Joi.string().valid('cod', 'prepaid', 'reverse').optional(),
-    requestAutoPickup: Joi.boolean().optional(),
-    codCharges: Joi.number().min(0).optional(),
-    pickup: addressSchema.optional(),
-    rto: addressSchema.optional(),
-  }),
-};
-
-const updateTracking = {
-  body: Joi.object({
-    carrier: Joi.string().trim().optional(),
-    trackingNumber: Joi.string().trim().optional(),
-    trackingUrl: Joi.string().uri().optional(),
-  }).min(1),
-};
-
-const createRefund = {
-  body: Joi.object({
-    amount: Joi.number().min(0.01).required(),
-    reason: Joi.string().max(500).required(),
-    items: Joi.array().items(
-      Joi.object({
-        orderItemId: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
-        quantity: Joi.number().min(1).required(),
-        amount: Joi.number().min(0).optional(),
-        reason: Joi.string().max(200).optional(),
-      })
+    fulfillmentStatus: Joi.string().valid(
+      'unfulfilled', 'partially_fulfilled', 'fulfilled', 'returned'
     ).optional(),
+    internalNotes: Joi.string().max(2000).allow('').optional(),
   }),
-};
-
-const processRefund = {
-  body: Joi.object({
-    reason: Joi.string().max(500).optional(),
+  params: Joi.object({
+    id: Joi.string().required(),
   }),
 };
 
@@ -133,39 +90,100 @@ const cancelOrder = {
   body: Joi.object({
     reason: Joi.string().max(500).optional(),
   }),
+  params: Joi.object({
+    id: Joi.string().required(),
+  }),
 };
 
-const getOrdersQuery = {
-  query: Joi.object({
-    page: Joi.number().min(1).default(1),
-    limit: Joi.number().min(1).max(100).default(20),
+const createShipment = {
+  body: Joi.object({
+    trackingNumber: Joi.string().trim().optional(),
+    carrier: Joi.string().trim().optional(),
+    method: Joi.string().trim().optional(),
+    estimatedDelivery: Joi.date().optional(),
+    weight: Joi.number().positive().optional(),
+    dimensions: shippingDimensionsSchema.optional(),
+    items: Joi.array().items(
+      Joi.object({
+        orderItemId: Joi.string().optional(),
+        productId: Joi.alternatives().try(Joi.number(), Joi.string()).optional(),
+        variantId: Joi.alternatives().try(Joi.number(), Joi.string()).optional(),
+        quantity: Joi.number().min(1).optional(),
+      })
+    ).optional(),
+    provider: Joi.string().valid('manual', 'xpressbees').default('manual'),
+    providerOptions: Joi.object({
+      courier_id: Joi.string().optional(),
+      payment_type: Joi.string().valid('prepaid', 'cod').optional(),
+    }).optional(),
+    pickupAddress: addressSchema.optional(),
+    deliveryAddress: addressSchema.optional(),
+    rtoAddress: addressSchema.optional(),
+  }),
+  params: Joi.object({
+    id: Joi.string().required(),
+  }),
+};
+
+const updateTracking = {
+  body: Joi.object({
     status: Joi.string().optional(),
-    paymentStatus: Joi.string().valid('pending', 'paid', 'failed', 'refunded').optional(),
-    fulfillmentStatus: Joi.string().valid('unfulfilled', 'processing', 'shipped', 'delivered').optional(),
-    startDate: Joi.date().iso().optional(),
-    endDate: Joi.date().iso().optional(),
-    search: Joi.string().max(100).optional(),
+    location: Joi.string().optional(),
+    description: Joi.string().optional(),
+    estimatedDelivery: Joi.date().optional(),
+    trackingNumber: Joi.string().optional(),
+  }),
+  params: Joi.object({
+    id: Joi.string().required(),
   }),
 };
 
 const getShipmentsQuery = {
   query: Joi.object({
-    page: Joi.number().min(1).default(1),
-    limit: Joi.number().min(1).max(100).default(20),
-    status: Joi.string().optional(),
-    carrier: Joi.string().trim().optional(),
-    provider: Joi.string().trim().optional(),
+    status: Joi.string().valid(
+      'pending', 'processing', 'shipped', 'in_transit', 'out_for_delivery',
+      'delivered', 'cancelled', 'returned', 'failed', 'ready_to_ship'
+    ).optional(),
+    page: Joi.number().min(1).optional(),
+    limit: Joi.number().min(1).max(100).optional(),
+    carrier: Joi.string().optional(),
+    search: Joi.string().optional(),
+  }),
+};
+
+const createRefund = {
+  body: Joi.object({
+    reason: Joi.string().max(1000).required(),
+    amount: Joi.number().positive().optional(),
+    items: Joi.array().items(
+      Joi.object({
+        orderItemId: Joi.string().optional(),
+        quantity: Joi.number().min(1).optional(),
+      })
+    ).optional(),
+  }),
+  params: Joi.object({
+    id: Joi.string().required(),
+  }),
+};
+
+const processRefund = {
+  body: Joi.object({
+    transactionId: Joi.string().optional(),
+    notes: Joi.string().max(500).optional(),
+  }),
+  params: Joi.object({
+    id: Joi.string().required(),
   }),
 };
 
 module.exports = {
   createOrder,
   updateOrderStatus,
+  cancelOrder,
   createShipment,
   updateTracking,
+  getShipmentsQuery,
   createRefund,
   processRefund,
-  cancelOrder,
-  getOrdersQuery,
-  getShipmentsQuery,
 };

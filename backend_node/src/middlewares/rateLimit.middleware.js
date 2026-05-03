@@ -7,10 +7,24 @@ const ApiError = require('../utils/ApiError');
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 10,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many login attempts. Please try again after 15 minutes.'
+  ),
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+/**
+ * Registration Rate Limiter (Stricter to prevent bot account creation)
+ */
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 registrations per hour
+  message: new ApiError(
+    httpStatus.TOO_MANY_REQUESTS,
+    'Too many registration attempts from this IP. Please try again after an hour.'
   ),
   standardHeaders: true,
   legacyHeaders: false
@@ -116,6 +130,7 @@ const cartLimiter = rateLimit({
 
 module.exports = {
   authLimiter,
+  registrationLimiter,
   apiLimiter,
   searchLimiter,
   uploadLimiter,

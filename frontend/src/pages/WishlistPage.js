@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingBag, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, ShoppingBag } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
+import { productsAPI } from '../services/api';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,6 +13,7 @@ const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
 const WishlistPage = () => {
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,27 +32,58 @@ const WishlistPage = () => {
     setLoading(false);
   };
 
-  const removeItem = async (productId) => {
+  const removeItem = async (productId, options = {}) => {
     try {
       await fetch(`${API_BASE}/api/v1/wishlist/remove/${productId}?userId=${userId}`, { method: 'DELETE' });
       setItems(prev => prev.filter(i => i.productId !== productId));
-      toast.success('Removed from wishlist');
+      if (!options.silent) toast.success('Removed from wishlist');
     } catch (err) { toast.error('Failed to remove'); }
   };
 
   const moveToCart = async (item) => {
     try {
-      const sessionId = localStorage.getItem('sessionId') || 'session_' + Date.now();
-      localStorage.setItem('sessionId', sessionId);
-      await fetch(`${API_BASE}/api/v1/cart/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
-        body: JSON.stringify({ productId: item.productId, name: item.name, price: item.price, salePrice: item.salePrice, thumbnail: item.thumbnail, quantity: 1 }),
+      const productRes = await productsAPI.getById(item.productId);
+      const product = productRes.data;
+      const variants = Array.isArray(product?.variants) ? product.variants : [];
+      const inStockVariants = variants.filter((variant) => Number(variant.stock ?? variant.stock_quantity ?? 0) > 0);
+
+      if (variants.length === 0 || inStockVariants.length === 0) {
+        toast.error('This item is currently out of stock');
+        return;
+      }
+
+      if (variants.length > 1) {
+        toast.info('Choose size or color to add this piece');
+        navigate(`/products/${item.productId}`);
+        return;
+      }
+
+      const variant = inStockVariants[0];
+      await addToCart(product.id, 1, {
+        variantId: variant.id || variant._id || variant.variantId,
+        color: variant.color || variant.attributes?.color || variant.attributes?.Color,
+        size: variant.size || variant.attributes?.size || variant.attributes?.Size,
       });
-      await fetch(`${API_BASE}/api/v1/wishlist/remove/${item.productId}?userId=${userId}`, { method: 'DELETE' });
-      setItems(prev => prev.filter(i => i.productId !== item.productId));
+      await removeItem(item.productId, { silent: true });
       toast.success('Moved to cart');
     } catch (err) { toast.error('Failed to move to cart'); }
+  };
+
+  const mapWishlistProduct = (item) => {
+    const displayPrice = Number(item.salePrice ?? item.price ?? 0);
+    const originalPrice = Number(item.price ?? 0);
+
+    return {
+      id: item.productId,
+      productId: item.productId,
+      name: item.name,
+      images: item.thumbnail ? [item.thumbnail] : [],
+      thumbnail: item.thumbnail,
+      price: originalPrice,
+      sale_price: originalPrice > displayPrice ? displayPrice : null,
+      category: item.category || item.categoryName || 'Wishlist',
+      in_stock: item.in_stock !== false,
+    };
   };
 
   return (
@@ -60,8 +95,8 @@ const WishlistPage = () => {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => <div key={i} className="aspect-[3/4] bg-muted/50 animate-pulse rounded-xl" />)}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+            {[...Array(4)].map((_, i) => <ProductCardSkeleton key={i} />)}
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-border">
@@ -74,38 +109,26 @@ const WishlistPage = () => {
           </div>
         ) : (
           <AnimatePresence>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {items.map(item => {
-                const displayPrice = Number(item.salePrice ?? item.price ?? 0);
-                const originalPrice = Number(item.price ?? 0);
-                const showOriginal = originalPrice > 0 && originalPrice > displayPrice;
-
-                return (
-                  <motion.div key={item.productId} layout exit={{ opacity: 0, scale: 0.8 }} data-testid={`wishlist-product-${item.productId}`}
-                    className="bg-card border border-border rounded-xl overflow-hidden group">
-                  <Link to={`/products/${item.productId}`} className="block">
-                    <div className="aspect-[3/4] overflow-hidden relative">
-                      <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <button onClick={(e) => { e.preventDefault(); removeItem(item.productId); }}
-                        className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors shadow-sm"
-                        data-testid={`remove-wishlist-${item.productId}`}>
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </Link>
-                  <div className="p-4">
-                    <h3 className="text-sm font-medium line-clamp-2 mb-2">{item.name}</h3>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="font-semibold">Rs.{displayPrice.toLocaleString()}</span>
-                      {showOriginal && <span className="text-xs text-muted-foreground line-through">Rs.{originalPrice.toLocaleString()}</span>}
-                    </div>
-                    <Button size="sm" className="w-full" onClick={() => moveToCart(item)} data-testid={`move-to-cart-${item.productId}`}>
-                      <ShoppingBag className="w-4 h-4 mr-2" /> Move to Cart
-                    </Button>
-                  </div>
-                  </motion.div>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+              {items.map(item => (
+                <motion.div
+                  key={item.productId}
+                  layout
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  data-testid={`wishlist-product-${item.productId}`}
+                >
+                  <ProductCard
+                    product={mapWishlistProduct(item)}
+                    initialWishlisted
+                    quickActionLabel="Move"
+                    onQuickAction={() => moveToCart(item)}
+                    onWishlistChange={(nextWishlisted) => {
+                      if (!nextWishlisted) return removeItem(item.productId);
+                      return null;
+                    }}
+                  />
+                </motion.div>
+              ))}
             </div>
           </AnimatePresence>
         )}
