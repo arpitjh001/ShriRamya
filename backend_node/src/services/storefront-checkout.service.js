@@ -7,6 +7,7 @@ const { sendOrderConfirmation } = require('./emailService');
 const { inventoryAuditService } = require('./inventory-audit.service');
 const { inventoryService } = require('./inventory.service');
 const RazorpayGateway = require('./payments/RazorpayGateway');
+const productService = require('./product.service');
 const couponService = require('./coupon.service');
 
 const DEFAULT_COUNTRY = 'India';

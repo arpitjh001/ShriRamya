@@ -16,7 +16,7 @@ const ApiError = require('./utils/ApiError');
 const { csrfProtection, getCSRFToken } = require('./middlewares/csrf.middleware');
 
 const cookieParser = require('cookie-parser');
-const { authLimiter } = require('./middlewares/rateLimit.middleware');
+const { authLimiter, registrationLimiter } = require('./middlewares/rateLimit.middleware');
 
 const app = express();
 
@@ -68,6 +68,8 @@ app.use(cookieParser());
 /**
  * Auth Rate Limiting
  */
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/register', registrationLimiter);
 app.use('/api/v1/auth', authLimiter);
 
 /**
@@ -80,11 +82,24 @@ app.use(compression());
  */
 app.use(
   cors({
-    origin: config.frontendUrl || '*',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowed = (config.frontendUrl || '').split(',').map(o => o.trim());
+      if (allowed.includes(origin) || allowed.includes('*')) return callback(null, true);
+      callback(null, false);
+    },
     credentials: true,
   })
 );
-app.options('*', cors());
+app.options('*', cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const allowed = (config.frontendUrl || '').split(',').map(o => o.trim());
+    if (allowed.includes(origin) || allowed.includes('*')) return callback(null, true);
+    callback(null, false);
+  },
+  credentials: true,
+}));
 
 /**
  * Static Files

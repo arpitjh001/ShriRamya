@@ -158,7 +158,7 @@ module.exports = {
     secure: envVars.COOKIE_SECURE === 'true',
   },
   cors: envVars.CORS_ORIGINS,
-  frontendUrl: envVars.CORS_ORIGINS === '*' ? '*' : envVars.CORS_ORIGINS.split(',')[0].trim(),
+  frontendUrl: envVars.CORS_ORIGINS,
   publicBaseUrl: envVars.PUBLIC_BASE_URL,
   redis: {
     url: envVars.REDIS_URL,
