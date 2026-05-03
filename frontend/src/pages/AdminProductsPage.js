@@ -22,7 +22,7 @@ import { Separator } from '../components/ui/separator';
 import VariantGridInput from '../components/VariantGridInput';
 import {
   Plus, Trash2, Edit, Save, X, Upload, Image as ImageIcon,
-  Package, FolderPlus, Search, Eye, EyeOff, Sparkles, AlertTriangle
+  Package, FolderPlus, Search, Eye, EyeOff, Sparkles, AlertTriangle, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1228,6 +1228,66 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                   placeholder="e.g., 5'9&quot;"
                   className="bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
                 />
+              </div>
+            </div>
+
+            <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Archive Imagery</Label>
+                <div className="flex items-center gap-2">
+                  {uploadingImage && <Loader2 className="w-4 h-4 animate-spin text-royal-maroon" />}
+                  <label className="cursor-pointer">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-royal-maroon/10 text-royal-maroon border border-royal-maroon/20 rounded-lg hover:bg-royal-maroon/20 transition-all text-[10px] font-bold uppercase tracking-widest">
+                      <Upload className="w-3.5 h-3.5" />
+                      Upload New
+                    </div>
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      onChange={handleImageUpload} 
+                      disabled={uploadingImage} 
+                      className="hidden" 
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                <AnimatePresence>
+                  {productForm.images?.map((img, idx) => (
+                    <motion.div 
+                      key={`${img}-${idx}`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="relative aspect-[3/4] rounded-xl border border-white/10 overflow-hidden group shadow-sm bg-black/20"
+                    >
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                         <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const newImages = [...productForm.images];
+                            newImages.splice(idx, 1);
+                            setProductForm({ ...productForm, images: newImages });
+                          }}
+                          className="p-1.5 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors"
+                          title="Remove Image"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                
+                {(productForm.images?.length === 0 || !productForm.images) && !uploadingImage && (
+                  <div className="col-span-full py-8 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-2xl text-slate-500">
+                    <ImageIcon className="w-8 h-8 mb-2 opacity-20" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest">No imagery archived</p>
+                  </div>
+                )}
               </div>
             </div>
 
