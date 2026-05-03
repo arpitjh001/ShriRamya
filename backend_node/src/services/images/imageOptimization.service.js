@@ -300,7 +300,6 @@ class ImageOptimizationService {
 
 
   // Note: URL generation is handled by `_generateApiUrl` / `_generateStaticUploadUrl`.
-   */
   async getImage(imageId, sizeName = 'original') {
     if (this.useDatabase && Image) {
       try {
