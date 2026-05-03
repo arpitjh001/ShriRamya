@@ -563,7 +563,6 @@ class StorefrontCheckoutService {
     } else if (forceMock) {
       isMock = true;
     } else if (!razorpayConfigured) {
-      // In production, fail fast rather than silently using mock payments.
       if (isProductionRuntime) {
         const error = new Error('Razorpay is not configured on the server. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.');
         error.statusCode = 500;
@@ -572,7 +571,6 @@ class StorefrontCheckoutService {
       }
       isMock = true;
     } else if (isLiveKey && !isProductionRuntime) {
-      // Safety: Use mock if live keys are present but we are not in production environment
       console.warn('[Checkout] Live Razorpay keys detected in non-production environment. Defaulting to Mock mode for safety.');
       isMock = true;
     }
@@ -616,7 +614,6 @@ class StorefrontCheckoutService {
     });
 
     if (!isMock) {
-      // Razorpay receipt field must be <= 40 characters
       const shortReceipt = `rcpt_${String(order._id).slice(-12)}_${String(Date.now()).slice(-8)}`;
 
       try {
@@ -846,138 +843,13 @@ class StorefrontCheckoutService {
     return this.serializeOrder(order);
   }
 
-  async buildInventoryReductionPlan(order) {
-    if (order.stockReduced) {
-      return [];
-    }
-
-    const variantQuantities = new Map();
-
-    for (const item of order.items || []) {
-      if (!item.variantId) continue;
-
-      const variantId = String(item.variantId);
-      const quantity = Number(item.quantity || 0) || 0;
-      if (quantity <= 0) continue;
-
-      const existing = variantQuantities.get(variantId);
-      if (existing) {
-        existing.quantity += quantity;
-        continue;
-      }
-
-      variantQuantities.set(variantId, {
-        variantId,
-        quantity,
-        itemName: item.name || 'Product',
-      });
-    }
-
-    const plan = [];
-
-    for (const entry of variantQuantities.values()) {
-      const product = await Product.findOne({ 'variants._id': entry.variantId });
-      if (!product) {
-        const error = new Error(`Variant ${entry.variantId} not found`);
-        error.statusCode = 404;
-        throw error;
-      }
-
-      const variant = product.variants.id(String(entry.variantId));
-      if (!variant) {
-        const error = new Error(`Variant ${entry.variantId} not found`);
-        error.statusCode = 404;
-        throw error;
-      }
-
-      const oldStock = Number(variant.stock || 0) || 0;
-      if (entry.quantity > oldStock) {
-        const error = new Error(`Insufficient stock for ${entry.itemName || product.name}`);
-        error.statusCode = 409;
-        error.code = 'INSUFFICIENT_STOCK';
-        error.availableStock = oldStock;
-        throw error;
-      }
-
-      plan.push({
-        product,
-        productId: product._id,
-        productName: product.name || entry.itemName || 'Product',
-        variantId: entry.variantId,
-        quantity: entry.quantity,
-        oldStock,
-        newStock: oldStock - entry.quantity,
-      });
-    }
-
-    return plan;
-  }
-
-  async applyInventoryReductionPlan(plan = []) {
-    const applied = [];
-
-    try {
-      for (const change of plan) {
-        const variant = change.product.variants.id(String(change.variantId));
-        if (!variant) {
-          const error = new Error(`Variant ${change.variantId} not found during stock reduction`);
-          error.statusCode = 404;
-          throw error;
-        }
-
-        variant.stock = change.newStock;
-        await change.product.save();
-        applied.push(change);
-      }
-
-      if (applied.length > 0) {
-        await inventoryService.clearProductListCache();
-      }
-    } catch (error) {
-      if (applied.length > 0) {
-        await this.rollbackInventoryReductionPlan(applied);
-      }
-      throw error;
-    }
-  }
-
-  async rollbackInventoryReductionPlan(plan = []) {
-    for (const change of [...plan].reverse()) {
-      try {
-        const variant = change.product.variants.id(String(change.variantId));
-        if (!variant) continue;
-
-        variant.stock = change.oldStock;
-        await change.product.save();
-      } catch (rollbackError) {
-        console.error('Inventory rollback failed:', rollbackError.message);
-      }
-    }
-
-    if (plan.length > 0) {
-      await inventoryService.clearProductListCache();
-    }
-  }
-
-  async logInventoryReduction(order, plan = []) {
-    for (const change of plan) {
-      await inventoryAuditService.logSale(
-        change.variantId,
-        change.productId,
-        change.oldStock,
-        change.newStock,
-        change.quantity,
-        order.orderId,
-        order.userId || null
-      );
-    }
-  }
-
+  /**
+   * @deprecated Use orderStateMachine.reduceOrderStock(order) instead for consistency
+   */
   async reduceInventoryForOrder(order) {
-    const plan = await this.buildInventoryReductionPlan(order);
-    await this.applyInventoryReductionPlan(plan);
-    order.stockReduced = true;
-    return plan;
+    const orderStateMachine = require('./orderStateMachine.service');
+    await orderStateMachine.reduceOrderStock(order);
+    return [];
   }
 
   async confirmPayment(orderId, paymentPayload = {}) {
@@ -1031,16 +903,22 @@ class StorefrontCheckoutService {
       }
     }
 
-    const inventoryPlan = await this.reduceInventoryForOrder(order);
+    const orderStateMachine = require('./orderStateMachine.service');
+    const { ORDER_STATUS } = require('./orderStateMachine.service');
+
+    await orderStateMachine.transitionStatus(order._id, ORDER_STATUS.PAID, {
+      userId: order.userId,
+      userType: order.userId ? 'customer' : 'guest',
+      metadata: { 
+        razorpay_payment_id: paymentPayload.razorpay_payment_id, 
+        razorpay_order_id: paymentPayload.razorpay_order_id 
+      }
+    });
 
     const paymentId = paymentPayload.razorpay_payment_id || `pay_mock_${Date.now()}`;
 
-    order.paymentStatus = 'paid';
-    order.payment_status = 'paid';
-    order.status = order.status === 'pending' ? 'confirmed' : order.status;
     order.razorpayPaymentId = paymentId;
     order.transaction_id = paymentId;
-    order.paid_at = new Date();
     order.payment_details = {
       ...paymentDetails,
       razorpayOrderId: paymentPayload.razorpay_order_id || order.razorpayOrderId || paymentDetails.razorpayOrderId || null,
@@ -1048,26 +926,8 @@ class StorefrontCheckoutService {
       razorpaySignature: paymentPayload.razorpay_signature || null,
       paymentConfirmedAt: new Date().toISOString(),
     };
-    order.statusHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
-    order.statusHistory.push({
-      status: order.status,
-      timestamp: new Date(),
-      note: 'Payment confirmed',
-    });
 
-    try {
-      await order.save();
-    } catch (error) {
-      if (inventoryPlan.length > 0) {
-        await this.rollbackInventoryReductionPlan(inventoryPlan);
-        order.stockReduced = false;
-      }
-      throw error;
-    }
-
-    if (inventoryPlan.length > 0) {
-      await this.logInventoryReduction(order, inventoryPlan);
-    }
+    await order.save();
 
     sendOrderConfirmation(this.serializeOrder(order)).catch((error) => {
       console.error('Email send failed:', error.message);

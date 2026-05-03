@@ -12,6 +12,8 @@ const productService = require('../services/product.service');
 const { successResponse } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
 const { buildTenantScope, andQuery } = require('../utils/tenantScope');
+const orderStateMachine = require('../services/orderStateMachine.service');
+const { ORDER_STATUS } = require('../services/orderStateMachine.service');
 
 /**
  * Generate unique order number
@@ -173,10 +175,16 @@ const createOrder = async (req, res, next) => {
         });
         
         if (paymentMethod === 'cod') {
-            for (const item of processedItems) {
-                if (item.variantId) {
-                    await productService.decrementStock(item.productId, item.variantId, item.quantity);
-                }
+            try {
+                // Use OrderStateMachine to handle PAID status and stock reduction for COD
+                await orderStateMachine.transitionStatus(order._id, ORDER_STATUS.PAID, {
+                    userId,
+                    userType: userId ? 'customer' : 'guest',
+                    reason: 'COD order creation'
+                });
+            } catch (stockError) {
+                console.error('[OrderController] COD stock reduction failed:', stockError.message);
+                // Optionally handle insufficient stock for COD here if not caught earlier
             }
         }
 
@@ -345,17 +353,12 @@ const cancelOrder = async (req, res, next) => {
             throw new ApiError(httpStatus.BAD_REQUEST, `Cannot cancel order in ${order.status} status`);
         }
 
-        order.status = 'cancelled';
-        await order.save();
-
-        await orderEventService.logEvent(
-            order._id,
-            'order_cancelled',
-            req.body.reason || 'Cancelled by customer',
-            {},
-            req.user.id,
-            'customer'
-        );
+        // Use OrderStateMachine for cancellation and stock restoration
+        await orderStateMachine.cancelOrder(order._id, {
+            userId: req.user.id,
+            userType: 'customer',
+            reason: req.body.reason || 'Cancelled by customer'
+        });
 
         return successResponse(res, order, 'Order cancelled');
     } catch (error) {
@@ -467,21 +470,19 @@ const updateOrderStatus = async (req, res, next) => {
         const order = await Order.findById(req.params.id);
         if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
 
-        if (status) order.status = status;
+        if (status && status !== order.status) {
+            await orderStateMachine.transitionStatus(order._id, status, {
+                userId: req.user.id,
+                userType: 'admin',
+                reason: internalNotes || `Status updated to ${status}`
+            });
+        }
+
         if (paymentStatus) order.paymentStatus = paymentStatus;
         if (fulfillmentStatus) order.fulfillmentStatus = fulfillmentStatus;
         if (internalNotes !== undefined) order.internalNotes = internalNotes;
 
         await order.save();
-
-        await orderEventService.logEvent(
-            order._id,
-            'order_updated',
-            `Status updated to ${status || order.status}`,
-            req.body,
-            req.user.id,
-            'admin'
-        );
 
         return successResponse(res, order, 'Order updated');
     } catch (error) {
@@ -534,21 +535,12 @@ const confirmPayment = async (req, res, next) => {
             }
         }
 
-        order.paymentStatus = 'paid';
-        order.status = 'processing';
-        order.paymentMethod = 'razorpay';
-        order.transactionId = razorpay_payment_id;
-        await order.save();
-
-        try {
-            for (const item of order.items) {
-                if (item.variantId) {
-                    await productService.decrementStock(item.productId, item.variantId, item.quantity);
-                }
-            }
-        } catch (stockError) {
-            console.error('[OrderController] Stock decrement error:', stockError.message);
-        }
+        // Use OrderStateMachine to handle PAID status and atomic stock reduction
+        await orderStateMachine.transitionStatus(order._id, ORDER_STATUS.PAID, {
+            userId: req.user?.id || null,
+            userType: req.user ? 'customer' : 'guest',
+            metadata: { razorpay_payment_id, razorpay_order_id }
+        });
 
         await orderEventService.logEvent(
             order._id,

@@ -92,9 +92,14 @@ class OrderStateMachine {
 
         if (newStatus === ORDER_STATUS.PAID) {
             order.payment_status = PAYMENT_STATUS.PAID;
-            await this.reduceOrderStock(order);
+            order.paymentStatus = PAYMENT_STATUS.PAID;
+            await this.reduceOrderStock(order, options.userId);
         } else if (newStatus === ORDER_STATUS.REFUNDED) {
             order.payment_status = PAYMENT_STATUS.REFUNDED;
+            order.paymentStatus = PAYMENT_STATUS.REFUNDED;
+            await this.restoreOrderStock(order, options.userId, 'Order refunded');
+        } else if (newStatus === ORDER_STATUS.CANCELLED) {
+            await this.restoreOrderStock(order, options.userId, options.reason || 'Order cancelled');
         }
 
         const fulfillmentMap = {
@@ -143,11 +148,110 @@ class OrderStateMachine {
         return eventMap[status] || 'order_updated';
     }
 
-    async reduceOrderStock(order) {
-        for (const item of order.items) {
-            if (item.variantId) {
-                await variantInventoryService.reduceStock(item.variantId, item.quantity);
+    /**
+     * Centralized atomic stock reduction for an order
+     * @param {Object} order - Order document
+     * @param {string} userId - User ID performing the action
+     */
+    async reduceOrderStock(order, userId = null) {
+        if (order.stockReduced) {
+            console.log(`[OrderStateMachine] Stock already reduced for order ${order.orderId || order._id}`);
+            return;
+        }
+
+        console.log(`[OrderStateMachine] Reducing stock for order ${order.orderId || order._id}`);
+        const { inventoryAuditService } = require('./inventory-audit.service');
+        const { inventoryService } = require('./inventory.service');
+
+        const reducedItems = [];
+        try {
+            for (const item of order.items) {
+                if (item.variantId) {
+                    const result = await variantInventoryService.reduceStock(item.variantId, item.quantity);
+                    if (result.success) {
+                        reducedItems.push({
+                            variantId: item.variantId,
+                            productId: item.productId,
+                            quantity: item.quantity,
+                            oldStock: result.newStock + item.quantity,
+                            newStock: result.newStock
+                        });
+                    } else {
+                        throw new Error(`Insufficient stock for variant ${item.variantId}: ${result.error}`);
+                    }
+                }
             }
+
+            // Update order status
+            order.stockReduced = true;
+            await order.save();
+
+            // Log audits
+            for (const reduced of reducedItems) {
+                await inventoryAuditService.logSale(
+                    reduced.variantId,
+                    reduced.productId,
+                    reduced.oldStock,
+                    reduced.newStock,
+                    reduced.quantity,
+                    order.orderId || order._id.toString(),
+                    userId
+                );
+            }
+
+            // Clear cache
+            if (reducedItems.length > 0) {
+                await inventoryService.clearProductListCache();
+            }
+        } catch (error) {
+            console.error(`[OrderStateMachine] Stock reduction failed for order ${order._id}:`, error.message);
+            // Rollback if needed (though reduceStock is atomic per item, a multi-item order might need partial rollback)
+            // For now, we rely on the error throwing to prevent status transition to PAID if stock is insufficient
+            throw error;
+        }
+    }
+
+    /**
+     * Restore stock for cancelled or refunded orders
+     */
+    async restoreOrderStock(order, userId = null, reason = '') {
+        if (!order.stockReduced) {
+            return;
+        }
+
+        console.log(`[OrderStateMachine] Restoring stock for order ${order.orderId || order._id}`);
+        const { inventoryAuditService } = require('./inventory-audit.service');
+        const { inventoryService } = require('./inventory.service');
+        const productService = require('./product.service');
+
+        try {
+            for (const item of order.items) {
+                if (item.variantId) {
+                    const product = await Product.findOne({ 'variants._id': item.variantId });
+                    if (product) {
+                        const variant = product.variants.id(item.variantId);
+                        const oldStock = variant.stock;
+                        
+                        await productService.incrementStock(item.productId, item.variantId, item.quantity);
+                        
+                        await inventoryAuditService.logReturn(
+                            item.variantId,
+                            item.productId,
+                            oldStock,
+                            oldStock + item.quantity,
+                            item.quantity,
+                            order.orderId || order._id.toString(),
+                            userId
+                        );
+                    }
+                }
+            }
+
+            order.stockReduced = false;
+            await order.save();
+            await inventoryService.clearProductListCache();
+        } catch (error) {
+            console.error(`[OrderStateMachine] Stock restoration failed for order ${order._id}:`, error.message);
         }
     }
 

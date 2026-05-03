@@ -114,6 +114,9 @@ const handleStripeWebhook = async (req, res, next) => {
     }
 };
 
+const orderStateMachine = require('../services/orderStateMachine.service');
+const { ORDER_STATUS } = require('../services/orderStateMachine.service');
+
 /**
  * Handle Razorpay payment status
  */
@@ -126,11 +129,15 @@ async function handleRazorpayPaymentStatus(payment, status) {
         if (!order) return;
 
         if (status === 'completed') {
-            order.paymentStatus = 'paid';
-            order.status = 'processing';
-            await order.save();
+            // Use OrderStateMachine to handle status transition and stock reduction
+            await orderStateMachine.transitionStatus(order._id, ORDER_STATUS.PAID, {
+                userId: null,
+                userType: 'system',
+                metadata: { paymentId: payment.id, gateway: 'razorpay' }
+            });
         } else if (status === 'failed') {
             order.paymentStatus = 'failed';
+            order.payment_status = 'failed';
             await order.save();
         }
 
@@ -153,7 +160,7 @@ async function handleRazorpayPaymentStatus(payment, status) {
         await orderEventService.logEvent(
             order._id,
             status === 'completed' ? 'payment_success' : 'payment_failed',
-            `Payment ${status} via Razorpay`,
+            `Payment ${status} via Razorpay webhook`,
             { paymentId: payment.id, amount: payment.amount / 100 },
             null,
             'system'
@@ -175,11 +182,15 @@ async function handleStripePaymentStatus(paymentIntent, status) {
         if (!order) return;
 
         if (status === 'completed') {
-            order.paymentStatus = 'paid';
-            order.status = 'processing';
-            await order.save();
+            // Use OrderStateMachine to handle status transition and stock reduction
+            await orderStateMachine.transitionStatus(order._id, ORDER_STATUS.PAID, {
+                userId: null,
+                userType: 'system',
+                metadata: { paymentId: paymentIntent.id, gateway: 'stripe' }
+            });
         } else if (status === 'failed') {
             order.paymentStatus = 'failed';
+            order.payment_status = 'failed';
             await order.save();
         }
 
@@ -200,7 +211,7 @@ async function handleStripePaymentStatus(paymentIntent, status) {
         await orderEventService.logEvent(
             order._id,
             status === 'completed' ? 'payment_success' : 'payment_failed',
-            `Payment ${status} via Stripe`,
+            `Payment ${status} via Stripe webhook`,
             { paymentId: paymentIntent.id, amount: paymentIntent.amount / 100 },
             null,
             'system'
