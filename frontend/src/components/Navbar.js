@@ -191,12 +191,12 @@ const Navbar = ({ isHome = false }) => {
                >
                  <motion.img
                    animate={{ 
-                     height: (isScrolled || isProductDetail) ? (isProductDetail ? 76 : 38) : 44,
-                     scale: (isScrolled || isProductDetail) ? (isProductDetail ? 1.9 : 0.95) : 1 
+                     height: (isScrolled || isProductDetail) ? (isProductDetail ? 52 : 38) : 44,
+                     scale: (isScrolled || isProductDetail) ? (isProductDetail ? 1.3 : 0.95) : 1 
                    }}
                    src="/logo_backup.png"
                    alt="Shri Ramya"
-                   className="w-auto rounded-full object-cover transition-all duration-700 shadow-[0_10px_28px_rgba(64,13,23,0.24)] ring-1 ring-black/5 group-hover:shadow-[0_14px_34px_rgba(64,13,23,0.3)]"
+                   className="w-auto aspect-square rounded-full object-cover transition-all duration-700 shadow-[0_10px_28px_rgba(64,13,23,0.24)] ring-1 ring-black/5 group-hover:shadow-[0_14px_34px_rgba(64,13,23,0.3)]"
                  />
                </Link>
             </div>
