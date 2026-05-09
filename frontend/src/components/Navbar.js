@@ -107,6 +107,7 @@ const Navbar = ({ isHome = false }) => {
   });
 
   const isAdminPage = location.pathname.startsWith('/admin');
+  const isProductDetail = location.pathname.startsWith('/products/');
 
   // Close menus on route change
   useEffect(() => {
@@ -182,16 +183,16 @@ const Navbar = ({ isHome = false }) => {
                  <Menu className="w-6 h-6 text-charcoal group-hover:text-royal-maroon transition-colors" />
                </motion.button>
 
-               {/* Brand Logo - Mobile */}
+               {/* Brand Logo - Mobile & Product Detail Desktop */}
                <Link 
                  to="/" 
-                 className="flex lg:hidden items-center justify-center group" 
+                 className={`flex ${isProductDetail ? '' : 'lg:hidden'} items-center justify-center group`} 
                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                >
                  <motion.img
                    animate={{ 
-                     height: isScrolled ? 38 : 44,
-                     scale: isScrolled ? 0.95 : 1 
+                     height: (isScrolled || isProductDetail) ? 38 : 44,
+                     scale: (isScrolled || isProductDetail) ? 0.95 : 1 
                    }}
                    src="/logo_backup.png"
                    alt="Shri Ramya"
@@ -200,10 +201,10 @@ const Navbar = ({ isHome = false }) => {
                </Link>
             </div>
 
-            {/* Brand Logo - Desktop Hanging Badge */}
+            {/* Brand Logo - Desktop Hanging Badge (Hidden on Product Detail) */}
             <Link
               to="/"
-              className="hidden lg:flex absolute left-[-31px] xl:left-[-23px] top-full -translate-y-[34%] z-20 items-center justify-center group"
+              className={`${isProductDetail ? 'hidden' : 'hidden lg:flex'} absolute left-[-31px] xl:left-[-23px] top-full -translate-y-[34%] z-20 items-center justify-center group`}
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
               <motion.img
