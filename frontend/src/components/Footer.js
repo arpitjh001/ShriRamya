@@ -72,12 +72,8 @@ const Footer = () => {
                 <span>The Royal Studio, 123 Ethnic Street, Jaipur, Rajasthan 302001</span>
               </li>
               <li className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-accent" />
-                <span>+91 98765 43210</span>
-              </li>
-              <li className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-accent" />
-                <span>concierge@shriramya.com</span>
+                <span>admin@shriramya.com</span>
               </li>
             </ul>
           </div>
