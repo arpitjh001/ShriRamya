@@ -58,6 +58,17 @@ const normalizeMaterialGuide = (guide) => {
   return { description, origin, properties, care };
 };
 
+const slugify = (text) => {
+  if (!text) return '';
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')     // Replace spaces with -
+    .replace(/[^\w-]+/g, '')   // Remove all non-word chars
+    .replace(/--+/g, '-');      // Replace multiple - with single -
+};
+
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -421,10 +432,10 @@ const ProductDetailPage = () => {
           <li className="flex items-center gap-2">
             <span>/</span>
             <Link 
-              to={`/category/${product.categorySlug || product.category?.toLowerCase()}`} 
+              to={`/category/${product.categorySlug || slugify(product.category || product.categoryName)}`} 
               className="hover:text-royal-maroon transition-colors"
             >
-              {product.category || product.categoryName}
+              {product.category || product.categoryName || 'Collection'}
             </Link>
           </li>
           <li className="flex min-w-0 items-center gap-2 text-charcoal/80 italic">
@@ -505,7 +516,7 @@ const ProductDetailPage = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold tracking-[0.22em] text-royal-maroon/70">
-                  {product.category}
+                  {product.category || product.categoryName || 'Collection'}
                 </span>
                 <button 
                   onClick={handleToggleWishlist}
