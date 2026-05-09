@@ -420,7 +420,12 @@ const ProductDetailPage = () => {
           <li><Link to="/" className="hover:text-royal-maroon transition-colors">Home</Link></li>
           <li className="flex items-center gap-2">
             <span>/</span>
-            <Link to={`/category/${product.category?.toLowerCase()}`} className="hover:text-royal-maroon transition-colors">{product.category}</Link>
+            <Link 
+              to={`/category/${product.categorySlug || product.category?.toLowerCase()}`} 
+              className="hover:text-royal-maroon transition-colors"
+            >
+              {product.category || product.categoryName}
+            </Link>
           </li>
           <li className="flex min-w-0 items-center gap-2 text-charcoal/80 italic">
             <span>/</span>
