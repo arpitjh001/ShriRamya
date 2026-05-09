@@ -147,20 +147,28 @@ const Navbar = ({ isHome = false }) => {
         variant="default"
         showDashboard={user && isAdmin()}
         onDashboardClick={() => navigate('/admin/dashboard')}
+        isHome={isHome}
+        isScrolled={isScrolled}
       />
       
       <motion.nav
         initial={{ y: 0 }}
         animate={{ 
           y: isVisible ? 0 : -140,
-          backgroundColor: (isScrolled || isAdminPage) ? "rgba(247, 243, 236, 0.35)" : "rgba(247, 243, 236, 0.12)",
-          borderColor: (isScrolled || isAdminPage) ? "rgba(255, 255, 255, 0.30)" : "rgba(255, 255, 255, 0.15)",
-          boxShadow: (isScrolled || isAdminPage)
+          backgroundColor: (isScrolled || isAdminPage || !isHome) 
+            ? "rgba(247, 243, 236, 0.35)" 
+            : "rgba(247, 243, 236, 0)",
+          borderColor: (isScrolled || isAdminPage || !isHome) 
+            ? "rgba(255, 255, 255, 0.30)" 
+            : "rgba(255, 255, 255, 0)",
+          boxShadow: (isScrolled || isAdminPage || !isHome)
             ? "0 20px 44px rgba(31, 31, 31, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.25)"
-            : "0 26px 60px rgba(31, 31, 31, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+            : "none",
         }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative left-0 right-0 w-full overflow-visible border-b backdrop-blur-[24px] transition-all duration-500 ${
+        className={`relative left-0 right-0 w-full overflow-visible border-b transition-all duration-500 ${
+          (isScrolled || isAdminPage || !isHome) ? 'backdrop-blur-[24px]' : 'backdrop-blur-0'
+        } ${
           isScrolled 
             ? 'py-3' 
             : (isAdminPage ? 'py-3' : 'py-4 md:py-5')

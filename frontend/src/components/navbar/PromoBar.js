@@ -16,7 +16,9 @@ const PromoBar = ({
   interval = 5000,
   variant = 'default',
   showDashboard = false,
-  onDashboardClick
+  onDashboardClick,
+  isHome = false,
+  isScrolled = false
 }) => {
   const [index, setIndex] = React.useState(0);
 
@@ -28,10 +30,12 @@ const PromoBar = ({
   }, [messages.length, interval]);
 
   return (
-    <div className={`py-1.5 px-4 text-[10px] md:text-xs font-bold tracking-[0.2em] overflow-hidden relative border-b shadow-sm z-50 ${
-      variant === 'warning'
-        ? 'bg-accent text-charcoal border-charcoal/10'
-        : 'bg-charcoal text-ivory/90 border-ivory/5'
+    <div className={`py-1.5 px-4 text-[10px] md:text-xs font-bold tracking-[0.2em] overflow-hidden relative border-b shadow-sm z-50 transition-all duration-500 ${
+      (isHome && !isScrolled)
+        ? 'bg-transparent text-white border-transparent shadow-none'
+        : (variant === 'warning'
+            ? 'bg-accent text-charcoal border-charcoal/10'
+            : 'bg-charcoal text-ivory/90 border-ivory/5')
     }`}>
       <div className="max-w-7xl mx-auto flex justify-center items-center h-5">
         <AnimatePresence mode="wait">

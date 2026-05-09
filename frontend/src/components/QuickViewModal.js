@@ -148,34 +148,38 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-0 overflow-hidden" data-testid="quick-view-modal">
+      <DialogContent
+        className="bottom-0 top-auto max-h-[92dvh] w-[calc(100vw-0.75rem)] max-w-3xl translate-y-0 gap-0 overflow-hidden rounded-t-2xl p-0 sm:bottom-auto sm:top-[50%] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:translate-y-[-50%] sm:rounded-2xl"
+        data-testid="quick-view-modal"
+      >
         <DialogTitle className="sr-only">Quick View</DialogTitle>
         {loading ? (
-          <div className="flex items-center justify-center h-80">
+          <div className="flex h-80 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : product ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+          <div className="grid max-h-[92dvh] grid-cols-1 overflow-y-auto bg-ivory sm:max-h-[calc(100dvh-2rem)] md:grid-cols-2 md:overflow-hidden">
             {/* Image Gallery */}
-            <div className="relative bg-muted/30">
-              <div className="aspect-[3/4] overflow-hidden">
+            <div className="relative bg-muted/30 md:min-h-full">
+              <div className="aspect-[4/3] max-h-[38dvh] overflow-hidden sm:aspect-[16/10] md:aspect-[3/4] md:max-h-none md:h-full">
                 <img
                   src={images[activeImage] || images[0] || '/uploads/woocommerce-placeholder.webp'}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover object-top"
                   data-testid="quick-view-image"
                 />
               </div>
               {/* Thumbnail strip */}
               {images.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+                <div className="scrollbar-hide absolute bottom-3 left-1/2 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 gap-2 overflow-x-auto px-1">
                   {images.map((img, i) => (
                     <button
                       key={i}
                       onClick={() => setActiveImage(i)}
-                      className={`w-12 h-12 rounded border-2 overflow-hidden transition-all ${i === activeImage ? 'border-primary ring-1 ring-primary' : 'border-white/50 opacity-70 hover:opacity-100'}`}
+                      className={`h-11 w-11 shrink-0 overflow-hidden rounded border-2 transition-all sm:h-12 sm:w-12 ${i === activeImage ? 'border-primary ring-1 ring-primary' : 'border-white/50 opacity-70 hover:opacity-100'}`}
+                      aria-label={`View ${product.name} image ${i + 1}`}
                     >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <img src={img} alt="" className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -188,17 +192,17 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
             </div>
 
             {/* Product Info */}
-            <div className="p-6 flex flex-col">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/60 mb-1">
+            <div className="flex min-h-0 flex-col p-4 pb-0 sm:p-6 sm:pb-0 md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto">
+              <p className="mb-1 pr-8 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/60">
                 {product.categoryName || product.category || ''}
               </p>
-              <h2 className="font-heading text-xl font-medium text-charcoal mb-3" data-testid="quick-view-name">
+              <h2 className="mb-2 pr-8 font-heading text-lg font-medium leading-tight text-charcoal sm:mb-3 sm:text-xl" data-testid="quick-view-name">
                 {product.name}
               </h2>
 
               {/* Price */}
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl font-semibold text-primary" data-testid="quick-view-price">
+              <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 sm:mb-4">
+                <span className="text-xl font-semibold text-primary sm:text-2xl" data-testid="quick-view-price">
                   {formatPrice(displayPrice)}
                 </span>
                 {hasDiscount && (
@@ -207,7 +211,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
               </div>
 
               {product.shortDescription && (
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{product.shortDescription}</p>
+                <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-muted-foreground sm:line-clamp-2">{product.shortDescription}</p>
               )}
 
               {/* Color Selection */}
@@ -273,7 +277,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
               </div>
 
               {/* Actions */}
-              <div className="mt-auto space-y-3">
+              <div className="sticky bottom-0 mt-auto space-y-3 border-t border-border/40 bg-ivory/95 py-3 backdrop-blur md:static md:border-t-0 md:bg-transparent md:pb-6 md:backdrop-blur-0">
                 <Button
                   data-testid="qv-add-to-cart"
                   className="w-full"
