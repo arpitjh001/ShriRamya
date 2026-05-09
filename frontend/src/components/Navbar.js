@@ -143,7 +143,10 @@ const Navbar = ({ isHome = false }) => {
   return (
     <header className="sticky top-0 z-[110]">
       <PromoBar
-        messages={isHome ? ["Free shipping on the orders above 2500"] : undefined}
+        messages={isHome 
+          ? ["Experience Royal Elegance", "Use code: FESTIVE15 for 15% OFF", "Free shipping on orders above ₹2500"] 
+          : ["Luxury Heritage Wear", "Use code: FESTIVE15 for 15% OFF"]
+        }
         variant="default"
         showDashboard={user && isAdmin()}
         onDashboardClick={() => navigate('/admin/dashboard')}

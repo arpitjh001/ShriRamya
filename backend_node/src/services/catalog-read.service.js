@@ -302,6 +302,91 @@ class CatalogReadService {
       .filter(Boolean);
   }
 
+  normalizeCategoryText(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  slugifyCategoryValue(value) {
+    const normalized = this.normalizeCategoryText(value)
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    return normalized || null;
+  }
+
+  splitCategoryText(value) {
+    return String(value || '')
+      .split(/[,|]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  addCategoryEntry(entries, { id = null, slug = null, name = null } = {}) {
+    const normalizedId = this.toStringId(id);
+    const cleanName = name ? String(name).trim() : '';
+    const cleanSlug = slug ? String(slug).trim() : '';
+    const slugKey = this.slugifyCategoryValue(cleanSlug || cleanName);
+
+    if (!normalizedId && !slugKey && !cleanName) {
+      return;
+    }
+
+    const key = slugKey || normalizedId || this.slugifyCategoryValue(cleanName);
+    if (!key || entries.has(key)) {
+      return;
+    }
+
+    entries.set(key, {
+      id: normalizedId,
+      slug: slugKey,
+      name: cleanName || cleanSlug || normalizedId,
+    });
+  }
+
+  getProductCategoryEntries(product = {}) {
+    const entries = new Map();
+
+    if (Array.isArray(product.categories)) {
+      product.categories.forEach((category) => {
+        this.addCategoryEntry(entries, {
+          id: category?.id || category?._id,
+          slug: category?.slug,
+          name: category?.name,
+        });
+      });
+    }
+
+    if (product.categorySlug || product.categoryName) {
+      const categoryNames = this.splitCategoryText(product.categoryName);
+      this.addCategoryEntry(entries, {
+        id: product.categoryId,
+        slug: product.categorySlug,
+        name: categoryNames[0] || product.categoryName,
+      });
+
+      categoryNames.slice(1).forEach((name) => this.addCategoryEntry(entries, { name }));
+    }
+
+    if (Array.isArray(product.category)) {
+      product.category.forEach((name) => this.addCategoryEntry(entries, { name }));
+    } else if (product.category) {
+      this.splitCategoryText(product.category).forEach((name) => this.addCategoryEntry(entries, { name }));
+    }
+
+    if (product.categoryId) {
+      this.addCategoryEntry(entries, { id: product.categoryId });
+    }
+
+    return [...entries.values()];
+  }
+
+  getCategoryFilterCandidates(value) {
+    const raw = this.normalizeCategoryText(value);
+    const slug = this.slugifyCategoryValue(value);
+    return [...new Set([raw, slug].filter(Boolean))];
+  }
+
   getProductColors(product) {
     const variantColors = Array.isArray(product.variants)
       ? product.variants.map((variant) => variant.color).filter(Boolean)
@@ -346,19 +431,27 @@ class CatalogReadService {
 
   filterByCategory(products, categoryFilters) {
     if (categoryFilters.length === 0) return products;
-    if (categoryFilters.includes('most-desired')) return products;
+    const normalizedFilters = categoryFilters.flatMap((entry) => this.getCategoryFilterCandidates(entry));
+    if (normalizedFilters.includes('most-desired')) return products;
 
     return products.filter((product) => {
       const categoryIds = new Set([
         ...(product.categoryId ? [String(product.categoryId)] : []),
         ...(product.categories || []).map((category) => String(category.id || category._id)),
       ]);
-      const categorySlugs = new Set([
-        ...(product.categorySlug ? [String(product.categorySlug)] : []),
-        ...(product.categories || []).map((category) => String(category.slug || '')),
-      ]);
+      const categoryValues = new Set(
+        this.getProductCategoryEntries(product)
+          .flatMap((category) => [
+            ...this.getCategoryFilterCandidates(category.slug),
+            ...this.getCategoryFilterCandidates(category.name),
+          ])
+      );
 
-      return categoryFilters.some((categoryFilter) => categoryIds.has(categoryFilter) || categorySlugs.has(categoryFilter));
+      return categoryFilters.some((categoryFilter) => {
+        const rawFilter = String(categoryFilter);
+        const candidates = this.getCategoryFilterCandidates(categoryFilter);
+        return categoryIds.has(rawFilter) || candidates.some((candidate) => categoryValues.has(candidate));
+      });
     });
   }
 
@@ -552,18 +645,12 @@ class CatalogReadService {
       this.incrementCounter(metadata.fabrics, product.fabric);
       this.incrementCounter(metadata.occasions, product.occasion);
 
-      const categoryEntries = new Map();
-      if (product.categories && Array.isArray(product.categories)) {
-        product.categories.forEach(cat => {
-          if (cat.slug && cat.name) categoryEntries.set(cat.slug, cat.name);
-        });
-      } else if (product.categorySlug && product.categoryName) {
-        categoryEntries.set(product.categorySlug, product.categoryName);
-      }
+      this.getProductCategoryEntries(product).forEach((category) => {
+        const slug = category.slug || this.slugifyCategoryValue(category.name);
+        if (!slug) return;
 
-      categoryEntries.forEach((name, slug) => {
         if (!metadata.categories[slug]) {
-          metadata.categories[slug] = { name, count: 0 };
+          metadata.categories[slug] = { name: category.name || slug, count: 0 };
         }
         metadata.categories[slug].count += 1;
       });

@@ -30,13 +30,17 @@ const PromoBar = ({
   }, [messages.length, interval]);
 
   return (
-    <div className={`py-1.5 px-4 text-[10px] md:text-xs font-bold tracking-[0.2em] overflow-hidden relative border-b shadow-sm z-50 transition-all duration-500 ${
+    <div className={`py-2 px-4 text-[10px] md:text-xs font-bold tracking-[0.3em] uppercase overflow-hidden relative border-b shadow-luxury-sm z-50 transition-all duration-700 ${
       (isHome && !isScrolled)
         ? 'bg-transparent text-white border-transparent shadow-none'
         : (variant === 'warning'
             ? 'bg-accent text-charcoal border-charcoal/10'
-            : 'bg-royal-maroon text-ivory/90 border-white/10')
+            : 'bg-gradient-to-r from-[#D4AF37] via-[#F4D03F] to-[#D4AF37] text-charcoal border-[#D4AF37]/20 shimmer-effect')
     }`}>
+      {/* Shimmer Overlay */}
+      {(!isHome || isScrolled) && variant !== 'warning' && (
+        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-shimmer" />
+      )}
       <div className="max-w-7xl mx-auto flex justify-center items-center h-5">
         <AnimatePresence mode="wait">
           <motion.p

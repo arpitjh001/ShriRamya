@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { useCart } from '../context/CartContext';
 import { productsAPI } from '../services/api';
@@ -153,6 +153,9 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
         data-testid="quick-view-modal"
       >
         <DialogTitle className="sr-only">Quick View</DialogTitle>
+        <DialogDescription className="sr-only">
+          Review product images, options, price, and cart actions.
+        </DialogDescription>
         {loading ? (
           <div className="flex h-80 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
