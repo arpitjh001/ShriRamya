@@ -35,11 +35,11 @@ const PromoBar = ({
         ? 'bg-transparent text-white border-transparent shadow-none'
         : (variant === 'warning'
             ? 'bg-accent text-charcoal border-charcoal/10'
-            : 'bg-gradient-to-r from-[#D4AF37] via-[#F4D03F] to-[#D4AF37] text-charcoal border-[#D4AF37]/20 shimmer-effect')
+            : 'bg-royal-maroon text-ivory border-white/5 shimmer-effect')
     }`}>
       {/* Shimmer Overlay */}
       {(!isHome || isScrolled) && variant !== 'warning' && (
-        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-shimmer" />
+        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
       )}
       <div className="max-w-7xl mx-auto flex justify-center items-center h-5">
         <AnimatePresence mode="wait">

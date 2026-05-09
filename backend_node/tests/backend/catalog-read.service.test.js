@@ -73,4 +73,17 @@ describe('CatalogReadService category filters', () => {
       },
     });
   });
+
+  it('does not expose raw category ids as visible metadata labels', () => {
+    const metadata = catalogReadService.buildFilterMetadata([
+      {
+        id: 'id-only-product',
+        categoryId: '665555555555555555555555',
+        categories: [],
+        price: 1800,
+      },
+    ]);
+
+    expect(metadata.categories).toEqual({});
+  });
 });

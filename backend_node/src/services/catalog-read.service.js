@@ -328,11 +328,11 @@ class CatalogReadService {
     const cleanSlug = slug ? String(slug).trim() : '';
     const slugKey = this.slugifyCategoryValue(cleanSlug || cleanName);
 
-    if (!normalizedId && !slugKey && !cleanName) {
+    if (!slugKey && !cleanName) {
       return;
     }
 
-    const key = slugKey || normalizedId || this.slugifyCategoryValue(cleanName);
+    const key = slugKey;
     if (!key || entries.has(key)) {
       return;
     }
@@ -372,10 +372,6 @@ class CatalogReadService {
       product.category.forEach((name) => this.addCategoryEntry(entries, { name }));
     } else if (product.category) {
       this.splitCategoryText(product.category).forEach((name) => this.addCategoryEntry(entries, { name }));
-    }
-
-    if (product.categoryId) {
-      this.addCategoryEntry(entries, { id: product.categoryId });
     }
 
     return [...entries.values()];
@@ -437,7 +433,10 @@ class CatalogReadService {
     return products.filter((product) => {
       const categoryIds = new Set([
         ...(product.categoryId ? [String(product.categoryId)] : []),
-        ...(product.categories || []).map((category) => String(category.id || category._id)),
+        ...(product.categories || [])
+          .map((category) => category?.id || category?._id || category)
+          .filter(Boolean)
+          .map((categoryId) => String(categoryId)),
       ]);
       const categoryValues = new Set(
         this.getProductCategoryEntries(product)
