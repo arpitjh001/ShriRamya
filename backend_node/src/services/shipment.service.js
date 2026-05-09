@@ -5,12 +5,12 @@ const config = require('../config/config');
 const { Order } = require('../models');
 const shipmentRepository = require('../repositories/shipment.repository');
 const orderEventService = require('./events/orderEvent.service');
-const xpressbeesService = require('./shipping/xpressbees.service');
+const shiprocketService = require('./shipping/shiprocket.service');
 const ApiError = require('../utils/ApiError');
 
 const ACTIVE_SHIPMENT_STATUSES = ['pending', 'booked', 'shipped', 'in_transit', 'out_for_delivery', 'exception'];
 const READY_TO_SHIP_ORDER_STATUSES = ['confirmed', 'paid', 'processing'];
-const XPRESSBEES_PROVIDER = 'xpressbees';
+const SHIPROCKET_PROVIDER = 'shiprocket';
 
 const trimString = (value) => (typeof value === 'string' ? value.trim() : '');
 
@@ -19,13 +19,14 @@ const toNumberOrNull = (value) => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
-const toXpressbeesWeightGrams = (value, fallback) => {
+const toShiprocketWeightKg = (value, fallback) => {
   const numeric = toNumberOrNull(value);
   if (!numeric || numeric <= 0) {
     return fallback;
   }
 
-  return numeric < 50 ? Math.round(numeric * 1000) : numeric;
+  const weightInKg = numeric > 50 ? numeric / 1000 : numeric;
+  return Math.max(Number(weightInKg.toFixed(3)), 0.2);
 };
 
 const cleanObject = (value) => {
@@ -52,8 +53,8 @@ class ShipmentService {
     return options.userId || options.user_id || options.sub || null;
   }
 
-  isXpressbeesCarrier(carrier = '', provider = '') {
-    return [carrier, provider].some((value) => trimString(value).toLowerCase() === XPRESSBEES_PROVIDER);
+  isShiprocketCarrier(carrier = '', provider = '') {
+    return [carrier, provider].some((value) => trimString(value).toLowerCase() === SHIPROCKET_PROVIDER);
   }
 
   async resolveOrder(orderIdentifier) {
@@ -122,13 +123,13 @@ class ShipmentService {
     const latestCode = trimString(history[0]?.status_code || history[history.length - 1]?.status_code).toUpperCase();
 
     if (rawStatus === 'cancelled') return 'cancelled';
-    if (rawStatus === 'booked' || rawStatus === 'pickup_pending' || latestCode === 'PP') return 'booked';
+    if (rawStatus === 'booked' || rawStatus === 'pickup_pending' || rawStatus.includes('manifest') || rawStatus.includes('pickup scheduled') || latestCode === 'PP') return 'booked';
     if (latestCode === 'DL' || rawStatus === 'delivered') return 'delivered';
     if (latestCode === 'FD' || rawStatus.includes('out for delivery')) return 'out_for_delivery';
     if (latestCode === 'EX' || rawStatus === 'exception') return 'exception';
     if (latestCode === 'RT' || latestCode === 'RT-IT' || latestCode === 'RT-DL' || rawStatus === 'rto' || rawStatus.includes('return')) return 'returned';
     if (latestCode === 'IT' || rawStatus === 'in_transit' || rawStatus.includes('transit')) return 'in_transit';
-    if (rawStatus === 'shipped') return 'shipped';
+    if (rawStatus === 'shipped' || rawStatus.includes('picked up') || rawStatus === 'picked up') return 'shipped';
     return 'pending';
   }
 
@@ -184,23 +185,25 @@ class ShipmentService {
       return '';
     }
 
-    if (trimString(provider).toLowerCase() === XPRESSBEES_PROVIDER) {
-      return xpressbeesService.buildTrackingUrl(trackingNumber);
+    if (trimString(provider).toLowerCase() === SHIPROCKET_PROVIDER) {
+      return shiprocketService.buildTrackingUrl(trackingNumber);
     }
 
     return '';
   }
 
-  normalizeXpressbeesCourier(courier = {}) {
-    const id = courier.courier_id || courier.id || courier.service_id || '';
-    const name = courier.courier_name || courier.name || courier.service_name || 'Xpressbees';
-    const rate = courier.rate || courier.total_charges || courier.freight_charges || null;
+  normalizeShiprocketCourier(courier = {}) {
+    const id = courier.courier_company_id || courier.courier_id || courier.id || '';
+    const name = courier.courier_name || courier.name || courier.service_name || 'Shiprocket';
+    const rate = courier.rate || courier.freight_charge || courier.total_charges || courier.freight_charges || null;
 
     return {
       ...courier,
       courier_id: id,
+      courier_company_id: id,
       courier_name: name,
       rate,
+      estimated_delivery_days: courier.estimated_delivery_days || courier.etd || courier.estimated_delivery,
     };
   }
 
@@ -334,96 +337,115 @@ class ShipmentService {
     }
   }
 
-  buildPickupPayload(overrides = {}) {
-    const pickup = cleanObject({
-      ...cleanObject(config.xpressbees.pickup),
-      ...cleanObject(overrides),
-    });
-
-    const requiredFields = ['warehouse_name', 'name', 'address', 'city', 'state', 'pincode', 'phone'];
-    const missingFields = requiredFields.filter((field) => !pickup[field]);
-    if (missingFields.length > 0) {
-      throw new ApiError(httpStatus.BAD_REQUEST, `Xpressbees pickup details are incomplete. Missing: ${missingFields.join(', ')}`);
+  splitCustomerName(name = '') {
+    const parts = trimString(name).split(/\s+/).filter(Boolean);
+    if (parts.length <= 1) {
+      return {
+        firstName: parts[0] || 'Customer',
+        lastName: '',
+      };
     }
 
-    return pickup;
+    return {
+      firstName: parts[0],
+      lastName: parts.slice(1).join(' '),
+    };
   }
 
-  buildRtoPayload(overrides = {}) {
-    const merged = cleanObject({
-      ...cleanObject(config.xpressbees.rto),
-      ...cleanObject(overrides),
-    });
+  formatOrderDate(value) {
+    const date = value ? new Date(value) : new Date();
+    const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+    const pad = (entry) => String(entry).padStart(2, '0');
 
-    return Object.keys(merged).length > 0 ? merged : null;
+    return [
+      safeDate.getFullYear(),
+      pad(safeDate.getMonth() + 1),
+      pad(safeDate.getDate()),
+    ].join('-') + ` ${pad(safeDate.getHours())}:${pad(safeDate.getMinutes())}`;
   }
 
-  buildXpressbeesPayload(order, shipmentData = {}) {
+  buildShiprocketPayload(order, shipmentData = {}) {
     const address = this.normalizeAddress(order);
     const missingAddressFields = ['name', 'address', 'city', 'state', 'pincode', 'phone'].filter((field) => !address[field]);
     if (missingAddressFields.length > 0) {
-      throw new ApiError(httpStatus.BAD_REQUEST, `Order shipping address is incomplete for Xpressbees. Missing: ${missingAddressFields.join(', ')}`);
+      throw new ApiError(httpStatus.BAD_REQUEST, `Order shipping address is incomplete for Shiprocket. Missing: ${missingAddressFields.join(', ')}`);
     }
 
-    const pickup = this.buildPickupPayload(shipmentData.pickup);
-    const rto = this.buildRtoPayload(shipmentData.rto);
+    const pickupLocation = trimString(shipmentData.pickupLocation || shipmentData.pickup_location || config.shiprocket.pickupLocation);
+    if (!pickupLocation) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Shiprocket pickup location is required');
+    }
+
     const dimensions = this.parseDimensions(shipmentData.shippingDimensions) || {
-      length: toNumberOrNull(shipmentData.length) || config.xpressbees.defaultPackage.length,
-      breadth: toNumberOrNull(shipmentData.breadth || shipmentData.width) || config.xpressbees.defaultPackage.breadth,
-      height: toNumberOrNull(shipmentData.height) || config.xpressbees.defaultPackage.height,
+      length: toNumberOrNull(shipmentData.length) || config.shiprocket.defaultPackage.length,
+      breadth: toNumberOrNull(shipmentData.breadth || shipmentData.width) || config.shiprocket.defaultPackage.breadth,
+      height: toNumberOrNull(shipmentData.height) || config.shiprocket.defaultPackage.height,
     };
-    const weight = toXpressbeesWeightGrams(shipmentData.shippingWeight || shipmentData.weight, config.xpressbees.defaultPackage.weight);
+    const weight = toShiprocketWeightKg(shipmentData.shippingWeight || shipmentData.weight, config.shiprocket.defaultPackage.weight);
     const paymentType = trimString(shipmentData.paymentType)
       || trimString(shipmentData.payment_type)
       || trimString(shipmentData.order_type).toLowerCase()
       || (trimString(order.paymentMethod || order.payment_method).toLowerCase() === 'cod' ? 'cod' : 'prepaid');
+    const isCod = paymentType.toLowerCase() === 'cod';
     const orderAmount = Number(order.total ?? order.total_amount ?? 0) || 0;
+    const shippingCharges = Number(order.shipping || 0) || 0;
+    const totalDiscount = Number(order.discount || 0) || 0;
     const orderItems = Array.isArray(order.items) && order.items.length > 0
       ? order.items.map((item) => ({
           name: item.name || item.productName || 'Product',
-          qty: String(Number(item.quantity || 0) || 1),
-          price: String(Number(item.salePrice ?? item.price ?? item.priceSnapshot ?? item.unitPrice ?? 0) || 0),
-          sku: item.sku || item.productSku || '',
+          sku: item.sku || item.productSku || trimString(item.productId) || trimString(order.orderId || order._id),
+          units: Number(item.quantity || 0) || 1,
+          selling_price: Number(item.salePrice ?? item.price ?? item.priceSnapshot ?? item.unitPrice ?? 0)
+            || (orderAmount && order.items.length ? Number((orderAmount / order.items.length).toFixed(2)) : 1),
+          discount: Number(item.discount || 0) || 0,
+          tax: Number(item.tax || 0) || 0,
+          hsn: item.hsn || '',
         }))
-      : [{ name: 'Order Items', qty: '1', price: String(orderAmount), sku: trimString(order.orderId || order._id) }];
+      : [{
+          name: 'Order Items',
+          sku: trimString(order.orderId || order._id),
+          units: 1,
+          selling_price: orderAmount,
+          discount: 0,
+          tax: 0,
+          hsn: '',
+        }];
+    const itemSubtotal = orderItems.reduce((total, item) => total + (Number(item.selling_price) || 0) * (Number(item.units) || 1), 0);
+    const subTotal = Math.max(Number(order.subtotal || 0) || itemSubtotal || (orderAmount - shippingCharges) || orderAmount, 1);
+    const { firstName, lastName } = this.splitCustomerName(address.name);
 
-    const payload = {
-      order_number: trimString(order.orderId || order._id),
-      payment_type: paymentType,
-      order_amount: orderAmount,
-      collectable_amount: paymentType === 'cod' ? orderAmount : 0,
-      shipping_charges: Number(order.shipping || 0) || 0,
-      discount: Number(order.discount || 0) || 0,
-      cod_charges: paymentType === 'cod' ? Number(shipmentData.codCharges || 0) || 0 : 0,
-      package_weight: weight,
-      package_length: Number(dimensions.length || 10),
-      package_breadth: Number(dimensions.breadth || 10),
-      package_height: Number(dimensions.height || 10),
-      request_auto_pickup: shipmentData.requestAutoPickup === false || shipmentData.request_auto_pickup === false ? 'no' : config.xpressbees.requestAutoPickup,
-      consignee: {
-        name: address.name,
-        address: address.address,
-        address_2: address.address2 || '',
-        city: address.city,
-        state: address.state,
-        pincode: String(address.pincode),
-        phone: String(address.phone),
-      },
-      pickup,
+    return cleanObject({
+      order_id: trimString(order.orderId || order._id),
+      order_date: this.formatOrderDate(order.created_at || order.createdAt),
+      pickup_location: pickupLocation,
+      reseller_name: config.shiprocket.resellerName,
+      company_name: config.shiprocket.companyName,
+      billing_customer_name: firstName,
+      billing_last_name: lastName,
+      billing_address: address.address,
+      billing_address_2: address.address2 || '',
+      billing_city: address.city,
+      billing_pincode: String(address.pincode),
+      billing_state: address.state,
+      billing_country: address.country || 'India',
+      billing_email: address.email || order.userEmail || config.shiprocket.email,
+      billing_phone: String(address.phone).replace(/\D/g, '').slice(-10) || String(address.phone),
+      shipping_is_billing: true,
       order_items: orderItems,
-    };
-
-    const courierId = trimString(shipmentData.courierId || shipmentData.courier_id || shipmentData.xpressbeesCourierId);
-    if (courierId) {
-      payload.courier_id = courierId;
-    }
-
-    payload.is_rto_different = rto ? 'yes' : 'no';
-    if (rto) {
-      payload.rto = rto;
-    }
-
-    return payload;
+      payment_method: isCod ? 'COD' : 'Prepaid',
+      shipping_charges: shippingCharges,
+      giftwrap_charges: Number(shipmentData.giftwrapCharges || shipmentData.giftwrap_charges || 0) || 0,
+      transaction_charges: Number(shipmentData.transactionCharges || shipmentData.transaction_charges || 0) || 0,
+      total_discount: totalDiscount,
+      sub_total: Number(subTotal.toFixed(2)),
+      length: Math.max(Number(dimensions.length || config.shiprocket.defaultPackage.length), 0.6),
+      breadth: Math.max(Number(dimensions.breadth || config.shiprocket.defaultPackage.breadth), 0.6),
+      height: Math.max(Number(dimensions.height || config.shiprocket.defaultPackage.height), 0.6),
+      weight,
+      customer_gstin: shipmentData.customerGstin || shipmentData.customer_gstin || '',
+      invoice_number: shipmentData.invoiceNumber || shipmentData.invoice_number || '',
+      order_type: shipmentData.orderType || shipmentData.order_type || '',
+    });
   }
 
   async createShipment(shipmentData, options = {}) {
@@ -436,12 +458,13 @@ class ShipmentService {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Order already has an active shipment');
     }
 
-    const provider = this.isXpressbeesCarrier(shipmentData.carrier, shipmentData.provider) ? XPRESSBEES_PROVIDER : 'manual';
+    const provider = this.isShiprocketCarrier(shipmentData.carrier, shipmentData.provider) ? SHIPROCKET_PROVIDER : 'manual';
     let carrier = trimString(shipmentData.carrier) || provider;
     let trackingNumber = trimString(shipmentData.trackingNumber);
     let trackingUrl = trimString(shipmentData.trackingUrl);
     let status = trackingNumber ? 'shipped' : 'pending';
     let labelUrl = '';
+    let manifestUrl = '';
     let externalOrderId = '';
     let externalShipmentId = '';
     let externalCourierId = '';
@@ -449,30 +472,44 @@ class ShipmentService {
     let providerMetadata = null;
     let history = [];
 
-    if (provider === XPRESSBEES_PROVIDER) {
-      xpressbeesService.assertConfigured();
-      const bookingPayload = this.buildXpressbeesPayload(order, shipmentData);
-      const booking = await xpressbeesService.createShipment(bookingPayload);
+    if (provider === SHIPROCKET_PROVIDER) {
+      shiprocketService.assertConfigured();
+      const bookingPayload = this.buildShiprocketPayload(order, shipmentData);
+      const courierId = trimString(shipmentData.courierId || shipmentData.courier_id || shipmentData.shiprocketCourierId);
+      const booking = await shiprocketService.createShipment(bookingPayload, {
+        courierId,
+        requestPickup: shipmentData.requestPickup !== false
+          && shipmentData.request_pickup !== false
+          && shipmentData.request_auto_pickup !== false
+          && config.shiprocket.requestPickup,
+        generateManifest: shipmentData.generateManifest !== false && config.shiprocket.generateManifest,
+        generateLabel: shipmentData.generateLabel !== false && config.shiprocket.generateLabel,
+        generateInvoice: shipmentData.generateInvoice !== false && config.shiprocket.generateInvoice,
+      });
 
-      carrier = booking.courierName || 'Xpressbees';
+      carrier = booking.courierName || 'Shiprocket';
       trackingNumber = booking.awbNumber;
       trackingUrl = booking.trackingUrl || this.getShipmentTrackingUrl(provider, trackingNumber);
       status = this.normalizeShipmentStatus(booking.status);
       labelUrl = booking.labelUrl || '';
+      manifestUrl = booking.manifestUrl || '';
       externalOrderId = booking.orderId ? String(booking.orderId) : '';
       externalShipmentId = booking.shipmentId ? String(booking.shipmentId) : '';
       externalCourierId = booking.courierId ? String(booking.courierId) : '';
-      paymentType = booking.paymentType || bookingPayload.payment_type;
+      paymentType = booking.paymentType || bookingPayload.payment_method;
       providerMetadata = {
-        additionalInfo: booking.additionalInfo || '',
         bookingPayload,
         bookingResponse: booking.raw,
+        invoiceUrl: booking.invoiceUrl || '',
+        pickupResponse: booking.pickupResponse || null,
+        manifestResponse: booking.manifestResponse || null,
+        documentErrors: booking.documentErrors || [],
       };
       history = [
         this.normalizeHistoryEntry({
           status: booking.status || 'booked',
-          message: 'Shipment booked with Xpressbees',
-        }, XPRESSBEES_PROVIDER),
+          message: 'Shipment booked with Shiprocket',
+        }, SHIPROCKET_PROVIDER),
       ];
     } else if (trackingNumber) {
       history = [
@@ -483,6 +520,13 @@ class ShipmentService {
       ];
     }
 
+    const parsedShipmentDimensions = this.parseDimensions(shipmentData.shippingDimensions) || cleanObject({
+      length: toNumberOrNull(shipmentData.length),
+      breadth: toNumberOrNull(shipmentData.breadth || shipmentData.width),
+      height: toNumberOrNull(shipmentData.height),
+    });
+    const shippingDimensions = Object.keys(parsedShipmentDimensions).length > 0 ? parsedShipmentDimensions : null;
+
     const shipment = await shipmentRepository.create({
       orderId: order._id,
       provider,
@@ -490,11 +534,12 @@ class ShipmentService {
       trackingNumber,
       trackingUrl,
       shippingMethod: trimString(shipmentData.shippingMethod),
-      shippingWeight: toNumberOrNull(shipmentData.shippingWeight),
-      shippingDimensions: shipmentData.shippingDimensions || null,
+      shippingWeight: toNumberOrNull(shipmentData.shippingWeight || shipmentData.weight),
+      shippingDimensions,
       status,
       shippingAddress: this.normalizeAddress(order),
       labelUrl,
+      manifestUrl,
       externalOrderId,
       externalShipmentId,
       externalCourierId,
@@ -508,7 +553,7 @@ class ShipmentService {
       trackingNumber,
       trackingUrl,
       shipmentStatus: status,
-      note: provider === XPRESSBEES_PROVIDER ? 'Shipment booked with Xpressbees' : 'Shipment created',
+      note: provider === SHIPROCKET_PROVIDER ? 'Shipment booked with Shiprocket' : 'Shipment created',
     });
 
     await orderEventService.logEvent(
@@ -529,7 +574,7 @@ class ShipmentService {
     return {
       success: true,
       shipment: this.serializeShipment(createdShipment),
-      message: provider === XPRESSBEES_PROVIDER ? 'Xpressbees shipment created successfully' : 'Shipment created successfully',
+      message: provider === SHIPROCKET_PROVIDER ? 'Shiprocket shipment created successfully' : 'Shipment created successfully',
     };
   }
 
@@ -549,7 +594,7 @@ class ShipmentService {
     const order = shipment.orderId;
     const nextCarrier = trimString(trackingData.carrier) || shipment.carrier;
     const nextTrackingNumber = trimString(trackingData.trackingNumber) || shipment.trackingNumber;
-    const nextProvider = this.isXpressbeesCarrier(nextCarrier, shipment.provider) ? XPRESSBEES_PROVIDER : shipment.provider || 'manual';
+    const nextProvider = this.isShiprocketCarrier(nextCarrier, shipment.provider) ? SHIPROCKET_PROVIDER : shipment.provider || 'manual';
     const nextTrackingUrl = trimString(trackingData.trackingUrl)
       || shipment.trackingUrl
       || this.getShipmentTrackingUrl(nextProvider, nextTrackingNumber);
@@ -684,19 +729,35 @@ class ShipmentService {
 
   async syncShipment(id, options = {}) {
     const shipment = await this.resolveShipment(id);
-    if (trimString(shipment.provider).toLowerCase() !== XPRESSBEES_PROVIDER) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Shipment is not managed by Xpressbees');
+    if (trimString(shipment.provider).toLowerCase() !== SHIPROCKET_PROVIDER) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Shipment is not managed by Shiprocket');
     }
 
     if (!shipment.trackingNumber) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Shipment has no tracking number to sync');
     }
 
-    const tracking = await xpressbeesService.trackShipment(shipment.trackingNumber);
-    const normalizedStatus = this.normalizeShipmentStatus(tracking.status, tracking.history || []);
-    const normalizedHistory = Array.isArray(tracking.history)
-      ? tracking.history.map((entry) => this.normalizeHistoryEntry(entry, XPRESSBEES_PROVIDER))
-      : shipment.history;
+    const tracking = await shiprocketService.trackShipment(shipment.trackingNumber);
+    const shipmentTrack = Array.isArray(tracking.shipment_track) ? tracking.shipment_track[0] : {};
+    const activities = Array.isArray(tracking.shipment_track_activities)
+      ? tracking.shipment_track_activities
+      : (Array.isArray(tracking.history) ? tracking.history : []);
+    const rawStatus = tracking.current_status || shipmentTrack.current_status || tracking.status || '';
+    const normalizedStatus = this.normalizeShipmentStatus(rawStatus, activities);
+    const normalizedHistory = activities.length > 0
+      ? activities.map((entry) => this.normalizeHistoryEntry({
+          statusCode: entry.status || entry.status_code,
+          rawStatus: entry.activity || entry.status || entry.message,
+          description: entry.activity || entry.description || entry.message,
+          location: entry.location,
+          event_time: entry.date || entry.event_time,
+        }, SHIPROCKET_PROVIDER))
+      : [
+          this.normalizeHistoryEntry({
+            rawStatus,
+            description: rawStatus || 'Tracking synced from Shiprocket',
+          }, SHIPROCKET_PROVIDER),
+        ];
 
     const update = {
       status: normalizedStatus,
@@ -708,11 +769,11 @@ class ShipmentService {
       },
     };
 
-    if (tracking.awb_number) {
-      update.trackingNumber = String(tracking.awb_number);
+    if (shipmentTrack.awb_code || tracking.awb_code || tracking.awb_number) {
+      update.trackingNumber = String(shipmentTrack.awb_code || tracking.awb_code || tracking.awb_number);
     }
 
-    update.trackingUrl = shipment.trackingUrl || this.getShipmentTrackingUrl(XPRESSBEES_PROVIDER, update.trackingNumber || shipment.trackingNumber);
+    update.trackingUrl = tracking.track_url || shipment.trackingUrl || this.getShipmentTrackingUrl(SHIPROCKET_PROVIDER, update.trackingNumber || shipment.trackingNumber);
 
     if (normalizedStatus === 'delivered') {
       update.actualDelivery = new Date();
@@ -728,14 +789,14 @@ class ShipmentService {
       trackingNumber: updatedShipment.trackingNumber,
       trackingUrl: updatedShipment.trackingUrl,
       shipmentStatus: normalizedStatus,
-      note: `Shipment synced from Xpressbees (${normalizedStatus})`,
+      note: `Shipment synced from Shiprocket (${normalizedStatus})`,
     });
 
     if (!options.silent) {
       await orderEventService.logEvent(
         updatedShipment.orderId._id,
         'tracking_updated',
-        `Shipment synced from Xpressbees (${normalizedStatus})`,
+        `Shipment synced from Shiprocket (${normalizedStatus})`,
         {
           shipmentId: updatedShipment._id?.toString?.(),
           trackingNumber: updatedShipment.trackingNumber,
@@ -759,14 +820,14 @@ class ShipmentService {
       throw new ApiError(httpStatus.BAD_REQUEST, `Cannot cancel shipment in ${shipment.status} status`);
     }
 
-    if (trimString(shipment.provider).toLowerCase() === XPRESSBEES_PROVIDER && shipment.trackingNumber) {
-      await xpressbeesService.cancelShipment(shipment.trackingNumber);
+    if (trimString(shipment.provider).toLowerCase() === SHIPROCKET_PROVIDER && shipment.externalOrderId) {
+      await shiprocketService.cancelOrder(shipment.externalOrderId);
     }
 
     const historyEntry = this.normalizeHistoryEntry({
       status: 'cancelled',
       message: 'Shipment cancelled',
-    }, trimString(shipment.provider).toLowerCase() === XPRESSBEES_PROVIDER ? XPRESSBEES_PROVIDER : 'manual');
+    }, trimString(shipment.provider).toLowerCase() === SHIPROCKET_PROVIDER ? SHIPROCKET_PROVIDER : 'manual');
 
     const updatedShipment = await shipmentRepository.update(id, {
       status: 'cancelled',
@@ -822,7 +883,7 @@ class ShipmentService {
     }
 
     let latestShipment = shipments[0];
-    if (options.syncProvider !== false && trimString(latestShipment.provider).toLowerCase() === XPRESSBEES_PROVIDER && latestShipment.trackingNumber) {
+    if (options.syncProvider !== false && trimString(latestShipment.provider).toLowerCase() === SHIPROCKET_PROVIDER && latestShipment.trackingNumber) {
       try {
         const synced = await this.syncShipment(latestShipment._id, {
           silent: true,
@@ -831,7 +892,7 @@ class ShipmentService {
         });
         latestShipment = await shipmentRepository.getById(synced.shipment.id);
       } catch (error) {
-        // Fall back to the stored shipment state if Xpressbees is temporarily unavailable.
+        // Fall back to the stored shipment state if Shiprocket is temporarily unavailable.
       }
     }
 
@@ -936,22 +997,23 @@ class ShipmentService {
     };
   }
 
-  async listXpressbeesCouriers() {
-    const couriers = await xpressbeesService.listCouriers();
-    return couriers.map((courier) => this.normalizeXpressbeesCourier(courier));
+  async listShiprocketCouriers(payload = {}) {
+    const serviceability = await this.checkShiprocketServiceability(payload);
+    return serviceability.available_couriers;
   }
 
-  async checkXpressbeesServiceability(payload = {}) {
-    const origin = trimString(payload.origin || payload.origin_pincode || payload.pickup_pincode) || trimString(config.xpressbees.pickup.pincode);
-    let destination = trimString(payload.destination || payload.destination_pincode || payload.delivery_pincode);
+  async checkShiprocketServiceability(payload = {}) {
+    const origin = trimString(payload.origin || payload.origin_pincode || payload.pickup_pincode || payload.pickup_postcode)
+      || trimString(config.shiprocket.pickupPincode);
+    let destination = trimString(payload.destination || payload.destination_pincode || payload.delivery_pincode || payload.delivery_postcode);
     let paymentType = trimString(payload.paymentType || payload.payment_type || payload.order_type).toLowerCase();
     const orderAmountValue = toNumberOrNull(payload.orderAmount || payload.order_amount);
     let orderAmount = orderAmountValue && orderAmountValue > 0 ? orderAmountValue : 1;
-    let weight = toXpressbeesWeightGrams(payload.weight, config.xpressbees.defaultPackage.weight);
+    let weight = toShiprocketWeightKg(payload.weight, config.shiprocket.defaultPackage.weight);
     let dimensions = this.parseDimensions(payload.shippingDimensions) || {
-      length: toNumberOrNull(payload.length) || config.xpressbees.defaultPackage.length,
-      breadth: toNumberOrNull(payload.breadth || payload.width) || config.xpressbees.defaultPackage.breadth,
-      height: toNumberOrNull(payload.height) || config.xpressbees.defaultPackage.height,
+      length: toNumberOrNull(payload.length) || config.shiprocket.defaultPackage.length,
+      breadth: toNumberOrNull(payload.breadth || payload.width) || config.shiprocket.defaultPackage.breadth,
+      height: toNumberOrNull(payload.height) || config.shiprocket.defaultPackage.height,
     };
 
     if (payload.orderId) {
@@ -960,32 +1022,65 @@ class ShipmentService {
       destination = destination || trimString(address.pincode);
       paymentType = paymentType || (trimString(order.paymentMethod || order.payment_method).toLowerCase() === 'cod' ? 'cod' : 'prepaid');
       orderAmount = orderAmount || Number(order.total ?? order.total_amount ?? 0) || 0;
-      weight = weight || config.xpressbees.defaultPackage.weight;
-      dimensions = dimensions || config.xpressbees.defaultPackage;
+      weight = weight || config.shiprocket.defaultPackage.weight;
+      dimensions = dimensions || config.shiprocket.defaultPackage;
     }
 
     if (!origin || !destination) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Origin and destination pincodes are required for Xpressbees serviceability');
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Origin and destination pincodes are required for Shiprocket serviceability');
     }
 
-    const couriers = await xpressbeesService.checkServiceability({
-      origin,
-      destination,
-      payment_type: paymentType || 'prepaid',
-      order_amount: orderAmount,
+    const response = await shiprocketService.checkServiceability({
+      pickup_postcode: origin,
+      delivery_postcode: destination,
+      cod: paymentType === 'cod' ? 1 : 0,
+      declared_value: orderAmount,
       weight,
-      length: Number(dimensions.length || config.xpressbees.defaultPackage.length),
-      breadth: Number(dimensions.breadth || config.xpressbees.defaultPackage.breadth),
-      height: Number(dimensions.height || config.xpressbees.defaultPackage.height),
+      length: Number(dimensions.length || config.shiprocket.defaultPackage.length),
+      breadth: Number(dimensions.breadth || config.shiprocket.defaultPackage.breadth),
+      height: Number(dimensions.height || config.shiprocket.defaultPackage.height),
     });
 
-    const normalizedCouriers = couriers.map((courier) => this.normalizeXpressbeesCourier(courier));
+    const courierList = response.data?.available_courier_companies
+      || response.available_courier_companies
+      || response.data?.couriers
+      || response.couriers
+      || [];
+    const normalizedCouriers = courierList.map((courier) => this.normalizeShiprocketCourier(courier));
 
     return {
       serviceable: normalizedCouriers.length > 0,
       available_couriers: normalizedCouriers,
       couriers: normalizedCouriers,
+      recommended_courier_id: response.data?.recommended_courier_company_id || response.recommended_courier_company_id || null,
+      raw: response,
     };
+  }
+
+  /**
+   * Handle Shiprocket Webhook
+   * @param {Object} payload - Webhook payload from Shiprocket
+   */
+  async handleShiprocketWebhook(payload = {}) {
+    const trackingNumber = trimString(payload.awb || payload.awb_code || payload.awb_number);
+    if (!trackingNumber) {
+      console.warn('[ShipmentService] Shiprocket webhook received without tracking number');
+      return { success: false, message: 'Missing tracking number' };
+    }
+
+    const shipment = await shipmentRepository.findByTrackingNumber(trackingNumber);
+    if (!shipment) {
+      console.warn(`[ShipmentService] Shiprocket webhook: Shipment not found for tracking number ${trackingNumber}`);
+      return { success: false, message: 'Shipment not found' };
+    }
+
+    if (trimString(shipment.provider).toLowerCase() !== SHIPROCKET_PROVIDER) {
+      return { success: false, message: 'Shipment is not managed by Shiprocket' };
+    }
+
+    console.log(`[ShipmentService] Processing Shiprocket webhook for tracking ${trackingNumber}, status: ${payload.current_status || payload.shipment_status || payload.status}`);
+
+    return this.syncShipment(shipment._id, { silent: false, userType: 'system' });
   }
 }
 

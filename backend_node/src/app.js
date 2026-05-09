@@ -14,16 +14,21 @@ const requestId = require('./middlewares/requestId');
 const logger = require('./utils/logger');
 const ApiError = require('./utils/ApiError');
 const { csrfProtection, getCSRFToken } = require('./middlewares/csrf.middleware');
+const sanitizeApiErrorResponse = require('./middlewares/sanitizeApiErrorResponse');
 
 const cookieParser = require('cookie-parser');
 const { authLimiter, registrationLimiter } = require('./middlewares/rateLimit.middleware');
 
 const app = express();
 
+// Vercel terminates the client connection and forwards the original IP once.
+app.set('trust proxy', 1);
+
 /**
  * Request ID Middleware (Must be first for tracing)
  */
 app.use(requestId);
+app.use(sanitizeApiErrorResponse);
 
 /**
  * Logging
@@ -169,18 +174,11 @@ if (config.env === 'development') {
         }
       }
 
-      // Test Redis
-      try {
-        const redis = require('./config/integrations/redis').getRedis();
-        if (redis) {
-          const ping = await redis.ping();
-          status.redis = ping === 'PONG' ? 'connected' : 'disconnected';
-        } else {
-          status.redis = 'not initialized';
-        }
-      } catch (redisErr) {
-        status.redis = { error: redisErr.message };
-      }
+      const cacheService = require('./services/cache.service');
+      status.redis = {
+        enabled: config.redis.enabled,
+        healthy: cacheService.isHealthy(),
+      };
 
       res.json(status);
     } catch (err) {

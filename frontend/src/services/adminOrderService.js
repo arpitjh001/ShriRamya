@@ -119,17 +119,17 @@ export const adminOrderService = {
   },
 
   /**
-   * Xpressbees: Get available couriers
+   * Shiprocket: Get available couriers for a route
    */
-  getXpressbeesCouriers() {
-    return api.get('/orders/admin/shipping/xpressbees/couriers');
+  getShiprocketCouriers(params = {}) {
+    return api.get('/orders/admin/shipping/shiprocket/couriers', { params });
   },
 
   /**
-   * Xpressbees: Check serviceability
+   * Shiprocket: Check serviceability
    */
-  checkXpressbeesServiceability(data) {
-    return api.post('/orders/admin/shipping/xpressbees/serviceability', data);
+  checkShiprocketServiceability(data) {
+    return api.post('/orders/admin/shipping/shiprocket/serviceability', data);
   },
 
   /**

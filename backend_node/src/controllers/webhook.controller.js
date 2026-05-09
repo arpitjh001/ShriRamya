@@ -8,6 +8,8 @@ const { Order, Payment } = require('../models');
 const orderEventService = require('../services/events/orderEvent.service');
 const RazorpayGateway = require('../services/payments/RazorpayGateway');
 const StripeGateway = require('../services/payments/StripeGateway');
+const shipmentService = require('../services/shipment.service');
+const config = require('../config/config');
 
 /**
  * Handle Razorpay Webhook
@@ -221,7 +223,51 @@ async function handleStripePaymentStatus(paymentIntent, status) {
     }
 }
 
+/**
+ * Handle Shiprocket Webhook
+ * POST /api/v1/orders/webhooks/shipping/shiprocket
+ */
+const handleShiprocketWebhook = async (req, res, next) => {
+    try {
+        const payload = req.body;
+        const configuredToken = config.shiprocket.webhookToken;
+        const requestToken = req.headers['x-api-key'];
+
+        if (configuredToken && requestToken !== configuredToken) {
+            return res.status(httpStatus.UNAUTHORIZED).json({
+                success: false,
+                message: 'Invalid Shiprocket webhook token'
+            });
+        }
+
+        console.log('[WebhookController] Shiprocket webhook received');
+
+        const result = await shipmentService.handleShiprocketWebhook(payload);
+
+        if (!result.success && result.message === 'Shipment not found') {
+            // We still acknowledge with 200 to prevent retries for non-existent shipments
+            return res.status(httpStatus.OK).json({
+                success: true,
+                message: 'Webhook received but shipment not found locally'
+            });
+        }
+
+        res.status(httpStatus.OK).json({
+            success: true,
+            message: 'Webhook processed'
+        });
+    } catch (error) {
+        console.error('Shiprocket webhook error:', error);
+        // Still return 200 to acknowledge receipt even if processing fails
+        res.status(httpStatus.OK).json({
+            success: true,
+            message: 'Webhook receipt acknowledged'
+        });
+    }
+};
+
 module.exports = {
     handleRazorpayWebhook,
-    handleStripeWebhook
+    handleStripeWebhook,
+    handleShiprocketWebhook
 };

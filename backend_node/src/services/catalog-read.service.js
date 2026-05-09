@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 const { Product, Category } = require('../models');
 const productService = require('./product.service');
 const { buildTenantScope } = require('../utils/tenantScope');
-const redis = require('../config/integrations/redis');
+const config = require('../config/config');
+const cacheService = require('./cache.service');
+const cacheKeys = require('../utils/cacheKeyBuilder');
 
 const PUBLIC_PRODUCT_STATUS_FILTER = ['published', 'publish'];
 
@@ -260,42 +262,28 @@ class CatalogReadService {
 
   async getBaseProducts({ tenantId, user }) {
     const isAdmin = this.isAdminOrEditor(user);
-    const cacheKey = `catalog:base_products:${tenantId}:${isAdmin ? 'admin' : 'public'}`;
+    const cacheKey = cacheKeys.joinKey(
+      'catalog',
+      'base-products',
+      `tenant-${tenantId}`,
+      isAdmin ? 'admin' : 'public'
+    );
 
-    if (redis && redis.get) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          return JSON.parse(cached);
-        }
-      } catch (err) {
-        console.error('[CatalogReadService] Redis read error:', err.message);
-      }
-    }
+    return cacheService.getOrSet(cacheKey, config.cache.productListTtlSeconds, async () => {
+      const baseQuery = {
+        is_deleted: { $ne: true },
+        ...this.buildTenantScope(tenantId),
+      };
 
-    const baseQuery = {
-      is_deleted: { $ne: true },
-      ...this.buildTenantScope(tenantId),
-    };
+      const rawProducts = await Product.find(baseQuery)
+        .populate('categories')
+        .sort({ created_at: -1 })
+        .lean();
 
-    const rawProducts = await Product.find(baseQuery)
-      .populate('categories')
-      .sort({ created_at: -1 })
-      .lean();
-
-    const result = rawProducts
-      .map((product) => this.mapProduct(product))
-      .filter((product) => this.isVisibleProduct(product, user));
-
-    if (redis && redis.set) {
-      try {
-        await redis.set(cacheKey, JSON.stringify(result), { ex: 300 }); // Cache for 5 minutes
-      } catch (err) {
-        console.error('[CatalogReadService] Redis write error:', err.message);
-      }
-    }
-
-    return result;
+      return rawProducts
+        .map((product) => this.mapProduct(product))
+        .filter((product) => this.isVisibleProduct(product, user));
+    });
   }
 
   normalizeListValue(value) {
@@ -620,52 +608,61 @@ class CatalogReadService {
   }
 
   async getProduct(identifier, { tenantId = 1, user = null } = {}) {
-    const lookup = {};
-    const stringIdentifier = String(identifier).trim();
+    const isAdmin = this.isAdminOrEditor(user);
+    const cacheKey = cacheKeys.productDetailKey({
+      tenantId,
+      scope: isAdmin ? 'admin' : 'public',
+      identifier,
+    });
 
-    if (mongoose.Types.ObjectId.isValid(stringIdentifier)) {
-      lookup._id = stringIdentifier;
-    } else if (/^\d+$/.test(stringIdentifier)) {
-      lookup.productId = Number(stringIdentifier);
-    } else {
-      lookup.slug = stringIdentifier;
-    }
+    return cacheService.getOrSet(cacheKey, config.cache.productDetailTtlSeconds, async () => {
+      const lookup = {};
+      const stringIdentifier = String(identifier).trim();
 
-    const product = await Product.findOne({
-      ...lookup,
-      is_deleted: { $ne: true },
-      ...this.buildTenantScope(tenantId),
-    }).populate('categories').lean();
-    if (!product) {
-      return null;
-    }
+      if (mongoose.Types.ObjectId.isValid(stringIdentifier)) {
+        lookup._id = stringIdentifier;
+      } else if (/^\d+$/.test(stringIdentifier)) {
+        lookup.productId = Number(stringIdentifier);
+      } else {
+        lookup.slug = stringIdentifier;
+      }
 
-    const mappedProduct = this.mapProduct(product);
-    if (!this.isVisibleProduct(mappedProduct, user)) {
-      return null;
-    }
+      const product = await Product.findOne({
+        ...lookup,
+        is_deleted: { $ne: true },
+        ...this.buildTenantScope(tenantId),
+      }).populate('categories').lean();
+      if (!product) {
+        return null;
+      }
 
-    let relatedProducts = [];
-    const firstCategoryId = mappedProduct.categories?.[0]?.id || mappedProduct.categoryId || null;
+      const mappedProduct = this.mapProduct(product);
+      if (!this.isVisibleProduct(mappedProduct, user)) {
+        return null;
+      }
 
-    if (firstCategoryId) {
-      const baseProducts = await this.getBaseProducts({ tenantId, user });
-      relatedProducts = baseProducts
-        .filter((candidate) => candidate.id !== mappedProduct.id)
-        .filter((candidate) => {
-          const candidateCategoryIds = new Set([
-            ...(candidate.categoryId ? [String(candidate.categoryId)] : []),
-            ...(candidate.categories || []).map((category) => String(category.id || category._id)),
-          ]);
-          return candidateCategoryIds.has(String(firstCategoryId));
-        })
-        .slice(0, 4);
-    }
+      let relatedProducts = [];
+      const firstCategoryId = mappedProduct.categories?.[0]?.id || mappedProduct.categoryId || null;
 
-    return {
-      ...mappedProduct,
-      relatedProducts,
-    };
+      if (firstCategoryId) {
+        const baseProducts = await this.getBaseProducts({ tenantId, user });
+        relatedProducts = baseProducts
+          .filter((candidate) => candidate.id !== mappedProduct.id)
+          .filter((candidate) => {
+            const candidateCategoryIds = new Set([
+              ...(candidate.categoryId ? [String(candidate.categoryId)] : []),
+              ...(candidate.categories || []).map((category) => String(category.id || category._id)),
+            ]);
+            return candidateCategoryIds.has(String(firstCategoryId));
+          })
+          .slice(0, 4);
+      }
+
+      return {
+        ...mappedProduct,
+        relatedProducts,
+      };
+    });
   }
 
   async getCategoryDocument(identifier, tenantId = 1) {
@@ -703,48 +700,65 @@ class CatalogReadService {
   }
 
   async listCategories({ tenantId = 1, user = null } = {}) {
-    const categoryCounts = await this.getCategoryCounts({ tenantId, user });
-    const categories = await Category.find({
-      is_deleted: { $ne: true },
-      ...this.buildTenantScope(tenantId),
-    })
-      .sort({ menu_order: 1, name: 1 })
-      .lean();
+    const isAdmin = this.isAdminOrEditor(user);
+    const cacheKey = cacheKeys.categoryListKey({
+      tenantId,
+      scope: isAdmin ? 'admin' : 'public',
+    });
 
-    return categories.map((category) => {
-      const id = this.toStringId(category._id);
-      return this.normalizeCategory(category, categoryCounts.get(id) || 0);
+    return cacheService.getOrSet(cacheKey, config.cache.categoryTtlSeconds, async () => {
+      const categoryCounts = await this.getCategoryCounts({ tenantId, user });
+      const categories = await Category.find({
+        is_deleted: { $ne: true },
+        ...this.buildTenantScope(tenantId),
+      })
+        .sort({ menu_order: 1, name: 1 })
+        .lean();
+
+      return categories.map((category) => {
+        const id = this.toStringId(category._id);
+        return this.normalizeCategory(category, categoryCounts.get(id) || 0);
+      });
     });
   }
 
   async getCategory(identifier, { tenantId = 1, user = null, includeProducts = false } = {}) {
-    const category = await this.getCategoryDocument(identifier, tenantId);
-    if (!category) {
-      return null;
-    }
+    const isAdmin = this.isAdminOrEditor(user);
+    const cacheKey = cacheKeys.categoryDetailKey({
+      tenantId,
+      scope: isAdmin ? 'admin' : 'public',
+      identifier: `${identifier}:${includeProducts ? 'with-products' : 'summary'}`,
+    });
 
-    const categoryId = this.toStringId(category._id);
-    const categoryCounts = await this.getCategoryCounts({ tenantId, user });
-    const normalizedCategory = this.normalizeCategory(category, categoryCounts.get(categoryId) || 0);
+    return cacheService.getOrSet(cacheKey, config.cache.categoryTtlSeconds, async () => {
+      const category = await this.getCategoryDocument(identifier, tenantId);
+      if (!category) {
+        return null;
+      }
 
-    if (!includeProducts) {
-      return normalizedCategory;
-    }
+      const categoryId = this.toStringId(category._id);
+      const categoryCounts = await this.getCategoryCounts({ tenantId, user });
+      const normalizedCategory = this.normalizeCategory(category, categoryCounts.get(categoryId) || 0);
 
-    const products = (await this.getBaseProducts({ tenantId, user }))
-      .filter((product) => {
-        const categoryIds = new Set([
-          ...(product.categoryId ? [String(product.categoryId)] : []),
-          ...(product.categories || []).map((entry) => String(entry.id || entry._id)),
-        ]);
+      if (!includeProducts) {
+        return normalizedCategory;
+      }
 
-        return categoryIds.has(categoryId);
-      });
+      const products = (await this.getBaseProducts({ tenantId, user }))
+        .filter((product) => {
+          const categoryIds = new Set([
+            ...(product.categoryId ? [String(product.categoryId)] : []),
+            ...(product.categories || []).map((entry) => String(entry.id || entry._id)),
+          ]);
 
-    return {
-      ...normalizedCategory,
-      products,
-    };
+          return categoryIds.has(categoryId);
+        });
+
+      return {
+        ...normalizedCategory,
+        products,
+      };
+    });
   }
 }
 

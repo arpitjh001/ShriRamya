@@ -1,14 +1,13 @@
 const categoryRepository = require('../repositories/category.mongo.repository');
 const { Category } = require('../models');
-const redis = require('../config/integrations/redis');
+const config = require('../config/config');
+const cacheService = require('./cache.service');
+const cacheInvalidationService = require('./cacheInvalidation.service');
 const crypto = require('crypto');
-
-// Cache categories for 24 hours using Redis
-const CACHE_TTL = 86400; // 24 hours in seconds
 
 class CategoryService {
     constructor() {
-        this.CACHE_KEY = 'all_categories';
+        this.CACHE_KEY = 'categories:legacy-tree';
     }
 
     normalizeIdentifier(value) {
@@ -68,56 +67,37 @@ class CategoryService {
     }
 
     async getAllCategories() {
-        // Try Redis cache first
-        if (redis && redis.get) {
-            try {
-                const cached = await redis.get(this.CACHE_KEY);
-                if (cached) {
-                    return JSON.parse(cached);
-                }
-            } catch (err) {
-                console.error('Redis cache error:', err.message);
-            }
-        }
-
-        const categories = await categoryRepository.getAllCategories();
-        // Build tree
-        const map = new Map();
-        categories.forEach((item) => {
-            const normalizedItem = {
-                ...item,
-                id: this.normalizeIdentifier(item.id || item._id),
-                parent_id: this.normalizeIdentifier(item.parent_id),
-                children: [],
-            };
-            map.set(normalizedItem.id, normalizedItem);
-        });
-        const rootCategories = [];
-        categories.forEach((item) => {
-            const node = map.get(this.normalizeIdentifier(item.id || item._id));
-            const parentId = this.normalizeIdentifier(item.parent_id);
-            if (parentId) {
-                const parent = map.get(parentId);
-                if (parent) {
-                    parent.children.push(node);
+        return cacheService.getOrSet(this.CACHE_KEY, config.cache.categoryTtlSeconds, async () => {
+            const categories = await categoryRepository.getAllCategories();
+            // Build tree
+            const map = new Map();
+            categories.forEach((item) => {
+                const normalizedItem = {
+                    ...item,
+                    id: this.normalizeIdentifier(item.id || item._id),
+                    parent_id: this.normalizeIdentifier(item.parent_id),
+                    children: [],
+                };
+                map.set(normalizedItem.id, normalizedItem);
+            });
+            const rootCategories = [];
+            categories.forEach((item) => {
+                const node = map.get(this.normalizeIdentifier(item.id || item._id));
+                const parentId = this.normalizeIdentifier(item.parent_id);
+                if (parentId) {
+                    const parent = map.get(parentId);
+                    if (parent) {
+                        parent.children.push(node);
+                    } else {
+                        rootCategories.push(node);
+                    }
                 } else {
                     rootCategories.push(node);
                 }
-            } else {
-                rootCategories.push(node);
-            }
+            });
+
+            return rootCategories;
         });
-
-        // Cache in Redis
-        if (redis && redis.set) {
-            try {
-                await redis.set(this.CACHE_KEY, JSON.stringify(rootCategories), { ex: CACHE_TTL });
-            } catch (err) {
-                console.error('Redis cache error:', err.message);
-            }
-        }
-
-        return rootCategories;
     }
 
     async updateCategory(id, data) {
@@ -147,13 +127,8 @@ class CategoryService {
     }
 
     async clearCache() {
-        if (redis && redis.del) {
-            try {
-                await redis.del(this.CACHE_KEY);
-            } catch (err) {
-                console.error('Redis cache error:', err.message);
-            }
-        }
+        await cacheService.del(this.CACHE_KEY);
+        await cacheInvalidationService.invalidateCategories();
     }
 
     async getProductsByCategoryId(categoryId, limit = 100, status = 'published') {

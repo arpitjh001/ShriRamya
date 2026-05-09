@@ -4,7 +4,7 @@
  */
 
 import { MIN_SIGNATURE_LENGTH, GEMINI_SKIP_SIGNATURE } from '../constants.js';
-import { getCachedSignature, getCachedSignatureFamily } from './signature-cache.js';
+import { getCachedSignature, getCachedSignatureFamily, getCachedToolName } from './signature-cache.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -142,9 +142,22 @@ export function convertContentToParts(content, isClaudeModel = false, isGeminiMo
             }
 
             const functionResponse = {
-                name: block.tool_use_id || 'unknown',
                 response: responseContent
             };
+
+            // [CRITICAL FIX] Map tool_use_id back to actual function name for Google API
+            // Google requires functionResponse.name to match functionDeclaration.name.
+            // We retrieve the original name from the toolNameCache using the ID.
+            if (block.tool_use_id) {
+                const toolName = getCachedToolName(block.tool_use_id);
+                if (toolName) {
+                    functionResponse.name = toolName;
+                } else {
+                    // Fallback: if not in cache, use the ID (existing behavior)
+                    functionResponse.name = block.tool_use_id;
+                    logger.warn(`[ContentConverter] Tool name not found in cache for ID: ${block.tool_use_id}. Using ID as name fallback.`);
+                }
+            }
 
             // For Claude models, the id field must match the tool_use_id
             if (isClaudeModel && block.tool_use_id) {

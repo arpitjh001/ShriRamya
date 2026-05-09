@@ -279,12 +279,12 @@ export async function sendMessage(anthropicRequest, accountManager, fallbackEnab
                                 throw new Error(`CAPACITY_EXHAUSTED: ${errorText}`);
                             }
 
-                            // 400 errors are client errors - fail immediately, don't retry or switch accounts
-                            // Examples: token limit exceeded, invalid schema, malformed request
-                            if (response.status === 400) {
-                                logger.error(`[CloudCode] Invalid request (400): ${errorText.substring(0, 200)}`);
-                                throw new Error(`invalid_request_error: ${errorText}`);
-                            }
+            // 400 errors are client errors - fail immediately, don't retry or switch accounts
+            // Examples: token limit exceeded, invalid schema, malformed request
+            if (response.status === 400) {
+                logger.error(`[CloudCode] Invalid request (400): ${errorText.substring(0, 1000)}`);
+                throw new Error(`invalid_request_error: ${errorText}`);
+            }
 
                             // 403 with VALIDATION_REQUIRED or PERMISSION_DENIED is an account-level error
                             // The account needs validation (captcha, terms, etc.) - trying different endpoints won't help

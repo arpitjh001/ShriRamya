@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { toast } from 'sonner';
 import adminOrderService from '../services/adminOrderService';
 
-const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
+const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [checkingServiceability, setCheckingServiceability] = useState(false);
   const [couriers, setCouriers] = useState([]);
@@ -17,10 +17,11 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
     length: 10,
     width: 10,
     height: 10,
-    pickup_location: 'Primary' // Default pickup location
+    pickup_location: 'Primary'
   });
 
-  const pincode = order.shippingAddress?.pincode;
+  const shippingAddress = order.shippingAddress || order.shipping_address || {};
+  const pincode = shippingAddress.pincode || shippingAddress.zipCode || shippingAddress.postcode || shippingAddress.postalCode;
   const orderAmount = Number(order.total || order.total_amount || order.grandTotal || order.amount || 1) || 1;
 
   useEffect(() => {
@@ -33,7 +34,7 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
     if (!pincode) return;
     setCheckingServiceability(true);
     try {
-      const res = await adminOrderService.checkXpressbeesServiceability({
+      const res = await adminOrderService.checkShiprocketServiceability({
         destination_pincode: pincode,
         order_type: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
         order_amount: orderAmount,
@@ -48,7 +49,7 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
         // If there are couriers, set the first one as default
         if (res.data.available_couriers?.length > 0) {
           setCouriers(res.data.available_couriers);
-          setSelectedCourier(res.data.available_couriers[0].courier_id);
+          setSelectedCourier(res.data.recommended_courier_id || res.data.available_couriers[0].courier_id);
         }
       }
     } catch (err) {
@@ -68,19 +69,20 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
     setLoading(true);
     try {
       const shipmentData = {
-        provider: 'xpressbees',
+        provider: 'shiprocket',
         weight: formData.weight,
         length: formData.length,
         width: formData.width,
         height: formData.height,
         courier_id: selectedCourier,
-        request_auto_pickup: true
+        pickup_location: formData.pickup_location,
+        request_pickup: true
       };
 
       const res = await adminOrderService.createShipment(order.orderId, shipmentData);
       
       if (res.data) {
-        toast.success('Shipment created successfully via Xpressbees');
+        toast.success('Shipment created successfully via Shiprocket');
         onSuccess(res.data);
         onClose();
       }
@@ -108,7 +110,7 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-heading font-bold text-charcoal">Ship via Xpressbees</h2>
+              <h2 className="text-xl font-heading font-bold text-charcoal">Ship via Shiprocket</h2>
               <p className="text-xs text-charcoal/50 mt-0.5">Fulfillment for Order #{order.orderId?.slice(-8)}</p>
             </div>
           </div>
@@ -120,7 +122,7 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
           <div className="bg-background rounded-xl p-4 border border-royal-maroon/5 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40 mb-1">Destination</p>
-              <p className="text-sm font-bold text-charcoal">{order.shippingAddress?.city}, {order.shippingAddress?.state} - {pincode}</p>
+              <p className="text-sm font-bold text-charcoal">{shippingAddress.city}, {shippingAddress.state} - {pincode}</p>
             </div>
             {checkingServiceability ? (
               <Loader2 className="w-5 h-5 text-royal-maroon animate-spin" />
@@ -151,8 +153,12 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-charcoal/60">Pickup Location</label>
-                <select className="w-full px-3 py-2 border border-royal-maroon/10 rounded-lg bg-background text-sm focus:ring-2 focus:ring-royal-maroon/20 focus:outline-none">
-                  <option>Primary Warehouse</option>
+                <select
+                  value={formData.pickup_location}
+                  onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })}
+                  className="w-full px-3 py-2 border border-royal-maroon/10 rounded-lg bg-background text-sm focus:ring-2 focus:ring-royal-maroon/20 focus:outline-none"
+                >
+                  <option value="Primary">Primary Warehouse</option>
                 </select>
               </div>
             </div>
@@ -241,7 +247,7 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
           <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 flex gap-3">
             <Info className="w-5 h-5 text-amber-600 shrink-0" />
             <p className="text-[11px] text-amber-800 leading-relaxed">
-              Creating a shipment will automatically notify Xpressbees and request a pickup {formData.pickup_location === 'Primary' ? 'at the primary warehouse' : ''}. Ensure the items are packed and ready.
+              Creating a shipment will automatically notify Shiprocket and request a pickup {formData.pickup_location === 'Primary' ? 'at the primary warehouse' : ''}. Ensure the items are packed and ready.
             </p>
           </div>
         </div>
@@ -274,4 +280,4 @@ const XpressbeesShipmentModal = ({ order, onClose, onSuccess }) => {
   );
 };
 
-export default XpressbeesShipmentModal;
+export default ShiprocketShipmentModal;

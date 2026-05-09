@@ -14,6 +14,7 @@ import { GEMINI_SIGNATURE_CACHE_TTL_MS, MIN_SIGNATURE_LENGTH } from '../constant
 
 const signatureCache = new Map();
 const thinkingSignatureCache = new Map();
+const toolNameCache = new Map();
 
 /**
  * Store a signature for a tool_use_id
@@ -77,6 +78,38 @@ export function getCachedSignatureFamily(signature) {
     }
 
     return entry.modelFamily;
+}
+
+/**
+ * Store a tool name for a tool_use_id
+ * @param {string} toolUseId - The tool use ID
+ * @param {string} toolName - The actual function name
+ */
+export function cacheToolName(toolUseId, toolName) {
+    if (!toolUseId || !toolName) return;
+    toolNameCache.set(toolUseId, {
+        toolName,
+        timestamp: Date.now()
+    });
+}
+
+/**
+ * Get a cached tool name for a tool_use_id
+ * @param {string} toolUseId - The tool use ID
+ * @returns {string|null} The cached tool name or null if not found/expired
+ */
+export function getCachedToolName(toolUseId) {
+    if (!toolUseId) return null;
+    const entry = toolNameCache.get(toolUseId);
+    if (!entry) return null;
+
+    // Check TTL (same as signature cache)
+    if (Date.now() - entry.timestamp > GEMINI_SIGNATURE_CACHE_TTL_MS) {
+        toolNameCache.delete(toolUseId);
+        return null;
+    }
+
+    return entry.toolName;
 }
 
 /**

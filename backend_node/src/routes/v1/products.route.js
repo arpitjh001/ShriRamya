@@ -129,6 +129,15 @@ router.delete('/:product_id',
     productController.deleteProduct
 );
 
+// Bulk delete products (Admin only)
+router.post('/bulk-delete',
+    authRBAC,
+    requireRole('Admin'),
+    ensureTenantIsolation,
+    validate(productValidation.deleteProductsBulk),
+    productController.deleteProductsBulk
+);
+
 // ========== VARIANT MATRIX ENDPOINTS ==========
 
 // Get variant matrix for a product (Color x Size grid)

@@ -3,6 +3,52 @@ import { useParams, Link } from 'react-router-dom';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
 import { categoriesAPI, productsAPI } from '../services/api';
 
+const titleizeCategorySlug = (value = '') => {
+    const decodedValue = (() => {
+        try {
+            return decodeURIComponent(value);
+        } catch {
+            return value;
+        }
+    })();
+
+    return decodedValue
+        .split('-')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
+const buildFallbackCategory = (slug = '') => ({
+    id: slug,
+    slug,
+    name: titleizeCategorySlug(slug) || 'Collection',
+    description: '',
+    image: null,
+    product_count: 0,
+});
+
+const normalizeCategorySlug = (value = '') => String(value).trim().toLowerCase();
+
+const findCategoryBySlug = (categories = [], slug = '') => {
+    const normalizedSlug = normalizeCategorySlug(slug);
+    return categories.find((categoryItem) => {
+        return [
+            categoryItem?.slug,
+            categoryItem?.id,
+            categoryItem?._id,
+        ].some((candidate) => normalizeCategorySlug(candidate) === normalizedSlug);
+    }) || null;
+};
+
+const getProductKey = (product = {}, index) => (
+    product.productId ||
+    product.id ||
+    product._id ||
+    product.slug ||
+    `category-product-${index}`
+);
+
 const CategoryPage = () => {
     const { slug } = useParams();
     const [category, setCategory] = useState(null);
@@ -33,16 +79,23 @@ const CategoryPage = () => {
         try {
             // Fetch category details only on initial load
             if (isInitial) {
-                const categoryData = await categoriesAPI.getBySlug(slug);
-                setCategory(categoryData);
-                document.title = `${categoryData.name} | ShriRamya`;
+                let categoryData = null;
+                try {
+                    const categories = await categoriesAPI.getAll();
+                    categoryData = findCategoryBySlug(categories, slug);
+                } catch (categoryError) {
+                    console.warn('Unable to load category summary:', categoryError?.message || categoryError);
+                }
+                const resolvedCategory = categoryData || buildFallbackCategory(slug);
+                setCategory(resolvedCategory);
+                document.title = `${resolvedCategory.name} | ShriRamya`;
                 let metaDesc = document.querySelector('meta[name="description"]');
                 if (!metaDesc) {
                     metaDesc = document.createElement('meta');
                     metaDesc.name = 'description';
                     document.head.appendChild(metaDesc);
                 }
-                metaDesc.content = categoryData.description || `Explore our high-quality ${categoryData.name} collection at ShriRamya.`;
+                metaDesc.content = resolvedCategory.description || `Explore our high-quality ${resolvedCategory.name} collection at ShriRamya.`;
             }
 
             // Fetch products for this category
@@ -140,7 +193,7 @@ const CategoryPage = () => {
                     <>
                         <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" data-testid="category-product-grid">
                             {products.map((product, index) => (
-                                <div key={`${product.id}-${index}`} ref={index === products.length - 1 ? lastProductRef : null}>
+                                <div key={getProductKey(product, index)} ref={index === products.length - 1 ? lastProductRef : null}>
                                     <ProductCard product={product} />
                                 </div>
                             ))}

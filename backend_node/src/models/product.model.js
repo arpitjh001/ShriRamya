@@ -64,6 +64,7 @@ const productSchema = new mongoose.Schema(
     metaDescription: { type: String, trim: true },
     metaKeywords: { type: String, trim: true },
     is_deleted: { type: Boolean, default: false },
+    originalOnly: { type: Boolean, default: false },
     deleted_at: { type: Date, default: null }
   },
   {

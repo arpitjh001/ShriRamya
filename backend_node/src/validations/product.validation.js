@@ -98,6 +98,7 @@ const createProduct = {
     discountPrice: Joi.number().min(0).allow(null, '').optional(),
     stock: Joi.number().integer().min(0).optional(),
     lowStockThreshold: Joi.number().integer().min(0).optional(),
+    originalOnly: Joi.boolean().optional(),
   }).unknown(true),
 };
 
@@ -146,7 +147,8 @@ const updateProduct = {
     discountPrice: Joi.number().min(0).allow(null, '').optional(),
     stock: Joi.number().integer().min(0).optional(),
     lowStockThreshold: Joi.number().integer().min(0).optional(),
-  }).min(1),
+    originalOnly: Joi.boolean().optional(),
+  }).unknown(true),
 };
 
 const updateVariant = {
@@ -185,6 +187,12 @@ const updateVariantStock = {
   }).required(),
 };
 
+const deleteProductsBulk = {
+  body: Joi.object().keys({
+    ids: Joi.array().items(resourceId).min(1).required(),
+  }).required(),
+};
+
 module.exports = {
   getProducts,
   getProduct,
@@ -193,6 +201,7 @@ module.exports = {
   addVariant,
   updateVariant,
   deleteVariant,
+  deleteProductsBulk,
   syncVariantMatrix,
   updateVariantStock,
 };

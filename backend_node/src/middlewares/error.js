@@ -2,6 +2,8 @@ const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 const config = require('../config/config');
 
+const GENERIC_SERVER_ERROR_MESSAGE = 'Internal server error';
+
 const errorConverter = (err, req, res, next) => {
   let error = err;
   if (!(error instanceof ApiError)) {
@@ -27,9 +29,14 @@ const errorConverter = (err, req, res, next) => {
 const errorHandler = (err, req, res, next) => {
   let { statusCode, message } = err;
   
-  if (config.env === 'production' && !err.isOperational) {
-    statusCode = httpStatus.INTERNAL_SERVER_ERROR;
-    message = 'Internal server error';
+  if (config.env === 'production') {
+    if (!err.isOperational) {
+      statusCode = httpStatus.INTERNAL_SERVER_ERROR;
+    }
+
+    if (statusCode >= 500) {
+      message = GENERIC_SERVER_ERROR_MESSAGE;
+    }
   }
 
   res.locals.errorMessage = err.message;

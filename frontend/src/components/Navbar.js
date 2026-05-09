@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { wishlistAPI } from '../services/api';
 import AuthDialog from './AuthDialog';
 
 // Sub-components
@@ -35,16 +36,27 @@ const Navbar = ({ isHome = false }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
+  const refreshWishlistCount = useCallback(async () => {
+    if (!user) {
+      setWishlistCount(0);
+      return;
+    }
+
+    const uid = user?.id || user?.userId || 'guest';
+    try {
+      const response = await wishlistAPI.get({ userId: uid });
+      setWishlistCount((response.data || []).length);
+    } catch {
+      setWishlistCount(0);
+    }
+  }, [user]);
+
   // Fetch wishlist count
   useEffect(() => {
-    if (!user) { setWishlistCount(0); return; }
-    const uid = user?.id || user?.userId || 'guest';
-    const API_BASE = process.env.REACT_APP_BACKEND_URL;
-    fetch(`${API_BASE}/api/v1/wishlist?userId=${uid}`)
-      .then(r => r.json())
-      .then(d => setWishlistCount((d.data || []).length))
-      .catch(() => {});
-  }, [user, location.pathname]);
+    refreshWishlistCount();
+    window.addEventListener('wishlist:changed', refreshWishlistCount);
+    return () => window.removeEventListener('wishlist:changed', refreshWishlistCount);
+  }, [refreshWishlistCount, location.pathname]);
 
   // Constants & Data
   const categories = useMemo(() => [

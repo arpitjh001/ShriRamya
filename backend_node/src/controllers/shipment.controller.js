@@ -150,18 +150,18 @@ const deleteShipment = async (req, res, next) => {
   }
 };
 
-const getXpressbeesCouriers = async (req, res, next) => {
+const getShiprocketCouriers = async (req, res, next) => {
   try {
-    const couriers = await shipmentService.listXpressbeesCouriers();
+    const couriers = await shipmentService.listShiprocketCouriers(req.query || {});
     return successResponse(res, couriers);
   } catch (error) {
     next(error);
   }
 };
 
-const checkXpressbeesServiceability = async (req, res, next) => {
+const checkShiprocketServiceability = async (req, res, next) => {
   try {
-    const serviceability = await shipmentService.checkXpressbeesServiceability(req.body || {});
+    const serviceability = await shipmentService.checkShiprocketServiceability(req.body || {});
     return successResponse(res, serviceability);
   } catch (error) {
     next(error);
@@ -182,6 +182,6 @@ module.exports = {
   getReadyToShip,
   getPendingShipments,
   deleteShipment,
-  getXpressbeesCouriers,
-  checkXpressbeesServiceability,
+  getShiprocketCouriers,
+  checkShiprocketServiceability,
 };

@@ -1,6 +1,10 @@
 const { Coupon, Cart } = require('../models');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
+const config = require('../config/config');
+const cacheService = require('./cache.service');
+const cacheInvalidationService = require('./cacheInvalidation.service');
+const cacheKeys = require('../utils/cacheKeyBuilder');
 
 const MOCK_COUPONS = Object.freeze({
   WELCOME10: {
@@ -108,6 +112,7 @@ class CouponService {
 
     const coupon = new Coupon(couponData);
     await coupon.save();
+    await cacheInvalidationService.invalidateCoupons(this.normalizeCouponCode(coupon.code));
     return coupon;
   }
 
@@ -168,13 +173,70 @@ class CouponService {
   async updateCoupon(id, updateData) {
     const coupon = await Coupon.findByIdAndUpdate(id, { $set: updateData }, { new: true });
     if (!coupon) throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
+    await cacheInvalidationService.invalidateCoupons(this.normalizeCouponCode(coupon.code));
     return coupon;
   }
 
   async deleteCoupon(id) {
     const result = await Coupon.findByIdAndDelete(id);
     if (!result) throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
+    await cacheInvalidationService.invalidateCoupons(this.normalizeCouponCode(result.code));
     return { id, deleted: true };
+  }
+
+  async getCouponValidationPreview(code) {
+    const normalizedCode = this.normalizeCouponCode(code);
+    const cacheKey = cacheKeys.couponValidationKey({ code: normalizedCode });
+
+    return cacheService.getOrSet(cacheKey, config.cache.couponTtlSeconds, async () => {
+      const { coupon } = await this.resolveCouponByCode(normalizedCode);
+
+      if (coupon.status !== 'active') {
+        return {
+          valid: false,
+          code: coupon.code,
+          message: 'This coupon is not active',
+        };
+      }
+
+      const now = new Date();
+      if (coupon.expires_at && new Date(coupon.expires_at) < now) {
+        return {
+          valid: false,
+          code: coupon.code,
+          message: 'This coupon has expired',
+        };
+      }
+
+      if (coupon.starts_at && new Date(coupon.starts_at) > now) {
+        return {
+          valid: false,
+          code: coupon.code,
+          message: 'This coupon is not yet active',
+        };
+      }
+
+      if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
+        return {
+          valid: false,
+          code: coupon.code,
+          message: 'This coupon has reached its usage limit',
+        };
+      }
+
+      return {
+        valid: true,
+        coupon: {
+          code: coupon.code,
+          type: coupon.type,
+          value: Number(coupon.value),
+          min_cart_value: coupon.min_cart_value ? Number(coupon.min_cart_value) : null,
+          max_discount: coupon.max_discount ? Number(coupon.max_discount) : null,
+          description: `${coupon.type === 'percentage' ? coupon.value + '% OFF' : coupon.type === 'flat' ? 'Rs ' + coupon.value + ' OFF' : coupon.type === 'free_shipping' ? 'Free Shipping' : 'BOGO Offer'}`,
+        },
+        message: 'Coupon is valid',
+      };
+    });
   }
 
   async validateAndApplyCoupon(couponCode, cartData, userId = null) {
@@ -233,6 +295,7 @@ class CouponService {
 
     if (source === 'database' && coupon?._id) {
       await Coupon.updateOne({ _id: coupon._id }, { $inc: { used_count: 1 } });
+      await cacheInvalidationService.invalidateCoupons(this.normalizeCouponCode(coupon.code));
     }
 
     return {

@@ -426,6 +426,14 @@ export const productsAPI = {
     }
   },
 
+  bulkDelete: async (ids) => {
+    try {
+      return await api.post("/products/bulk-delete", { ids });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
   /* ---- Get Single Product ---- */
   getById: async (id) => {
     try {
@@ -628,9 +636,9 @@ export const cartAPI = {
 ========================= */
 
 export const wishlistAPI = {
-  get: async () => {
+  get: async (params = {}) => {
     try {
-      return await api.get("/wishlist");
+      return await api.get("/wishlist", { params });
     } catch (err) {
       handleError(err);
       return { data: [] };
@@ -639,7 +647,11 @@ export const wishlistAPI = {
 
   add: async (productId) => {
     try {
-      return await api.post(`/wishlist/${productId}`);
+      const response = await api.post(`/wishlist/${encodeURIComponent(productId)}`, {});
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wishlist:changed'));
+      }
+      return response;
     } catch (err) {
       handleError(err);
     }
@@ -647,9 +659,22 @@ export const wishlistAPI = {
 
   remove: async (productId) => {
     try {
-      return await api.delete(`/wishlist/${productId}`);
+      const response = await api.delete(`/wishlist/${encodeURIComponent(productId)}`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wishlist:changed'));
+      }
+      return response;
     } catch (err) {
       handleError(err);
+    }
+  },
+
+  check: async (productId) => {
+    try {
+      return await api.get(`/wishlist/check/${encodeURIComponent(productId)}`);
+    } catch (err) {
+      handleError(err);
+      return { data: { inWishlist: false } };
     }
   }
 };
@@ -744,7 +769,7 @@ export const ordersAPI = {
 
   track: async (orderNumber) => {
     try {
-      return await api.get(`/orders/${orderNumber}/tracking`);
+      return await api.get(`/orders/${encodeURIComponent(orderNumber)}/tracking`);
     } catch (err) {
       handleError(err);
       return { data: null };
@@ -1265,9 +1290,10 @@ export const categoriesAPI = {
 
   getById: async (id) => {
     try {
-      const response = await api.get(`/categories/${id}`);
+      const response = await api.get(`/categories/${encodeURIComponent(id)}`);
       return response.data || null;
     } catch (err) {
+      if (err?.response?.status === 404) return null;
       handleError(err);
       return null;
     }
@@ -1275,9 +1301,10 @@ export const categoriesAPI = {
 
   getBySlug: async (slug) => {
     try {
-      const response = await api.get(`/categories/slug/${slug}`);
+      const response = await api.get(`/categories/slug/${encodeURIComponent(slug)}`);
       return response.data || null;
     } catch (err) {
+      if (err?.response?.status === 404) return null;
       handleError(err);
       return null;
     }
@@ -1295,7 +1322,7 @@ export const categoriesAPI = {
 
   update: async (id, data) => {
     try {
-      const response = await api.put(`/categories/${id}`, data);
+      const response = await api.put(`/categories/${encodeURIComponent(id)}`, data);
       return response.data || null;
     } catch (err) {
       handleError(err);
@@ -1305,7 +1332,7 @@ export const categoriesAPI = {
 
   delete: async (id) => {
     try {
-      const response = await api.delete(`/categories/${id}`);
+      const response = await api.delete(`/categories/${encodeURIComponent(id)}`);
       // For delete operations, return success status
       return { success: true, ...(response.data || {}) };
     } catch (err) {

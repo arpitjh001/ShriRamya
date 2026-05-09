@@ -1,5 +1,8 @@
 const subcategoryRepository = require('../repositories/subcategory.mongo.repository');
-const crypto = require('crypto');
+const config = require('../config/config');
+const cacheService = require('./cache.service');
+const cacheInvalidationService = require('./cacheInvalidation.service');
+const cacheKeys = require('../utils/cacheKeyBuilder');
 
 class SubcategoryService {
   generateSlug(name) {
@@ -19,11 +22,16 @@ class SubcategoryService {
       slug,
       data.display_order || 0
     );
+    await cacheInvalidationService.invalidateSubcategories(categoryId);
     return { id, category_id: categoryId, name: data.name, slug, display_order: data.display_order || 0 };
   }
 
   async getGroupsByCategoryId(categoryId) {
-    return subcategoryRepository.getGroupsByCategoryId(categoryId);
+    return cacheService.getOrSet(
+      cacheKeys.subcategoryGroupsKey(categoryId),
+      config.cache.subcategoryTtlSeconds,
+      () => subcategoryRepository.getGroupsByCategoryId(categoryId)
+    );
   }
 
   async getGroupById(groupId) {
@@ -46,11 +54,15 @@ class SubcategoryService {
       updateData.slug = this.generateSlug(updateData.name);
     }
 
-    return subcategoryRepository.updateGroup(groupId, updateData);
+    const updated = await subcategoryRepository.updateGroup(groupId, updateData);
+    await cacheInvalidationService.invalidateSubcategories('*');
+    return updated;
   }
 
   async deleteGroup(groupId) {
-    return subcategoryRepository.deleteGroup(groupId);
+    const deleted = await subcategoryRepository.deleteGroup(groupId);
+    await cacheInvalidationService.invalidateSubcategories('*');
+    return deleted;
   }
 
   // Get deletion impact info (for cascade warning)
@@ -99,6 +111,7 @@ class SubcategoryService {
       slug,
       data.display_order || 0
     );
+    await cacheInvalidationService.invalidateSubcategories('*');
     return { id, group_id: groupId, name: data.name, slug, display_order: data.display_order || 0 };
   }
 
@@ -121,16 +134,23 @@ class SubcategoryService {
             updateData.slug = this.generateSlug(updateData.name);
           }
 
-          return subcategoryRepository.updateValue(valueId, updateData);
+          const updated = await subcategoryRepository.updateValue(valueId, updateData);
+          await cacheInvalidationService.invalidateSubcategories('*');
+          return updated;
       }
   async deleteValue(valueId) {
-    return subcategoryRepository.deleteValue(valueId);
+    const deleted = await subcategoryRepository.deleteValue(valueId);
+    await cacheInvalidationService.invalidateSubcategories('*');
+    return deleted;
   }
 
   // ─── PRODUCT LINKING ───
 
   async setProductSubcategoryValues(productId, valueIds) {
-    return subcategoryRepository.setProductSubcategoryValues(productId, valueIds);
+    const result = await subcategoryRepository.setProductSubcategoryValues(productId, valueIds);
+    await cacheInvalidationService.invalidateProducts({ id: productId });
+    await cacheInvalidationService.invalidateSubcategories('*');
+    return result;
   }
 
   async getProductSubcategoryValues(productId) {

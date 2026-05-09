@@ -2,47 +2,12 @@ const httpStatus = require('http-status');
 const productService = require('../services/product.service');
 const catalogReadService = require('../services/catalog-read.service');
 const { successResponse, paginatedResponse } = require('../utils/response');
-const redis = require('../config/integrations/redis');
 const { Product } = require('../models');
 const { buildTenantScopedQuery, andQuery } = require('../utils/tenantScope');
-
-// Cache TTL for product list - 60 seconds
-const PRODUCTS_CACHE_TTL = 300;
-const PRODUCTS_CACHE_KEY = 'api:products:list:v3';
-
-/**
- * Safely parse JSON with validation
- */
-const safeJSONParse = (data, schema = null) => {
-  if (typeof data !== 'string' || data.length > 1024 * 1024) {
-    throw new Error('Invalid data format or size');
-  }
-  
-  const parsed = JSON.parse(data);
-  
-  // Validate schema if provided
-  if (schema) {
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('Parsed data is not an object');
-    }
-    
-    for (const [key, validator] of Object.entries(schema)) {
-      if (!validator(parsed[key])) {
-        throw new Error(`Invalid data structure: ${key}`);
-      }
-    }
-  }
-  
-  return parsed;
-};
-
-/**
- * Generate cache key based on query params
- */
-const getCacheKey = (prefix, params) => {
-  const queryString = JSON.stringify(params);
-  return `${prefix}:${Buffer.from(queryString).toString('base64').substring(0, 32)}`;
-};
+const config = require('../config/config');
+const cacheService = require('../services/cache.service');
+const cacheInvalidationService = require('../services/cacheInvalidation.service');
+const cacheKeys = require('../utils/cacheKeyBuilder');
 
 /**
  * Get tenant ID from request (set by ensureTenantIsolation middleware)
@@ -157,43 +122,20 @@ const getProducts = async (req, res, next) => {
       req.query.status = 'published';
     }
 
-    // Generate cache key based on query params and tenant
-    const cacheKey = `${getCacheKey(PRODUCTS_CACHE_KEY, req.query)}:${tenantId}:${isAdminOrEditor ? 'admin' : 'public'}`;
-
-    // Try to get from Redis cache first
-    if (redis) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          // Safely parse and validate cached data
-          const parsed = safeJSONParse(cached, {
-            products: (val) => Array.isArray(val),
-            pagination: (val) => val && typeof val === 'object'
-          });
-          
-          console.log(`[ProductController] Cache hit for products: ${cacheKey}`);
-          return sendProductsResponse(res, parsed, tenantId);
-        }
-      } catch (cacheErr) {
-        console.error('[ProductController] Redis cache read/parse error:', cacheErr.message);
-      }
-    }
-
-    // Cache miss - fetch from database
-    console.log(`[ProductController] Cache miss for products: ${cacheKey} (tenant: ${tenantId})`);
-    const data = await catalogReadService.listProducts(req.query, {
+    const cacheKey = cacheKeys.productListKey({
       tenantId,
-      user: req.user || null,
+      scope: isAdminOrEditor ? 'admin' : 'public',
+      query: req.query,
     });
 
-    // Store in Redis cache with TTL
-    if (redis) {
-      try {
-        await redis.set(cacheKey, JSON.stringify(data), { ex: PRODUCTS_CACHE_TTL });
-      } catch (cacheErr) {
-        console.error('[ProductController] Redis cache write error:', cacheErr.message);
-      }
-    }
+    const data = await cacheService.getOrSet(
+      cacheKey,
+      config.cache.productListTtlSeconds,
+      () => catalogReadService.listProducts(req.query, {
+        tenantId,
+        user: req.user || null,
+      })
+    );
 
     return sendProductsResponse(res, data, tenantId);
 
@@ -221,29 +163,11 @@ const getProduct = async (req, res, next) => {
   }
 };
 
-/**
- * Clear product list cache
- */
-const clearProductsCache = async () => {
-  if (redis) {
-    try {
-      // Delete all keys matching the pattern
-      const keys = await redis.keys(`${PRODUCTS_CACHE_KEY}:*`);
-      if (keys.length > 0) {
-        await redis.del(...keys);
-        console.log(`[ProductController] Cleared ${keys.length} product cache entries`);
-      }
-    } catch (err) {
-      console.error('[ProductController] Cache clear error:', err.message);
-    }
-  }
-};
-
 const createProduct = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
     const product = await productService.createProduct(req.body, tenantId);
-    await clearProductsCache(); // Invalidate cache
+    await cacheInvalidationService.invalidateProducts(product);
     return successResponse(res, product, 'Product created successfully', httpStatus.CREATED);
   } catch (error) {
     next(error);
@@ -253,6 +177,7 @@ const createProduct = async (req, res, next) => {
 const addVariant = async (req, res, next) => {
   try {
     const variant = await productService.addVariant(req.params.product_id, req.body);
+    await cacheInvalidationService.invalidateProducts({ id: req.params.product_id });
     return successResponse(res, variant, 'Variant added successfully', httpStatus.CREATED);
   } catch (error) {
     next(error);
@@ -266,6 +191,7 @@ const updateVariant = async (req, res, next) => {
       req.params.variant_id,
       req.body
     );
+    await cacheInvalidationService.invalidateProducts({ id: req.params.product_id });
     return successResponse(res, variant, 'Variant updated successfully');
   } catch (error) {
     next(error);
@@ -275,6 +201,7 @@ const updateVariant = async (req, res, next) => {
 const deleteVariant = async (req, res, next) => {
   try {
     const deleted = await productService.deleteVariant(req.params.product_id, req.params.variant_id);
+    await cacheInvalidationService.invalidateProducts({ id: req.params.product_id });
     return successResponse(res, deleted, 'Variant deleted successfully');
   } catch (error) {
     next(error);
@@ -293,7 +220,8 @@ const assignCategoriesToProduct = async (req, res, next) => {
     }
 
     const result = await productService.assignCategoriesToProduct(product_id, categoryIds, tenantId);
-    await clearProductsCache();
+    await cacheInvalidationService.invalidateProducts({ id: product_id });
+    await cacheInvalidationService.invalidateCategories();
     return successResponse(res, result, 'Categories assigned to product successfully');
   } catch (error) {
     next(error);
@@ -316,7 +244,8 @@ const removeCategoryFromProduct = async (req, res, next) => {
     const { product_id, category_id } = req.params;
     const tenantId = getTenantId(req);
     const result = await productService.removeCategoryFromProduct(product_id, category_id, tenantId);
-    await clearProductsCache();
+    await cacheInvalidationService.invalidateProducts({ id: product_id });
+    await cacheInvalidationService.invalidateCategories();
     return successResponse(res, result, 'Category removed from product successfully');
   } catch (error) {
     next(error);
@@ -327,7 +256,7 @@ const updateProduct = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
     const updated = await productService.updateProduct(req.params.product_id, req.body, tenantId);
-    await clearProductsCache(); // Invalidate cache
+    await cacheInvalidationService.invalidateProducts(updated || { id: req.params.product_id });
     return successResponse(res, updated, 'Product updated successfully');
   } catch (error) {
     next(error);
@@ -338,8 +267,23 @@ const deleteProduct = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
     const deleted = await productService.deleteProduct(req.params.product_id, tenantId);
-    await clearProductsCache(); // Invalidate cache
+    await cacheInvalidationService.invalidateProducts(deleted || { id: req.params.product_id });
     return successResponse(res, deleted, 'Product deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteProductsBulk = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    const tenantId = getTenantId(req);
+    const result = await productService.deleteProductsBulk(ids, tenantId);
+    
+    // Invalidate cache for all deleted products
+    await cacheInvalidationService.invalidateProducts({ ids });
+    
+    return successResponse(res, result, 'Products deleted successfully');
   } catch (error) {
     next(error);
   }
@@ -589,6 +533,7 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  deleteProductsBulk,
   addVariant,
   updateVariant,
   deleteVariant,

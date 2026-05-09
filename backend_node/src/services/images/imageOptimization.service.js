@@ -160,10 +160,19 @@ class ImageOptimizationService {
         // Use original format if requested/appropriate
         const actualFormat = isWebFriendly ? ext.slice(1) : outputFormat;
         const actualExt = isWebFriendly ? ext : outputExt;
-        
+
         const filename = `${baseName}_orig${actualExt}`;
         const originalPath = this._resolveUploadPath(filename);
-        const originalBuffer = await this._processImage(file.buffer, null, null, QUALITY_SETTINGS.original, actualFormat);
+
+        // Handle originalOnly flag - skip rotation and resizing for the original version if requested
+        const options = {
+          quality: QUALITY_SETTINGS.original,
+          format: actualFormat,
+          skipRotate: !!file.originalOnly || category === 'original_only',
+          skipResize: true
+        };
+
+        const originalBuffer = await this._processImage(file.buffer, null, null, options);
         processedImages.original = originalBuffer;
         await this._saveImage(originalPath, originalBuffer);
 
@@ -174,7 +183,15 @@ class ImageOptimizationService {
         // Generate resized versions
         const filename = `${baseName}${sizeConfig.suffix}${outputExt}`;
         const sizedPath = this._resolveUploadPath(filename);
-        const sizedBuffer = await this._processImage(file.buffer, sizeConfig.width, sizeConfig.height, QUALITY_SETTINGS[sizeName], outputFormat);
+
+        const options = {
+          quality: QUALITY_SETTINGS[sizeName],
+          format: outputFormat,
+          skipRotate: false, // Thumbs/Med/Lg usually benefit from auto-rotation
+          skipResize: false
+        };
+
+        const sizedBuffer = await this._processImage(file.buffer, sizeConfig.width, sizeConfig.height, options);
         processedImages[sizeName] = sizedBuffer;
         await this._saveImage(sizedPath, sizedBuffer);
 
@@ -248,17 +265,26 @@ class ImageOptimizationService {
    * Process image buffer and return processed buffer
    * Includes auto-rotation and metadata preservation
    */
-  async _processImage(buffer, width, height, quality, format) {
+  async _processImage(buffer, width, height, options = {}) {
+    const {
+      quality = 80,
+      format = 'webp',
+      skipRotate = false,
+      skipResize = false
+    } = options;
+
     let pipeline = sharp(buffer);
 
-    // Auto-rotate based on EXIF orientation metadata
-    pipeline = pipeline.rotate();
+    // Auto-rotate based on EXIF orientation metadata (unless skipped)
+    if (!skipRotate) {
+      pipeline = pipeline.rotate();
+    }
 
     // Preserve metadata (including color profiles, etc.)
     pipeline = pipeline.withMetadata();
 
-    // Resize if dimensions specified
-    if (width && height) {
+    // Resize if dimensions specified and not skipped
+    if (!skipResize && width && height) {
       pipeline = pipeline.resize(width, height, {
         fit: 'inside',
         withoutEnlargement: true

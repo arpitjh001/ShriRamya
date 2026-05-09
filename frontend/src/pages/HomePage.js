@@ -322,7 +322,8 @@ const HomePage = () => {
                 <img
                   src={tile.image}
                   alt={tile.name}
-                  className="h-64 md:h-[440px] w-full object-cover transition-transform duration-[1500ms] group-hover:scale-110"
+                  className="h-64 md:h-[440px] w-full object-cover transition-transform group-hover:scale-110"
+                  style={{ transitionDuration: '1500ms' }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-transparent opacity-85 transition-opacity duration-700 group-hover:opacity-95" />
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-4 md:p-10">
@@ -384,7 +385,8 @@ const HomePage = () => {
                        <img
                         src={tile.image}
                         alt={tile.name}
-                        className="h-[520px] w-full object-cover transition-transform duration-[2000ms] group-hover:scale-105"
+                        className="h-[520px] w-full object-cover transition-transform group-hover:scale-105"
+                        style={{ transitionDuration: '2000ms' }}
                       />
                       <div className="absolute inset-0 bg-primary/20 mix-blend-overlay group-hover:bg-transparent transition-colors duration-1000" />
                     </div>

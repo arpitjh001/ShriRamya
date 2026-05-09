@@ -160,6 +160,15 @@ class ProductMongoRepository {
     return result.deletedCount > 0;
   }
 
+  async deleteProductsBulk(ids, tenantId = 1) {
+    const normalizedIds = ids.map(id => this.normalizeCategoryIdentifier(id)).filter(Boolean);
+    const result = await Product.deleteMany({
+      _id: { $in: normalizedIds },
+      tenant_id: tenantId
+    });
+    return result.deletedCount;
+  }
+
   async addVariant(productId, variantData) {
     const product = await Product.findOne(this.buildProductQuery(productId));
     if (!product) throw new Error('Product not found');

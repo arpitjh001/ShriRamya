@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { useCart } from '../context/CartContext';
 import { productsAPI } from '../services/api';
 import { formatPrice } from '../utils';
+import { getCartErrorMessage } from '../utils/cartError';
 import { toast } from 'sonner';
 import { ShoppingBag, Minus, Plus, Loader2, ChevronRight } from 'lucide-react';
 
@@ -124,8 +125,8 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
       } : null);
       toast.success('Added to cart!');
       onOpenChange(false);
-    } catch {
-      toast.error('Failed to add to cart');
+    } catch (error) {
+      toast.error(getCartErrorMessage(error));
     } finally {
       setAddingToCart(false);
     }

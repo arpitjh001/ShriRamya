@@ -7,6 +7,7 @@ import { wishlistAPI } from '../services/api';
 import { toast } from 'sonner';
 import QuickViewModal from './QuickViewModal';
 import { cn, formatPrice } from '../utils';
+import { getCartErrorMessage } from '../utils/cartError';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1756483510798-c1fe4e476ecd?auto=format&fit=crop&w=2400&q=80';
 
@@ -244,11 +245,7 @@ const ProductCard = ({
       });
       toast.success('Added to cart');
     } catch (error) {
-      if (error?.response?.data?.code === 'INSUFFICIENT_STOCK') {
-        toast.error(`Only ${error.response.data.availableStock} pieces available`);
-      } else {
-        toast.error('Failed to add to cart');
-      }
+      toast.error(getCartErrorMessage(error));
     } finally {
       setAddingToCart(false);
     }
@@ -259,6 +256,7 @@ const ProductCard = ({
   const quickActionText = isOutOfStock
     ? 'Out'
     : quickActionLabel || (hasVariantChoices ? 'Options' : quickAddVariantId ? 'Add' : 'View');
+  const wishlistLabel = isWishlisted ? 'Remove from wishlist' : 'Add to wishlist';
 
   return (
     <article
@@ -325,8 +323,10 @@ const ProductCard = ({
             isWishlisted && 'border-primary/25 bg-primary text-primary-foreground'
           )}
           onClick={handleWishlist}
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-label={wishlistLabel}
           aria-pressed={isWishlisted}
+          title={wishlistLabel}
+          data-testid={`wishlist-toggle-${getWishlistProductId(product) || productId}`}
         >
           <Heart className={cn('h-4 w-4', isWishlisted && 'fill-current')} />
         </button>

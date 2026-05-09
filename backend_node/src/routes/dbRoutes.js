@@ -11,6 +11,7 @@ const shipmentController = require('../controllers/shipment.controller');
 const { insiderService, INSIDER_INTERESTS } = require('../services/insider.service');
 const { auth, requireRole, optionalAuth } = require('../middlewares/authRBAC');
 const tokenService = require('../services/token.service');
+const logger = require('../utils/logger');
 
 const isAdminOrEditor = (user) => {
   if (!user) return false;
@@ -49,6 +50,29 @@ const buildProductLookup = (identifier) => {
   }
 
   return { slug: stringIdentifier };
+};
+
+const getWishlistUserId = (req) => {
+  const authenticatedUserId = req.user?.id || req.user?.userId || req.user?.sub;
+  const requestUserId = req.query.userId || req.body?.userId || req.headers['x-user-id'];
+  return String(authenticatedUserId || requestUserId || 'guest');
+};
+
+const getProductDisplayImage = (product = {}) => {
+  const imageCandidates = [
+    product.thumbnail,
+    product.image,
+    ...(Array.isArray(product.images) ? product.images : []),
+    ...(Array.isArray(product.variants) ? product.variants.map((variant) => variant?.image) : []),
+  ];
+
+  return imageCandidates
+    .map((entry) => {
+      if (typeof entry === 'string') return entry.trim();
+      if (entry && typeof entry === 'object') return String(entry.src || entry.url || '').trim();
+      return '';
+    })
+    .find(Boolean) || '';
 };
 
 const PUBLIC_PRODUCT_STATUS_FILTER = {
@@ -509,6 +533,16 @@ router.post('/cart/add', async (req, res) => {
     res.json({ success: true, message: 'Added to cart', data: cart });
   } catch (err) {
     const statusCode = err.statusCode || (err.code === 'INSUFFICIENT_STOCK' ? 409 : 500);
+    logger.warn('Cart add rejected', {
+      statusCode,
+      message: err.message,
+      code: err.code || null,
+      productId: req.body?.productId || req.body?.product_id || err.productId || null,
+      variantId: req.body?.variantId || req.body?.variant_id || null,
+      productStatus: err.productStatus || null,
+      path: req.path,
+      requestId: req.requestId,
+    });
     res.status(statusCode).json({
       success: false,
       message: err.message,
@@ -874,51 +908,58 @@ router.delete('/blogs/:idOrSlug([a-f\\d]{24}|[a-z0-9-]+)', auth, requireRole('ad
 // ==========================================
 // WISHLIST ENDPOINTS
 // ==========================================
-router.get('/wishlist', async (req, res) => {
+router.get('/wishlist', optionalAuth, async (req, res) => {
   try {
-    const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
+    const userId = getWishlistUserId(req);
     const items = await Wishlist.find({ userId }, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).lean();
 
-    // Backfill pricing for legacy wishlist entries that were saved without computed prices
-    const missingPricingProductIds = [
+    // Backfill legacy wishlist entries saved without computed prices or imagery.
+    const missingProductIds = [
       ...new Set(
         items
-          .filter((item) => (Number(item.salePrice ?? item.price ?? 0) || 0) <= 0)
+          .filter((item) => (
+            (Number(item.salePrice ?? item.price ?? 0) || 0) <= 0 ||
+            !String(item.thumbnail || '').trim()
+          ))
           .map((item) => item.productId)
           .filter((value) => Number.isFinite(Number(value)) && Number(value) > 0)
           .map((value) => Number(value))
       )
     ];
 
-    if (missingPricingProductIds.length === 0) {
+    if (missingProductIds.length === 0) {
       return res.json({ success: true, data: items });
     }
 
     const products = await Product.find(
-      { productId: { $in: missingPricingProductIds } },
+      { productId: { $in: missingProductIds } },
       { _id: 0, __v: 0 }
     ).lean();
 
-    const pricingByProductId = new Map(
+    const productInfoByProductId = new Map(
       products.map((product) => {
         const pid = Number(product.productId);
         const { regularPrice, salePrice } = catalogReadService.computePricing(product);
-        return [pid, { price: regularPrice, salePrice }];
+        return [pid, {
+          price: regularPrice,
+          salePrice,
+          thumbnail: getProductDisplayImage(product),
+        }];
       })
     );
 
     const hydratedItems = items.map((item) => {
       const pid = Number(item.productId);
-      const pricing = pricingByProductId.get(pid);
-      if (!pricing) return item;
+      const productInfo = productInfoByProductId.get(pid);
+      if (!productInfo) return item;
 
       const existingDisplayPrice = Number(item.salePrice ?? item.price ?? 0) || 0;
-      if (existingDisplayPrice > 0) return item;
 
       return {
         ...item,
-        price: pricing.price,
-        salePrice: pricing.salePrice,
+        thumbnail: item.thumbnail || productInfo.thumbnail,
+        price: existingDisplayPrice > 0 ? item.price : productInfo.price,
+        salePrice: existingDisplayPrice > 0 ? item.salePrice : productInfo.salePrice,
       };
     });
 
@@ -926,9 +967,9 @@ router.get('/wishlist', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.post('/wishlist/add', async (req, res) => {
+router.post('/wishlist/add', optionalAuth, async (req, res) => {
   try {
-    const userId = (req.body && req.body.userId) || req.headers['x-user-id'] || 'guest';
+    const userId = getWishlistUserId(req);
 
     // Safely read productId from body (avoid destructuring errors when body is not an object)
     const rawProductId = req.body && (req.body.productId || req.body.product_id) ? (req.body.productId || req.body.product_id) : null;
@@ -950,7 +991,7 @@ router.post('/wishlist/add', async (req, res) => {
       userId,
       productId: product.productId,
       name: product.name,
-      thumbnail: product.thumbnail,
+      thumbnail: getProductDisplayImage(product),
       price: regularPrice,
       salePrice,
     });
@@ -962,9 +1003,9 @@ router.post('/wishlist/add', async (req, res) => {
 });
 
 // Alias: POST /wishlist/:productId (frontend compatibility)
-router.post('/wishlist/:productId', async (req, res) => {
+router.post('/wishlist/:productId', optionalAuth, async (req, res) => {
   try {
-    const userId = req.query.userId || (req.body && req.body.userId) || req.headers['x-user-id'] || 'guest';
+    const userId = getWishlistUserId(req);
     const identifier = req.params.productId;
 
     // Try flexible lookup (ObjectId, numeric productId, or slug)
@@ -998,7 +1039,7 @@ router.post('/wishlist/:productId', async (req, res) => {
       userId,
       productId: pid,
       name: product.name,
-      thumbnail: product.thumbnail,
+      thumbnail: getProductDisplayImage(product),
       price: regularPrice,
       salePrice,
     });
@@ -1006,9 +1047,9 @@ router.post('/wishlist/:productId', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.delete('/wishlist/remove/:productId', async (req, res) => {
+router.delete('/wishlist/remove/:productId', optionalAuth, async (req, res) => {
   try {
-    const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
+    const userId = getWishlistUserId(req);
     const identifier = req.params.productId;
 
     // Flexible lookup (ObjectId, numeric productId, slug)
@@ -1036,9 +1077,9 @@ router.delete('/wishlist/remove/:productId', async (req, res) => {
 });
 
 // Alias: DELETE /wishlist/:productId (frontend compatibility)
-router.delete('/wishlist/:productId', async (req, res) => {
+router.delete('/wishlist/:productId', optionalAuth, async (req, res) => {
   try {
-    const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
+    const userId = getWishlistUserId(req);
     const identifier = req.params.productId;
 
     const lookup = buildProductLookup(identifier);
@@ -1063,9 +1104,9 @@ router.delete('/wishlist/:productId', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.get('/wishlist/check/:productId', async (req, res) => {
+router.get('/wishlist/check/:productId', optionalAuth, async (req, res) => {
   try {
-    const userId = req.query.userId || req.headers['x-user-id'] || 'guest';
+    const userId = getWishlistUserId(req);
     const identifier = req.params.productId;
 
     const lookup = buildProductLookup(identifier);
@@ -1215,8 +1256,8 @@ router.post('/orders/admin/shipments/:id/deliver', (req, res, next) => next());
 router.post('/orders/admin/shipments/:id/sync', (req, res, next) => next());
 router.post('/orders/admin/shipments/:id/cancel', (req, res, next) => next());
 router.delete('/orders/admin/shipments/:id', (req, res, next) => next());
-router.get('/orders/admin/shipping/xpressbees/couriers', (req, res, next) => next());
-router.post('/orders/admin/shipping/xpressbees/serviceability', (req, res, next) => next());
+router.get('/orders/admin/shipping/shiprocket/couriers', (req, res, next) => next());
+router.post('/orders/admin/shipping/shiprocket/serviceability', (req, res, next) => next());
 
 // ==========================================
 // COUPONS

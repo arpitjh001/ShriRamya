@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart, ShoppingBag, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
-import { productsAPI } from '../services/api';
+import { productsAPI, wishlistAPI } from '../services/api';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const API_BASE = process.env.REACT_APP_BACKEND_URL;
+import { getCartErrorMessage } from '../utils/cartError';
 
 const WishlistPage = () => {
   const { user } = useAuth();
@@ -25,17 +24,16 @@ const WishlistPage = () => {
 
   const fetchWishlist = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/wishlist?userId=${userId}`);
-      const data = await res.json();
-      setItems(data.data || []);
+      const res = await wishlistAPI.get({ userId });
+      setItems(res.data || []);
     } catch (err) { console.error('Fetch wishlist:', err); }
     setLoading(false);
   };
 
   const removeItem = async (productId, options = {}) => {
     try {
-      await fetch(`${API_BASE}/api/v1/wishlist/remove/${productId}?userId=${userId}`, { method: 'DELETE' });
-      setItems(prev => prev.filter(i => i.productId !== productId));
+      await wishlistAPI.remove(productId);
+      setItems(prev => prev.filter(i => String(i.productId) !== String(productId)));
       if (!options.silent) toast.success('Removed from wishlist');
     } catch (err) { toast.error('Failed to remove'); }
   };
@@ -66,19 +64,23 @@ const WishlistPage = () => {
       });
       await removeItem(item.productId, { silent: true });
       toast.success('Moved to cart');
-    } catch (err) { toast.error('Failed to move to cart'); }
+    } catch (err) { toast.error(getCartErrorMessage(err, 'Failed to move to cart')); }
   };
 
   const mapWishlistProduct = (item) => {
     const displayPrice = Number(item.salePrice ?? item.price ?? 0);
     const originalPrice = Number(item.price ?? 0);
+    const wishlistImage =
+      item.thumbnail ||
+      item.image ||
+      (Array.isArray(item.images) ? item.images.find(Boolean) : null);
 
     return {
       id: item.productId,
       productId: item.productId,
       name: item.name,
-      images: item.thumbnail ? [item.thumbnail] : [],
-      thumbnail: item.thumbnail,
+      images: wishlistImage ? [wishlistImage] : [],
+      thumbnail: wishlistImage,
       price: originalPrice,
       sale_price: originalPrice > displayPrice ? displayPrice : null,
       category: item.category || item.categoryName || 'Wishlist',
@@ -127,6 +129,18 @@ const WishlistPage = () => {
                       return null;
                     }}
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => removeItem(item.productId)}
+                    data-testid={`wishlist-remove-${item.productId}`}
+                    aria-label={`Remove ${item.name || 'item'} from wishlist`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Remove
+                  </Button>
                 </motion.div>
               ))}
             </div>

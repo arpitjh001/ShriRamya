@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Package, User as UserIcon, LogOut, Heart, MapPin, Phone, Mail, Edit2, Save, X, Eye, Truck, CheckCircle, Clock, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
+import { wishlistAPI } from '../services/api';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -54,9 +55,8 @@ const AccountPage = () => {
 
   const fetchWishlist = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/wishlist?userId=${userId}`);
-      const data = await res.json();
-      setWishlist(data.data || []);
+      const res = await wishlistAPI.get({ userId });
+      setWishlist(res.data || []);
     } catch (err) { console.error('Fetch wishlist:', err); }
   };
 
@@ -95,7 +95,7 @@ const AccountPage = () => {
 
   const removeFromWishlist = async (productId) => {
     try {
-      await fetch(`${API_BASE}/api/v1/wishlist/remove/${productId}?userId=${userId}`, { method: 'DELETE' });
+      await wishlistAPI.remove(productId);
       setWishlist(prev => prev.filter(w => w.productId !== productId));
       toast.success('Removed from wishlist');
     } catch (err) { toast.error('Failed to remove'); }

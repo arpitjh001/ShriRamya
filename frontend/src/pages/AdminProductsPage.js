@@ -118,6 +118,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
     totalPages: 1
   });
   const [stats, setStats] = useState(null);
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
 
   const getCouponTypeLabel = (type) => {
     const badges = {
@@ -161,7 +162,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
     // Stock management fields
     totalStock: 0,
     lowStockThreshold: 5,
-    sku: '' // Product-level SKU
+    sku: '', // Product-level SKU
+    originalOnly: false // Bypass image optimization rotation/crop
   });
 
   // Category Modal State
@@ -276,10 +278,45 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
       });
 
       setProducts(mappedProducts);
+      // Clear selection on new data load
+      setSelectedProductIds([]);
     } catch (error) {
       console.error('Failed to load products:', error);
       toast.error('Failed to load products');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectRow = (productId) => {
+    setSelectedProductIds(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProductIds.length === products.length && products.length > 0) {
+      setSelectedProductIds([]);
+    } else {
+      setSelectedProductIds(products.map(p => p.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProductIds.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedProductIds.length} selected products?`)) return;
+
+    try {
+      setLoading(true);
+      await productsAPI.bulkDelete(selectedProductIds);
+      toast.success(`${selectedProductIds.length} products deleted successfully`);
+      setSelectedProductIds([]);
+      await loadProducts(pagination.page);
+    } catch (error) {
+      toast.error('Failed to delete products');
       setLoading(false);
     }
   };
@@ -348,7 +385,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         discountPrice: product.variants?.[0]?.discountPrice?.toString() || '',
         totalStock: totalStock.toString(),
         lowStockThreshold: product.variants?.[0]?.lowStockThreshold?.toString() || '5',
-        sku: product.sku && product.sku !== 'N/A' ? product.sku : ''
+        sku: product.sku && product.sku !== 'N/A' ? product.sku : '',
+        originalOnly: !!product.originalOnly
       });
     } else {
       setEditingProduct(null);
@@ -371,7 +409,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         discountPrice: '',
         totalStock: '0',
         lowStockThreshold: '5',
-        sku: ''
+        sku: '',
+        originalOnly: false
       });
     }
     setShowProductModal(true);
@@ -447,6 +486,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         images: productForm.images,
         categories: selectedCategoryIds,
         sku: productSku, // Product-level SKU
+        originalOnly: !!productForm.originalOnly,
         variants: editingProduct && cleanVariants.length === 0 ? undefined : cleanVariants
       };
 
@@ -487,6 +527,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('originalOnly', productForm.originalOnly ? 'true' : 'false');
         const response = await uploadAPI.uploadImage(formData);
         const uploaded = response?.data || {};
         const imageUrl = uploaded?.cdn?.original || uploaded?.original || uploaded?.cdn?.large || uploaded?.large || uploaded?.url;
@@ -732,12 +773,18 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
             <p className="text-sm text-muted-foreground">Manage your products and categories</p>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-            <TabsList className="bg-white/5 p-1 border border-white/10 w-full sm:w-auto">
-              <TabsTrigger value="products" className="flex-1 gap-2 text-xs">
+            <TabsList className="bg-slate-100 p-1 border border-slate-200 w-full sm:w-auto">
+              <TabsTrigger
+                value="products"
+                className="flex-1 gap-2 text-xs font-semibold text-slate-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:shadow-blue-600/25"
+              >
                 <Package className="w-4 h-4" />
                 Products
               </TabsTrigger>
-              <TabsTrigger value="categories" className="flex-1 gap-2 text-xs">
+              <TabsTrigger
+                value="categories"
+                className="flex-1 gap-2 text-xs font-semibold text-slate-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:shadow-blue-600/25"
+              >
                 <FolderPlus className="w-4 h-4" />
                 Categories
               </TabsTrigger>
@@ -797,13 +844,33 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  onClick={() => handleOpenProductModal()}
-                  className="w-full sm:w-auto gap-2 bg-royal-maroon hover:bg-royal-maroon/90 text-foreground"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Product
-                </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <AnimatePresence>
+                    {selectedProductIds.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                      >
+                        <Button
+                          variant="destructive"
+                          onClick={handleBulkDelete}
+                          className="gap-2 bg-rose-600 hover:bg-rose-700 text-white"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete Selected ({selectedProductIds.length})
+                        </Button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <Button
+                    onClick={() => handleOpenProductModal()}
+                    className="w-full sm:w-auto gap-2 bg-royal-maroon hover:bg-royal-maroon/90 text-foreground"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Product
+                  </Button>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -817,6 +884,16 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                 <Table className="min-w-[800px] md:min-w-full">
                   <TableHeader className="bg-slate-50">
                     <TableRow className="border-border">
+                      <TableHead className="w-[50px]">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-slate-300 text-royal-maroon focus:ring-royal-maroon"
+                            checked={selectedProductIds.length === products.length && products.length > 0}
+                            onChange={handleSelectAll}
+                          />
+                        </div>
+                      </TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Product</TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">SKU</TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Price</TableHead>
@@ -828,7 +905,17 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map((product) => (
-                      <TableRow key={product.id} className="border-border hover:bg-slate-50 transition-colors">
+                      <TableRow key={product.id} className={`border-border transition-colors ${selectedProductIds.includes(product.id) ? 'bg-royal-maroon/5' : 'hover:bg-slate-50'}`}>
+                        <TableCell>
+                          <div className="flex items-center justify-center">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-slate-300 text-royal-maroon focus:ring-royal-maroon"
+                              checked={selectedProductIds.includes(product.id)}
+                              onChange={() => handleSelectRow(product.id)}
+                            />
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             {product.images?.[0] ? (
@@ -1235,6 +1322,16 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">Archive Imagery</Label>
                 <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mr-4">
+                    <input
+                      type="checkbox"
+                      id="originalOnly"
+                      checked={productForm.originalOnly}
+                      onChange={(e) => setProductForm({ ...productForm, originalOnly: e.target.checked })}
+                      className="w-4 h-4 rounded border-white/10 bg-white/5 text-royal-maroon focus:ring-royal-maroon/30"
+                    />
+                    <label htmlFor="originalOnly" className="text-[10px] font-bold uppercase tracking-widest text-slate-500 cursor-pointer">Original Only</label>
+                  </div>
                   {uploadingImage && <Loader2 className="w-4 h-4 animate-spin text-royal-maroon" />}
                   <label className="cursor-pointer">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-royal-maroon/10 text-royal-maroon border border-royal-maroon/20 rounded-lg hover:bg-royal-maroon/20 transition-all text-[10px] font-bold uppercase tracking-widest">

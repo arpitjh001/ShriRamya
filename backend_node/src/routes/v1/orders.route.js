@@ -91,9 +91,9 @@ router.get('/admin/shipments/ready-to-ship', auth, requireRole('admin'), shipmen
 // Get pending shipments
 router.get('/admin/shipments/pending', auth, requireRole('admin'), shipmentController.getPendingShipments);
 
-// Xpressbees helpers
-router.get('/admin/shipping/xpressbees/couriers', auth, requireRole('admin'), shipmentController.getXpressbeesCouriers);
-router.post('/admin/shipping/xpressbees/serviceability', auth, requireRole('admin'), shipmentController.checkXpressbeesServiceability);
+// Shiprocket helpers
+router.get('/admin/shipping/shiprocket/couriers', auth, requireRole('admin'), shipmentController.getShiprocketCouriers);
+router.post('/admin/shipping/shiprocket/serviceability', auth, requireRole('admin'), shipmentController.checkShiprocketServiceability);
 
 // Create shipment
 router.post('/admin/:id/shipments',
@@ -156,5 +156,8 @@ router.post('/webhooks/payment/razorpay', webhookController.handleRazorpayWebhoo
 
 // Stripe webhook
 router.post('/webhooks/payment/stripe', webhookController.handleStripeWebhook);
+
+// Shiprocket shipping webhook
+router.post('/webhooks/shipping/shiprocket', webhookController.handleShiprocketWebhook);
 
 module.exports = router;

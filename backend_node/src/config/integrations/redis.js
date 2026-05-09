@@ -1,160 +1,240 @@
 const Redis = require('ioredis');
 const config = require('../config');
 
-let redis = null;
-let redisAvailable = false;
+let client = null;
+let connectPromise = null;
+let available = false;
+let failureTimestamps = [];
+let circuitOpenUntil = 0;
 
-/**
- * Initialize Redis connection with fallback
- */
+const now = () => Date.now();
+
+const log = (level, event, fields = {}) => {
+  const payload = { event, ...fields };
+  const message = `[Redis] ${JSON.stringify(payload)}`;
+  if (level === 'warn') console.warn(message);
+  else if (level === 'error') console.error(message);
+  else if (config.redis.debug) console.info(message);
+};
+
+const isEnabled = () => Boolean(config.redis.enabled && config.redis.url);
+
+const isCircuitOpen = () => {
+  if (!circuitOpenUntil) return false;
+  if (now() >= circuitOpenUntil) {
+    circuitOpenUntil = 0;
+    log('info', 'REDIS_CIRCUIT_HALF_OPEN');
+    return false;
+  }
+  return true;
+};
+
+const resetFailures = () => {
+  failureTimestamps = [];
+  circuitOpenUntil = 0;
+};
+
+const recordFailure = (reason) => {
+  available = false;
+  const cutoff = now() - config.redis.failureWindowMs;
+  failureTimestamps = failureTimestamps.filter((timestamp) => timestamp >= cutoff);
+  failureTimestamps.push(now());
+
+  if (failureTimestamps.length >= config.redis.failureThreshold) {
+    circuitOpenUntil = now() + config.redis.unhealthyCooldownMs;
+    log('warn', 'REDIS_CIRCUIT_OPENED', {
+      reason,
+      failures: failureTimestamps.length,
+      cooldownMs: config.redis.unhealthyCooldownMs,
+    });
+  }
+};
+
+const createClient = () => {
+  if (!isEnabled()) {
+    log('warn', 'REDIS_DISABLED');
+    return null;
+  }
+
+  if (client) {
+    return client;
+  }
+
+  const options = {
+    lazyConnect: true,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 0,
+    connectTimeout: config.redis.connectTimeoutMs,
+    commandTimeout: config.redis.commandTimeoutMs,
+    retryStrategy(times) {
+      if (times > 2) return null;
+      return Math.min(times * 250, 1000);
+    },
+  };
+
+  if (config.redis.url.startsWith('rediss://')) {
+    options.tls = {};
+  }
+
+  client = new Redis(config.redis.url, options);
+
+  client.on('ready', () => {
+    available = true;
+    resetFailures();
+    log('info', 'REDIS_CONNECTED');
+  });
+
+  client.on('close', () => {
+    available = false;
+    log('warn', 'REDIS_DISCONNECTED');
+  });
+
+  client.on('end', () => {
+    available = false;
+    log('warn', 'REDIS_CONNECTION_ENDED');
+  });
+
+  client.on('error', (error) => {
+    available = false;
+    log('warn', 'REDIS_ERROR', { reason: error.message });
+  });
+
+  return client;
+};
+
 const initRedis = () => {
-    try {
-        // Enable TLS for rediss:// URLs
-        const options = {
-            maxRetriesPerRequest: 3,
-            retryStrategy(times) {
-                if (times > 3) {
-                    console.warn('[Redis] Max retries reached, operating without Redis');
-                    return null; // Stop retrying
-                }
-                const delay = Math.min(times * 100, 2000);
-                return delay;
-            },
-            connectTimeout: 5000,
-            lazyConnect: true,
-        };
-
-        // Enable TLS when using rediss:// protocol
-        if (config.redis.url && config.redis.url.startsWith('rediss://')) {
-            options.tls = {};
-            console.info('[Redis] TLS enabled for secure connection');
-        }
-
-        redis = new Redis(config.redis.url, options);
-
-        redis.on('connect', () => {
-            console.info('[Redis] Connected successfully');
-            redisAvailable = true;
-        });
-
-        redis.on('error', (err) => {
-            console.error('[Redis] Connection error:', err.message);
-            redisAvailable = false;
-            // Immediate short-circuit for ioredis errors to prevent hangs
-            if (err.message.includes('ECONNRESET') || err.message.includes('ETIMEDOUT')) {
-                console.warn('[Redis] Fatal connection error detected, disabling Redis features');
-            }
-        });
-
-        redis.on('close', () => {
-            console.warn('[Redis] Connection closed');
-            redisAvailable = false;
-        });
-
-        redis.on('reconnecting', () => {
-            console.info('[Redis] Attempting to reconnect...');
-        });
-
-    } catch (error) {
-        console.error('[Redis] Failed to initialize:', error.message);
-        redisAvailable = false;
-    }
+  try {
+    return createClient();
+  } catch (error) {
+    recordFailure(error.message);
+    log('warn', 'REDIS_INIT_FAILED', { reason: error.message });
+    return null;
+  }
 };
 
-/**
- * Get Redis instance (may be null if unavailable)
- */
-const getRedis = () => redis;
+const ensureConnected = async () => {
+  if (!isEnabled() || isCircuitOpen()) {
+    return null;
+  }
 
-/**
- * Check if Redis is available
- */
-const isAvailable = () => redisAvailable;
+  const redis = createClient();
+  if (!redis) {
+    return null;
+  }
 
-/**
- * Safe Redis operations with fallback
- */
-const safeRedis = {
-    async get(key) {
-        if (!redisAvailable || !redis) {
-            console.warn('[Redis] GET skipped - Redis unavailable');
-            return null;
-        }
-        try {
-            return await redis.get(key);
-        } catch (error) {
-            console.error('[Redis] GET error:', error.message);
-            redisAvailable = false;
-            return null;
-        }
-    },
+  if (redis.status === 'ready') {
+    available = true;
+    return redis;
+  }
 
-    async set(key, value, options) {
-        if (!redisAvailable || !redis) {
-            console.warn('[Redis] SET skipped - Redis unavailable');
-            return false;
-        }
-        try {
-            if (options?.ex) {
-                await redis.setex(key, options.ex, value);
-            } else {
-                await redis.set(key, value);
-            }
-            return true;
-        } catch (error) {
-            console.error('[Redis] SET error:', error.message);
-            redisAvailable = false;
-            return false;
-        }
-    },
-
-    async del(...keys) {
-        if (!redisAvailable || !redis) {
-            console.warn('[Redis] DEL skipped - Redis unavailable');
-            return false;
-        }
-        try {
-            await redis.del(...keys);
-            return true;
-        } catch (error) {
-            console.error('[Redis] DEL error:', error.message);
-            return false;
-        }
-    },
-
-    async exists(key) {
-        if (!redisAvailable || !redis) {
-            return false;
-        }
-        try {
-            const result = await redis.exists(key);
-            return result === 1;
-        } catch (error) {
-            console.error('[Redis] EXISTS error:', error.message);
-            return false;
-        }
-    },
-
-    async keys(pattern) {
-        if (!redisAvailable || !redis) {
-            return [];
-        }
-        try {
-            return await redis.keys(pattern);
-        } catch (error) {
-            console.error('[Redis] KEYS error:', error.message);
-            return [];
-        }
+  if (redis.status === 'connecting' || redis.status === 'connect') {
+    if (connectPromise) {
+      try {
+        await connectPromise;
+        available = redis.status === 'ready';
+        return available ? redis : null;
+      } catch (error) {
+        recordFailure(error.message);
+        log('warn', 'REDIS_CONNECT_FAILED', { reason: error.message });
+        return null;
+      }
     }
+
+    return null;
+  }
+
+  try {
+    if (!connectPromise) {
+      connectPromise = redis.connect().finally(() => {
+        connectPromise = null;
+      });
+    }
+    await connectPromise;
+    available = redis.status === 'ready';
+    return available ? redis : null;
+  } catch (error) {
+    recordFailure(error.message);
+    log('warn', 'REDIS_CONNECT_FAILED', { reason: error.message });
+    return null;
+  }
 };
 
-// Initialize Redis on module load
-initRedis();
+const getRedis = () => client;
 
-// Export both the direct redis instance (for backward compat) and safe wrappers
-module.exports = safeRedis;
-module.exports.getRedis = getRedis;
-module.exports.isAvailable = isAvailable;
-module.exports.initRedis = initRedis;
+const isAvailable = () => isEnabled() && !isCircuitOpen() && available && client?.status === 'ready';
 
+const markCommandFailure = (error, command = 'unknown') => {
+  recordFailure(error.message);
+  log('warn', 'REDIS_COMMAND_FAILED', { command, reason: error.message });
+};
 
+const runCommand = async (command, operation, fallback = null) => {
+  const redis = await ensureConnected();
+  if (!redis) {
+    return fallback;
+  }
+
+  try {
+    return await operation(redis);
+  } catch (error) {
+    markCommandFailure(error, command);
+    return fallback;
+  }
+};
+
+const get = (key) => runCommand('GET', (redis) => redis.get(key), null);
+
+const set = async (key, value, options = {}) => {
+  const ttl = options?.ex || options?.EX || options?.ttl;
+  const result = await runCommand(
+    'SET',
+    (redis) => (ttl ? redis.set(key, value, 'EX', Number(ttl)) : redis.set(key, value)),
+    null
+  );
+
+  return result === 'OK';
+};
+
+const setex = async (key, ttlSeconds, value) => {
+  const result = await runCommand(
+    'SETEX',
+    (redis) => redis.setex(key, Number(ttlSeconds), value),
+    null
+  );
+
+  return result === 'OK';
+};
+
+const del = async (...keys) => {
+  const normalizedKeys = keys.flat().filter(Boolean);
+  if (normalizedKeys.length === 0) {
+    return 0;
+  }
+
+  return runCommand('DEL', (redis) => redis.del(...normalizedKeys), 0);
+};
+
+const keys = (pattern) => runCommand('KEYS', (redis) => redis.keys(pattern), []);
+
+const exists = async (key) => {
+  const result = await runCommand('EXISTS', (redis) => redis.exists(key), 0);
+  return result === 1;
+};
+
+const ping = () => runCommand('PING', (redis) => redis.ping(), null);
+
+module.exports = {
+  initRedis,
+  ensureConnected,
+  getRedis,
+  isAvailable,
+  isEnabled,
+  markCommandFailure,
+  get,
+  set,
+  setex,
+  del,
+  keys,
+  exists,
+  ping,
+};

@@ -8,7 +8,7 @@
 import crypto from 'crypto';
 import { MIN_SIGNATURE_LENGTH, getModelFamily } from '../constants.js';
 import { EmptyResponseError } from '../errors.js';
-import { cacheSignature, cacheThinkingSignature } from '../format/signature-cache.js';
+import { cacheSignature, cacheThinkingSignature, cacheToolName } from '../format/signature-cache.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -194,6 +194,9 @@ export async function* streamSSEResponse(response, originalModel) {
                             // Cache for future requests (Claude Code may strip this field)
                             cacheSignature(toolId, functionCallSignature);
                         }
+                        
+                        // [CRITICAL FIX] Cache tool name for mapping tool_result back to function name
+                        cacheToolName(toolId, part.functionCall.name);
 
                         yield {
                             type: 'content_block_start',

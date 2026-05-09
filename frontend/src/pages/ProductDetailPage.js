@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { productsAPI } from '../services/api';
+import { productsAPI, wishlistAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { ShoppingCart, Heart, Truck, Shield, RefreshCw, Sparkles, ChevronDown, Layers, Star, MessageCircle, Share2 } from 'lucide-react';
+import { ShoppingCart, Heart, Sparkles, ChevronDown, Layers, Star, Share2 } from 'lucide-react';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
@@ -15,8 +15,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { addToRecentlyViewed } from '../components/RecentlyViewed';
 import { getFabricGuide } from '../utils/fabricGuide';
 import SEOMeta from '../components/SEOMeta';
+import { getCartErrorMessage } from '../utils/cartError';
 
 const SHIPPING_DELIVERY_COPY = 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. Shipping charges are calculated at checkout.';
+const PRODUCT_IMAGE_FALLBACK = '/uploads/woocommerce-placeholder.webp';
 
 const getVariantId = (variant = {}) => {
   const item = variant || {};
@@ -166,13 +168,9 @@ const ProductDetailPage = () => {
     const checkWishlist = async () => {
       if (!user || !product) return;
       try {
-        const API_BASE = process.env.REACT_APP_BACKEND_URL;
-        const userId = user?.id || user?.userId || 'guest';
-        const res = await fetch(`${API_BASE}/api/v1/wishlist?userId=${userId}`);
-        const data = await res.json();
         const pid = product.productId || product.id;
-        const isInWishlist = (data.data || []).some(item => String(item.productId) === String(pid));
-        setWish(isInWishlist);
+        const res = await wishlistAPI.check(pid);
+        setWish(Boolean(res?.data?.inWishlist));
       } catch (err) {
         console.error('Error checking wishlist:', err);
       }
@@ -308,11 +306,7 @@ const ProductDetailPage = () => {
       toast.success('Added to cart!');
       return true;
     } catch (error) {
-      if (error.response?.data?.code === 'INSUFFICIENT_STOCK') {
-        toast.error(`Only ${error.response?.data?.availableStock} items available`);
-      } else {
-        toast.error('Failed to add to cart');
-      }
+      toast.error(getCartErrorMessage(error));
       return false;
     }
   };
@@ -325,19 +319,14 @@ const ProductDetailPage = () => {
     }
 
     try {
-      const API_BASE = process.env.REACT_APP_BACKEND_URL;
-      const userId = user?.id || user?.userId || 'guest';
-
       const pid = product.productId || product.id;
 
       if (wish) {
-        // Remove from wishlist
-        await fetch(`${API_BASE}/api/v1/wishlist/${pid}?userId=${userId}`, { method: 'DELETE' });
+        await wishlistAPI.remove(pid);
         setWish(false);
         toast.success('Removed from wishlist');
       } else {
-        // Add to wishlist
-        await fetch(`${API_BASE}/api/v1/wishlist/${pid}?userId=${userId}`, { method: 'POST' });
+        await wishlistAPI.add(pid);
         setWish(true);
         toast.success('Added to wishlist');
       }
@@ -403,22 +392,30 @@ const ProductDetailPage = () => {
   const customMaterialGuide = normalizeMaterialGuide(product.materialGuide);
   const materialGuide = customMaterialGuide || getFabricGuide(product.fabric);
   const materialGuideLabel = product.fabric || 'Material Guide';
+  const productImages = [
+    ...(Array.isArray(product.images) ? product.images : []),
+    product.thumbnail,
+    product.image,
+  ].filter(Boolean);
+  const displayImages = [...new Set(productImages.length > 0 ? productImages : [PRODUCT_IMAGE_FALLBACK])];
+  const activeImage = displayImages[selectedImage] || displayImages[0];
+  const galleryImages = displayImages.slice(0, 6);
 
   const toggleAccordion = (id) => {
     setActiveAccordion(activeAccordion === id ? null : id);
   };
 
   return (
-    <div className="bg-[#F7F3EC] min-h-screen">
+    <div className="bg-white min-h-screen">
       <SEOMeta 
         title={product?.name}
         description={product?.description?.slice(0, 160) || `Buy ${product?.name} at ShriRamya - Premium Indian Handloom`}
-        image={product?.images?.[0] || product?.thumbnail}
+        image={activeImage}
         url={`/products/${id}`}
         type="product"
       />
       {/* Breadcrumbs */}
-      <nav className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pt-8 md:pt-12 pb-6">
+      <nav className="max-w-[1320px] mx-auto px-4 md:px-6 lg:px-8 pt-5 md:pt-7 pb-4">
         <ol className="flex flex-wrap items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-charcoal/40">
           <li><Link to="/" className="hover:text-royal-maroon transition-colors">Home</Link></li>
           <li className="flex items-center gap-2">
@@ -432,81 +429,114 @@ const ProductDetailPage = () => {
         </ol>
       </nav>
 
-      <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pb-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
+      <div className="max-w-[1320px] mx-auto px-4 md:px-6 lg:px-8 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
           
           {/* Left Column: Media Gallery */}
-          <div className="min-w-0 lg:col-span-7 space-y-4">
-            <motion.div
-              layoutId={`product-hero-${product.id}`}
-              className="relative aspect-[3/4.5] overflow-hidden rounded-3xl group"
-            >
-              <img
-                src={product.images[selectedImage]}
-                alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-charcoal/20 to-transparent pointer-events-none" />
-              {product.luxury_collection && (
-                <div className="absolute top-6 left-6">
-                  <LuxuryBadge className="bg-white/80 backdrop-blur-md border-none px-4 py-2" />
+          <div className="min-w-0 lg:col-span-7">
+            <div className="lg:hidden space-y-3">
+              <motion.div
+                layoutId={`product-hero-${product.id}`}
+                className="relative aspect-[3/4] overflow-hidden bg-[#f7f4ef]"
+              >
+                <img
+                  src={activeImage}
+                  alt={product.name}
+                  className="w-full h-full object-cover object-top"
+                />
+                {product.luxury_collection && (
+                  <div className="absolute top-4 left-4">
+                    <LuxuryBadge className="bg-white/85 backdrop-blur-md border-none px-3 py-1.5" />
+                  </div>
+                )}
+              </motion.div>
+
+              {displayImages.length > 1 && (
+                <div className="grid grid-cols-5 gap-2">
+                  {displayImages.slice(0, 5).map((img, index) => (
+                    <button
+                      key={img}
+                      onClick={() => setSelectedImage(index)}
+                      className={`aspect-[3/4] overflow-hidden border transition-all duration-300 ${
+                        selectedImage === index ? 'border-charcoal' : 'border-charcoal/10 opacity-70'
+                      }`}
+                      aria-label={`View ${product.name} image ${index + 1}`}
+                    >
+                      <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover object-top" />
+                    </button>
+                  ))}
                 </div>
               )}
-            </motion.div>
+            </div>
 
-            {product.images.length > 1 && (
-              <div className="grid grid-cols-4 md:grid-cols-5 gap-4">
-                {product.images.map((img, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`aspect-[3/4] overflow-hidden rounded-xl border-2 transition-all duration-300 ${
-                      selectedImage === index ? 'border-royal-maroon scale-95' : 'border-transparent opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="hidden lg:grid grid-cols-2 gap-3">
+              {galleryImages.map((img, index) => (
+                <button
+                  key={img}
+                  type="button"
+                  onClick={() => setSelectedImage(index)}
+                  className={`relative aspect-[3/4] overflow-hidden bg-[#f7f4ef] transition-all duration-300 ${
+                    selectedImage === index ? 'ring-1 ring-charcoal/70' : 'hover:opacity-95'
+                  }`}
+                  aria-label={`View ${product.name} image ${index + 1}`}
+                >
+                  <img
+                    src={img}
+                    alt={`${product.name} ${index + 1}`}
+                    className="w-full h-full object-cover object-top transition-transform duration-700 hover:scale-[1.025]"
+                  />
+                  {index === 0 && product.luxury_collection && (
+                    <div className="absolute top-4 left-4">
+                      <LuxuryBadge className="bg-white/85 backdrop-blur-md border-none px-3 py-1.5" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Right Column: Information (Sticky) */}
-          <div className="min-w-0 lg:col-span-5 h-fit lg:sticky lg:top-32 space-y-8">
-            <div className="space-y-4">
+          <div className="min-w-0 lg:col-span-5 h-fit lg:sticky lg:top-24 space-y-6 lg:max-w-[470px]">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] uppercase font-bold tracking-[0.3em] text-royal-maroon/60">
+                <span className="text-[10px] uppercase font-bold tracking-[0.22em] text-royal-maroon/70">
                   {product.category}
                 </span>
                 <button 
                   onClick={handleToggleWishlist}
-                  className={`p-2 hover:bg-white rounded-full transition-colors ${wish ? 'text-royal-maroon' : 'text-charcoal/40 hover:text-royal-maroon'}`}
+                  className={`h-10 w-10 flex items-center justify-center border border-charcoal/10 bg-white transition-colors ${wish ? 'text-royal-maroon' : 'text-charcoal/45 hover:text-royal-maroon'}`}
                   data-testid="wishlist-btn"
+                  aria-label={wish ? 'Remove from wishlist' : 'Add to wishlist'}
                 >
                   <Heart className={`w-5 h-5 ${wish ? 'fill-current' : ''}`} />
                 </button>
               </div>
               
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading font-medium text-charcoal tracking-tight leading-tight break-words">
+              <h1 className="text-2xl sm:text-[28px] font-heading font-medium text-charcoal leading-tight break-words">
                 {product.name}
               </h1>
 
+              {product.sku && (
+                <p className="text-xs font-medium text-charcoal/45">Sku: {product.sku}</p>
+              )}
+
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-                <span className="text-3xl font-medium text-charcoal">{formatPrice(displayPrice)}</span>
+                <span className="text-2xl font-semibold text-charcoal">{formatPrice(displayPrice)}</span>
                 {hasDiscount && (
                   <>
-                    <span className="text-xl text-charcoal/30 line-through decoration-royal-maroon/30">{formatPrice(regularPrice)}</span>
-                    <span className="text-sm font-bold text-royal-maroon tracking-wider">
-                      ({Math.round(((regularPrice - salePrice) / regularPrice) * 100)}% OFF)
+                    <span className="text-lg text-charcoal/35 line-through decoration-royal-maroon/30">{formatPrice(regularPrice)}</span>
+                    <span className="text-xs font-bold text-royal-maroon tracking-wider">
+                      {Math.round(((regularPrice - salePrice) / regularPrice) * 100)}% Off
                     </span>
                   </>
                 )}
               </div>
+              <p className="text-xs font-medium text-charcoal/45">Inclusive Of All Taxes</p>
             </div>
 
             {/* Model Info */}
             {modelDetails.length > 0 && (
-              <div className="bg-white/40 border border-white/60 p-5 rounded-2xl flex flex-wrap items-center gap-4 sm:gap-6">
+              <div className="border border-charcoal/10 p-4 flex flex-wrap items-center gap-4 sm:gap-6">
                 {modelDetails.map((detail, index) => (
                   <React.Fragment key={detail.label}>
                     {index > 0 && <div className="hidden sm:block w-[1px] h-8 bg-charcoal/10" />}
@@ -521,10 +551,10 @@ const ProductDetailPage = () => {
             )}
 
             {/* Selection Options - Variant Matrix System */}
-            <div className="space-y-8">
+            <div className="space-y-6">
               {/* Color Selection - Variant Matrix */}
               {availableColors.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">
                     Color: <span className="text-charcoal/60 capitalize">{selectedColor || 'Choose'}</span>
                   </label>
@@ -538,8 +568,8 @@ const ProductDetailPage = () => {
                           key={index}
                           onClick={() => handleColorSelect(color)}
                           disabled={!hasStock}
-                          className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                            isSelected ? 'ring-2 ring-charcoal ring-offset-4 ring-offset-[#F7F3EC] scale-105' : ''
+                          className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                            isSelected ? 'ring-1 ring-charcoal ring-offset-3 ring-offset-white scale-105' : ''
                           } ${!hasStock ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'}`}
                         >
                           <div
@@ -560,7 +590,7 @@ const ProductDetailPage = () => {
 
               {/* Size Selection - Variant Matrix */}
               {(availableSizes.length > 0 || product.size_stock?.length > 0) && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">Select Size</label>
                     <button className="text-[10px] uppercase font-bold text-royal-maroon hover:underline tracking-widest opacity-60">Size Guide</button>
@@ -581,16 +611,16 @@ const ProductDetailPage = () => {
                           key={index}
                           disabled={!isAvailable}
                           onClick={() => handleSizeSelect(size)}
-                          className={`min-w-[52px] px-3 h-[55px] rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 border relative ${
+                          className={`min-w-[46px] px-3 h-11 flex items-center justify-center font-bold text-sm transition-all duration-300 border relative ${
                             isSelected
-                              ? 'bg-charcoal text-white border-charcoal shadow-lg shadow-charcoal/20'
-                              : 'bg-white text-charcoal border-charcoal/5 hover:border-charcoal/20'
+                              ? 'bg-charcoal text-white border-charcoal'
+                              : 'bg-white text-charcoal border-charcoal/20 hover:border-charcoal'
                           } ${!isAvailable ? 'opacity-20 cursor-not-allowed grayscale' : ''}`}
                         >
                           {size}
                           {!isAvailable && (
                             <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-xl">
-                              <span className="text-[9px] font-bold text-charcoal/50 rotate-12">SOLD OUT</span>
+                              <span className="text-[8px] font-bold text-charcoal/50 rotate-12">SOLD OUT</span>
                             </div>
                           )}
                           {isAvailable && stockCount <= (product.lowStockThreshold || 5) && stockCount > 0 && (
@@ -626,12 +656,12 @@ const ProductDetailPage = () => {
             </div>
 
             {/* CTAs */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   onClick={handleAddToCart}
                   disabled={!product.in_stock}
-                  className="w-full sm:flex-[2] h-16 rounded-2xl bg-charcoal text-white hover:bg-black transition-all text-sm uppercase font-bold tracking-[0.18em] sm:tracking-widest whitespace-normal text-center leading-tight px-4"
+                  className="w-full sm:flex-[2] h-12 rounded-none bg-charcoal text-white hover:bg-black transition-all text-xs uppercase font-bold tracking-[0.16em] whitespace-normal text-center leading-tight px-4"
                 >
                   <ShoppingCart className="w-5 h-5 shrink-0 mr-3" />
                   {product.in_stock ? 'Add to Shopping Bag' : 'Out of Stock'}
@@ -645,7 +675,7 @@ const ProductDetailPage = () => {
                       navigate('/checkout');
                     }
                   }}
-                  className="w-full sm:flex-1 h-16 rounded-2xl border-charcoal/10 hover:border-charcoal bg-white transition-all text-sm uppercase font-bold tracking-[0.18em] sm:tracking-widest whitespace-normal text-center leading-tight px-4"
+                  className="w-full sm:flex-1 h-12 rounded-none border-charcoal/30 hover:border-charcoal bg-white transition-all text-xs uppercase font-bold tracking-[0.16em] whitespace-normal text-center leading-tight px-4"
                 >
                   Buy Now
                 </Button>
@@ -659,16 +689,10 @@ const ProductDetailPage = () => {
                   const text = `Check out ${product.name} at Rs.${(product.salePrice || product.price).toLocaleString()} on ShriRamya!`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-sm font-semibold"
+                className="w-full flex items-center justify-center gap-2 py-3 border border-[#25D366]/20 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-sm font-semibold"
               >
                 <Share2 className="w-4 h-4" /> Share on WhatsApp
               </button>
-
-              <div className="flex items-center justify-center gap-8 py-4 opacity-40 grayscale group-hover:grayscale-0 transition-all">
-                <img src="/images/visa.png" alt="Visa" className="h-4 object-contain" />
-                <img src="/images/mastercard.png" alt="Mastercard" className="h-4 object-contain" />
-                <img src="/images/upi.png" alt="UPI" className="h-4 object-contain" />
-              </div>
             </div>
 
             {/* Information Accordion (Maybell Inspired) */}

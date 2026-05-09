@@ -3,14 +3,34 @@ import { ordersAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Package, Search, CheckCircle, Truck, Box } from 'lucide-react';
+import { Package, Search, CheckCircle, Truck, Box, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
+import OrderTrackingTimeline from '../components/OrderTrackingTimeline';
+
+const normalizeTrackingData = (rawData = {}, fallbackOrderNumber = '') => {
+  const shipment = rawData.shipment || {};
+  const order = rawData.order || shipment.order || {};
+  const statusHistory = rawData.statusHistory || rawData.status_history || rawData.history || shipment.history || [];
+  const createdAt = rawData.created_at || rawData.createdAt || order.created_at || order.createdAt || shipment.createdAt || shipment.updatedAt;
+
+  return {
+    ...rawData,
+    order_number: rawData.order_number || rawData.orderId || rawData.order_id || order.orderId || shipment.orderId || fallbackOrderNumber,
+    created_at: createdAt,
+    status: rawData.status || shipment.status || order.status || 'pending',
+    tracking_number: rawData.tracking_number || rawData.trackingNumber || shipment.trackingNumber || '',
+    tracking_url: rawData.tracking_url || rawData.trackingUrl || shipment.trackingUrl || '',
+    statusHistory,
+  };
+};
 
 const TrackOrderPage = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const displayStatus = String(orderData?.status || 'pending').replace(/_/g, ' ');
+  const placedDate = orderData?.created_at ? dayjs(orderData.created_at) : null;
 
   const handleTrack = async (e) => {
     e.preventDefault();
@@ -22,7 +42,7 @@ const TrackOrderPage = () => {
     setLoading(true);
     try {
       const response = await ordersAPI.track(orderNumber);
-      setOrderData(response.data);
+      setOrderData(normalizeTrackingData(response.data || {}, orderNumber.trim()));
     } catch (error) {
       toast.error('Order not found. Please check the order number.');
       setOrderData(null);
@@ -32,12 +52,15 @@ const TrackOrderPage = () => {
   };
 
   const getStatusIcon = (status) => {
-    switch (status) {
+    const normalizedStatus = String(status || '').toLowerCase();
+    switch (normalizedStatus) {
       case 'processing':
         return <Box className="h-8 w-8 text-primary" />;
       case 'confirmed':
         return <CheckCircle className="h-8 w-8 text-primary" />;
       case 'shipped':
+      case 'in_transit':
+      case 'out_for_delivery':
         return <Truck className="h-8 w-8 text-primary" />;
       case 'delivered':
         return <Package className="h-8 w-8 text-primary" />;
@@ -86,25 +109,47 @@ const TrackOrderPage = () => {
               <h2 className="text-2xl font-heading font-medium mt-4 mb-2">
                 Order #{orderData.order_number}
               </h2>
-              <p className="text-muted-foreground">
-                Placed on {dayjs(orderData.created_at).format('MMM DD, YYYY')}
-              </p>
+              {placedDate?.isValid() && (
+                <p className="text-muted-foreground">
+                  Placed on {placedDate.format('MMM DD, YYYY')}
+                </p>
+              )}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 mb-8">
               <div className="flex items-center justify-between p-4 bg-muted rounded">
                 <span className="font-medium">Order Status</span>
                 <span className="px-4 py-2 bg-primary text-primary-foreground rounded capitalize">
-                  {orderData.status}
+                  {displayStatus}
                 </span>
               </div>
 
               {orderData.tracking_number && (
                 <div className="flex items-center justify-between p-4 bg-muted rounded">
                   <span className="font-medium">Tracking Number</span>
-                  <span className="font-mono text-sm">{orderData.tracking_number}</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="font-mono text-sm">{orderData.tracking_number}</span>
+                    {orderData.tracking_url && (
+                      <a
+                        href={orderData.tracking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary flex items-center gap-1 hover:underline"
+                      >
+                        Track on Courier Site <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
+            </div>
+
+            {/* Tracking Timeline */}
+            <div className="border-t border-border pt-8 mt-8">
+              <OrderTrackingTimeline
+                history={orderData.statusHistory || orderData.status_history || []}
+                currentStatus={orderData.status}
+              />
             </div>
 
             <div className="mt-8 p-4 bg-accent rounded">

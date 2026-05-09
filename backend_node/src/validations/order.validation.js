@@ -102,7 +102,13 @@ const createShipment = {
     method: Joi.string().trim().optional(),
     estimatedDelivery: Joi.date().optional(),
     weight: Joi.number().positive().optional(),
+    shippingWeight: Joi.number().positive().optional(),
+    length: Joi.number().positive().optional(),
+    breadth: Joi.number().positive().optional(),
+    width: Joi.number().positive().optional(),
+    height: Joi.number().positive().optional(),
     dimensions: shippingDimensionsSchema.optional(),
+    shippingDimensions: shippingDimensionsSchema.optional(),
     items: Joi.array().items(
       Joi.object({
         orderItemId: Joi.string().optional(),
@@ -111,7 +117,18 @@ const createShipment = {
         quantity: Joi.number().min(1).optional(),
       })
     ).optional(),
-    provider: Joi.string().valid('manual', 'xpressbees').default('manual'),
+    provider: Joi.string().valid('manual', 'shiprocket').default('manual'),
+    courier_id: Joi.alternatives().try(Joi.string(), Joi.number()).optional(),
+    courierId: Joi.alternatives().try(Joi.string(), Joi.number()).optional(),
+    pickup_location: Joi.string().trim().optional(),
+    pickupLocation: Joi.string().trim().optional(),
+    request_pickup: Joi.boolean().optional(),
+    request_auto_pickup: Joi.boolean().optional(),
+    generateManifest: Joi.boolean().optional(),
+    generateLabel: Joi.boolean().optional(),
+    generateInvoice: Joi.boolean().optional(),
+    paymentType: Joi.string().valid('prepaid', 'cod', 'Prepaid', 'COD').optional(),
+    payment_type: Joi.string().valid('prepaid', 'cod', 'Prepaid', 'COD').optional(),
     providerOptions: Joi.object({
       courier_id: Joi.string().optional(),
       payment_type: Joi.string().valid('prepaid', 'cod').optional(),

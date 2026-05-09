@@ -20,7 +20,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { ordersAPI } from '../services/api';
 import adminOrderService from '../services/adminOrderService';
-import XpressbeesShipmentModal from '../components/XpressbeesShipmentModal';
+import ShiprocketShipmentModal from '../components/ShiprocketShipmentModal';
 
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
@@ -482,21 +482,29 @@ const AdminOrdersPage = () => {
                           <div className="flex justify-between items-center">
                             <div>
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Logistic ID</p>
-                              <code className="text-[11px] font-mono font-bold text-royal-maroon">{shipmentDetails.awb_number}</code>
+                              <code className="text-[11px] font-mono font-bold text-royal-maroon">{shipmentDetails.trackingNumber || shipmentDetails.awb_number}</code>
                             </div>
-                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-widest gap-2 bg-white" onClick={() => window.open(`https://www.xpressbees.com/track/${shipmentDetails.awb_number}`, '_blank')}>
+                            <Button size="sm" variant="outline" className="h-7 text-[9px] font-bold uppercase tracking-widest gap-2 bg-white" onClick={() => window.open(shipmentDetails.trackingUrl || `https://shiprocket.co/tracking/${shipmentDetails.trackingNumber || shipmentDetails.awb_number}`, '_blank')}>
                               Track <ExternalLink className="w-3 h-3" />
                             </Button>
                           </div>
                           <div>
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Fulfillment Partner</p>
-                            <p className="text-xs font-bold text-foreground uppercase tracking-wider">Xpressbees Logistics</p>
+                            <p className="text-xs font-bold text-foreground uppercase tracking-wider">{shipmentDetails.carrier || 'Shiprocket'}</p>
                           </div>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-2 gap-2">
                            <Truck className="w-8 h-8 text-slate-200" />
                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Pending Fulfillment</p>
+                           <Button
+                             size="sm"
+                             className="mt-2 h-8 bg-royal-maroon text-white hover:bg-royal-maroon/90 text-[9px] font-bold uppercase tracking-widest gap-2"
+                             onClick={() => setShowShipmentModal(true)}
+                           >
+                             <Truck className="w-3.5 h-3.5" />
+                             Book Shiprocket
+                           </Button>
                         </div>
                       )}
                     </CardContent>
@@ -638,10 +646,10 @@ const AdminOrdersPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Xpressbees Shipment Modal */}
+      {/* Shiprocket Shipment Modal */}
       <AnimatePresence>
         {showShipmentModal && selectedOrder && (
-          <XpressbeesShipmentModal
+          <ShiprocketShipmentModal
             order={selectedOrder}
             onClose={() => setShowShipmentModal(false)}
             onSuccess={(data) => {

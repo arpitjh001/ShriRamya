@@ -212,12 +212,16 @@ class StorefrontCheckoutService {
     if (!product) {
       const error = new Error('Product not found');
       error.statusCode = 404;
+      error.code = 'PRODUCT_NOT_FOUND';
       throw error;
     }
 
     if (!this.isPublished(product)) {
       const error = new Error('Product is not available for purchase');
       error.statusCode = 400;
+      error.code = 'PRODUCT_UNAVAILABLE';
+      error.productId = product._id?.toString?.() || String(productId || '');
+      error.productStatus = product.status || null;
       throw error;
     }
 

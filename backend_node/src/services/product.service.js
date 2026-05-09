@@ -551,6 +551,20 @@ class ProductService {
   }
 
   /**
+   * Delete multiple products
+   */
+  async deleteProductsBulk(ids, tenantId = 1) {
+    try {
+      console.log(`[ProductService] Bulk deleting ${ids.length} products for tenant ${tenantId}`);
+      const deletedCount = await mongoProductRepository.deleteProductsBulk(ids, tenantId);
+      return { deletedCount, ids: ids.map(id => this.normalizeIdentifier(id)) };
+    } catch (error) {
+      console.error('[ProductService] deleteProductsBulk failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Bulk add variants (Internal usage)
    */
   async bulkAddVariants(productId, variants) {
