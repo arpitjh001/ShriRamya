@@ -9,6 +9,8 @@ class CacheInvalidationService {
       cacheService.delPattern('recommendations:*'),
       cacheService.delPattern('homepage:*'),
       cacheService.delPattern('product:detail:*'),
+      cacheService.delPattern('categories:*'),
+      cacheService.delPattern('category:*'),
     ]);
   }
 

@@ -256,6 +256,7 @@ class CatalogReadService {
   }
 
   isVisibleProduct(product, user) {
+    if (product?.is_deleted) return false;
     if (this.isAdminOrEditor(user)) return true;
     return PUBLIC_PRODUCT_STATUS_FILTER.includes(this.getProductStatus(product));
   }
@@ -535,6 +536,7 @@ class CatalogReadService {
       styles: {},
       neckTypes: {},
       sleeveTypes: {},
+      categories: {},
       priceRange: { min: 0, max: 0 },
       discountRanges: {},
     };
@@ -549,6 +551,22 @@ class CatalogReadService {
       this.getProductColors(product).forEach((color) => this.incrementCounter(metadata.colors, color));
       this.incrementCounter(metadata.fabrics, product.fabric);
       this.incrementCounter(metadata.occasions, product.occasion);
+
+      const categoryEntries = new Map();
+      if (product.categories && Array.isArray(product.categories)) {
+        product.categories.forEach(cat => {
+          if (cat.slug && cat.name) categoryEntries.set(cat.slug, cat.name);
+        });
+      } else if (product.categorySlug && product.categoryName) {
+        categoryEntries.set(product.categorySlug, product.categoryName);
+      }
+
+      categoryEntries.forEach((name, slug) => {
+        if (!metadata.categories[slug]) {
+          metadata.categories[slug] = { name, count: 0 };
+        }
+        metadata.categories[slug].count += 1;
+      });
 
       const price = Number(product.salePrice || product.price || 0) || 0;
       if (price > 0) {

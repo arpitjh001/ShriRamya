@@ -3,6 +3,7 @@ const redis = require('../../config/integrations/redis');
 const ApiError = require('../../utils/ApiError');
 const httpStatus = require('http-status');
 const mongoose = require('mongoose');
+const cacheInvalidationService = require('../cacheInvalidation.service');
 
 class SearchService {
   /**
@@ -126,15 +127,10 @@ class SearchService {
   }
 
   async updateSearchIndex(productId) {
-    if (redis && redis.keys && redis.del) {
-      try {
-        const cacheKeys = await redis.keys('search:products:*');
-        if (cacheKeys.length > 0) {
-          await redis.del(...cacheKeys);
-        }
-      } catch (err) {
-        console.error(`[SearchService] Failed to clear search cache for product ${productId}:`, err.message);
-      }
+    try {
+      await cacheInvalidationService.invalidateProducts({ id: productId });
+    } catch (err) {
+      console.error(`[SearchService] Failed to clear search cache for product ${productId}:`, err.message);
     }
 
     return { updated: true, productId };

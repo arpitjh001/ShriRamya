@@ -3,6 +3,7 @@ const Product = require('../models/product.model');
 const mongoProductRepository = require('../repositories/product.mongo.repository');
 const categoryService = require('./category.service');
 const searchService = require('./search/search.service');
+const cacheInvalidationService = require('./cacheInvalidation.service');
 
 class ProductService {
   normalizeOptionalString(value) {
@@ -543,6 +544,10 @@ class ProductService {
     try {
       const success = await mongoProductRepository.deleteProduct(id, tenantId);
       if (!success) throw new Error('Product not found or already deleted');
+      
+      // Invalidate caches
+      await cacheInvalidationService.invalidateProducts({ id });
+      
       return { id: this.normalizeIdentifier(id), deleted: true };
     } catch (error) {
       console.error('[ProductService] deleteProduct failed:', error.message);
@@ -557,6 +562,10 @@ class ProductService {
     try {
       console.log(`[ProductService] Bulk deleting ${ids.length} products for tenant ${tenantId}`);
       const deletedCount = await mongoProductRepository.deleteProductsBulk(ids, tenantId);
+      
+      // Invalidate caches
+      await cacheInvalidationService.invalidateProducts();
+      
       return { deletedCount, ids: ids.map(id => this.normalizeIdentifier(id)) };
     } catch (error) {
       console.error('[ProductService] deleteProductsBulk failed:', error.message);

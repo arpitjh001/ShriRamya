@@ -380,7 +380,7 @@ export const FilterChips = ({ filters, onRemove, onClearAll }) => {
   }
 
   // Array filters
-  ['size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve', 'brand', 'material'].forEach(key => {
+  ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve', 'brand', 'material'].forEach(key => {
     if (filters[key] && filters[key].length > 0) {
       filters[key].forEach(value => {
         chips.push({
@@ -462,6 +462,7 @@ const FilterSidebar = ({
     styles = {},
     neckTypes = {},
     sleeveTypes = {},
+    categories = {},
     priceRange = { min: 0, max: 100000 },
     discountRanges = {}
   } = filterMetadata;
@@ -483,6 +484,12 @@ const FilterSidebar = ({
   const colorOptions = Object.keys(colors);
   const brandOptions = toOptionsArray(brands);
   const materialOptions = toOptionsArray(materials);
+
+  const categoryOptions = Object.entries(categories).map(([slug, data]) => ({
+    value: slug,
+    name: data.name,
+    count: data.count
+  })).sort((a, b) => b.count - a.count);
 
   const handleArrayFilterChange = (key, values) => {
     onFilterChange({ [key]: values.length > 0 ? values : undefined });
@@ -532,6 +539,16 @@ const FilterSidebar = ({
           ]}
           onChange={handlePriceChange}
         />
+
+        {/* Categories */}
+        {categoryOptions.length > 0 && (
+          <CheckboxGroup
+            title="Categories"
+            options={categoryOptions}
+            selected={filters.category || []}
+            onChange={(values) => handleArrayFilterChange('category', values)}
+          />
+        )}
 
         {/* Size */}
         {sizeOptions.length > 0 && (

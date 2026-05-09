@@ -173,7 +173,13 @@ const ProductsPage = () => {
     const arr = [];
     Object.entries(selectedFilters).forEach(([key, val]) => {
       if (Array.isArray(val)) {
-        val.forEach(v => arr.push({ key, value: v, label: v }));
+        val.forEach(v => {
+          let label = v;
+          if (key === 'category') {
+            label = filterMetadata.categories?.[v]?.name || v.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          }
+          arr.push({ key, value: v, label });
+        });
       } else if (key === 'price_min') {
         const max = selectedFilters.price_max;
         arr.push({ key: 'price', value: 'range', label: `₹${val}${max ? ` - ₹${max}` : '+'}` });

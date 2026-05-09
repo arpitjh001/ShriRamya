@@ -186,13 +186,13 @@ const Navbar = ({ isHome = false }) => {
                {/* Brand Logo - Mobile & Product Detail Desktop */}
                <Link 
                  to="/" 
-                 className={`flex ${isProductDetail ? '' : 'lg:hidden'} items-center justify-center group`} 
+                 className={`flex ${isProductDetail ? 'ml-4 sm:ml-6 lg:ml-8' : 'lg:hidden'} items-center justify-center group`} 
                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                >
                  <motion.img
                    animate={{ 
-                     height: (isScrolled || isProductDetail) ? 38 : 44,
-                     scale: (isScrolled || isProductDetail) ? 0.95 : 1 
+                     height: (isScrolled || isProductDetail) ? (isProductDetail ? 76 : 38) : 44,
+                     scale: (isScrolled || isProductDetail) ? (isProductDetail ? 1.9 : 0.95) : 1 
                    }}
                    src="/logo_backup.png"
                    alt="Shri Ramya"
