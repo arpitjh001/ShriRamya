@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Loader2, ShoppingBag } from 'lucide-react';
+import { Heart, Loader2, ShoppingBag, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { wishlistAPI } from '../services/api';
@@ -226,36 +226,15 @@ const ProductCard = ({
       return;
     }
 
-    if (hasVariantChoices) {
-      setQuickViewOpen(true);
-      return;
-    }
-
-    if (!quickAddVariantId) {
-      navigate(productPath);
-      return;
-    }
-
-    setAddingToCart(true);
-    try {
-      await addToCart(productId, 1, {
-        variantId: quickAddVariantId,
-        color: getVariantColor(quickAddVariant),
-        size: getVariantSize(quickAddVariant),
-      });
-      toast.success('Added to cart');
-    } catch (error) {
-      toast.error(getCartErrorMessage(error));
-    } finally {
-      setAddingToCart(false);
-    }
+    // Always open QuickView for "View" action
+    setQuickViewOpen(true);
   };
 
   if (!product) return null;
 
   const quickActionText = isOutOfStock
     ? 'Out'
-    : quickActionLabel || (hasVariantChoices ? 'Options' : quickAddVariantId ? 'Add' : 'View');
+    : quickActionLabel || 'View';
   const wishlistLabel = isWishlisted ? 'Remove from wishlist' : 'Add to wishlist';
 
   return (
@@ -373,7 +352,7 @@ const ProductCard = ({
             {addingToCart ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <ShoppingBag className="h-3.5 w-3.5" />
+              <Eye className="h-3.5 w-3.5" />
             )}
             <span>{addingToCart ? 'Adding' : quickActionText}</span>
           </button>
