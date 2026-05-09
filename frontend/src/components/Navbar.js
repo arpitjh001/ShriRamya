@@ -156,19 +156,17 @@ const Navbar = ({ isHome = false }) => {
         animate={{ 
           y: isVisible ? 0 : -140,
           backgroundColor: (isScrolled || isAdminPage || !isHome) 
-            ? "rgba(247, 243, 236, 0.35)" 
-            : "rgba(247, 243, 236, 0)",
+            ? "rgba(247, 243, 236, 0.45)" 
+            : "rgba(255, 255, 255, 0.08)",
           borderColor: (isScrolled || isAdminPage || !isHome) 
-            ? "rgba(255, 255, 255, 0.30)" 
-            : "rgba(255, 255, 255, 0)",
+            ? "rgba(255, 255, 255, 0.35)" 
+            : "rgba(255, 255, 255, 0.15)",
           boxShadow: (isScrolled || isAdminPage || !isHome)
-            ? "0 20px 44px rgba(31, 31, 31, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.25)"
-            : "none",
+            ? "0 20px 44px rgba(31, 31, 31, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3)"
+            : "0 4px 24px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
         }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative left-0 right-0 w-full overflow-visible border-b transition-all duration-500 ${
-          (isScrolled || isAdminPage || !isHome) ? 'backdrop-blur-[24px]' : 'backdrop-blur-0'
-        } ${
+        className={`relative left-0 right-0 w-full overflow-visible border-b backdrop-blur-[24px] transition-all duration-500 ${
           isScrolled 
             ? 'py-3' 
             : (isAdminPage ? 'py-3' : 'py-4 md:py-5')

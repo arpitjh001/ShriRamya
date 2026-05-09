@@ -35,7 +35,7 @@ const PromoBar = ({
         ? 'bg-transparent text-white border-transparent shadow-none'
         : (variant === 'warning'
             ? 'bg-accent text-charcoal border-charcoal/10'
-            : 'bg-charcoal text-ivory/90 border-ivory/5')
+            : 'bg-royal-maroon text-ivory/90 border-white/10')
     }`}>
       <div className="max-w-7xl mx-auto flex justify-center items-center h-5">
         <AnimatePresence mode="wait">
