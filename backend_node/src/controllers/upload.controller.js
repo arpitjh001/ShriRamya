@@ -62,11 +62,17 @@ const uploadImage = async (req, res, next) => {
       throw error;
     }
 
+    // Extract options from body
     const category = req.body.category || 'products';
-    const result = normalizeUploadUrls(await imageService.processImage(file, category), req);
+    const originalOnly = req.body.originalOnly === 'true';
+
+    console.log(`[UploadController] Processing upload: ${file.originalname}, category=${category}, originalOnly=${originalOnly}`);
+
+    const result = normalizeUploadUrls(await imageService.processImage(file, category, { originalOnly }), req);
 
     return successResponse(res, result, 'Image uploaded and optimized successfully', httpStatus.CREATED);
   } catch (error) {
+    console.error('[UploadController] Image upload failed:', error.message);
     next(error);
   }
 };
@@ -84,10 +90,15 @@ const uploadMultipleImages = async (req, res, next) => {
     }
 
     const category = req.body.category || 'products';
-    const results = normalizeUploadUrls(await imageService.processMultipleImages(req.files, category), req);
+    const originalOnly = req.body.originalOnly === 'true';
+
+    console.log(`[UploadController] Processing multiple uploads: ${req.files.length} files, category=${category}, originalOnly=${originalOnly}`);
+
+    const results = normalizeUploadUrls(await imageService.processMultipleImages(req.files, category, { originalOnly }), req);
 
     return successResponse(res, results, 'Images uploaded and optimized successfully', httpStatus.CREATED);
   } catch (error) {
+    console.error('[UploadController] Multiple image upload failed:', error.message);
     next(error);
   }
 };

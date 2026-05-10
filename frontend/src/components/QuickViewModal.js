@@ -149,7 +149,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="bottom-0 top-auto max-h-[92dvh] w-[calc(100vw-0.75rem)] max-w-3xl translate-y-0 gap-0 overflow-hidden rounded-t-2xl p-0 sm:bottom-auto sm:top-[50%] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:translate-y-[-50%] sm:rounded-2xl"
+        className="bottom-0 top-auto max-h-[92dvh] w-[calc(100vw-0.75rem)] max-w-4xl translate-y-0 gap-0 overflow-hidden rounded-t-2xl border border-accent/20 bg-ivory/95 p-0 shadow-[0_28px_80px_rgba(31,31,31,0.22)] sm:bottom-auto sm:top-[50%] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:translate-y-[-50%] sm:rounded-2xl"
         data-testid="quick-view-modal"
       >
         <DialogTitle className="sr-only">Quick View</DialogTitle>
@@ -161,10 +161,10 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : product ? (
-          <div className="grid max-h-[92dvh] grid-cols-1 overflow-y-auto bg-ivory sm:max-h-[calc(100dvh-2rem)] md:grid-cols-2 md:overflow-hidden">
+          <div className="grid max-h-[92dvh] grid-cols-1 gap-4 overflow-y-auto bg-ivory p-3 sm:max-h-[calc(100dvh-2rem)] sm:gap-5 sm:p-5 md:grid-cols-[0.9fr_1.1fr] md:overflow-hidden md:p-6">
             {/* Image Gallery */}
-            <div className="relative bg-muted/30 md:min-h-full">
-              <div className="aspect-[4/3] max-h-[38dvh] overflow-hidden sm:aspect-[16/10] md:aspect-[3/4] md:max-h-none md:h-full">
+            <div className="relative self-start rounded-2xl border border-accent/15 bg-gradient-to-br from-muted/45 via-ivory to-muted/30 p-2 shadow-[0_16px_34px_rgba(31,31,31,0.08)]">
+              <div className="h-[42dvh] max-h-[360px] w-full overflow-hidden rounded-xl bg-muted/25 sm:h-[45dvh] sm:max-h-[420px] md:h-auto md:aspect-[4/5] md:max-h-[min(62dvh,520px)]">
                 <img
                   src={images[activeImage] || images[0] || '/uploads/woocommerce-placeholder.webp'}
                   alt={product.name}
@@ -174,12 +174,12 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
               </div>
               {/* Thumbnail strip */}
               {images.length > 1 && (
-                <div className="scrollbar-hide absolute bottom-3 left-1/2 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 gap-2 overflow-x-auto px-1">
+                <div className="scrollbar-hide mt-3 flex max-w-full justify-center gap-2 overflow-x-auto px-1 pb-1">
                   {images.map((img, i) => (
                     <button
                       key={i}
                       onClick={() => setActiveImage(i)}
-                      className={`h-11 w-11 shrink-0 overflow-hidden rounded border-2 transition-all sm:h-12 sm:w-12 ${i === activeImage ? 'border-primary ring-1 ring-primary' : 'border-white/50 opacity-70 hover:opacity-100'}`}
+                      className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 bg-white transition-all sm:h-12 sm:w-12 ${i === activeImage ? 'border-primary ring-1 ring-primary' : 'border-accent/25 opacity-70 hover:opacity-100'}`}
                       aria-label={`View ${product.name} image ${i + 1}`}
                     >
                       <img src={img} alt="" className="h-full w-full object-cover" />
@@ -188,14 +188,14 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
                 </div>
               )}
               {hasDiscount && (
-                <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1 rounded-full">
+                <div className="absolute left-5 top-5 rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground shadow-sm">
                   {discount}% OFF
                 </div>
               )}
             </div>
 
             {/* Product Info */}
-            <div className="flex min-h-0 flex-col p-4 pb-0 sm:p-6 sm:pb-0 md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto">
+            <div className="flex min-h-0 flex-col px-1 pb-0 sm:px-1 md:max-h-[calc(100dvh-5rem)] md:overflow-y-auto md:pl-2">
               <p className="mb-1 pr-8 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/60">
                 {product.categoryName || product.category || ''}
               </p>

@@ -129,14 +129,17 @@ class ImageOptimizationService {
    * Process uploaded image and store (either filesystem or database)
    * @param {Object} file - Multer file object
    * @param {String} category - Image category (products, banners, etc.)
+   * @param {Object} uploadOptions - Options like originalOnly
    * @returns {Object} Processed image URLs and metadata
    */
-  async processImage(file, category = 'products') {
+  async processImage(file, category = 'products', uploadOptions = {}) {
+    const { originalOnly = false } = uploadOptions;
     const imageId = uuidv4();
     const ext = path.extname(file.originalname).toLowerCase();
     const safeCategory = sanitizePathSegment(category, 'products');
     const baseName = `${safeCategory}_${imageId}`;
 
+    console.log(`[ImageService] Processing image: ${file.originalname} (${(file.size / 1024 / 1024).toFixed(2)} MB), originalOnly=${originalOnly}`);
 
     // Validate file type
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
@@ -145,7 +148,6 @@ class ImageOptimizationService {
     }
 
     // Convert to WebP for better compression (except for GIF)
-    // For original size, we might want to preserve the original format if it's already a good web format
     const isWebFriendly = ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
     const outputFormat = ext === '.gif' ? 'gif' : 'webp';
     const outputExt = outputFormat === 'gif' ? '.gif' : '.webp';
@@ -155,9 +157,13 @@ class ImageOptimizationService {
 
     // Process each size
     for (const [sizeName, sizeConfig] of Object.entries(IMAGE_SIZES)) {
+      // If originalOnly is set, skip all sizes except 'original'
+      if (originalOnly && sizeName !== 'original') {
+        continue;
+      }
+
       if (sizeName === 'original') {
         // Store original
-        // Use original format if requested/appropriate
         const actualFormat = isWebFriendly ? ext.slice(1) : outputFormat;
         const actualExt = isWebFriendly ? ext : outputExt;
 
@@ -168,17 +174,22 @@ class ImageOptimizationService {
         const options = {
           quality: QUALITY_SETTINGS.original,
           format: actualFormat,
-          skipRotate: !!file.originalOnly || category === 'original_only',
+          skipRotate: originalOnly || !!file.originalOnly || category === 'original_only',
           skipResize: true
         };
 
-        const originalBuffer = await this._processImage(file.buffer, null, null, options);
-        processedImages.original = originalBuffer;
-        await this._saveImage(originalPath, originalBuffer);
+        try {
+          const originalBuffer = await this._processImage(file.buffer, null, null, options);
+          processedImages.original = originalBuffer;
+          await this._saveImage(originalPath, originalBuffer);
 
-        results.original = this.useDatabase
-          ? this._generateApiUrl(this.publicBaseUrl, imageId, 'original', actualExt)
-          : this._generateStaticUploadUrl(this.publicBaseUrl, filename);
+          results.original = this.useDatabase
+            ? this._generateApiUrl(this.publicBaseUrl, imageId, 'original', actualExt)
+            : this._generateStaticUploadUrl(this.publicBaseUrl, filename);
+        } catch (procError) {
+          console.error(`[ImageService] Failed to process original image: ${procError.message}`);
+          throw procError;
+        }
       } else {
         // Generate resized versions
         const filename = `${baseName}${sizeConfig.suffix}${outputExt}`;
@@ -191,13 +202,18 @@ class ImageOptimizationService {
           skipResize: false
         };
 
-        const sizedBuffer = await this._processImage(file.buffer, sizeConfig.width, sizeConfig.height, options);
-        processedImages[sizeName] = sizedBuffer;
-        await this._saveImage(sizedPath, sizedBuffer);
+        try {
+          const sizedBuffer = await this._processImage(file.buffer, sizeConfig.width, sizeConfig.height, options);
+          processedImages[sizeName] = sizedBuffer;
+          await this._saveImage(sizedPath, sizedBuffer);
 
-        results[sizeName] = this.useDatabase
-          ? this._generateApiUrl(this.publicBaseUrl, imageId, sizeName, outputExt)
-          : this._generateStaticUploadUrl(this.publicBaseUrl, filename);
+          results[sizeName] = this.useDatabase
+            ? this._generateApiUrl(this.publicBaseUrl, imageId, sizeName, outputExt)
+            : this._generateStaticUploadUrl(this.publicBaseUrl, filename);
+        } catch (procError) {
+          console.warn(`[ImageService] Warning: Failed to process ${sizeName} variant: ${procError.message}`);
+          // Continue with other variants if one fails
+        }
       }
     }
 
@@ -217,34 +233,34 @@ class ImageOptimizationService {
           urls: results,
           metadata: {
             format: outputFormat,
-            sizes: Object.keys(IMAGE_SIZES),
+            sizes: Object.keys(processedImages),
             fileSize: file.size
           }
         });
         await imageDoc.save();
-        console.log(`[ImageService] Image metadata saved to MongoDB: ${imageId}`);
+        console.log(`[ImageService] Image metadata saved to MongoDB: ${imageId} (${Object.keys(processedImages).join(', ')})`);
       } catch (dbError) {
-        console.warn('[ImageService] Warning: Could not save image metadata to MongoDB:', dbError.message);
-        // Continue anyway - image processing succeeded
+        console.error('[ImageService] CRITICAL Error: Could not save image to MongoDB:', dbError.message);
+        // In serverless mode, if DB save fails, the upload is effectively lost
+        if (this.isVercel) throw new Error(`Database storage failed: ${dbError.message}`);
       }
     }
 
     // Generate CDN URLs
-    // We need to define actualExt and outputExt properly for the CDN block
     const actualExt = isWebFriendly ? ext : outputExt;
 
     results.cdn = this.useDatabase
       ? {
-          thumbnail: this._generateApiUrl(this.cdnBaseUrl, imageId, 'thumbnail', outputExt),
-          medium: this._generateApiUrl(this.cdnBaseUrl, imageId, 'medium', outputExt),
-          large: this._generateApiUrl(this.cdnBaseUrl, imageId, 'large', outputExt),
-          original: this._generateApiUrl(this.cdnBaseUrl, imageId, 'original', actualExt),
+          thumbnail: processedImages.thumbnail ? this._generateApiUrl(this.cdnBaseUrl, imageId, 'thumbnail', outputExt) : null,
+          medium: processedImages.medium ? this._generateApiUrl(this.cdnBaseUrl, imageId, 'medium', outputExt) : null,
+          large: processedImages.large ? this._generateApiUrl(this.cdnBaseUrl, imageId, 'large', outputExt) : null,
+          original: processedImages.original ? this._generateApiUrl(this.cdnBaseUrl, imageId, 'original', actualExt) : null,
         }
       : {
-          thumbnail: results.thumbnail,
-          medium: results.medium,
-          large: results.large,
-          original: results.original,
+          thumbnail: results.thumbnail || null,
+          medium: results.medium || null,
+          large: results.large || null,
+          original: results.original || null,
         };
 
     // Store metadata
@@ -253,7 +269,7 @@ class ImageOptimizationService {
       category: safeCategory,
       originalName: file.originalname,
       format: outputFormat,
-      sizes: Object.keys(IMAGE_SIZES),
+      sizes: Object.keys(processedImages),
       uploadedAt: new Date().toISOString()
     };
 
@@ -353,7 +369,7 @@ class ImageOptimizationService {
   /**
    * Process multiple images
    */
-  async processMultipleImages(files, category = 'products') {
+  async processMultipleImages(files, category = 'products', options = {}) {
     if (!Array.isArray(files)) {
       files = [files];
     }
@@ -361,7 +377,7 @@ class ImageOptimizationService {
     const results = [];
     for (const file of files) {
       try {
-        const result = await this.processImage(file, category);
+        const result = await this.processImage(file, category, options);
         results.push(result);
       } catch (error) {
         console.error(`Error processing image ${file.originalname}:`, error.message);
@@ -390,8 +406,8 @@ class ImageOptimizationService {
           ? `${baseName}_orig`
           : `${baseName}${sizeConfig.suffix}`;
         
-        const files = await this._findFilesByPattern(pattern);
-        for (const filePath of files) {
+        const patternFiles = await this._findFilesByPattern(pattern);
+        for (const filePath of patternFiles) {
           await fs.unlink(filePath);
         }
       }

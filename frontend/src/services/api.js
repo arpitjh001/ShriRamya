@@ -1170,6 +1170,15 @@ export const analyticsAPI = {
       handleError(err);
       throw err;
     }
+  },
+
+  getVisitorRegions: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/visitors/regions", { params });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
   }
 };
 

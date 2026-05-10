@@ -458,7 +458,7 @@ const ProductDetailPage = () => {
                 <img
                   src={activeImage}
                   alt={product.name}
-                  className="w-full h-full object-cover object-top"
+                  className="w-full h-full object-contain object-top"
                 />
                 {product.luxury_collection && (
                   <div className="absolute top-4 left-4">
@@ -485,7 +485,7 @@ const ProductDetailPage = () => {
               )}
             </div>
 
-            <div className="hidden lg:grid grid-cols-2 gap-3">
+            <div className={`hidden lg:grid gap-3 ${galleryImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
               {galleryImages.map((img, index) => (
                 <button
                   key={img}
@@ -499,7 +499,7 @@ const ProductDetailPage = () => {
                   <img
                     src={img}
                     alt={`${product.name} ${index + 1}`}
-                    className="w-full h-full object-cover object-top transition-transform duration-700 hover:scale-[1.025]"
+                    className="w-full h-full object-contain object-top transition-transform duration-700 hover:scale-[1.025]"
                   />
                   {index === 0 && product.luxury_collection && (
                     <div className="absolute top-4 left-4">

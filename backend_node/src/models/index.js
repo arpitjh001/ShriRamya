@@ -28,6 +28,7 @@ const Shipment = require('./shipment.model');
 const { Payment, PaymentLog } = require('./payment.model');
 const InsiderSubscriber = require('./insiderSubscriber.model');
 const InsiderDigestLog = require('./insiderDigestLog.model');
+const VisitorRegionDaily = require('./visitorRegionDaily.model');
 
 module.exports = { 
   Product, User, Order, Blog, Wishlist, Cart, 
@@ -40,5 +41,6 @@ module.exports = {
   EmailTemplate, EmailLog,
   FraudRule, FraudLog,
   Shipment, Payment, PaymentLog,
-  InsiderSubscriber, InsiderDigestLog
+  InsiderSubscriber, InsiderDigestLog,
+  VisitorRegionDaily
 };

@@ -7,6 +7,20 @@ const analyticsService = require('../services/analytics/analytics.service');
 const { successResponse } = require('../utils/response');
 
 /**
+ * Track a storefront visitor page view
+ * POST /api/v1/analytics/visit
+ */
+const trackVisitor = async (req, res, next) => {
+  try {
+    const result = await analyticsService.trackVisitor(req, req.body || {});
+    return successResponse(res, result, 'Visitor tracked');
+  } catch (error) {
+    console.error('Analytics error (track visitor):', error.message);
+    return successResponse(res, { tracked: false }, 'Visitor tracking temporarily unavailable');
+  }
+};
+
+/**
  * Get sales analytics
  * GET /api/v1/admin/analytics/sales
  */
@@ -106,10 +120,35 @@ const getTopCustomers = async (req, res, next) => {
   }
 };
 
+/**
+ * Get visitor region analytics
+ * GET /api/v1/admin/analytics/visitors/regions
+ */
+const getVisitorRegions = async (req, res, next) => {
+  try {
+    const params = { ...req.query, tenant_id: req.user.tenant_id };
+    const result = await analyticsService.getVisitorRegions(params);
+    return successResponse(res, result);
+  } catch (error) {
+    console.error('Analytics error (visitor regions):', error.message);
+    return successResponse(res, {
+      startDate: new Date(),
+      endDate: new Date(),
+      source: 'vercel-geo-headers',
+      summary: { totalVisitors: 0, totalPageviews: 0, countryCount: 0, regionCount: 0 },
+      regions: [],
+      countries: [],
+      daily: []
+    }, 'Visitor analytics temporarily unavailable');
+  }
+};
+
 module.exports = {
+  trackVisitor,
   getSalesAnalytics,
   getProductAnalytics,
   getRevenueAnalytics,
   getDashboardOverview,
-  getTopCustomers
+  getTopCustomers,
+  getVisitorRegions
 };

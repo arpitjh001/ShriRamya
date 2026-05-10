@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
@@ -33,8 +33,8 @@ const Navbar = ({ isHome = false }) => {
   // Scroll State
   const { scrollY } = useScroll();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const promoBarRef = useRef(null);
+  const [promoBarHeight, setPromoBarHeight] = useState(37);
 
   const refreshWishlistCount = useCallback(async () => {
     if (!user) {
@@ -94,20 +94,33 @@ const Navbar = ({ isHome = false }) => {
 
   // Handle Scroll Behavior
   useMotionValueEvent(scrollY, "change", (latest) => {
-    // Shrink check
     setIsScrolled(latest > 50);
-
-    // Visibility check (Hide on scroll down, Show on scroll up)
-    if (latest > lastScrollY && latest > 150) {
-      setIsVisible(false);
-    } else {
-      setIsVisible(true);
-    }
-    setLastScrollY(latest);
   });
 
   const isAdminPage = location.pathname.startsWith('/admin');
   const isProductDetail = location.pathname.startsWith('/products/');
+  const overlapsHero = isHome && !isAdminPage;
+  const navbarTop = overlapsHero ? (isScrolled ? 0 : promoBarHeight) : 0;
+
+  useEffect(() => {
+    const node = promoBarRef.current;
+    if (!node) return;
+
+    const updatePromoBarHeight = () => {
+      setPromoBarHeight(Math.round(node.getBoundingClientRect().height));
+    };
+
+    updatePromoBarHeight();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updatePromoBarHeight);
+      return () => window.removeEventListener('resize', updatePromoBarHeight);
+    }
+
+    const observer = new ResizeObserver(updatePromoBarHeight);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   // Close menus on route change
   useEffect(() => {
@@ -118,7 +131,9 @@ const Navbar = ({ isHome = false }) => {
   // Navigation Logic: Scroll on Hover
   const handleCategoryHover = useCallback((slug) => {
     // As per user request: Scroll to the particular category on home page
-    const section = document.getElementById(slug);
+    // Special case for 'women-wear' which should point to 'lookbook'
+    const targetId = slug === 'women-wear' ? 'lookbook' : slug;
+    const section = document.getElementById(targetId);
     if (section && location.pathname === '/') {
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -126,8 +141,20 @@ const Navbar = ({ isHome = false }) => {
 
   // Navigate to category page only on click
   const handleCategoryClick = useCallback((slug) => {
+    if (slug === 'women-wear') {
+      if (location.pathname === '/') {
+        const section = document.getElementById('lookbook');
+        if (section) {
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+      } else {
+        navigate('/#lookbook');
+        return;
+      }
+    }
     navigate(`/category/${slug}`);
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   // Handle hash navigation on mount/pathname change
   useEffect(() => {
@@ -141,35 +168,38 @@ const Navbar = ({ isHome = false }) => {
   }, [location.pathname, location.hash]);
 
   return (
-    <header className="sticky top-0 z-[110]">
-      <PromoBar
-        messages={isHome 
+    <header className={`${overlapsHero ? 'relative' : 'sticky'} left-0 right-0 top-0 z-[110]`}>
+      <div ref={promoBarRef}>
+        <PromoBar
+          messages={isHome 
           ? ["Experience Royal Elegance", "Use code: FESTIVE15 for 15% OFF", "Free shipping on orders above ₹2500"] 
-          : ["Luxury Heritage Wear", "Use code: FESTIVE15 for 15% OFF"]
-        }
-        variant="default"
-        showDashboard={user && isAdmin()}
-        onDashboardClick={() => navigate('/admin/dashboard')}
-        isHome={isHome}
-        isScrolled={isScrolled}
-      />
+            : ["Luxury Heritage Wear", "Use code: FESTIVE15 for 15% OFF"]
+          }
+          variant="default"
+          showDashboard={user && isAdmin()}
+          onDashboardClick={() => navigate('/admin/dashboard')}
+          isHome={isHome}
+          isScrolled={isScrolled}
+        />
+      </div>
       
       <motion.nav
         initial={{ y: 0 }}
         animate={{ 
-          y: isVisible ? 0 : -140,
-          backgroundColor: (isScrolled || isAdminPage || !isHome) 
-            ? "rgba(247, 243, 236, 0.45)" 
-            : "rgba(255, 255, 255, 0.08)",
-          borderColor: (isScrolled || isAdminPage || !isHome) 
-            ? "rgba(255, 255, 255, 0.35)" 
-            : "rgba(255, 255, 255, 0.15)",
+          top: navbarTop,
+          y: 0,
+          backgroundColor: overlapsHero && !isScrolled
+            ? "rgba(106, 30, 45, 0.28)"
+            : "rgba(106, 30, 45, 0.58)",
+          borderColor: overlapsHero && !isScrolled
+            ? "rgba(255, 255, 255, 0.2)"
+            : "rgba(255, 255, 255, 0.12)",
           boxShadow: (isScrolled || isAdminPage || !isHome)
-            ? "0 20px 44px rgba(31, 31, 31, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3)"
-            : "0 4px 24px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+            ? "0 20px 44px rgba(64, 13, 23, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.28)"
+            : "0 16px 42px rgba(64, 13, 23, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.24)",
         }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative left-0 right-0 w-full overflow-visible border-b backdrop-blur-[24px] transition-all duration-500 ${
+        className={`${overlapsHero ? 'fixed z-[110]' : 'relative'} left-0 right-0 w-full overflow-visible border-b backdrop-blur-[40px] transition-all duration-500 supports-[backdrop-filter]:bg-royal-maroon/45 ${
           isScrolled 
             ? 'py-3' 
             : (isAdminPage ? 'py-3' : 'py-4 md:py-5')
@@ -186,10 +216,10 @@ const Navbar = ({ isHome = false }) => {
                  whileHover={{ scale: 1.1, rotate: 90 }}
                  whileTap={{ scale: 0.9 }}
                  onClick={() => setIsMobileMenuOpen(true)}
-                 className="lg:hidden p-2 -ml-2 mr-1.5 hover:bg-charcoal/5 rounded-full transition-all group"
+                 className="lg:hidden p-2 -ml-2 mr-1.5 hover:bg-white/10 rounded-full transition-all group"
                  aria-label="Open Menu"
                >
-                 <Menu className="w-6 h-6 text-charcoal group-hover:text-royal-maroon transition-colors" />
+                 <Menu className="w-6 h-6 text-ivory group-hover:text-royal-gold transition-colors" />
                </motion.button>
 
                {/* Brand Logo - Mobile & Product Detail Desktop */}
@@ -234,18 +264,18 @@ const Navbar = ({ isHome = false }) => {
                   key={cat.slug}
                   onMouseEnter={() => handleCategoryHover(cat.slug)}
                   onClick={() => handleCategoryClick(cat.slug)}
-                  className="relative text-[10px] lg:text-[11px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.05em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
+                  className="relative text-[10px] lg:text-[11px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.05em] xl:tracking-[0.12em] text-ivory/90 hover:text-royal-gold transition-all group whitespace-nowrap text-center"
                  >
                    {cat.name}
-                   <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-maroon transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+                   <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-gold transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
                  </button>
                ))}
                <Link 
                  to="/blog" 
-                 className="relative text-[10px] lg:text-[11px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.05em] xl:tracking-[0.12em] text-charcoal/90 hover:text-royal-maroon transition-all group whitespace-nowrap text-center"
+                 className="relative text-[10px] lg:text-[11px] xl:text-[13px] uppercase font-heading font-medium tracking-[0.05em] xl:tracking-[0.12em] text-ivory/90 hover:text-royal-gold transition-all group whitespace-nowrap text-center"
                >
                  Journal
-                 <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-maroon transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+                 <span className="absolute bottom-[-10px] lg:bottom-[-6px] left-0 w-full h-[1.5px] bg-royal-gold transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
                </Link>
             </div>
 

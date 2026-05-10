@@ -17,7 +17,7 @@ const imageSchema = new mongoose.Schema(
     category: {
       type: String,
       default: 'products',
-      enum: ['products', 'banners', 'blogs', 'avatars', 'other']
+      enum: ['products', 'banners', 'blogs', 'avatars', 'journal', 'original_only', 'other']
     },
     originalName: String,
     

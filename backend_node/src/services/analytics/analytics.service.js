@@ -3,7 +3,8 @@
  * Provides sales, product, revenue, and conversion analytics
  */
 
-const { Product, Order, User, DailyStats, OfflineSale } = require('../../models');
+const crypto = require('crypto');
+const { Product, Order, User, DailyStats, OfflineSale, VisitorRegionDaily } = require('../../models');
 const redis = require('../../config/integrations/redis');
 const { buildTenantScope, buildTenantScopedQuery, andQuery, normalizeTenantId } = require('../../utils/tenantScope');
 
@@ -52,6 +53,72 @@ const getDateRange = ({ start_date, end_date } = {}, defaultStartFactory) => {
   const endDate = parseAnalyticsDate(end_date, 'end') || now;
 
   return { startDate, endDate };
+};
+
+const getDateKey = (value = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, 10) : date.toISOString().slice(0, 10);
+};
+
+const decodeGeoValue = (value, fallback = 'Unknown') => {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  if (rawValue == null || rawValue === '') return fallback;
+
+  try {
+    return decodeURIComponent(String(rawValue)).trim() || fallback;
+  } catch (error) {
+    return String(rawValue).trim() || fallback;
+  }
+};
+
+const normalizeCountryCode = (value) => {
+  const countryCode = decodeGeoValue(value, 'XX').toUpperCase();
+  return /^[A-Z]{2}$/.test(countryCode) ? countryCode : 'XX';
+};
+
+const getCountryName = (countryCode) => {
+  if (!countryCode || countryCode === 'XX') return 'Unknown';
+
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) || countryCode;
+  } catch (error) {
+    return countryCode;
+  }
+};
+
+const getHeader = (req, name) => req.headers?.[name.toLowerCase()];
+
+const getClientIp = (req) => {
+  const forwardedFor = getHeader(req, 'x-forwarded-for');
+  if (forwardedFor) {
+    return String(forwardedFor).split(',')[0].trim();
+  }
+
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+};
+
+const hashValue = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+
+const sanitizePath = (value) => {
+  const rawPath = typeof value === 'string' && value.trim() ? value.trim() : '/';
+
+  try {
+    const parsed = rawPath.startsWith('http') ? new URL(rawPath) : null;
+    const path = parsed ? `${parsed.pathname}${parsed.search}` : rawPath;
+    return (path.startsWith('/') ? path : `/${path}`).slice(0, 250);
+  } catch (error) {
+    return '/';
+  }
+};
+
+const isLikelyBot = (userAgent = '') => (
+  /bot|crawl|spider|slurp|preview|facebookexternalhit|pingdom|uptime|monitor/i.test(userAgent)
+);
+
+const getVisitorLimit = (value) => {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 12;
+  return Math.min(Math.max(parsed, 1), 50);
 };
 
 const startOfCurrentMonth = (now) => new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1096,6 +1163,194 @@ class AnalyticsService {
       startDate,
       endDate,
       customers
+    };
+  }
+
+  /**
+   * Track one storefront page view using Vercel geo headers.
+   */
+  async trackVisitor(req, payload = {}) {
+    const userAgent = req.headers?.['user-agent'] || '';
+    const path = sanitizePath(payload.path || payload.pathname || payload.url || '/');
+
+    if (path.startsWith('/admin') || isLikelyBot(userAgent)) {
+      return { tracked: false };
+    }
+
+    const tenantId = normalizeTenantId(payload.tenant_id || payload.tenantId || 1);
+    const now = new Date();
+    const date = getDateKey(now);
+    const ip = getClientIp(req);
+    const secret = process.env.ANALYTICS_HASH_SECRET || process.env.JWT_SECRET || 'shriramya-analytics';
+    const visitorHash = hashValue(`${tenantId}:${date}:${ip}:${userAgent}:${secret}`);
+    const userAgentHash = userAgent ? hashValue(userAgent).slice(0, 24) : null;
+
+    const countryCode = normalizeCountryCode(payload.countryCode || getHeader(req, 'x-vercel-ip-country'));
+    const country = getCountryName(countryCode);
+    const regionCode = decodeGeoValue(
+      payload.regionCode || getHeader(req, 'x-vercel-ip-country-region'),
+      'Unknown'
+    );
+    const city = decodeGeoValue(payload.city || getHeader(req, 'x-vercel-ip-city'), 'Unknown');
+    const region = regionCode === 'Unknown' ? country : `${regionCode}, ${country}`;
+
+    await VisitorRegionDaily.findOneAndUpdate(
+      { tenantId, date, visitorHash },
+      {
+        $setOnInsert: {
+          tenantId,
+          date,
+          visitorHash,
+          firstSeenAt: now,
+          userAgentHash
+        },
+        $set: {
+          countryCode,
+          country,
+          regionCode,
+          region,
+          city,
+          lastSeenAt: now
+        },
+        $inc: { pageviews: 1 }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return { tracked: true };
+  }
+
+  /**
+   * Get unique visitors and pageviews grouped by Vercel geo region.
+   */
+  async getVisitorRegions(params = {}) {
+    const tenantId = normalizeTenantId(params.tenant_id || 1);
+    const limit = getVisitorLimit(params.limit);
+    const { startDate, endDate } = getDateRange(
+      { start_date: params.start_date, end_date: params.end_date },
+      (now) => {
+        const date = new Date(now);
+        date.setDate(date.getDate() - 30);
+        date.setHours(0, 0, 0, 0);
+        return date;
+      }
+    );
+
+    const startKey = getDateKey(startDate);
+    const endKey = getDateKey(endDate);
+    const match = {
+      tenantId,
+      date: { $gte: startKey, $lte: endKey }
+    };
+
+    const [summaryRows, regions, countries, daily] = await Promise.all([
+      VisitorRegionDaily.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            totalVisitors: { $sum: 1 },
+            totalPageviews: { $sum: '$pageviews' },
+            countries: { $addToSet: '$countryCode' },
+            regions: { $addToSet: { countryCode: '$countryCode', regionCode: '$regionCode' } }
+          }
+        }
+      ]),
+      VisitorRegionDaily.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: {
+              countryCode: '$countryCode',
+              country: '$country',
+              regionCode: '$regionCode',
+              region: '$region'
+            },
+            visitors: { $sum: 1 },
+            pageviews: { $sum: '$pageviews' },
+            cities: { $addToSet: '$city' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            countryCode: '$_id.countryCode',
+            country: '$_id.country',
+            regionCode: '$_id.regionCode',
+            region: '$_id.region',
+            visitors: 1,
+            pageviews: 1,
+            cities: { $slice: ['$cities', 6] }
+          }
+        },
+        { $sort: { visitors: -1, pageviews: -1 } },
+        { $limit: limit }
+      ]),
+      VisitorRegionDaily.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: { countryCode: '$countryCode', country: '$country' },
+            visitors: { $sum: 1 },
+            pageviews: { $sum: '$pageviews' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            countryCode: '$_id.countryCode',
+            country: '$_id.country',
+            visitors: 1,
+            pageviews: 1
+          }
+        },
+        { $sort: { visitors: -1, pageviews: -1 } },
+        { $limit: limit }
+      ]),
+      VisitorRegionDaily.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: '$date',
+            visitors: { $sum: 1 },
+            pageviews: { $sum: '$pageviews' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            date: '$_id',
+            visitors: 1,
+            pageviews: 1
+          }
+        },
+        { $sort: { date: 1 } }
+      ])
+    ]);
+
+    const summary = summaryRows[0] || {
+      totalVisitors: 0,
+      totalPageviews: 0,
+      countries: [],
+      regions: []
+    };
+
+    const activeCountries = (summary.countries || []).filter((entry) => entry && entry !== 'XX');
+    const activeRegions = (summary.regions || []).filter((entry) => entry?.regionCode && entry.regionCode !== 'Unknown');
+
+    return {
+      startDate,
+      endDate,
+      source: 'vercel-geo-headers',
+      summary: {
+        totalVisitors: summary.totalVisitors || 0,
+        totalPageviews: summary.totalPageviews || 0,
+        countryCount: activeCountries.length,
+        regionCount: activeRegions.length
+      },
+      regions,
+      countries,
+      daily
     };
   }
 }

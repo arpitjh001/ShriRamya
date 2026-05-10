@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
  * @param {NavIconsProps} props
  */
 const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSearchClick, onAccountClick }) => {
-  const actionIconClass = "relative inline-flex shrink-0 items-center justify-center text-charcoal hover:text-royal-maroon transition-colors m-0 p-0 border-none bg-transparent outline-none cursor-pointer";
+  const actionIconClass = "relative inline-flex shrink-0 items-center justify-center text-ivory hover:text-royal-gold transition-colors m-0 p-0 border-none bg-transparent outline-none cursor-pointer";
   const iconClass = "w-[18px] h-[18px] sm:w-5 sm:h-5 md:w-[22px] md:h-[22px] lg:w-6 lg:h-6 stroke-[2.2]";
 
   const iconVariants = {
@@ -48,7 +48,7 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-royal-maroon rounded-full border-2 border-ivory"
+              className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-royal-gold rounded-full border-2 border-ivory"
             />
           )}
         </button>
@@ -62,7 +62,7 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
               key={wishlistCount}
               initial={{ scale: 0.2, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="absolute -top-1.5 -right-1.5 bg-royal-maroon text-white text-[9px] font-bold min-w-4 h-4 sm:min-w-[18px] sm:h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
+              className="absolute -top-1.5 -right-1.5 bg-royal-gold text-charcoal text-[9px] font-bold min-w-4 h-4 sm:min-w-[18px] sm:h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
             >
               {wishlistCount}
             </motion.span>
@@ -77,7 +77,7 @@ const NavIcons = ({ cartCount, wishlistCount = 0, hasNotifications = false, onSe
             key={cartCount}
             initial={{ scale: 0.2, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="absolute -top-1.5 -right-1.5 bg-royal-maroon text-white text-[9px] font-bold min-w-4 h-4 sm:min-w-[18px] sm:h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
+            className="absolute -top-1.5 -right-1.5 bg-royal-gold text-charcoal text-[9px] font-bold min-w-4 h-4 sm:min-w-[18px] sm:h-[18px] flex items-center justify-center rounded-full px-1 shadow-sm"
           >
             {cartCount}
           </motion.span>

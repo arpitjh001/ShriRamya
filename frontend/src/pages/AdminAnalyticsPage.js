@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { 
   TrendingUp, DollarSign, Package, Users, ShoppingCart, 
-  Calendar, Download, RefreshCw
+  Calendar, Download, RefreshCw, Globe2, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -32,6 +32,12 @@ const AdminAnalyticsPage = () => {
   const [productData, setProductData] = useState([]);
   const [revenueData, setRevenueData] = useState(null);
   const [customerData, setCustomerData] = useState([]);
+  const [visitorData, setVisitorData] = useState({
+    summary: { totalVisitors: 0, totalPageviews: 0, countryCount: 0, regionCount: 0 },
+    regions: [],
+    countries: [],
+    daily: []
+  });
 
   useEffect(() => {
     if (user) {
@@ -52,12 +58,13 @@ const AdminAnalyticsPage = () => {
         end_date: now.toISOString()
       };
 
-      const [overviewRes, salesRes, productsRes, revenueRes, customersRes] = await Promise.all([
+      const [overviewRes, salesRes, productsRes, revenueRes, customersRes, visitorsRes] = await Promise.all([
         analyticsAPI.getOverview(rangeParams),
         analyticsAPI.getSales({ ...rangeParams, group_by: 'day' }),
         analyticsAPI.getProducts({ ...rangeParams, limit: 10 }),
         analyticsAPI.getRevenue(rangeParams),
-        analyticsAPI.getTopCustomers({ ...rangeParams, limit: 10 })
+        analyticsAPI.getTopCustomers({ ...rangeParams, limit: 10 }),
+        analyticsAPI.getVisitorRegions({ ...rangeParams, limit: 12 })
       ]);
 
       // Handle both raw data and .data wrapped responses from api.js
@@ -66,6 +73,7 @@ const AdminAnalyticsPage = () => {
       setProductData(productsRes?.data?.products || productsRes?.products || []);
       setRevenueData(revenueRes?.data || revenueRes || {});
       setCustomerData(customersRes?.data?.customers || customersRes?.customers || []);
+      setVisitorData(visitorsRes?.data || visitorsRes || {});
     } catch (error) {
       console.error('Failed to load analytics:', error);
       // Let the global api interceptor and AdminProtectedRoute handle 401/403
@@ -84,6 +92,24 @@ const AdminAnalyticsPage = () => {
       maximumFractionDigits: 0
     }).format(value);
   };
+
+  const formatNumber = (value) => new Intl.NumberFormat('en-IN').format(Number(value || 0));
+  const visitorSummary = visitorData?.summary || {};
+  const visitorTotal = visitorSummary.totalVisitors || 0;
+  const visitorRegions = (visitorData?.regions || []).map((region) => {
+    const knownCities = (region.cities || []).filter((city) => city && city !== 'Unknown');
+    const regionLabel = region.regionCode && region.regionCode !== 'Unknown'
+      ? `${region.regionCode}, ${region.countryCode || region.country}`
+      : (region.country || 'Unknown');
+
+    return {
+      ...region,
+      regionLabel,
+      cityLabel: knownCities.slice(0, 3).join(', '),
+      share: visitorTotal > 0 ? Math.round((Number(region.visitors || 0) / visitorTotal) * 100) : 0
+    };
+  });
+  const visitorCountries = visitorData?.countries || [];
 
   return (
     <div className="admin-dashboard-shell min-h-screen pt-24 pb-12 font-body">
@@ -154,7 +180,7 @@ const AdminAnalyticsPage = () => {
       {/* Main Content Areas */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
         <TabsList className="h-auto w-full justify-start gap-4 bg-transparent p-0 overflow-x-auto pb-4 scrollbar-hide">
-          {['overview', 'sales', 'products', 'revenue', 'customers'].map((tab) => (
+          {['overview', 'sales', 'products', 'revenue', 'visitors', 'customers'].map((tab) => (
             <TabsTrigger
               key={tab}
               value={tab}
@@ -167,7 +193,7 @@ const AdminAnalyticsPage = () => {
 
         <TabsContent value="overview" className="space-y-8 animate-slide-up outline-none">
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-6">
             <StatCard
               title="Range Revenue"
               value={overview?.range?.revenue ?? overview?.month?.revenue ?? 0}
@@ -219,6 +245,16 @@ const AdminAnalyticsPage = () => {
               delay="delay-250"
               color="charcoal"
               loading={loading}
+            />
+            <StatCard
+              title="Site Visitors"
+              value={visitorSummary.totalVisitors || 0}
+              format="number"
+              icon={Globe2}
+              delay="delay-250"
+              color="maroon"
+              loading={loading}
+              subtext={`${formatNumber(visitorSummary.totalPageviews || 0)} pageviews | ${formatNumber(visitorSummary.countryCount || 0)} countries`}
             />
           </div>
 
@@ -523,6 +559,182 @@ const AdminAnalyticsPage = () => {
                     <Legend verticalAlign="bottom" height={36} wrapperStyle={{ color: '#94a3b8', paddingTop: '20px' }} />
                   </PieChart>
                 </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="visitors" className="space-y-8 animate-slide-up outline-none">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="border-border bg-white shadow-luxury-sm">
+              <CardContent className="pt-8 text-center space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Unique Visitors</p>
+                <h3 className="font-heading text-3xl font-bold text-royal-maroon">
+                  {formatNumber(visitorSummary.totalVisitors || 0)}
+                </h3>
+              </CardContent>
+            </Card>
+            <Card className="border-border bg-white shadow-luxury-sm">
+              <CardContent className="pt-8 text-center space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Page Views</p>
+                <h3 className="font-heading text-3xl font-bold text-foreground">
+                  {formatNumber(visitorSummary.totalPageviews || 0)}
+                </h3>
+              </CardContent>
+            </Card>
+            <Card className="border-border bg-white shadow-luxury-sm">
+              <CardContent className="pt-8 text-center space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Countries</p>
+                <h3 className="font-heading text-3xl font-bold text-amber-600">
+                  {formatNumber(visitorSummary.countryCount || 0)}
+                </h3>
+              </CardContent>
+            </Card>
+            <Card className="border-border bg-white shadow-luxury-sm">
+              <CardContent className="pt-8 text-center space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Regions</p>
+                <h3 className="font-heading text-3xl font-bold text-emerald-600">
+                  {formatNumber(visitorSummary.regionCount || 0)}
+                </h3>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <Card className="xl:col-span-2 border-border bg-white shadow-luxury-sm">
+              <CardHeader className="border-b border-border bg-slate-50">
+                <CardTitle className="font-heading text-xl text-foreground">Visitor Regions</CardTitle>
+                <CardDescription className="text-muted-foreground">Unique visitors and page views by region</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-8">
+                {loading ? (
+                  <Skeleton className="h-[360px] w-full bg-slate-100" />
+                ) : visitorRegions.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={360}>
+                    <BarChart data={visitorRegions.slice(0, 8)} margin={{ top: 20, right: 30, left: 20, bottom: 32 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis
+                        dataKey="regionLabel"
+                        stroke="#94a3b8"
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={false}
+                        interval={0}
+                        tickFormatter={(value) => String(value).length > 14 ? `${String(value).slice(0, 14)}...` : value}
+                      />
+                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        formatter={(value) => formatNumber(value)}
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          color: '#1e293b',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Legend iconType="diamond" verticalAlign="top" wrapperStyle={{ paddingBottom: '24px', color: '#94a3b8' }} />
+                      <Bar dataKey="visitors" fill="#6A1E2D" name="Visitors" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="pageviews" fill="#C8A96A" name="Page Views" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[360px] items-center justify-center rounded-xl border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
+                    Visitor region data will appear after production traffic is tracked.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-white shadow-luxury-sm">
+              <CardHeader className="border-b border-border">
+                <CardTitle className="font-heading text-xl text-foreground">Top Countries</CardTitle>
+                <CardDescription className="text-muted-foreground">Visitor concentration by country</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {loading ? (
+                  <div className="space-y-5">
+                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full bg-slate-50" />)}
+                  </div>
+                ) : visitorCountries.length > 0 ? (
+                  <div className="space-y-5">
+                    {visitorCountries.slice(0, 6).map((country) => {
+                      const share = visitorTotal > 0 ? Math.round((Number(country.visitors || 0) / visitorTotal) * 100) : 0;
+
+                      return (
+                        <div key={country.countryCode || country.country} className="space-y-2">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-bold text-foreground">{country.country || 'Unknown'}</p>
+                              <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">{formatNumber(country.pageviews || 0)} page views</p>
+                            </div>
+                            <p className="font-heading text-lg font-bold text-royal-maroon">{formatNumber(country.visitors || 0)}</p>
+                          </div>
+                          <div className="h-2 rounded-full bg-slate-100">
+                            <div className="h-2 rounded-full bg-royal-maroon" style={{ width: `${Math.min(share, 100)}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
+                    No country data yet.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-border bg-white shadow-luxury-sm">
+            <CardHeader className="border-b border-border bg-slate-50">
+              <CardTitle className="font-heading text-xl text-foreground">Regional Detail</CardTitle>
+              <CardDescription className="text-muted-foreground">Where storefront visitors are coming from</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full bg-slate-50" />)}
+                </div>
+              ) : visitorRegions.length > 0 ? (
+                <div className="relative overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500">
+                      <tr>
+                        <th className="px-6 py-4 font-bold">Region</th>
+                        <th className="px-6 py-4 font-bold">Cities</th>
+                        <th className="px-6 py-4 font-bold text-right">Visitors</th>
+                        <th className="px-6 py-4 font-bold text-right">Page Views</th>
+                        <th className="px-6 py-4 font-bold text-right text-royal-maroon">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {visitorRegions.map((region) => (
+                        <tr key={`${region.countryCode}-${region.regionCode}`} className="transition-colors hover:bg-slate-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-royal-maroon/10 text-royal-maroon">
+                                <MapPin className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-foreground">{region.region || region.country || 'Unknown'}</p>
+                                <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">{region.countryCode || 'XX'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500">{region.cityLabel || 'Unknown'}</td>
+                          <td className="px-6 py-4 text-right font-bold text-foreground">{formatNumber(region.visitors || 0)}</td>
+                          <td className="px-6 py-4 text-right font-medium text-muted-foreground">{formatNumber(region.pageviews || 0)}</td>
+                          <td className="px-6 py-4 text-right font-bold text-royal-maroon">{region.share}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
+                  No regional visitor data for this time range.
+                </div>
               )}
             </CardContent>
           </Card>

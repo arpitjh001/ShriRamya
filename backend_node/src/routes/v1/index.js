@@ -13,6 +13,7 @@ const searchRoute = require('./search.route');
 const reviewRoute = require('./review.route');
 const recommendationRoute = require('./recommendation.route');
 const analyticsRoute = require('./analytics.route');
+const visitorAnalyticsRoute = require('./visitorAnalytics.route');
 const warehouseRoute = require('./warehouse.route');
 const inventoryRoute = require('./inventory.route');
 const notificationRoute = require('./notification.route');
@@ -36,6 +37,7 @@ router.use('/categories', categoryRoute);
 router.use('/search', searchRoute);
 router.use('/reviews', reviewRoute);
 router.use('/recommendations', recommendationRoute);
+router.use('/analytics', visitorAnalyticsRoute);
 router.use('/admin/analytics', analyticsRoute);
 router.use('/admin/warehouses', warehouseRoute);
 router.use('/admin/inventory', inventoryRoute); // Inventory management

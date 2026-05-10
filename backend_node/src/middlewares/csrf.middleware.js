@@ -37,6 +37,7 @@ const tokensMatch = (left, right) => {
 const CSRF_EXEMPT_PATHS = [
   /^\/api\/v1\/orders\/webhooks\/payment\//,
   /^\/api\/v1\/payment\/webhooks\//,
+  /^\/api\/v1\/analytics\/visit$/,
   /^\/api\/v1\/admin\/insiders\/weekly-digest$/,
 ];
 

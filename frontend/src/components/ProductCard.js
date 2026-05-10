@@ -166,7 +166,10 @@ const ProductCard = ({
     if (product?.isTrending || product?.bestseller || product?.bestSeller) nextBadges.push('Bestseller');
     if (product?.handmade || product?.handcrafted) nextBadges.push('Handcrafted');
     if (product?.luxury_collection || occasion.includes('festive')) nextBadges.push('Festive Pick');
-    if (isLimitedStock) nextBadges.push('Limited Stock');
+    
+    // Status Badges (Prioritized)
+    if (isOutOfStock) nextBadges.unshift('Out of Stock');
+    else if (isLimitedStock) nextBadges.push('Limited Stock');
 
     return [...new Set(nextBadges)].slice(0, 2);
   }, [category, isLimitedStock, product]);
