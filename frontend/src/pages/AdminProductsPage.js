@@ -1693,6 +1693,7 @@ const StatCard = (props) => {
   };
 
   const scheme = schemeOptions[color] || schemeOptions.charcoal;
+  const valueTextClass = indicator === 'red' ? 'text-rose-600' : scheme.text;
 
   return (
     <div className={`group relative overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-luxury-sm transition-all hover:shadow-luxury hover:-translate-y-1`}>
@@ -1715,7 +1716,7 @@ const StatCard = (props) => {
           {loading ? (
             <div className="h-9 w-24 bg-white/10 animate-pulse rounded mt-1" />
           ) : (
-            <h3 className={`mt-1 text-3xl font-bold tracking-tight ${scheme.text}`}>
+            <h3 className={`mt-1 text-3xl font-bold tracking-tight ${valueTextClass}`}>
               {formatValue()}
             </h3>
           )}

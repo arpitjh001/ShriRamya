@@ -59,6 +59,8 @@ const CategoryPage = () => {
     const [sortOption, setSortOption] = useState('newest');
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [fabricFilter, setFabricFilter] = useState('');
+    const [availableFabrics, setAvailableFabrics] = useState([]);
     const observer = useRef();
 
     const lastProductRef = useCallback(node => {
@@ -104,9 +106,18 @@ const CategoryPage = () => {
                 per_page: 20,
                 page: pageNum,
                 sort: sortOption,
+                fabric: fabricFilter || undefined,
             };
             const prodRes = await productsAPI.getAll(params);
             const fetchedProducts = prodRes.data || [];
+            
+            // Extract available fabrics for this category on initial load
+            if (isInitial && prodRes.filters?.fabrics) {
+                const fabrics = Object.keys(prodRes.filters.fabrics)
+                    .filter(f => f && f !== 'null' && f !== 'undefined')
+                    .sort();
+                setAvailableFabrics(fabrics);
+            }
             
             setProducts(prev => isInitial ? fetchedProducts : [...prev, ...fetchedProducts]);
             setHasMore(fetchedProducts.length === 20);
@@ -118,7 +129,11 @@ const CategoryPage = () => {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [slug, sortOption]);
+    }, [slug, sortOption, fabricFilter]);
+
+    useEffect(() => {
+        setFabricFilter('');
+    }, [slug]);
 
     useEffect(() => {
         if (slug) {
@@ -128,7 +143,7 @@ const CategoryPage = () => {
             setHasMore(true);
             fetchCategoryData(1, true);
         }
-    }, [slug, sortOption, fetchCategoryData]);
+    }, [slug, sortOption, fabricFilter, fetchCategoryData]);
 
     useEffect(() => {
         if (page > 1) {
@@ -168,7 +183,21 @@ const CategoryPage = () => {
                         <h2 className="text-2xl font-semibold text-[#181C14]">Products</h2>
                         <span className="text-sm text-[#697565]">({products.length} loaded)</span>
                     </div>
-                    <div className="mt-4 md:mt-0">
+                    <div className="mt-4 md:mt-0 flex items-center gap-3">
+                        {availableFabrics.length > 0 && (
+                            <select
+                                value={fabricFilter}
+                                onChange={(e) => setFabricFilter(e.target.value)}
+                                className="bg-white border text-sm rounded-md px-3 py-2 text-[#3C3D37] focus:outline-none focus:ring-1 focus:ring-[#3C3D37]"
+                            >
+                                <option value="">All Fabrics</option>
+                                {availableFabrics.map((fabric) => (
+                                    <option key={fabric} value={fabric}>
+                                        {fabric}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
                         <select
                             value={sortOption}
                             onChange={(e) => setSortOption(e.target.value)}
