@@ -172,7 +172,7 @@ const ProductCard = ({
     else if (isLimitedStock) nextBadges.push('Limited Stock');
 
     return [...new Set(nextBadges)].slice(0, 2);
-  }, [category, isLimitedStock, product]);
+  }, [category, isLimitedStock, isOutOfStock, product]);
 
   const handleWishlist = async (e) => {
     e.preventDefault();
@@ -236,7 +236,7 @@ const ProductCard = ({
   if (!product) return null;
 
   const quickActionText = isOutOfStock
-    ? 'Out'
+    ? 'Out of Stock'
     : quickActionLabel || 'View';
   const wishlistLabel = isWishlisted ? 'Remove from wishlist' : 'Add to wishlist';
 
@@ -339,6 +339,12 @@ const ProductCard = ({
             </>
           )}
         </div>
+
+        {isOutOfStock && (
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-600">
+            Out of Stock
+          </p>
+        )}
 
         {showQuickAction && (
           <button

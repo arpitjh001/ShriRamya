@@ -75,14 +75,18 @@ export const transformWooProduct = (product) => {
   const salePriceCandidate = minVariantDiscount && Number.isFinite(minVariantDiscount) ? minVariantDiscount : normalizedSalePrice;
   const salePrice = Number.isFinite(salePriceCandidate) && salePriceCandidate < regularPrice ? salePriceCandidate : null;
 
-  // Aggregate variant stock if not provided natively
-  const totalStock = normalizedVariants.length > 0
-    ? normalizedVariants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
-    : (product.stock || 0);
   const stockKnown = normalizedVariants.length > 0
     || product.stock !== undefined
     || product.stock_quantity !== undefined
     || product.totalStock !== undefined;
+  const totalStock = normalizedVariants.length > 0
+    ? normalizedVariants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
+    : (Number(product.totalStock ?? product.stock_quantity ?? product.stock ?? 0) || 0);
+  const normalizedStatus = String(product.status || "published").toLowerCase();
+  const statusSuggestsPublished = normalizedStatus === "publish" || normalizedStatus === "published";
+  const isInStock = stockKnown
+    ? totalStock > 0
+    : product.in_stock !== false && product.stock_status !== "outofstock" && statusSuggestsPublished;
 
   return {
     id: product.id,
@@ -107,7 +111,7 @@ export const transformWooProduct = (product) => {
 
     images: images,
 
-    in_stock: totalStock > 0 || product.status === "publish" || product.status === "published",
+    in_stock: isInStock,
     stock_quantity: totalStock,
     stock: totalStock,
     totalStock,

@@ -149,7 +149,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="bottom-0 top-auto max-h-[92dvh] w-[calc(100vw-0.75rem)] max-w-4xl translate-y-0 gap-0 overflow-hidden rounded-t-2xl border border-accent/20 bg-ivory/95 p-0 shadow-[0_28px_80px_rgba(31,31,31,0.22)] sm:bottom-auto sm:top-[50%] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:translate-y-[-50%] sm:rounded-2xl"
+        className="fixed bottom-0 left-0 right-0 top-auto z-[105] flex max-h-[95dvh] w-full translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-t-[2.5rem] border-x-0 border-b-0 border-t border-accent/20 bg-ivory/98 p-0 shadow-[0_-12px_44px_rgba(31,31,31,0.18)] backdrop-blur-xl sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[95vw] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border"
         data-testid="quick-view-modal"
       >
         <DialogTitle className="sr-only">Quick View</DialogTitle>
@@ -161,10 +161,10 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : product ? (
-          <div className="grid max-h-[92dvh] grid-cols-1 gap-4 overflow-y-auto bg-ivory p-3 sm:max-h-[calc(100dvh-2rem)] sm:gap-5 sm:p-5 md:grid-cols-[0.9fr_1.1fr] md:overflow-hidden md:p-6">
+          <div className="grid max-h-[95dvh] grid-cols-1 gap-4 overflow-y-auto bg-ivory/40 p-4 sm:p-6 md:max-h-[min(90vh,720px)] md:grid-cols-2 md:overflow-hidden md:p-8 lg:gap-10">
             {/* Image Gallery */}
-            <div className="relative self-start rounded-2xl border border-accent/15 bg-gradient-to-br from-muted/45 via-ivory to-muted/30 p-2 shadow-[0_16px_34px_rgba(31,31,31,0.08)]">
-              <div className="h-[42dvh] max-h-[360px] w-full overflow-hidden rounded-xl bg-muted/25 sm:h-[45dvh] sm:max-h-[420px] md:h-auto md:aspect-[4/5] md:max-h-[min(62dvh,520px)]">
+            <div className="relative self-start rounded-2xl border border-accent/15 bg-gradient-to-br from-muted/30 via-ivory to-muted/20 p-2 shadow-luxury sm:p-3">
+              <div className="h-[45dvh] max-h-[400px] w-full overflow-hidden rounded-xl bg-muted/25 sm:h-[50dvh] sm:max-h-[460px] md:h-auto md:aspect-[4/5]">
                 <img
                   src={images[activeImage] || images[0] || '/uploads/woocommerce-placeholder.webp'}
                   alt={product.name}
@@ -179,7 +179,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
                     <button
                       key={i}
                       onClick={() => setActiveImage(i)}
-                      className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 bg-white transition-all sm:h-12 sm:w-12 ${i === activeImage ? 'border-primary ring-1 ring-primary' : 'border-accent/25 opacity-70 hover:opacity-100'}`}
+                      className={`h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 bg-white transition-all sm:h-14 sm:w-14 ${i === activeImage ? 'border-primary ring-2 ring-primary/20' : 'border-accent/20 opacity-60 hover:opacity-100 hover:border-accent/40'}`}
                       aria-label={`View ${product.name} image ${i + 1}`}
                     >
                       <img src={img} alt="" className="h-full w-full object-cover" />
@@ -195,7 +195,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
             </div>
 
             {/* Product Info */}
-            <div className="flex min-h-0 flex-col px-1 pb-0 sm:px-1 md:max-h-[calc(100dvh-5rem)] md:overflow-y-auto md:pl-2">
+            <div className="flex min-h-0 flex-col px-1 pb-2 sm:px-1 md:max-h-[calc(min(90vh,720px)-4rem)] md:overflow-y-auto md:pr-4 custom-scrollbar">
               <p className="mb-1 pr-8 text-[10px] font-semibold uppercase tracking-[0.2em] text-secondary/60">
                 {product.categoryName || product.category || ''}
               </p>
@@ -266,47 +266,70 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
               )}
 
               {/* Quantity */}
-              <div className="mb-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Quantity</p>
-                <div className="flex items-center border border-border rounded w-fit">
-                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setQuantity(q => Math.max(1, q - 1))}>
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span data-testid="qv-quantity" className="h-9 w-10 flex items-center justify-center font-medium border-x border-border">{quantity}</span>
-                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setQuantity(q => q + 1)}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quantity</p>
+                  <div className="flex w-fit items-center overflow-hidden rounded-xl border border-accent/20 bg-muted/30 shadow-sm">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-10 w-10 p-0 text-secondary/70 hover:bg-accent/10 hover:text-secondary transition-colors"
+                      onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span
+                      data-testid="qv-quantity"
+                      className="flex h-10 w-12 items-center justify-center border-x border-accent/15 bg-white/50 font-heading text-lg font-medium text-charcoal"
+                    >
+                      {quantity}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-10 w-10 p-0 text-secondary/70 hover:bg-accent/10 hover:text-secondary transition-colors"
+                      onClick={() => setQuantity(q => q + 1)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
+
               {/* Actions */}
-              <div className="sticky bottom-0 mt-auto space-y-3 border-t border-border/40 bg-ivory/95 py-3 backdrop-blur md:static md:border-t-0 md:bg-transparent md:pb-6 md:backdrop-blur-0">
+              <div className="sticky bottom-0 mt-auto flex flex-col gap-3 border-t border-accent/10 bg-ivory/95 pb-4 pt-5 backdrop-blur-md md:static md:border-t-0 md:bg-transparent md:pb-6 md:pt-2 md:backdrop-blur-0">
                 <Button
                   data-testid="qv-add-to-cart"
-                  className="w-full"
+                  className="group relative h-14 w-full overflow-hidden rounded-2xl bg-primary shadow-luxury transition-all hover:bg-primary/90 active:scale-[0.98]"
                   size="lg"
                   onClick={handleAddToCart}
                   disabled={addingToCart || missingOptions || isOutOfStock}
                 >
-                  {addingToCart ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <ShoppingBag className="h-4 w-4 mr-2" />
-                  )}
-                  {addingToCart
-                    ? 'Adding...'
-                    : missingOptions
-                    ? 'Select Options'
-                    : isOutOfStock
-                    ? 'Out of Stock'
-                    : `Add to Cart - ${formatPrice(displayPrice * quantity)}`}
+                  <div className="flex items-center justify-center gap-2 font-medium">
+                    {addingToCart ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <ShoppingBag className="h-5 w-5 transition-transform group-hover:-translate-y-0.5" />
+                    )}
+                    <span className="text-lg">
+                      {addingToCart
+                        ? 'Adding...'
+                        : missingOptions
+                        ? 'Select Options'
+                        : isOutOfStock
+                        ? 'Out of Stock'
+                        : `Add to Cart • ${formatPrice(displayPrice * quantity)}`}
+                    </span>
+                  </div>
                 </Button>
                 <button
                   data-testid="qv-view-full"
                   onClick={handleViewFull}
-                  className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors py-2"
+                  className="flex items-center justify-center gap-1.5 py-2.5 font-medium text-secondary/60 transition-all hover:text-primary active:scale-95"
                 >
-                  View Full Details <ChevronRight className="h-3 w-3" />
+                  <span className="text-sm tracking-wide">View Full Details</span>
+                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </button>
               </div>
             </div>
@@ -318,5 +341,6 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
     </Dialog>
   );
 };
+
 
 export default QuickViewModal;

@@ -251,7 +251,24 @@ const ProductDetailPage = () => {
     return variant ? getVariantStock(variant) : 0;
   };
 
+  const hasTrackedProductStock = product
+    ? product.totalStock !== undefined || product.stock_quantity !== undefined || product.stock !== undefined
+    : false;
+  const productStock = Number(product?.totalStock ?? product?.stock_quantity ?? product?.stock ?? 0) || 0;
+  const variantMatrixStock = variantMatrix.reduce((sum, variant) => sum + getVariantStock(variant), 0);
+  const selectedVariantOutOfStock = variantStock?.isOutOfStock === true;
+  const productOutOfStock = variantMatrix.length > 0
+    ? variantMatrixStock <= 0 || selectedVariantOutOfStock
+    : hasTrackedProductStock
+    ? productStock <= 0
+    : product?.in_stock === false || product?.stock_status === 'outofstock';
+
   const handleAddToCart = async () => {
+    if (productOutOfStock) {
+      toast.error('This product is out of stock');
+      return false;
+    }
+
     // Check if product has variants that require selection
     const hasColors = availableColors.length > 0;
     const hasSizes = availableSizes.length > 0;
@@ -676,11 +693,11 @@ const ProductDetailPage = () => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   onClick={handleAddToCart}
-                  disabled={!product.in_stock}
+                  disabled={productOutOfStock}
                   className="w-full sm:flex-[2] h-12 rounded-none bg-charcoal text-white hover:bg-black transition-all text-xs uppercase font-bold tracking-[0.16em] whitespace-normal text-center leading-tight px-4"
                 >
                   <ShoppingCart className="w-5 h-5 shrink-0 mr-3" />
-                  {product.in_stock ? 'Add to Shopping Bag' : 'Out of Stock'}
+                  {productOutOfStock ? 'Out of Stock' : 'Add to Shopping Bag'}
                 </Button>
                 <Button
                   variant="outline"
@@ -691,7 +708,8 @@ const ProductDetailPage = () => {
                       navigate('/checkout');
                     }
                   }}
-                  className="w-full sm:flex-1 h-12 rounded-none border-charcoal/30 hover:border-charcoal bg-white transition-all text-xs uppercase font-bold tracking-[0.16em] whitespace-normal text-center leading-tight px-4"
+                  disabled={productOutOfStock}
+                  className="w-full sm:flex-1 h-12 rounded-none border-charcoal/30 hover:border-charcoal bg-white transition-all text-xs uppercase font-bold tracking-[0.16em] whitespace-normal text-center leading-tight px-4 disabled:cursor-not-allowed disabled:border-charcoal/10 disabled:bg-charcoal/5 disabled:text-charcoal/40"
                 >
                   Buy Now
                 </Button>
