@@ -149,7 +149,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed bottom-0 left-0 right-0 top-auto z-[105] flex max-h-[95dvh] w-full translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-t-[2.5rem] border-x-0 border-b-0 border-t border-accent/20 bg-ivory/98 p-0 shadow-[0_-12px_44px_rgba(31,31,31,0.18)] backdrop-blur-xl sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[95vw] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border"
+        className="fixed bottom-0 left-0 right-0 top-auto z-[500] flex max-h-[95dvh] w-full translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-t-[2.5rem] border-x-0 border-b-0 border-t border-accent/20 bg-ivory/98 p-0 shadow-[0_-12px_44px_rgba(31,31,31,0.18)] backdrop-blur-xl sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[95vw] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border"
         data-testid="quick-view-modal"
       >
         <DialogTitle className="sr-only">Quick View</DialogTitle>
