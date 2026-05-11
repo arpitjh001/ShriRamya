@@ -178,7 +178,7 @@ const CategoryPage = () => {
             )}
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-4 border-[#697565]/30">
+                <div className="sticky top-[72px] md:top-[92px] z-30 bg-[#FAF9F6]/95 backdrop-blur-sm flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-4 pt-2 border-[#697565]/30 transition-all duration-300">
                     <div className="flex items-center gap-3">
                         <h2 className="text-2xl font-semibold text-[#181C14]">Products</h2>
                         <span className="text-sm text-[#697565]">({products.length} loaded)</span>
