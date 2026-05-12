@@ -4,7 +4,25 @@ import { productsAPI, wishlistAPI } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { ShoppingCart, Heart, Sparkles, ChevronDown, Layers, Star, Share2 } from 'lucide-react';
+import {
+  ShoppingBag,
+  Heart,
+  Sparkles,
+  ChevronDown,
+  Layers,
+  Star,
+  Share2,
+  PackageCheck,
+  Palette,
+  Ruler,
+  Tag,
+  UserRound,
+  BadgeCheck,
+  Truck,
+  RotateCcw,
+  ShieldCheck,
+  Gem,
+} from 'lucide-react';
 import { formatPrice } from '../utils';
 import { toast } from 'sonner';
 import ProductCard from '../components/ProductCard';
@@ -68,6 +86,58 @@ const slugify = (text) => {
     .replace(/[^\w-]+/g, '')   // Remove all non-word chars
     .replace(/--+/g, '-');      // Replace multiple - with single -
 };
+
+const formatDisplayList = (values = [], fallback = '') => {
+  const list = Array.isArray(values) ? values : [values];
+  const normalized = Array.from(new Set(
+    list
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+  ));
+
+  if (normalized.length === 0) return fallback;
+  if (normalized.length <= 3) return normalized.join(', ');
+  return `${normalized.slice(0, 3).join(', ')} +${normalized.length - 3}`;
+};
+
+const getCategoryLabel = (product = {}) => {
+  if (Array.isArray(product.categories) && product.categories.length > 0) {
+    const categoryNames = product.categories
+      .map((category) => category?.name || category?.slug)
+      .filter(Boolean);
+
+    if (categoryNames.length > 0) {
+      return categoryNames.join(', ');
+    }
+  }
+
+  return product.category || product.categoryName || 'Collection';
+};
+
+const COLOR_SWATCHES = {
+  Black: '#1A1A1A',
+  White: '#FFFFFF',
+  Red: '#DC2626',
+  Blue: '#2563EB',
+  'Royal Blue': '#1D4ED8',
+  Green: '#16A34A',
+  Yellow: '#EAB308',
+  Pink: '#EC4899',
+  Purple: '#7C3AED',
+  Orange: '#EA580C',
+  Grey: '#6B7280',
+  Gray: '#6B7280',
+  Navy: '#1E3A5F',
+  Brown: '#92400E',
+  Maroon: '#7F1D1D',
+  Gold: '#D4A843',
+  Cream: '#FFFDD0',
+  Ivory: '#FFFFF0',
+  Wine: '#722F37',
+  Mustard: '#E2B714',
+};
+
+const getColorSwatch = (color) => COLOR_SWATCHES[color] || String(color || '').toLowerCase();
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -413,10 +483,6 @@ const ProductDetailPage = () => {
     : Number(product.sale_price || 0);
   const hasDiscount = salePrice > 0 && salePrice < regularPrice;
   const displayPrice = hasDiscount ? salePrice : regularPrice;
-  const modelDetails = [
-    product.modelWears ? { label: 'Model wears', value: product.modelWears } : null,
-    product.modelHeight ? { label: 'Height', value: product.modelHeight } : null,
-  ].filter(Boolean);
   const customMaterialGuide = normalizeMaterialGuide(product.materialGuide);
   const materialGuide = customMaterialGuide || getFabricGuide(product.fabric);
   const materialGuideLabel = product.fabric || 'Material Guide';
@@ -428,6 +494,47 @@ const ProductDetailPage = () => {
   const displayImages = [...new Set(productImages.length > 0 ? productImages : [PRODUCT_IMAGE_FALLBACK])];
   const activeImage = displayImages[selectedImage] || displayImages[0];
   const galleryImages = displayImages.slice(0, 6);
+  const categoryLabel = getCategoryLabel(product);
+  const visibleSizeOptions = availableSizes.filter(size => String(size).toLowerCase() !== 'free size');
+  const colorSummary = formatDisplayList(availableColors, product.color || 'Curated tones');
+  const sizeSummary = formatDisplayList(visibleSizeOptions, product.sizes?.length ? formatDisplayList(product.sizes) : 'Free size');
+  const aggregateStock = variantMatrix.length > 0 ? variantMatrixStock : productStock;
+  const stockSummary = productOutOfStock
+    ? 'Out of stock'
+    : aggregateStock > 0
+    ? `${aggregateStock} available`
+    : 'Ready to ship';
+  const selectedSku = selectedVariation?.sku || product.sku;
+  const productHighlights = [
+    {
+      label: 'Availability',
+      value: stockSummary,
+      icon: PackageCheck,
+      className: productOutOfStock ? 'text-red-600 bg-red-50 border-red-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100',
+    },
+    { label: 'Colors', value: colorSummary, icon: Palette, className: 'text-secondary bg-secondary/5 border-secondary/15' },
+    { label: 'Sizes', value: sizeSummary, icon: Ruler, className: 'text-primary bg-primary/5 border-primary/15' },
+    { label: 'SKU', value: selectedSku || 'N/A', icon: Tag, className: 'text-charcoal bg-charcoal/[0.03] border-charcoal/10' },
+  ];
+  const fitDetails = [
+    product.modelWears ? { label: 'Model wears', value: product.modelWears, icon: UserRound } : null,
+    product.modelHeight ? { label: 'Model height', value: product.modelHeight, icon: Ruler } : null,
+  ].filter(Boolean);
+  const productSpecs = [
+    { label: 'Fabric', value: product.fabric, icon: Layers },
+    { label: 'Occasion', value: product.occasion, icon: Sparkles },
+    { label: 'Category', value: categoryLabel, icon: BadgeCheck },
+    { label: 'Work', value: product.work, icon: Gem },
+    { label: 'Origin', value: materialGuide?.origin || product.state_of_origin, icon: BadgeCheck },
+    { label: 'Brand', value: product.brand, icon: Gem },
+    { label: 'Model wears', value: product.modelWears, icon: UserRound },
+    { label: 'Model height', value: product.modelHeight, icon: Ruler },
+  ].filter((spec) => spec.value);
+  const serviceNotes = [
+    { label: 'Dispatch', value: '24-48 hours', icon: Truck },
+    { label: 'Returns', value: '14 days', icon: RotateCcw },
+    { label: 'Payments', value: 'Secure checkout', icon: ShieldCheck },
+  ];
 
   const toggleAccordion = (id) => {
     setActiveAccordion(activeAccordion === id ? null : id);
@@ -452,7 +559,7 @@ const ProductDetailPage = () => {
               to={`/category/${product.categorySlug || slugify(product.category || product.categoryName)}`} 
               className="hover:text-royal-maroon transition-colors"
             >
-              {product.category || product.categoryName || 'Collection'}
+              {categoryLabel}
             </Link>
           </li>
           <li className="flex min-w-0 items-center gap-2 text-charcoal/80 italic">
@@ -467,131 +574,149 @@ const ProductDetailPage = () => {
           
           {/* Left Column: Media Gallery */}
           <div className="min-w-0 lg:col-span-7">
-            <div className="lg:hidden space-y-3">
-              <motion.div
-                layoutId={`product-hero-${product.id}`}
-                className="relative aspect-[3/4] overflow-hidden bg-[#f7f4ef]"
-              >
-                <img
-                  src={activeImage}
-                  alt={product.name}
-                  className="w-full h-full object-contain object-top"
-                />
-                {product.luxury_collection && (
-                  <div className="absolute top-4 left-4">
-                    <LuxuryBadge className="bg-white/85 backdrop-blur-md border-none px-3 py-1.5" />
-                  </div>
-                )}
-              </motion.div>
-
-              {displayImages.length > 1 && (
-                <div className="grid grid-cols-5 gap-2">
-                  {displayImages.slice(0, 5).map((img, index) => (
-                    <button
-                      key={img}
-                      onClick={() => setSelectedImage(index)}
-                      className={`aspect-[3/4] overflow-hidden border transition-all duration-300 ${
-                        selectedImage === index ? 'border-charcoal' : 'border-charcoal/10 opacity-70'
-                      }`}
-                      aria-label={`View ${product.name} image ${index + 1}`}
-                    >
-                      <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover object-top" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className={`hidden lg:grid gap-3 ${galleryImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              {galleryImages.map((img, index) => (
-                <button
-                  key={img}
-                  type="button"
-                  onClick={() => setSelectedImage(index)}
-                  className={`relative aspect-[3/4] overflow-hidden bg-[#f7f4ef] transition-all duration-300 ${
-                    selectedImage === index ? 'ring-1 ring-charcoal/70' : 'hover:opacity-95'
-                  }`}
-                  aria-label={`View ${product.name} image ${index + 1}`}
+            <div className="lg:sticky lg:top-24">
+              <div className="mx-auto w-full max-w-[480px]">
+                <motion.div
+                  layoutId={`product-hero-${product.id}`}
+                  className="relative overflow-hidden rounded-2xl border border-accent/15 bg-white p-2 shadow-[0_24px_70px_rgba(31,31,31,0.12)]"
+                  data-testid="product-detail-image-frame"
                 >
-                  <img
-                    src={img}
-                    alt={`${product.name} ${index + 1}`}
-                    className="w-full h-full object-contain object-top transition-transform duration-700 hover:scale-[1.025]"
-                  />
-                  {index === 0 && product.luxury_collection && (
-                    <div className="absolute top-4 left-4">
-                      <LuxuryBadge className="bg-white/85 backdrop-blur-md border-none px-3 py-1.5" />
+                  <div className="pointer-events-none absolute inset-2 z-10 rounded-xl ring-1 ring-inset ring-white/50" />
+                  <div className="absolute left-4 top-4 z-20 rounded-full border border-white/60 bg-charcoal/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur-md">
+                    Standard Fit
+                  </div>
+                  {hasDiscount && (
+                    <div className="absolute right-4 top-4 z-20 rounded-full bg-primary px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground shadow-sm">
+                      {Math.round(((regularPrice - salePrice) / regularPrice) * 100)}% Off
                     </div>
                   )}
-                </button>
-              ))}
+                  {product.luxury_collection && (
+                    <div className="absolute bottom-4 left-4 z-20">
+                      <LuxuryBadge className="border-white/50 bg-white/85 px-3 py-1.5 backdrop-blur-md" />
+                    </div>
+                  )}
+                  <div className="aspect-[4/5] w-full overflow-hidden rounded-xl bg-[#f7f4ef]">
+                    <img
+                      src={activeImage}
+                      alt={product.name}
+                      className="h-full w-full object-contain object-center p-2 transition-transform duration-700 hover:scale-[1.015] sm:p-3"
+                      data-testid="product-detail-main-image"
+                    />
+                  </div>
+                </motion.div>
+
+                {displayImages.length > 1 && (
+                  <div className="scrollbar-hide mt-3 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-6 lg:overflow-visible">
+                    {galleryImages.map((img, index) => (
+                      <button
+                        key={img}
+                        type="button"
+                        onClick={() => setSelectedImage(index)}
+                        className={`h-[74px] w-[58px] shrink-0 overflow-hidden rounded-xl border bg-white p-1 transition-all duration-300 sm:h-[92px] sm:w-[74px] lg:h-auto lg:w-full lg:aspect-[4/5] ${
+                          selectedImage === index
+                            ? 'border-primary ring-2 ring-primary/20'
+                            : 'border-accent/20 opacity-75 hover:border-accent/50 hover:opacity-100'
+                        }`}
+                        aria-label={`View ${product.name} image ${index + 1}`}
+                      >
+                        <img
+                          src={img}
+                          alt={`${product.name} ${index + 1}`}
+                          className="h-full w-full rounded-lg object-cover object-center"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Right Column: Information (Sticky) */}
-          <div className="min-w-0 lg:col-span-5 h-fit lg:sticky lg:top-24 space-y-6 lg:max-w-[470px]">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold tracking-[0.22em] text-royal-maroon/70">
-                  {product.category || product.categoryName || 'Collection'}
+          <div className="min-w-0 lg:col-span-5 h-fit lg:sticky lg:top-24 space-y-5 lg:max-w-[500px]">
+            <div className="rounded-2xl border border-accent/10 bg-white/90 p-4 shadow-[0_18px_50px_rgba(31,31,31,0.07)] backdrop-blur sm:p-5">
+              <div className="mb-3 flex items-start justify-between gap-4">
+                <span className="rounded-full bg-primary/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/75">
+                  {categoryLabel}
                 </span>
-                <button 
+                <button
                   onClick={handleToggleWishlist}
-                  className={`h-10 w-10 flex items-center justify-center border border-charcoal/10 bg-white transition-colors ${wish ? 'text-royal-maroon' : 'text-charcoal/45 hover:text-royal-maroon'}`}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent/15 bg-white shadow-sm transition-colors ${wish ? 'text-royal-maroon' : 'text-charcoal/45 hover:text-royal-maroon'}`}
                   data-testid="wishlist-btn"
                   aria-label={wish ? 'Remove from wishlist' : 'Add to wishlist'}
                 >
                   <Heart className={`w-5 h-5 ${wish ? 'fill-current' : ''}`} />
                 </button>
               </div>
-              
-              <h1 className="text-2xl sm:text-[28px] font-heading font-medium text-charcoal leading-tight break-words">
+
+              <h1 className="text-2xl font-heading font-medium leading-tight text-charcoal break-words sm:text-[30px]">
                 {product.name}
               </h1>
 
-              {product.sku && (
-                <p className="text-xs font-medium text-charcoal/45">Sku: {product.sku}</p>
-              )}
-
-              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-                <span className="text-2xl font-semibold text-charcoal">{formatPrice(displayPrice)}</span>
+              <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+                <span className="text-2xl font-semibold text-primary sm:text-3xl">{formatPrice(displayPrice)}</span>
                 {hasDiscount && (
                   <>
                     <span className="text-lg text-charcoal/35 line-through decoration-royal-maroon/30">{formatPrice(regularPrice)}</span>
-                    <span className="text-xs font-bold text-royal-maroon tracking-wider">
+                    <span className="rounded-full bg-royal-maroon/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-royal-maroon">
                       {Math.round(((regularPrice - salePrice) / regularPrice) * 100)}% Off
                     </span>
                   </>
                 )}
               </div>
-              <p className="text-xs font-medium text-charcoal/45">Inclusive Of All Taxes</p>
+              <p className="mt-1 text-xs font-medium text-charcoal/45">Inclusive of all taxes</p>
+
+              {product.description && (
+                <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-charcoal/60">
+                  {product.description}
+                </p>
+              )}
+
+              <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {productHighlights.map((highlight) => {
+                  const Icon = highlight.icon;
+                  return (
+                    <div key={highlight.label} className={`min-w-0 rounded-xl border px-3 py-3 ${highlight.className}`}>
+                      <Icon className="mb-1.5 h-4 w-4" />
+                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] opacity-60">{highlight.label}</p>
+                      <p className="mt-0.5 truncate text-xs font-semibold text-charcoal">{highlight.value}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Model Info */}
-            {modelDetails.length > 0 && (
-              <div className="border border-charcoal/10 p-4 flex flex-wrap items-center gap-4 sm:gap-6">
-                {modelDetails.map((detail, index) => (
-                  <React.Fragment key={detail.label}>
-                    {index > 0 && <div className="hidden sm:block w-[1px] h-8 bg-charcoal/10" />}
-                    <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold tracking-widest text-charcoal/40">{detail.label}</span>
-                      <span className="text-sm font-medium text-charcoal">{detail.value}</span>
+            {fitDetails.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {fitDetails.map((detail) => {
+                  const Icon = detail.icon;
+                  return (
+                    <div key={detail.label} className="flex items-center gap-3 rounded-xl border border-accent/15 bg-muted/20 px-3 py-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-sm">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-charcoal/40">{detail.label}</span>
+                        <span className="block truncate text-sm font-semibold text-charcoal">{detail.value}</span>
+                      </span>
                     </div>
-                  </React.Fragment>
-                ))}
-                <Sparkles className="sm:ml-auto w-5 h-5 text-royal-maroon/30 animate-pulse" />
+                  );
+                })}
               </div>
             )}
 
             {/* Selection Options - Variant Matrix System */}
-            <div className="space-y-6">
+            <div className="space-y-5 rounded-2xl border border-accent/10 bg-white/80 p-4 shadow-sm">
               {/* Color Selection - Variant Matrix */}
               {availableColors.length > 0 && (
                 <div className="space-y-3">
-                  <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">
-                    Color: <span className="text-charcoal/60 capitalize">{selectedColor || 'Choose'}</span>
-                  </label>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-charcoal/70">
+                      Color
+                    </label>
+                    <span className="text-xs font-semibold text-charcoal/50">{selectedColor || 'Choose a tone'}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
                     {availableColors.map((color, index) => {
                       const hasStock = variantMatrix.some(v => getVariantColor(v) === color && getVariantStock(v) > 0);
                       const isSelected = selectedColor === color;
@@ -601,13 +726,14 @@ const ProductDetailPage = () => {
                           key={index}
                           onClick={() => handleColorSelect(color)}
                           disabled={!hasStock}
-                          className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                            isSelected ? 'ring-1 ring-charcoal ring-offset-3 ring-offset-white scale-105' : ''
+                          className={`relative flex h-10 w-10 items-center justify-center rounded-full bg-white p-1 shadow-sm transition-all duration-300 ${
+                            isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-white scale-105' : 'ring-1 ring-accent/15'
                           } ${!hasStock ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'}`}
+                          aria-label={`Select ${color}`}
                         >
                           <div
-                            className="w-full h-full rounded-full shadow-inner border border-charcoal/5"
-                            style={{ backgroundColor: color.toLowerCase() }}
+                            className="h-full w-full rounded-full border border-charcoal/10 shadow-inner"
+                            style={{ backgroundColor: getColorSwatch(color) }}
                           />
                           {!hasStock && (
                             <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-full flex items-center justify-center">
@@ -625,10 +751,10 @@ const ProductDetailPage = () => {
               {(availableSizes.length > 0 || product.size_stock?.length > 0) && (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <label className="text-xs font-bold uppercase tracking-widest text-charcoal/80">Select Size</label>
-                    <button className="text-[10px] uppercase font-bold text-royal-maroon hover:underline tracking-widest opacity-60">Size Guide</button>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-charcoal/70">Select Size</label>
+                    <button className="text-[10px] uppercase font-bold text-royal-maroon hover:underline tracking-widest opacity-70">Size Guide</button>
                   </div>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2.5">
                     {/* Use variant matrix sizes if available */}
                     {(availableSizes.length > 0 ? availableSizes : product.size_stock?.map(s => s.size) || []).map((size, index) => {
                       const isAvailable = variantMatrix.length > 0
@@ -644,10 +770,10 @@ const ProductDetailPage = () => {
                           key={index}
                           disabled={!isAvailable}
                           onClick={() => handleSizeSelect(size)}
-                          className={`min-w-[46px] px-3 h-11 flex items-center justify-center font-bold text-sm transition-all duration-300 border relative ${
+                          className={`relative flex h-11 min-w-[48px] items-center justify-center rounded-xl border px-3 text-sm font-bold transition-all duration-300 ${
                             isSelected
-                              ? 'bg-charcoal text-white border-charcoal'
-                              : 'bg-white text-charcoal border-charcoal/20 hover:border-charcoal'
+                              ? 'bg-charcoal text-white border-charcoal shadow-md'
+                              : 'bg-white text-charcoal border-accent/20 hover:border-charcoal/60'
                           } ${!isAvailable ? 'opacity-20 cursor-not-allowed grayscale' : ''}`}
                         >
                           {size}
@@ -694,9 +820,9 @@ const ProductDetailPage = () => {
                 <Button
                   onClick={handleAddToCart}
                   disabled={productOutOfStock}
-                  className="w-full sm:flex-[2] h-12 rounded-none bg-charcoal text-white hover:bg-black transition-all text-xs uppercase font-bold tracking-[0.16em] whitespace-normal text-center leading-tight px-4"
+                  className="h-12 w-full rounded-xl bg-charcoal px-4 text-center text-xs font-bold uppercase leading-tight tracking-[0.14em] text-white shadow-[0_16px_34px_rgba(31,31,31,0.18)] transition-all hover:bg-black disabled:cursor-not-allowed disabled:bg-charcoal/20 disabled:text-charcoal/45 sm:flex-[2]"
                 >
-                  <ShoppingCart className="w-5 h-5 shrink-0 mr-3" />
+                  <ShoppingBag className="mr-3 h-5 w-5 shrink-0" />
                   {productOutOfStock ? 'Out of Stock' : 'Add to Shopping Bag'}
                 </Button>
                 <Button
@@ -709,7 +835,7 @@ const ProductDetailPage = () => {
                     }
                   }}
                   disabled={productOutOfStock}
-                  className="w-full sm:flex-1 h-12 rounded-none border-charcoal/30 hover:border-charcoal bg-white transition-all text-xs uppercase font-bold tracking-[0.16em] whitespace-normal text-center leading-tight px-4 disabled:cursor-not-allowed disabled:border-charcoal/10 disabled:bg-charcoal/5 disabled:text-charcoal/40"
+                  className="h-12 w-full rounded-xl border-charcoal/25 bg-white px-4 text-center text-xs font-bold uppercase leading-tight tracking-[0.14em] transition-all hover:border-charcoal hover:bg-muted/30 disabled:cursor-not-allowed disabled:border-charcoal/10 disabled:bg-charcoal/5 disabled:text-charcoal/40 sm:flex-1"
                 >
                   Buy Now
                 </Button>
@@ -720,36 +846,51 @@ const ProductDetailPage = () => {
                 data-testid="whatsapp-share-btn"
                 onClick={() => {
                   const url = window.location.href;
-                  const text = `Check out ${product.name} at Rs.${(product.salePrice || product.price).toLocaleString()} on ShriRamya!`;
+                  const text = `Check out ${product.name} at Rs.${displayPrice.toLocaleString()} on ShriRamya!`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 border border-[#25D366]/20 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-sm font-semibold"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#25D366]/20 bg-[#25D366]/10 py-3 text-sm font-semibold text-[#1E9F53] transition-colors hover:bg-[#25D366]/20"
               >
                 <Share2 className="w-4 h-4" /> Share on WhatsApp
               </button>
             </div>
 
+            <div className="grid grid-cols-3 gap-2">
+              {serviceNotes.map((note) => {
+                const Icon = note.icon;
+                return (
+                  <div key={note.label} className="rounded-xl border border-accent/10 bg-muted/20 px-2.5 py-3 text-center">
+                    <Icon className="mx-auto mb-1.5 h-4 w-4 text-primary" />
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-charcoal/40">{note.label}</p>
+                    <p className="mt-0.5 truncate text-[11px] font-semibold text-charcoal/75">{note.value}</p>
+                  </div>
+                );
+              })}
+            </div>
+
             {/* Information Accordion (Maybell Inspired) */}
-            <div className="border-t border-charcoal/10 pt-4 space-y-2 text-charcoal/80">
+            <div className="space-y-2 text-charcoal/80">
               {[
-                { id: 'description', title: 'Product Details', content: product.description },
+                { id: 'description', title: 'Product Details', content: product.description, icon: Gem },
                 ...(materialGuide ? [{
                   id: 'fabric-guide',
                   title: 'Material Guide',
                   isFabricGuide: true,
+                  icon: Layers,
                 }] : []),
-                { id: 'shipping', title: 'Shipping & Delivery', content: SHIPPING_DELIVERY_COPY },
-                { id: 'return', title: 'Returns & Exchanges', content: 'This product is returnable within 14 days of delivery. Returns are not applicable on styles under Sale Section. Please ensure labels are intact.' }
+                { id: 'shipping', title: 'Shipping & Delivery', content: SHIPPING_DELIVERY_COPY, icon: Truck },
+                { id: 'return', title: 'Returns & Exchanges', content: 'This product is returnable within 14 days of delivery. Returns are not applicable on styles under Sale Section. Please ensure labels are intact.', icon: RotateCcw }
               ].map((item) => {
+                const Icon = item.icon;
                 return (
-                <div key={item.id} className="group">
+                <div key={item.id} className="group rounded-2xl border border-accent/10 bg-white/70 px-4">
                   <button
                     onClick={() => toggleAccordion(item.id)}
                     data-testid={`accordion-${item.id}`}
                     className="w-full py-4 flex items-center justify-between text-[11px] uppercase font-bold tracking-widest group-hover:text-charcoal"
                   >
                     <span className="flex items-center gap-2">
-                      {item.isFabricGuide && <Layers className="w-3.5 h-3.5 text-royal-maroon/60" />}
+                      {Icon && <Icon className="w-3.5 h-3.5 text-royal-maroon/60" />}
                       {item.title}
                     </span>
                     <motion.span animate={{ rotate: activeAccordion === item.id ? 180 : 0 }}>
@@ -832,20 +973,30 @@ const ProductDetailPage = () => {
             </div>
 
             {/* Specs Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 pt-10 border-t border-charcoal/5">
-              {[
-                { label: 'Fabric', value: product.fabric },
-                { label: 'Craft Style', value: product.craft_style },
-                { label: 'Origin', value: product.state_of_origin },
-                { label: 'Occasion', value: product.occasion },
-                { label: 'Wash Care', value: 'Dry Clean Only' }
-              ].filter(s => s.value).map((spec, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/30">{spec.label}</span>
-                  <span className="text-sm font-medium text-charcoal">{spec.value}</span>
+            {productSpecs.length > 0 && (
+              <div className="rounded-2xl border border-accent/10 bg-muted/15 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-charcoal/70">Product Parameters</h2>
+                  <Sparkles className="h-4 w-4 text-primary/45" />
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {productSpecs.map((spec) => {
+                    const Icon = spec.icon;
+                    return (
+                      <div key={`${spec.label}-${spec.value}`} className="flex min-w-0 items-center gap-3 rounded-xl bg-white px-3 py-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[9px] font-bold uppercase tracking-[0.14em] text-charcoal/40">{spec.label}</span>
+                          <span className="block truncate text-sm font-semibold text-charcoal">{spec.value}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Try-on Trigger */}
             {(product.category === 'Women Ethnic Wear' || product.subcategory?.includes('Saree')) && (
