@@ -538,7 +538,7 @@ class StorefrontCheckoutService {
     if (couponCode) {
       const couponResult = await couponService.validateAndApplyCoupon(
         couponCode,
-        { subtotal, shipping_cost: shipping },
+        { subtotal, shipping_cost: shipping, items: orderItems },
         userId ? String(userId) : null
       );
       requestedDiscount = Number(couponResult?.discount || 0) || 0;

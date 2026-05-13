@@ -50,6 +50,10 @@ const auth = (roles = []) => async (req, res, next) => {
 
     // Attach to request
     req.user = payload;
+    // Ensure id is present (standardize between sub/user_id/id)
+    if (!req.user.id) {
+      req.user.id = String(payload.user_id || payload.sub || '');
+    }
     req.deviceId = payload.deviceId;
 
     next();

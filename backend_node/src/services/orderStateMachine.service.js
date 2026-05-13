@@ -1,10 +1,13 @@
 const Order = require('../models/order.model');
+const Product = require('../models/product.model');
 const orderMongoRepository = require('../repositories/order.mongo.repository');
 const orderEventService = require('./events/orderEvent.service');
 const { variantInventoryService } = require('./variant-inventory.service');
 const mongoose = require('mongoose');
 
 const ORDER_STATUS = {
+    PENDING: 'pending',
+    CONFIRMED: 'confirmed',
     PENDING_PAYMENT: 'pending_payment',
     PAYMENT_FAILED: 'payment_failed',
     PAID: 'paid',
@@ -30,6 +33,8 @@ const FULFILLMENT_STATUS = {
 };
 
 const VALID_TRANSITIONS = {
+    [ORDER_STATUS.PENDING]: [ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED],
+    [ORDER_STATUS.CONFIRMED]: [ORDER_STATUS.PROCESSING, ORDER_STATUS.CANCELLED],
     [ORDER_STATUS.PENDING_PAYMENT]: [ORDER_STATUS.PAID, ORDER_STATUS.PAYMENT_FAILED, ORDER_STATUS.CANCELLED],
     [ORDER_STATUS.PAYMENT_FAILED]: [ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.CANCELLED],
     [ORDER_STATUS.PAID]: [ORDER_STATUS.PROCESSING, ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED],
@@ -41,6 +46,8 @@ const VALID_TRANSITIONS = {
 };
 
 const STATUS_DESCRIPTIONS = {
+    [ORDER_STATUS.PENDING]: 'Order received and awaiting confirmation',
+    [ORDER_STATUS.CONFIRMED]: 'Order has been confirmed',
     [ORDER_STATUS.PENDING_PAYMENT]: 'Order created, awaiting payment',
     [ORDER_STATUS.PAYMENT_FAILED]: 'Payment attempt failed',
     [ORDER_STATUS.PAID]: 'Payment received successfully',

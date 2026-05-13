@@ -85,6 +85,15 @@ router.post('/',
     productController.createProduct
 );
 
+// Clone product as a draft without image references (Admin, Editor only)
+router.post('/:product_id/clone',
+    authRBAC,
+    requireRole('Admin', 'Editor'),
+    ensureTenantIsolation,
+    validate(productValidation.cloneProduct),
+    productController.cloneProduct
+);
+
 // Add variant (Admin, Editor only)
 router.post('/:product_id/variants',
     authRBAC,

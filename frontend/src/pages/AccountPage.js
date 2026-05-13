@@ -5,9 +5,7 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Package, User as UserIcon, LogOut, Heart, MapPin, Phone, Mail, Edit2, Save, X, Eye, Truck, CheckCircle, Clock, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
-import { wishlistAPI } from '../services/api';
-
-const API_BASE = process.env.REACT_APP_BACKEND_URL;
+import { wishlistAPI, ordersAPI, usersAPI } from '../services/api';
 
 const STATUS_COLORS = {
   pending: 'bg-amber-100 text-amber-800',
@@ -16,8 +14,13 @@ const STATUS_COLORS = {
   shipped: 'bg-purple-100 text-purple-800',
   delivered: 'bg-emerald-100 text-emerald-800',
   cancelled: 'bg-red-100 text-red-800',
+  payment_failed: 'bg-red-100 text-red-800',
   paid: 'bg-emerald-100 text-emerald-700',
 };
+
+const CANCELLABLE_STATUSES = new Set(['pending', 'confirmed', 'pending_payment', 'payment_failed', 'paid', 'processing']);
+
+const getOrderCancellationId = (order) => order?._id || order?.id || order?.orderId || '';
 
 const AccountPage = () => {
   const { user, logout, loading: authLoading } = useAuth();
@@ -46,9 +49,8 @@ const AccountPage = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/v1/orders?userId=${userId}`);
-      const data = await res.json();
-      setOrders(data.data?.orders || []);
+      const res = await ordersAPI.getMyOrders();
+      setOrders(res.orders || []);
     } catch (err) { console.error('Fetch orders:', err); }
     setLoading(false);
   };
@@ -62,14 +64,13 @@ const AccountPage = () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/users/profile?userId=${userId}`);
-      const data = await res.json();
-      if (data.success) {
-        setProfile(data.data);
+      const res = await usersAPI.getProfile(userId);
+      if (res && res.data) {
+        setProfile(res.data);
         setEditData({
-          name: data.data.name || '',
-          phone: data.data.phone || '',
-          address: data.data.address || { street: '', city: '', state: '', pincode: '' }
+          name: res.data.name || '',
+          phone: res.data.phone || '',
+          address: res.data.address || { street: '', city: '', state: '', pincode: '' }
         });
       }
     } catch (err) { console.error('Fetch profile:', err); }
@@ -78,14 +79,9 @@ const AccountPage = () => {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/users/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, ...editData }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setProfile(data.data);
+      const res = await usersAPI.updateProfile({ userId, ...editData });
+      if (res && res.data) {
+        setProfile(res.data);
         setEditing(false);
         toast.success('Profile updated successfully');
       }
@@ -103,17 +99,15 @@ const AccountPage = () => {
 
   const cancelOrder = async (orderId) => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/orders/${orderId}/cancel`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'Cancelled by customer' }),
-      });
-      const data = await res.json();
-      if (data.success) {
+      const res = await ordersAPI.cancelOrder(orderId);
+      if (res) {
         toast.success('Order cancelled');
         fetchOrders();
       }
-    } catch (err) { toast.error('Failed to cancel order'); }
+    } catch (err) { 
+      console.error('Cancel order error:', err);
+      toast.error(err?.response?.data?.message || err.message || 'Failed to cancel order'); 
+    }
   };
 
   if (authLoading) {
@@ -236,8 +230,18 @@ const AccountPage = () => {
                         )}
 
                         <div className="flex gap-2">
-                          {['pending', 'confirmed'].includes(order.status) && (
-                            <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); cancelOrder(order.orderId); }} data-testid={`cancel-order-${order.orderId}`}>
+                          {CANCELLABLE_STATUSES.has(order.status) && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={!getOrderCancellationId(order)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const cancellationId = getOrderCancellationId(order);
+                                if (cancellationId) cancelOrder(String(cancellationId));
+                              }}
+                              data-testid={`cancel-order-${order.orderId}`}
+                            >
                               Cancel Order
                             </Button>
                           )}

@@ -117,6 +117,18 @@ const getProducts = async (req, res, next) => {
       ['admin', 'editor'].includes((req.user.role || '').toLowerCase())
     );
 
+    const requestedAllStatuses = req.query.all_statuses === true || req.query.all_statuses === 'true';
+    const requestedStatus = String(req.query.status || '').toLowerCase();
+    const requestedRestrictedStatus = requestedStatus && requestedStatus !== 'published';
+
+    if (!isAdminOrEditor && (requestedAllStatuses || requestedRestrictedStatus)) {
+      const ApiError = require('../utils/ApiError');
+      if (!req.user) {
+        throw new ApiError(httpStatus.UNAUTHORIZED, 'Authentication required to view all product statuses');
+      }
+      throw new ApiError(httpStatus.FORBIDDEN, 'Admin or editor access required to view all product statuses');
+    }
+
     // If not admin/editor, force published status
     if (!isAdminOrEditor) {
       req.query.status = 'published';
@@ -169,6 +181,17 @@ const createProduct = async (req, res, next) => {
     const product = await productService.createProduct(req.body, tenantId);
     await cacheInvalidationService.invalidateProducts(product);
     return successResponse(res, product, 'Product created successfully', httpStatus.CREATED);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const cloneProduct = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const product = await productService.cloneProduct(req.params.product_id, tenantId);
+    await cacheInvalidationService.invalidateProducts(product);
+    return successResponse(res, product, 'Product cloned successfully', httpStatus.CREATED);
   } catch (error) {
     next(error);
   }
@@ -531,6 +554,7 @@ module.exports = {
   getProducts,
   getProduct,
   createProduct,
+  cloneProduct,
   updateProduct,
   deleteProduct,
   deleteProductsBulk,

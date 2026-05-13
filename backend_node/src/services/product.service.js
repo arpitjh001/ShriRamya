@@ -62,6 +62,76 @@ class ProductService {
     return status;
   }
 
+  getCloneName(name) {
+    const baseName = String(name || 'Untitled product').trim() || 'Untitled product';
+    return `${baseName} - cloned`;
+  }
+
+  normalizeCloneReference(value) {
+    if (!value) return null;
+    if (value._id) return this.normalizeIdentifier(value._id);
+    if (value.id) return this.normalizeIdentifier(value.id);
+    return this.normalizeIdentifier(value);
+  }
+
+  buildClonePayload(product) {
+    const source = typeof product.toObject === 'function'
+      ? product.toObject({ depopulate: true, flattenMaps: true })
+      : (product._doc ? { ...product._doc } : { ...product });
+
+    const categories = Array.isArray(source.categories)
+      ? source.categories
+          .map((category) => this.normalizeCloneReference(category))
+          .filter(Boolean)
+      : [];
+
+    const subcategoryValues = Array.isArray(source.subcategoryValues)
+      ? source.subcategoryValues
+          .map((subcategoryValue) => this.normalizeCloneReference(subcategoryValue))
+          .filter(Boolean)
+      : [];
+
+    const variants = Array.isArray(source.variants)
+      ? source.variants.map((variant) => {
+          const cloneVariant = variant && typeof variant.toObject === 'function'
+            ? variant.toObject({ flattenMaps: true })
+            : { ...variant };
+
+          delete cloneVariant._id;
+          delete cloneVariant.id;
+          delete cloneVariant.image;
+
+          return cloneVariant;
+        })
+      : [];
+
+    const cloneData = {
+      ...source,
+      name: this.getCloneName(source.name),
+      status: 'draft',
+      images: [],
+      categories,
+      subcategoryValues,
+      categoryId: this.normalizeCloneReference(source.categoryId) || categories[0] || null,
+      variants,
+      rating: 0,
+      reviewCount: 0,
+      is_deleted: false,
+      deleted_at: null,
+    };
+
+    delete cloneData._id;
+    delete cloneData.id;
+    delete cloneData.productId;
+    delete cloneData.slug;
+    delete cloneData.thumbnail;
+    delete cloneData.created_at;
+    delete cloneData.updated_at;
+    delete cloneData.__v;
+
+    return cloneData;
+  }
+
   toIsoDateOrNull(value) {
     if (!value) return null;
     const date = value instanceof Date ? value : new Date(value);
@@ -360,6 +430,24 @@ class ProductService {
         errors: error.errors ? Object.keys(error.errors).map(k => `${k}: ${error.errors[k].message}`) : undefined
       });
       
+      throw error;
+    }
+  }
+
+  async cloneProduct(id, tenantId = 1) {
+    try {
+      console.log(`[ProductService] Cloning product: ${id} for tenant: ${tenantId}`);
+      const sourceProduct = await mongoProductRepository.getProduct(id, tenantId);
+      if (!sourceProduct) {
+        const error = new Error('Product not found');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const cloneData = this.buildClonePayload(sourceProduct);
+      return await this.createProduct(cloneData, tenantId);
+    } catch (error) {
+      console.error('[ProductService] cloneProduct failed:', error.message);
       throw error;
     }
   }

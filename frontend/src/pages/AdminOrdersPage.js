@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { ordersAPI } from '../services/api';
 import adminOrderService from '../services/adminOrderService';
 import ShiprocketShipmentModal from '../components/ShiprocketShipmentModal';
+import { getOrderIdentifier, normalizeOrderAddress } from '../utils/orderAddress';
 
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
@@ -145,7 +146,7 @@ const AdminOrdersPage = () => {
       if (res.data) {
         toast.success('Shipment synced successfully');
         if (selectedOrder) {
-          fetchShipmentDetails(selectedOrder._id);
+          fetchShipmentDetails(getOrderIdentifier(selectedOrder));
           fetchOrders();
         }
       }
@@ -155,6 +156,15 @@ const AdminOrdersPage = () => {
     }
   };
 
+  const openShiprocketBooking = () => {
+    setShowShipmentModal(true);
+  };
+
+  const closeShiprocketBooking = () => {
+    setShowShipmentModal(false);
+  };
+
+  const selectedOrderAddress = normalizeOrderAddress(selectedOrder);
 
 
   return (    <div data-testid="admin-orders-page" className="admin-dashboard-shell min-h-screen pt-24 pb-12 font-body">
@@ -276,14 +286,15 @@ const AdminOrdersPage = () => {
                   {orders.map(order => {
                     const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
                     const StatusIcon = statusCfg.icon;
+                    const orderAddress = normalizeOrderAddress(order);
                     return (
                       <tr key={order.orderId} className="hover:bg-slate-50 transition-colors" data-testid={`order-row-${order.orderId}`}>
                         <td className="px-5 py-4">
                           <span className="font-mono text-xs font-bold text-royal-maroon">{order.orderId?.slice(-8)}</span>
                         </td>
                         <td className="px-5 py-4">
-                          <p className="text-sm font-bold text-foreground leading-none">{order.userName || order.shippingAddress?.name || 'Guest'}</p>
-                          <p className="text-[10px] text-slate-500 mt-1">{order.userEmail || ''}</p>
+                          <p className="text-sm font-bold text-foreground leading-none">{order.userName || orderAddress.name || 'Guest'}</p>
+                          <p className="text-[10px] text-slate-500 mt-1">{order.userEmail || orderAddress.email || ''}</p>
                         </td>
                         <td className="px-5 py-4 text-xs font-medium text-slate-600 font-bold uppercase tracking-widest">{order.items?.length || 0} items</td>
                         <td className="px-5 py-4 text-sm font-bold text-foreground">₹{(order.total || 0).toLocaleString()}</td>
@@ -308,7 +319,7 @@ const AdminOrdersPage = () => {
                               setAdminStatus(order.status);
                               setAdminNotes(order.internalNotes || '');
                               setShowDetail(true); 
-                              fetchShipmentDetails(order._id);
+                              fetchShipmentDetails(getOrderIdentifier(order));
                             }} className="h-8 w-8 text-slate-400 hover:bg-slate-100 hover:text-royal-maroon transition-all" data-testid={`view-order-${order.orderId}`}>
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -414,7 +425,15 @@ const AdminOrdersPage = () => {
       </div>
 
       {/* Standardized Order Archive Detail Dialog */}
-      <Dialog open={showDetail} onOpenChange={setShowDetail}>
+      <Dialog
+        open={showDetail}
+        onOpenChange={(open) => {
+          setShowDetail(open);
+          if (!open) {
+            setShowShipmentModal(false);
+          }
+        }}
+      >
         <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 bg-white border-none shadow-luxury rounded-2xl overflow-hidden">
           {selectedOrder && (
             <>
@@ -446,9 +465,9 @@ const AdminOrdersPage = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <p className="text-sm font-bold text-foreground">{selectedOrder.userId?.name || selectedOrder.shippingAddress?.name || 'Anonymous Patron'}</p>
-                        <p className="text-xs text-slate-500 font-medium">{selectedOrder.userId?.email || 'No electronic contact'}</p>
-                        <p className="text-xs text-slate-500 font-medium">{selectedOrder.userId?.phone || 'No telephonic record'}</p>
+                        <p className="text-sm font-bold text-foreground">{selectedOrder.userId?.name || selectedOrderAddress.name || 'Anonymous Patron'}</p>
+                        <p className="text-xs text-slate-500 font-medium">{selectedOrder.userId?.email || selectedOrderAddress.email || 'No electronic contact'}</p>
+                        <p className="text-xs text-slate-500 font-medium">{selectedOrder.userId?.phone || selectedOrderAddress.phone || 'No telephonic record'}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -462,9 +481,9 @@ const AdminOrdersPage = () => {
                     </CardHeader>
                     <CardContent>
                       <address className="not-italic text-xs font-medium text-slate-600 leading-relaxed">
-                        {selectedOrder.shippingAddress?.street},<br />
-                        {selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.state}<br />
-                        <span className="font-bold text-royal-maroon underline decoration-1">{selectedOrder.shippingAddress?.zipCode}</span>
+                        {selectedOrderAddress.address || 'Address unavailable'}{selectedOrderAddress.address2 ? `, ${selectedOrderAddress.address2}` : ''}<br />
+                        {[selectedOrderAddress.city, selectedOrderAddress.state].filter(Boolean).join(', ') || 'City/state unavailable'}<br />
+                        <span className="font-bold text-royal-maroon underline decoration-1">{selectedOrderAddress.pincode || 'Pincode unavailable'}</span>
                       </address>
                     </CardContent>
                   </Card>
@@ -500,7 +519,7 @@ const AdminOrdersPage = () => {
                            <Button
                              size="sm"
                              className="mt-2 h-8 bg-royal-maroon text-white hover:bg-royal-maroon/90 text-[9px] font-bold uppercase tracking-widest gap-2"
-                             onClick={() => setShowShipmentModal(true)}
+                             onClick={openShiprocketBooking}
                            >
                              <Truck className="w-3.5 h-3.5" />
                              Book Shiprocket
@@ -641,24 +660,23 @@ const AdminOrdersPage = () => {
                   Dismiss Overlay
                 </Button>
               </DialogFooter>
+              <AnimatePresence>
+                {showShipmentModal && (
+                  <ShiprocketShipmentModal
+                    embedded
+                    order={selectedOrder}
+                    onClose={closeShiprocketBooking}
+                    onSuccess={(data) => {
+                      fetchShipmentDetails(getOrderIdentifier(selectedOrder));
+                      fetchOrders();
+                    }}
+                  />
+                )}
+              </AnimatePresence>
             </>
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Shiprocket Shipment Modal */}
-      <AnimatePresence>
-        {showShipmentModal && selectedOrder && (
-          <ShiprocketShipmentModal
-            order={selectedOrder}
-            onClose={() => setShowShipmentModal(false)}
-            onSuccess={(data) => {
-              fetchShipmentDetails(selectedOrder._id);
-              fetchOrders();
-            }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 };

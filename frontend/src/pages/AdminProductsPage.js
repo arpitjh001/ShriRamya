@@ -21,7 +21,7 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
 import VariantGridInput from '../components/VariantGridInput';
 import {
-  Plus, Trash2, Edit, Save, X, Upload, Image as ImageIcon,
+  Plus, Trash2, Edit, Save, X, Upload, Image as ImageIcon, Copy,
   Package, FolderPlus, Search, Eye, EyeOff, Sparkles, AlertTriangle, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -109,6 +109,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
   const [categories, setCategories] = useState([]);
   const [productSearch, setProductSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [categorySearch, setCategorySearch] = useState('');
   const [pagination, setPagination] = useState({
@@ -119,6 +120,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
   });
   const [stats, setStats] = useState(null);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [cloningProductId, setCloningProductId] = useState(null);
 
   const getCouponTypeLabel = (type) => {
     const badges = {
@@ -218,7 +220,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
       loadProducts(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [productSearch, filterStatus, filterCategory]);
+  }, [productSearch, filterStatus, stockFilter, filterCategory]);
 
   const loadProducts = async (page = 1, targetLimit = pagination.limit) => {
     try {
@@ -232,6 +234,10 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
 
       if (filterStatus !== 'all') {
         searchParams.status = filterStatus;
+      }
+
+      if (stockFilter !== 'all') {
+        searchParams.stock_status = stockFilter;
       }
 
       if (filterCategory !== 'all') {
@@ -326,6 +332,13 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
     loadProducts(newPage);
   };
 
+  const handleStatusFilterChange = (value) => {
+    setStockFilter('all');
+    setFilterStatus(value);
+  };
+
+
+
   const loadCategories = async () => {
     try {
       const response = await categoriesAPI.getAll();
@@ -382,9 +395,9 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
           color: v.attributes?.color || v.color || ''
         })) || [],
         categories: selectedCategoryIds,
-        discountPrice: product.variants?.[0]?.discountPrice?.toString() || '',
+        discountPrice: (product.variants?.[0]?.discountPrice ?? product.salePrice ?? product.sale_price ?? '')?.toString() || '',
         totalStock: totalStock.toString(),
-        lowStockThreshold: product.variants?.[0]?.lowStockThreshold?.toString() || '5',
+        lowStockThreshold: (product.variants?.[0]?.lowStockThreshold ?? product.lowStockThreshold ?? '5')?.toString() || '5',
         sku: product.sku && product.sku !== 'N/A' ? product.sku : '',
         originalOnly: !!product.originalOnly
       });
@@ -514,6 +527,32 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
       await loadProducts();
     } catch (error) {
       toast.error('Failed to delete product');
+    }
+  };
+
+  const handleCloneProduct = async (product) => {
+    const productId = product?.id || product?._id || product?.productId;
+    if (!productId) {
+      toast.error('Unable to clone product');
+      return;
+    }
+
+    try {
+      setCloningProductId(String(productId));
+      const response = await productsAPI.clone(productId);
+      const clonedProduct = response?.data || {};
+      const cloneName = clonedProduct.name || `${product.name} - cloned`;
+      toast.success(`Cloned as "${cloneName}"`);
+
+      if (filterStatus !== 'all' && filterStatus !== 'draft') {
+        setFilterStatus('all');
+      } else {
+        await loadProducts(1);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to clone product');
+    } finally {
+      setCloningProductId(null);
     }
   };
 
@@ -724,6 +763,25 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
     };
   }, [stats, pagination.total, products]);
 
+  const handleKpiFilter = (type) => {
+    setActiveTab('products');
+    if (type === 'all') {
+      setFilterStatus('all');
+      setStockFilter('all');
+      setFilterCategory('all');
+      setProductSearch('');
+    } else if (type === 'published') {
+      setStockFilter('all');
+      setFilterStatus(filterStatus === 'published' && stockFilter === 'all' ? 'all' : 'published');
+    } else if (type === 'draft') {
+      setStockFilter('all');
+      setFilterStatus(filterStatus === 'draft' && stockFilter === 'all' ? 'all' : 'draft');
+    } else if (type === 'out_of_stock') {
+      setFilterStatus('all');
+      setStockFilter(stockFilter === 'out_of_stock' ? 'all' : 'out_of_stock');
+    }
+  };
+
 
   return (
     <div className="admin-dashboard-shell min-h-screen pt-24 pb-12">
@@ -737,6 +795,9 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
           color="maroon" 
           loading={loading && !stats && products.length === 0} 
           subtext="All inventory items"
+          active={filterStatus === 'all' && stockFilter === 'all' && filterCategory === 'all' && !productSearch}
+          onClick={() => handleKpiFilter('all')}
+          ariaLabel="Show all products"
         />
         <StatCard 
           title="Published" 
@@ -745,6 +806,9 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
           color="emerald" 
           loading={loading && !stats && products.length === 0} 
           subtext="Visible to customers"
+          active={filterStatus === 'published' && stockFilter === 'all'}
+          onClick={() => handleKpiFilter('published')}
+          ariaLabel="Show published products"
         />
         <StatCard 
           title="Drafts" 
@@ -753,6 +817,9 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
           color="gold" 
           loading={loading && !stats && products.length === 0} 
           subtext="In preparation"
+          active={filterStatus === 'draft' && stockFilter === 'all'}
+          onClick={() => handleKpiFilter('draft')}
+          ariaLabel="Show draft products"
         />
         <StatCard 
           title="Out of Stock" 
@@ -762,6 +829,9 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
           indicator="red"
           loading={loading && !stats && products.length === 0} 
           subtext="Needs restocking"
+          active={stockFilter === 'out_of_stock'}
+          onClick={() => handleKpiFilter('out_of_stock')}
+          ariaLabel="Show out of stock products"
         />
       </div>
 
@@ -817,7 +887,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                   </div>
 
                   {/* Status Filter */}
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <Select value={filterStatus} onValueChange={handleStatusFilterChange}>
                     <SelectTrigger className="w-full sm:w-[140px] bg-slate-50 border-border text-xs font-medium">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
@@ -897,6 +967,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Product</TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">SKU</TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Price</TableHead>
+                      <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Sale Price</TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Stock</TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Categories</TableHead>
                       <TableHead className="text-muted-foreground font-bold uppercase tracking-tighter text-[11px]">Status</TableHead>
@@ -937,6 +1008,9 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                         </TableCell>
                         <TableCell className="font-mono text-sm text-foreground font-medium uppercase">{product.sku || 'N/A'}</TableCell>
                         <TableCell className="text-foreground font-bold">₹{product.basePrice?.toLocaleString() || '0'}</TableCell>
+                        <TableCell className="text-foreground font-bold text-emerald-600">
+                          {product.salePrice ? `₹${product.salePrice.toLocaleString()}` : '-'}
+                        </TableCell>
                         <TableCell>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             product.stock <= 5 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
@@ -967,6 +1041,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleOpenProductModal(product)}
+                              title="Edit product"
+                              aria-label={`Edit ${product.name}`}
                               className="h-8 w-8 text-muted-foreground hover:bg-slate-100 hover:text-foreground transition-colors"
                             >
                               <Edit className="w-3.5 h-3.5" />
@@ -974,7 +1050,24 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => handleCloneProduct(product)}
+                              disabled={!!cloningProductId}
+                              title="Clone product"
+                              aria-label={`Clone ${product.name}`}
+                              className="h-8 w-8 text-muted-foreground hover:bg-slate-100 hover:text-foreground transition-colors disabled:opacity-60"
+                            >
+                              {cloningProductId === String(product.id) ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleDeleteProduct(product.id)}
+                              title="Delete product"
+                              aria-label={`Delete ${product.name}`}
                               className="h-8 w-8 text-muted-foreground hover:bg-rose-500/20 hover:text-rose-400 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1268,8 +1361,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
                   <Input
                     type="number"
-                    value={productForm.salePrice}
-                    onChange={(e) => setProductForm({ ...productForm, salePrice: e.target.value })}
+                    value={productForm.discountPrice}
+                    onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
                     className="pl-7 bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
                   />
                 </div>
@@ -1672,7 +1765,21 @@ export default AdminProductsPage;
 
 // Premium Ivory Stat Card Component
 const StatCard = (props) => {
-  const { title, value, format, icon: Icon, color, trend, delay, loading, subtext, indicator } = props;
+  const {
+    title,
+    value,
+    format,
+    icon: Icon,
+    color,
+    trend,
+    delay,
+    loading,
+    subtext,
+    indicator,
+    active = false,
+    onClick,
+    ariaLabel
+  } = props;
 
   const formatValue = () => {
     if (format === 'currency') {
@@ -1694,9 +1801,19 @@ const StatCard = (props) => {
 
   const scheme = schemeOptions[color] || schemeOptions.charcoal;
   const valueTextClass = indicator === 'red' ? 'text-rose-600' : scheme.text;
+  const isInteractive = typeof onClick === 'function';
+  const Component = isInteractive ? 'button' : 'div';
 
   return (
-    <div className={`group relative overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-luxury-sm transition-all hover:shadow-luxury hover:-translate-y-1`}>
+    <Component
+      type={isInteractive ? 'button' : undefined}
+      onClick={onClick}
+      aria-label={ariaLabel || title}
+      aria-pressed={isInteractive ? active : undefined}
+      className={`group relative w-full overflow-hidden rounded-2xl border bg-white p-6 text-left shadow-luxury-sm transition-all hover:shadow-luxury hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-maroon/30 ${
+        active ? 'border-royal-maroon/50 ring-2 ring-royal-maroon/15' : 'border-border'
+      } ${isInteractive ? 'cursor-pointer' : ''}`}
+    >
       <div className={`absolute -right-4 -top-4 h-24 w-24 rounded-full ${scheme.bg} opacity-20 transition-transform group-hover:scale-150`} />
       
       <div className="relative z-10 space-y-4">
@@ -1723,6 +1840,6 @@ const StatCard = (props) => {
           {subtext && <p className="text-[11px] text-slate-500 mt-1">{subtext}</p>}
         </div>
       </div>
-    </div>
+    </Component>
   );
 };

@@ -24,6 +24,14 @@ const couponSchema = new mongoose.Schema(
 
 couponSchema.index({ status: 1 });
 couponSchema.index({ expires_at: 1 });
+couponSchema.index({ applicable_categories: 1 });
+
+couponSchema.pre('save', function (next) {
+  if (this.code) {
+    this.code = this.code.trim().toUpperCase();
+  }
+  next();
+});
 
 const Coupon = mongoose.models.Coupon || mongoose.model('Coupon', couponSchema);
 module.exports = Coupon;

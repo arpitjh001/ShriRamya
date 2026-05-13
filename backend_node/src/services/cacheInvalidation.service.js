@@ -34,7 +34,8 @@ class CacheInvalidationService {
   }
 
   async invalidateCoupons(code = '*') {
-    await cacheService.delPattern(`coupon:validate:${code}:*`);
+    const normalizedCode = String(code || '*').trim().toLowerCase();
+    await cacheService.delPattern(`coupon:validate:${normalizedCode}:*`);
   }
 }
 

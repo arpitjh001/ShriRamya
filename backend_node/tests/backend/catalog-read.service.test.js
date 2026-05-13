@@ -86,4 +86,17 @@ describe('CatalogReadService category filters', () => {
 
     expect(metadata.categories).toEqual({});
   });
+
+  it('filters products by out-of-stock stock status', () => {
+    const filtered = catalogReadService.applyFilters([
+      { id: 'sold-out-product', stock_quantity: 0 },
+      { id: 'available-product', stock_quantity: 3 },
+      { id: 'legacy-stock-product', stock: 0 },
+    ], { stock_status: 'out_of_stock' });
+
+    expect(filtered.map((product) => product.id)).toEqual([
+      'sold-out-product',
+      'legacy-stock-product',
+    ]);
+  });
 });

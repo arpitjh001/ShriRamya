@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Truck, Package, Info, CheckCircle, AlertTriangle, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import adminOrderService from '../services/adminOrderService';
+import { getOrderIdentifier, normalizeOrderAddress } from '../utils/orderAddress';
 
-const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
+const ShiprocketShipmentModal = ({ order, onClose, onSuccess, embedded = false }) => {
   const [loading, setLoading] = useState(false);
   const [checkingServiceability, setCheckingServiceability] = useState(false);
   const [couriers, setCouriers] = useState([]);
@@ -20,23 +21,35 @@ const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
     pickup_location: 'Primary'
   });
 
-  const shippingAddress = order.shippingAddress || order.shipping_address || {};
-  const pincode = shippingAddress.pincode || shippingAddress.zipCode || shippingAddress.postcode || shippingAddress.postalCode;
+  const shippingAddress = normalizeOrderAddress(order);
+  const pincode = shippingAddress.pincode;
+  const orderIdentifier = getOrderIdentifier(order);
   const orderAmount = Number(order.total || order.total_amount || order.grandTotal || order.amount || 1) || 1;
+  const destinationLabel = [
+    [shippingAddress.city, shippingAddress.state].filter(Boolean).join(', '),
+    pincode,
+  ].filter(Boolean).join(' - ') || 'Destination unavailable';
 
   useEffect(() => {
-    if (pincode) {
+    if (pincode || orderIdentifier) {
       handleCheckServiceability();
     }
-  }, [pincode]);
+  }, [pincode, orderIdentifier]);
 
   const handleCheckServiceability = async () => {
-    if (!pincode) return;
+    if (!pincode && !orderIdentifier) {
+      setCouriers([]);
+      setSelectedCourier(null);
+      setServiceability({ serviceable: false, available_couriers: [] });
+      return;
+    }
+
     setCheckingServiceability(true);
     try {
       const res = await adminOrderService.checkShiprocketServiceability({
+        orderId: orderIdentifier,
         destination_pincode: pincode,
-        order_type: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
+        order_type: String(order.paymentMethod || order.payment_method || '').toLowerCase() === 'cod' ? 'COD' : 'Prepaid',
         order_amount: orderAmount,
         weight: formData.weight,
         length: formData.length,
@@ -45,16 +58,31 @@ const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
       });
       
       if (res.data) {
-        setServiceability(res.data);
-        // If there are couriers, set the first one as default
-        if (res.data.available_couriers?.length > 0) {
-          setCouriers(res.data.available_couriers);
-          setSelectedCourier(res.data.recommended_courier_id || res.data.available_couriers[0].courier_id);
+        const availableCouriers = (res.data.available_couriers || res.data.couriers || []).map((courier) => ({
+          ...courier,
+          courier_id: String(courier.courier_id || courier.courier_company_id || courier.id || ''),
+        })).filter((courier) => courier.courier_id);
+
+        setServiceability({
+          ...res.data,
+          serviceable: Boolean(res.data.serviceable && availableCouriers.length > 0),
+          available_couriers: availableCouriers,
+        });
+
+        setCouriers(availableCouriers);
+        if (availableCouriers.length > 0) {
+          const recommendedCourier = res.data.recommended_courier_id ? String(res.data.recommended_courier_id) : '';
+          setSelectedCourier(recommendedCourier || availableCouriers[0].courier_id);
+        } else {
+          setSelectedCourier(null);
         }
       }
     } catch (err) {
       console.error('Serviceability check error:', err);
-      toast.error('Failed to check serviceability');
+      setCouriers([]);
+      setSelectedCourier(null);
+      setServiceability({ serviceable: false, available_couriers: [] });
+      toast.error(err.message || 'Failed to check serviceability');
     } finally {
       setCheckingServiceability(false);
     }
@@ -63,6 +91,11 @@ const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
   const handleCreateShipment = async () => {
     if (!selectedCourier) {
       toast.error('Please select a courier');
+      return;
+    }
+
+    if (!orderIdentifier) {
+      toast.error('Order identifier is missing');
       return;
     }
 
@@ -79,7 +112,7 @@ const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
         request_pickup: true
       };
 
-      const res = await adminOrderService.createShipment(order.orderId, shipmentData);
+      const res = await adminOrderService.createShipment(orderIdentifier, shipmentData);
       
       if (res.data) {
         toast.success('Shipment created successfully via Shiprocket');
@@ -94,13 +127,17 @@ const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-royal-maroon/40 backdrop-blur-md px-4" onClick={onClose}>
+  const overlayClass = embedded
+    ? 'absolute inset-0 z-[80] flex items-center justify-center bg-royal-maroon/40 backdrop-blur-md px-4'
+    : 'fixed inset-0 z-[1000] flex items-center justify-center bg-royal-maroon/40 backdrop-blur-md px-4';
+
+  const modal = (
+    <div className={overlayClass} onClick={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white border border-royal-maroon/10 rounded-2xl shadow-3xl max-w-lg w-full overflow-hidden flex flex-col"
+        className="bg-white border border-royal-maroon/10 rounded-2xl shadow-3xl max-w-lg w-full max-h-[calc(90vh-2rem)] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -114,15 +151,15 @@ const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
               <p className="text-xs text-charcoal/50 mt-0.5">Fulfillment for Order #{order.orderId?.slice(-8)}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal transition-colors p-2 hover:bg-royal-maroon/5 rounded-full">✕</button>
+          <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal transition-colors p-2 hover:bg-royal-maroon/5 rounded-full">X</button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[70vh] space-y-6">
+        <div className="p-6 overflow-y-auto min-h-0 flex-1 space-y-6">
           {/* Destination Summary */}
           <div className="bg-background rounded-xl p-4 border border-royal-maroon/5 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40 mb-1">Destination</p>
-              <p className="text-sm font-bold text-charcoal">{shippingAddress.city}, {shippingAddress.state} - {pincode}</p>
+              <p className="text-sm font-bold text-black">{destinationLabel}</p>
             </div>
             {checkingServiceability ? (
               <Loader2 className="w-5 h-5 text-royal-maroon animate-spin" />
@@ -278,6 +315,8 @@ const ShiprocketShipmentModal = ({ order, onClose, onSuccess }) => {
       </motion.div>
     </div>
   );
+
+  return modal;
 };
 
 export default ShiprocketShipmentModal;

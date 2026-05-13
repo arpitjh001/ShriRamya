@@ -1,4 +1,5 @@
-const { Coupon, Cart } = require('../models');
+const mongoose = require('mongoose');
+const { Coupon, Cart, Product } = require('../models');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
 const config = require('../config/config');
@@ -54,6 +55,35 @@ class CouponService {
     return String(code || '').trim().toUpperCase();
   }
 
+  normalizeObjectId(value) {
+    const candidate = value?._id || value?.id || value;
+    const stringValue = String(candidate || '').trim();
+    return mongoose.Types.ObjectId.isValid(stringValue) ? stringValue : null;
+  }
+
+  normalizeObjectIdList(values = []) {
+    const list = Array.isArray(values) ? values : [values];
+    return [...new Set(list.map((value) => this.normalizeObjectId(value)).filter(Boolean))];
+  }
+
+  normalizeCouponData(data = {}) {
+    const normalizedData = { ...data };
+
+    if (Object.prototype.hasOwnProperty.call(normalizedData, 'applicable_categories')) {
+      normalizedData.applicable_categories = this.normalizeObjectIdList(normalizedData.applicable_categories);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalizedData, 'applicable_products')) {
+      normalizedData.applicable_products = this.normalizeObjectIdList(normalizedData.applicable_products);
+    }
+
+    if (normalizedData.type === 'free_shipping' && (normalizedData.value == null || normalizedData.value === '')) {
+      normalizedData.value = 0;
+    }
+
+    return normalizedData;
+  }
+
   calculateCartSubtotal(cart) {
     return (cart?.items || []).reduce((sum, item) => {
       const price = Number(item?.priceSnapshot || 0);
@@ -69,17 +99,43 @@ class CouponService {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code is required');
     }
 
+    // Try DB first
     const coupon = await Coupon.findOne({ code: normalizedCode });
     if (coupon) {
       return { coupon, source: 'database' };
     }
 
+    // Try Mock fallback
     const mockCoupon = MOCK_COUPONS[normalizedCode];
     if (mockCoupon) {
       return { coupon: mockCoupon, source: 'mock' };
     }
 
     throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
+  }
+
+  async _validateCouponStatus(coupon) {
+    if (!coupon) return { valid: false, message: 'Coupon not found' };
+
+    const status = String(coupon.status || 'active').toLowerCase();
+    if (status !== 'active') {
+      return { valid: false, message: 'This coupon is not active' };
+    }
+
+    const now = new Date();
+    if (coupon.expires_at && new Date(coupon.expires_at) < now) {
+      return { valid: false, message: 'This coupon has expired' };
+    }
+
+    if (coupon.starts_at && new Date(coupon.starts_at) > now) {
+      return { valid: false, message: 'This coupon is not yet active' };
+    }
+
+    if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
+      return { valid: false, message: 'This coupon has reached its usage limit' };
+    }
+
+    return { valid: true };
   }
 
   serializeAppliedCoupon(coupon, source, discount = 0, finalTotal = 0) {
@@ -106,6 +162,10 @@ class CouponService {
   }
 
   async createCoupon(couponData) {
+    couponData = this.normalizeCouponData(couponData);
+    if (couponData.code) {
+      couponData.code = this.normalizeCouponCode(couponData.code);
+    }
     this._validateCouponData(couponData);
     const existing = await Coupon.findOne({ code: couponData.code });
     if (existing) throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code already exists');
@@ -117,7 +177,9 @@ class CouponService {
   }
 
   async getCouponById(id) {
-    const coupon = await Coupon.findById(id);
+    const coupon = await Coupon.findById(id)
+      .populate('applicable_categories', 'name slug')
+      .populate('applicable_products', 'name slug sku');
     if (!coupon) throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
     return coupon;
   }
@@ -137,7 +199,13 @@ class CouponService {
     if (type) query.type = type;
     if (search) query.code = { $regex: search, $options: 'i' };
 
-    const coupons = await Coupon.find(query).sort({ created_at: -1 }).skip(skip).limit(perPage).lean();
+    const coupons = await Coupon.find(query)
+      .populate('applicable_categories', 'name slug')
+      .populate('applicable_products', 'name slug sku')
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(perPage)
+      .lean();
     const total = await Coupon.countDocuments(query);
 
     // Calculate Global Stats
@@ -171,7 +239,11 @@ class CouponService {
   }
 
   async updateCoupon(id, updateData) {
-    const coupon = await Coupon.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+    updateData = this.normalizeCouponData(updateData);
+    if (updateData.code) {
+      updateData.code = this.normalizeCouponCode(updateData.code);
+    }
+    const coupon = await Coupon.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
     if (!coupon) throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
     await cacheInvalidationService.invalidateCoupons(this.normalizeCouponCode(coupon.code));
     return coupon;
@@ -190,37 +262,13 @@ class CouponService {
 
     return cacheService.getOrSet(cacheKey, config.cache.couponTtlSeconds, async () => {
       const { coupon } = await this.resolveCouponByCode(normalizedCode);
+      const statusCheck = await this._validateCouponStatus(coupon);
 
-      if (coupon.status !== 'active') {
+      if (!statusCheck.valid) {
         return {
           valid: false,
           code: coupon.code,
-          message: 'This coupon is not active',
-        };
-      }
-
-      const now = new Date();
-      if (coupon.expires_at && new Date(coupon.expires_at) < now) {
-        return {
-          valid: false,
-          code: coupon.code,
-          message: 'This coupon has expired',
-        };
-      }
-
-      if (coupon.starts_at && new Date(coupon.starts_at) > now) {
-        return {
-          valid: false,
-          code: coupon.code,
-          message: 'This coupon is not yet active',
-        };
-      }
-
-      if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
-        return {
-          valid: false,
-          code: coupon.code,
-          message: 'This coupon has reached its usage limit',
+          message: statusCheck.message,
         };
       }
 
@@ -241,32 +289,156 @@ class CouponService {
 
   async validateAndApplyCoupon(couponCode, cartData, userId = null) {
     const { coupon, source } = await this.resolveCouponByCode(couponCode);
-    if (coupon.status !== 'active') throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon is not active');
+    const statusCheck = await this._validateCouponStatus(coupon);
 
-    const now = new Date();
-    if (coupon.expires_at && coupon.expires_at < now) throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon has expired');
-    if (coupon.starts_at && coupon.starts_at > now) throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon is not yet active');
-    if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon usage limit reached');
+    if (!statusCheck.valid) {
+      console.warn(`[CouponService] Validation failed for code ${couponCode}: ${statusCheck.message}`);
+      throw new ApiError(httpStatus.BAD_REQUEST, statusCheck.message);
+    }
 
     const cartTotal = cartData.subtotal || 0;
     if (coupon.min_cart_value && cartTotal < coupon.min_cart_value) {
       throw new ApiError(httpStatus.BAD_REQUEST, `Minimum cart value of Rs ${coupon.min_cart_value} required`);
     }
 
-    const discount = this._calculateDiscount(coupon, cartData);
+    const eligibility = await this.resolveCartEligibility(coupon, cartData);
+    if (!eligibility.valid) {
+      throw new ApiError(httpStatus.BAD_REQUEST, eligibility.message);
+    }
+
+    const discount = this._calculateDiscount(coupon, cartData, eligibility);
     return { coupon, discount, finalTotal: Math.max(0, cartTotal - discount), source };
   }
 
-  _calculateDiscount(coupon, cartData) {
+  hasEligibilityTargets(coupon) {
+    return this.normalizeObjectIdList(coupon?.applicable_products).length > 0
+      || this.normalizeObjectIdList(coupon?.applicable_categories).length > 0;
+  }
+
+  getItemProductId(item = {}) {
+    return this.normalizeObjectId(item.productId || item.product_id || item.product?._id || item.product?.id);
+  }
+
+  getItemVariantId(item = {}) {
+    return this.normalizeObjectId(item.variantId || item.variant_id);
+  }
+
+  getItemSubtotal(item = {}) {
+    const quantity = Number(item.quantity || 0) || 0;
+    const price = Number(
+      item.priceSnapshot
+      ?? item.salePrice
+      ?? item.sale_price
+      ?? item.price
+      ?? item.unitPrice
+      ?? 0
+    ) || 0;
+
+    return price * quantity;
+  }
+
+  async getProductsForCartItems(items = []) {
+    const productIds = this.normalizeObjectIdList(items.map((item) => this.getItemProductId(item)));
+    const variantIds = this.normalizeObjectIdList(items.map((item) => this.getItemVariantId(item)));
+    const query = [];
+
+    if (productIds.length > 0) {
+      query.push({ _id: { $in: productIds } });
+    }
+
+    if (variantIds.length > 0) {
+      query.push({ 'variants._id': { $in: variantIds } });
+    }
+
+    if (query.length === 0) {
+      return new Map();
+    }
+
+    const products = await Product.find({ $or: query }).select('_id categoryId categories variants._id').lean();
+    const productsByKey = new Map();
+
+    products.forEach((product) => {
+      const productId = String(product._id);
+      productsByKey.set(productId, product);
+      (product.variants || []).forEach((variant) => {
+        if (variant?._id) {
+          productsByKey.set(String(variant._id), product);
+        }
+      });
+    });
+
+    return productsByKey;
+  }
+
+  getProductCategoryIds(product = {}) {
+    return this.normalizeObjectIdList([
+      product.categoryId,
+      ...(Array.isArray(product.categories) ? product.categories : []),
+    ]);
+  }
+
+  async resolveCartEligibility(coupon, cartData = {}) {
+    const items = Array.isArray(cartData.items) ? cartData.items : [];
+    const targetProductIds = new Set(this.normalizeObjectIdList(coupon?.applicable_products));
+    const targetCategoryIds = new Set(this.normalizeObjectIdList(coupon?.applicable_categories));
+    const hasTargets = targetProductIds.size > 0 || targetCategoryIds.size > 0;
+
+    if (!hasTargets) {
+      return {
+        valid: true,
+        restricted: false,
+        eligibleSubtotal: Number(cartData.subtotal || 0) || 0,
+      };
+    }
+
+    const productsByKey = await this.getProductsForCartItems(items);
+    let eligibleSubtotal = 0;
+    let eligibleItems = 0;
+
+    items.forEach((item) => {
+      const productId = this.getItemProductId(item);
+      const variantId = this.getItemVariantId(item);
+      const product = productsByKey.get(productId) || productsByKey.get(variantId);
+      if (!product) return;
+
+      const categoryIds = this.getProductCategoryIds(product);
+      const matchesProduct = targetProductIds.has(String(product._id));
+      const matchesCategory = categoryIds.some((categoryId) => targetCategoryIds.has(categoryId));
+
+      if (matchesProduct || matchesCategory) {
+        eligibleItems += 1;
+        eligibleSubtotal += this.getItemSubtotal(item);
+      }
+    });
+
+    if (eligibleItems === 0) {
+      return {
+        valid: false,
+        restricted: true,
+        eligibleSubtotal: 0,
+        message: 'This coupon is not applicable to the products in your cart',
+      };
+    }
+
+    return {
+      valid: true,
+      restricted: true,
+      eligibleSubtotal,
+      eligibleItems,
+    };
+  }
+
+  _calculateDiscount(coupon, cartData, eligibility = {}) {
     const cartTotal = cartData.subtotal || 0;
+    const discountBase = eligibility.restricted ? Number(eligibility.eligibleSubtotal || 0) : cartTotal;
     let discount = 0;
     switch (coupon.type) {
       case 'percentage':
-        discount = (cartTotal * coupon.value) / 100;
+        discount = (discountBase * coupon.value) / 100;
         if (coupon.max_discount) discount = Math.min(discount, coupon.max_discount);
         break;
       case 'flat':
-        discount = Math.min(coupon.value, cartTotal);
+        discount = Math.min(coupon.value, discountBase);
         break;
       case 'free_shipping':
         discount = cartData.shipping_cost || 0;
@@ -286,7 +458,7 @@ class CouponService {
     const subtotal = this.calculateCartSubtotal(cart);
     const { coupon, discount, finalTotal, source } = await this.validateAndApplyCoupon(
       couponCode,
-      { subtotal },
+      { subtotal, items: cart.items || [] },
       userId
     );
 
@@ -329,7 +501,9 @@ class CouponService {
 
   _validateCouponData(data) {
     if (!data.code || data.code.trim().length === 0) throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code is required');
-    if (!data.value || data.value <= 0) throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon value must be greater than 0');
+    if (data.type !== 'free_shipping' && (!data.value || data.value <= 0)) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon value must be greater than 0');
+    }
   }
 }
 

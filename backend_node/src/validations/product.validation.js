@@ -48,6 +48,7 @@ const getProducts = {
     category: Joi.string(),
     category_id: resourceId,
     featured: Joi.boolean().default(false),
+    stock_status: Joi.string().valid('in_stock', 'out_of_stock'),
     search: Joi.string().allow('', null),
     sort: Joi.string(),
     order: Joi.string(),
@@ -100,6 +101,12 @@ const createProduct = {
     lowStockThreshold: Joi.number().integer().min(0).optional(),
     originalOnly: Joi.boolean().optional(),
   }).unknown(true),
+};
+
+const cloneProduct = {
+  params: Joi.object().keys({
+    product_id: resourceId.required(),
+  }),
 };
 
 const addVariant = {
@@ -197,6 +204,7 @@ module.exports = {
   getProducts,
   getProduct,
   createProduct,
+  cloneProduct,
   updateProduct,
   addVariant,
   updateVariant,

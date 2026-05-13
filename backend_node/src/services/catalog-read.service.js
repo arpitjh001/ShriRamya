@@ -468,6 +468,7 @@ class CatalogReadService {
     const discount = query.discount != null ? Number(query.discount) : null;
     const rating = query.rating != null ? Number(query.rating) : null;
     const inStock = query.in_stock === true || query.in_stock === 'true';
+    const stockStatus = String(query.stock_status || query.stockStatus || '').toLowerCase();
     const categoryIdFilter = query.category_id ? [String(query.category_id)] : [];
     const statusFilters = this.normalizeListValue(query.status).map((entry) => {
       const normalizedStatus = productService.normalizeProductStatus(entry);
@@ -575,6 +576,12 @@ class CatalogReadService {
 
     if (inStock) {
       filteredProducts = filteredProducts.filter((product) => Number(product.stock_quantity || 0) > 0);
+    }
+
+    if (stockStatus === 'out_of_stock') {
+      filteredProducts = filteredProducts.filter((product) => Number(product.stock_quantity ?? product.stock ?? 0) <= 0);
+    } else if (stockStatus === 'in_stock') {
+      filteredProducts = filteredProducts.filter((product) => Number(product.stock_quantity ?? product.stock ?? 0) > 0);
     }
 
     return filteredProducts;

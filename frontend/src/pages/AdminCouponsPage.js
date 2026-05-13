@@ -7,13 +7,15 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Checkbox } from '../components/ui/checkbox';
 import { Tag, Edit, Trash2, Plus, Search, Loader2, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
-import { couponsAPI } from '../services/api';
+import { couponsAPI, categoriesAPI } from '../services/api';
 import { toast } from 'sonner';
 import { Skeleton } from '../components/ui/skeleton';
 
 const AdminCouponsPage = () => {
   const [coupons, setCoupons] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -54,6 +56,10 @@ const AdminCouponsPage = () => {
     loadCoupons(1);
   }, [statusFilter, typeFilter]);
 
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -90,6 +96,51 @@ const AdminCouponsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCategoryIdentifier = (category) => {
+    const rawIdentifier = category?._id ?? category?.id ?? category;
+    return rawIdentifier == null ? null : String(rawIdentifier);
+  };
+
+  const getCouponCategoryIds = (coupon) => (
+    Array.isArray(coupon?.applicable_categories)
+      ? coupon.applicable_categories.map(getCategoryIdentifier).filter(Boolean)
+      : []
+  );
+
+  const loadCategories = async () => {
+    try {
+      const response = await categoriesAPI.getAll();
+      const categoryData = Array.isArray(response)
+        ? response
+        : (response?.categories || response?.data?.categories || []);
+      setCategories(
+        categoryData
+          .map((category) => {
+            const id = getCategoryIdentifier(category);
+            return id ? { ...category, id } : null;
+          })
+          .filter(Boolean)
+      );
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+      toast.error('Failed to load categories');
+    }
+  };
+
+  const getCouponScopeLabel = (coupon) => {
+    const categoryIds = getCouponCategoryIds(coupon);
+    if (categoryIds.length === 0) return 'All categories';
+
+    const categoryNames = categoryIds.map((categoryId) => {
+      const populatedCategory = (coupon.applicable_categories || [])
+        .find((category) => getCategoryIdentifier(category) === categoryId);
+      const knownCategory = categories.find((category) => category.id === categoryId);
+      return populatedCategory?.name || knownCategory?.name || 'Category';
+    });
+
+    return categoryNames.join(', ');
   };
 
   const handlePageChange = (newPage) => {
@@ -207,7 +258,7 @@ const AdminCouponsPage = () => {
       expires_at: coupon.expires_at ? new Date(coupon.expires_at).toISOString().slice(0, 16) : '',
       status: coupon.status,
       applicable_products: coupon.applicable_products || [],
-      applicable_categories: coupon.applicable_categories || [],
+      applicable_categories: getCouponCategoryIds(coupon),
       buy_x_qty: coupon.buy_x_qty || 1,
       get_y_qty: coupon.get_y_qty || 1,
     });
@@ -418,6 +469,12 @@ const AdminCouponsPage = () => {
                   </div>
                 </div>
 
+                <CategoryTargetField
+                  categories={categories}
+                  selectedCategoryIds={formData.applicable_categories}
+                  onChange={(nextCategoryIds) => setFormData({ ...formData, applicable_categories: nextCategoryIds })}
+                />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="status" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Initial Status</Label>
@@ -523,6 +580,7 @@ const AdminCouponsPage = () => {
                 <TableHead className="text-muted-foreground">Code</TableHead>
                 <TableHead className="text-muted-foreground">Type</TableHead>
                 <TableHead className="text-muted-foreground">Value</TableHead>
+                <TableHead className="text-muted-foreground">Scope</TableHead>
                 <TableHead className="text-muted-foreground">Min Cart</TableHead>
                 <TableHead className="text-muted-foreground">Usage</TableHead>
                 <TableHead className="text-muted-foreground">Valid Until</TableHead>
@@ -533,23 +591,26 @@ const AdminCouponsPage = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-foreground">
+                  <TableCell colSpan={9} className="h-24 text-center text-foreground">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : displayedCoupons.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                     No coupons found
                   </TableCell>
                 </TableRow>
               ) : (
                 displayedCoupons.map((coupon) => (
-                  <TableRow key={coupon.id} className="border-border hover:bg-slate-50">
+                  <TableRow key={coupon.id || coupon._id} className="border-border hover:bg-slate-50">
                     <TableCell className="font-mono font-bold text-foreground">{coupon.code}</TableCell>
                     <TableCell className="capitalize text-slate-600">{coupon.type?.replace('_', ' ')}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="border-slate-200 text-foreground">{getTypeBadge(coupon.type, coupon.value)}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[220px] truncate text-slate-600" title={getCouponScopeLabel(coupon)}>
+                      {getCouponScopeLabel(coupon)}
                     </TableCell>
                     <TableCell className="text-slate-600">{coupon.min_cart_value ? `₹${coupon.min_cart_value}` : '₹0'}</TableCell>
                     <TableCell className="text-slate-600">
@@ -778,6 +839,12 @@ const AdminCouponsPage = () => {
               </div>
             </div>
 
+            <CategoryTargetField
+              categories={categories}
+              selectedCategoryIds={formData.applicable_categories}
+              onChange={(nextCategoryIds) => setFormData({ ...formData, applicable_categories: nextCategoryIds })}
+            />
+
             <div>
               <Label htmlFor="edit-status" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Current Status</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
@@ -850,6 +917,58 @@ const AdminCouponsPage = () => {
 };
 
 export default AdminCouponsPage;
+
+const CategoryTargetField = ({ categories = [], selectedCategoryIds = [], onChange }) => {
+  const selectedIds = selectedCategoryIds.map((id) => String(id));
+
+  const toggleCategory = (categoryId, checked) => {
+    const normalizedId = String(categoryId);
+    const nextIds = checked
+      ? Array.from(new Set([...selectedIds, normalizedId]))
+      : selectedIds.filter((id) => id !== normalizedId);
+    onChange(nextIds);
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Category Scope
+        </Label>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          {selectedIds.length ? `${selectedIds.length} selected` : 'All categories'}
+        </span>
+      </div>
+
+      {categories.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-xs font-medium text-slate-500">
+          No categories available
+        </div>
+      ) : (
+        <div className="max-h-44 overflow-y-auto rounded-xl border border-border bg-white p-2">
+          {categories.map((category) => {
+            const categoryId = String(category.id || category._id);
+            const checked = selectedIds.includes(categoryId);
+
+            return (
+              <label
+                key={categoryId}
+                className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-slate-50"
+              >
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={(value) => toggleCategory(categoryId, value === true)}
+                  className="border-slate-300 data-[state=checked]:bg-royal-maroon data-[state=checked]:text-white"
+                />
+                <span className="min-w-0 flex-1 truncate">{category.name || category.slug || 'Category'}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Premium Stat Card Component
 const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext }) => {

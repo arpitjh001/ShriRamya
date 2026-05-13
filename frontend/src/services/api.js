@@ -408,6 +408,15 @@ export const productsAPI = {
     }
   },
 
+  clone: async (id) => {
+    try {
+      return await api.post(`/products/${id}/clone`);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
   /* ---- Update Product ---- */
   update: async (id, data) => {
     try {
@@ -778,7 +787,9 @@ export const ordersAPI = {
 
   cancelOrder: async (id) => {
     try {
-      return await api.post(`/orders/my/${id}/cancel`);
+      return await api.post(`/orders/my/${encodeURIComponent(id)}/cancel`, {
+        reason: 'Cancelled by customer',
+      });
     } catch (err) {
       handleError(err);
     }
@@ -1019,6 +1030,7 @@ export const couponsAPI = {
       return await api.post("/coupons", data);
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
@@ -1027,6 +1039,7 @@ export const couponsAPI = {
       return await api.put(`/coupons/${id}`, data);
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
@@ -1035,6 +1048,7 @@ export const couponsAPI = {
       return await api.delete(`/coupons/${id}`);
     } catch (err) {
       handleError(err);
+      throw err;
     }
   },
 
@@ -1347,6 +1361,28 @@ export const categoriesAPI = {
     } catch (err) {
       handleError(err);
       throw err;
+    }
+  }
+};
+
+/* =========================
+   USERS APIs
+========================= */
+
+export const usersAPI = {
+  getProfile: async (userId) => {
+    try {
+      return await api.get("/users/profile", { params: { userId } });
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  updateProfile: async (data) => {
+    try {
+      return await api.put("/users/profile", data);
+    } catch (err) {
+      handleError(err);
     }
   }
 };

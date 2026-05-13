@@ -1,5 +1,11 @@
 const Joi = require('joi');
 
+const resourceId = Joi.alternatives().try(
+  Joi.string().hex().length(24),
+  Joi.string().trim().min(1),
+  Joi.number().integer()
+);
+
 const createCoupon = {
   body: Joi.object().keys({
     code: Joi.string().required().max(50).regex(/^[A-Z0-9_-]+$/),
@@ -13,8 +19,8 @@ const createCoupon = {
     starts_at: Joi.date().iso().optional(),
     expires_at: Joi.date().iso().optional(),
     status: Joi.string().valid('active', 'inactive').default('active'),
-    applicable_categories: Joi.array().items(Joi.number().integer()).optional(),
-    applicable_products: Joi.array().items(Joi.number().integer()).optional(),
+    applicable_categories: Joi.array().items(resourceId).default([]),
+    applicable_products: Joi.array().items(resourceId).default([]),
     buy_x_qty: Joi.number().integer().min(1).optional(),
     get_y_qty: Joi.number().integer().min(1).optional(),
     tenant_id: Joi.number().optional().default(1),
@@ -23,7 +29,7 @@ const createCoupon = {
 
 const updateCoupon = {
   params: Joi.object().keys({
-    coupon_id: Joi.number().integer().required(),
+    coupon_id: resourceId.required(),
   }),
   body: Joi.object().keys({
     code: Joi.string().max(50).regex(/^[A-Z0-9_-]+$/).optional(),
@@ -37,8 +43,8 @@ const updateCoupon = {
     starts_at: Joi.date().iso().optional(),
     expires_at: Joi.date().iso().optional(),
     status: Joi.string().valid('active', 'inactive', 'expired').optional(),
-    applicable_categories: Joi.array().items(Joi.number().integer()).optional(),
-    applicable_products: Joi.array().items(Joi.number().integer()).optional(),
+    applicable_categories: Joi.array().items(resourceId).optional(),
+    applicable_products: Joi.array().items(resourceId).optional(),
     buy_x_qty: Joi.number().integer().min(1).optional(),
     get_y_qty: Joi.number().integer().min(1).optional(),
   }).min(1),
@@ -46,7 +52,7 @@ const updateCoupon = {
 
 const couponId = {
   params: Joi.object().keys({
-    coupon_id: Joi.number().integer().required(),
+    coupon_id: resourceId.required(),
   }),
 };
 

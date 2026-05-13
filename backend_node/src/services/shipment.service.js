@@ -48,6 +48,95 @@ const cleanObject = (value) => {
   }, {});
 };
 
+const pickFirstString = (source = {}, keys = []) => {
+  if (!source || typeof source !== 'object') {
+    return '';
+  }
+
+  for (const key of keys) {
+    const value = source[key];
+    if (value == null) {
+      continue;
+    }
+
+    const normalized = String(value).trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return '';
+};
+
+const joinName = (...parts) => parts
+  .map((part) => String(part || '').trim())
+  .filter(Boolean)
+  .join(' ')
+  .trim();
+
+const normalizeAddressCandidate = (source = {}) => {
+  if (!source || typeof source !== 'object') {
+    return {};
+  }
+
+  return {
+    name: pickFirstString(source, ['name', 'fullName', 'full_name', 'customerName', 'customer_name'])
+      || joinName(
+        pickFirstString(source, ['firstName', 'first_name', 'firstname']),
+        pickFirstString(source, ['lastName', 'last_name', 'lastname'])
+      ),
+    email: pickFirstString(source, ['email', 'customerEmail', 'customer_email']),
+    phone: pickFirstString(source, [
+      'phone',
+      'phoneNumber',
+      'phone_number',
+      'mobile',
+      'mobileNumber',
+      'mobile_number',
+      'contact',
+      'contactNumber',
+      'contact_number',
+      'customerPhone',
+      'customer_phone',
+    ]),
+    address: pickFirstString(source, [
+      'address',
+      'street',
+      'address1',
+      'address_1',
+      'addressLine1',
+      'address_line1',
+      'line1',
+      'line_1',
+    ]),
+    address2: pickFirstString(source, [
+      'address2',
+      'address_2',
+      'addressLine2',
+      'address_line2',
+      'line2',
+      'line_2',
+      'landmark',
+      'apartment',
+    ]),
+    city: pickFirstString(source, ['city', 'town']),
+    state: pickFirstString(source, ['state', 'province', 'region']),
+    pincode: pickFirstString(source, [
+      'pincode',
+      'pinCode',
+      'pin_code',
+      'postcode',
+      'postCode',
+      'postalCode',
+      'postal_code',
+      'zipCode',
+      'zip_code',
+      'zip',
+    ]),
+    country: pickFirstString(source, ['country', 'countryCode', 'country_code']),
+  };
+};
+
 class ShipmentService {
   getActorId(options = {}) {
     return options.userId || options.user_id || options.sub || null;
@@ -89,32 +178,45 @@ class ShipmentService {
   }
 
   normalizeAddress(order) {
-    const primary = order.shippingAddress || {};
-    if (primary.address || primary.city || primary.pincode) {
-      return {
-        name: primary.name || order.userName || '',
-        email: primary.email || order.userEmail || '',
-        phone: primary.phone || '',
-        address: primary.address || '',
-        address2: primary.address2 || '',
-        city: primary.city || '',
-        state: primary.state || '',
-        pincode: primary.pincode || '',
-        country: primary.country || 'India',
-      };
-    }
+    const sources = [
+      order.shippingAddress,
+      order.shipping_address,
+      order.address,
+      order.billingAddress,
+      order.billing_address,
+      {
+        name: order.userName || order.customerName || order.customer_name,
+        email: order.userEmail || order.customerEmail || order.customer_email,
+        phone: order.userPhone || order.customerPhone || order.customer_phone,
+        address: order.shipping_address_1 || order.address_1 || order.address_line1,
+        address2: order.shipping_address_2 || order.address_2 || order.address_line2,
+        city: order.shipping_city || order.city,
+        state: order.shipping_state || order.state,
+        pincode: order.shipping_postcode || order.shipping_pincode || order.postcode || order.pincode,
+        country: order.shipping_country || order.country,
+      },
+    ];
 
-    const legacy = order.shipping_address || {};
+    const normalized = sources.reduce((accumulator, source) => {
+      const candidate = normalizeAddressCandidate(source);
+      Object.entries(candidate).forEach(([key, value]) => {
+        if (!accumulator[key] && value) {
+          accumulator[key] = value;
+        }
+      });
+      return accumulator;
+    }, {});
+
     return {
-      name: [legacy.first_name, legacy.last_name].filter(Boolean).join(' ').trim() || order.userName || '',
-      email: legacy.email || order.userEmail || '',
-      phone: legacy.phone || '',
-      address: legacy.address_1 || '',
-      address2: legacy.address_2 || '',
-      city: legacy.city || '',
-      state: legacy.state || '',
-      pincode: legacy.postcode || '',
-      country: legacy.country || 'India',
+      name: normalized.name || order.userName || order.userId?.name || '',
+      email: normalized.email || order.userEmail || order.userId?.email || '',
+      phone: normalized.phone || order.userPhone || order.userId?.phone || '',
+      address: normalized.address || '',
+      address2: normalized.address2 || '',
+      city: normalized.city || '',
+      state: normalized.state || '',
+      pincode: normalized.pincode || '',
+      country: normalized.country || 'India',
     };
   }
 
@@ -1016,8 +1118,9 @@ class ShipmentService {
       height: toNumberOrNull(payload.height) || config.shiprocket.defaultPackage.height,
     };
 
-    if (payload.orderId) {
-      const order = await this.resolveOrder(payload.orderId);
+    const orderIdentifier = payload.orderId || payload.order_id || payload.orderMongoId || payload.order_mongo_id;
+    if (orderIdentifier) {
+      const order = await this.resolveOrder(orderIdentifier);
       const address = this.normalizeAddress(order);
       destination = destination || trimString(address.pincode);
       paymentType = paymentType || (trimString(order.paymentMethod || order.payment_method).toLowerCase() === 'cod' ? 'cod' : 'prepaid');

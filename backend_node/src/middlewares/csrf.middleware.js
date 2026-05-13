@@ -85,6 +85,7 @@ const csrfProtection = (req, res, next) => {
   }
 
   if (!cookieToken) {
+    console.warn(`[CSRF] Cookie missing for ${req.method} ${req.originalUrl}. Headers: ${JSON.stringify(req.headers)}`);
     return next(new ApiError(httpStatus.FORBIDDEN, 'CSRF token missing in cookie'));
   }
 

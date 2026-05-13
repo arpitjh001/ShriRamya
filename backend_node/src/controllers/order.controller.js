@@ -342,22 +342,43 @@ const getOrder = async (req, res, next) => {
  */
 const cancelOrder = async (req, res, next) => {
     try {
-        const order = await Order.findById(req.params.id);
-        if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+        const { id } = req.params;
+        let order;
 
-        if (order.userId?.toString() !== req.user.id) {
-            throw new ApiError(httpStatus.FORBIDDEN, 'Not authorized');
+        // Try lookup by Mongoose _id first, then by human-readable orderId
+        if (require('mongoose').Types.ObjectId.isValid(id)) {
+            order = await Order.findById(id);
+        }
+        
+        if (!order) {
+            order = await Order.findOne({ orderId: id });
         }
 
-        if (['shipped', 'delivered', 'cancelled'].includes(order.status)) {
-            throw new ApiError(httpStatus.BAD_REQUEST, `Cannot cancel order in ${order.status} status`);
+        if (!order) {
+            console.warn(`[OrderController] Order not found for cancellation: ${id}`);
+            throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+        }
+
+        // Standardize user ID for comparison
+        const currentUserId = (req.user.id || req.user._id || req.user.sub)?.toString();
+        const orderUserId = order.userId?.toString();
+
+        if (orderUserId !== currentUserId) {
+            console.warn(`[OrderController] Unauthorized cancellation attempt. Order user: ${orderUserId}, Request user: ${currentUserId}`);
+            throw new ApiError(httpStatus.FORBIDDEN, 'You can only cancel your own orders');
+        }
+
+        const allowedStatuses = ['pending', 'confirmed', 'pending_payment', 'payment_failed', 'processing', 'paid'];
+        if (!allowedStatuses.includes(order.status)) {
+            console.warn(`[OrderController] Status mismatch for cancellation. Status: ${order.status}`);
+            throw new ApiError(httpStatus.BAD_REQUEST, `Order in status '${order.status}' cannot be cancelled`);
         }
 
         // Use OrderStateMachine for cancellation and stock restoration
         await orderStateMachine.cancelOrder(order._id, {
-            userId: req.user.id,
+            userId: currentUserId,
             userType: 'customer',
-            reason: req.body.reason || 'Cancelled by customer'
+            reason: req.body?.reason || 'Cancelled by customer'
         });
 
         return successResponse(res, order, 'Order cancelled');

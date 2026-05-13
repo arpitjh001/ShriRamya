@@ -52,7 +52,7 @@ export const adminOrderService = {
    * Create shipment
    */
   createShipment(orderId, shipmentData) {
-    return api.post(`/orders/admin/${orderId}/shipments`, shipmentData);
+    return api.post(`/orders/admin/${encodeURIComponent(orderId)}/shipments`, shipmentData);
   },
 
   /**

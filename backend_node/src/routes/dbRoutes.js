@@ -8,8 +8,12 @@ const { sendOrderConfirmation } = require('../services/emailService');
 const catalogReadService = require('../services/catalog-read.service');
 const storefrontCheckoutService = require('../services/storefront-checkout.service');
 const shipmentController = require('../controllers/shipment.controller');
+const orderController = require('../controllers/order.controller');
+const couponService = require('../services/coupon.service');
 const { insiderService, INSIDER_INTERESTS } = require('../services/insider.service');
 const { auth, requireRole, optionalAuth } = require('../middlewares/authRBAC');
+const validate = require('../middlewares/validate');
+const orderValidation = require('../validations/order.validation');
 const tokenService = require('../services/token.service');
 const logger = require('../utils/logger');
 
@@ -20,6 +24,13 @@ const isAdminOrEditor = (user) => {
   const roles = Array.isArray(user.roles) ? user.roles.map((entry) => String(entry).toLowerCase()) : [];
 
   return role === 'admin' || role === 'editor' || roles.includes('admin') || roles.includes('editor');
+};
+
+const isTruthyQueryFlag = (value) => value === true || String(value || '').toLowerCase() === 'true';
+
+const requiresPrivilegedProductScope = (query = {}) => {
+  const requestedStatus = String(query.status || '').toLowerCase();
+  return isTruthyQueryFlag(query.all_statuses) || (requestedStatus && requestedStatus !== 'published');
 };
 
 const normalizeTenantId = (value) => {
@@ -371,11 +382,28 @@ router.post('/admin/insiders/weekly-digest', async (req, res) => {
 // ==========================================
 router.get('/products', optionalAuth, async (req, res) => {
   try {
+    const privileged = isAdminOrEditor(req.user);
+
+    if (!privileged && requiresPrivilegedProductScope(req.query)) {
+      return res.status(req.user ? 403 : 401).json({
+        success: false,
+        message: req.user
+          ? 'Admin or editor access required to view all product statuses'
+          : 'Authentication required to view all product statuses',
+      });
+    }
+
+    const query = {
+      ...req.query,
+      per_page: req.query.per_page || req.query.limit || 20,
+    };
+
+    if (!privileged) {
+      query.status = 'published';
+    }
+
     const data = await catalogReadService.listProducts(
-      {
-        ...req.query,
-        per_page: req.query.per_page || req.query.limit || 20,
-      },
+      query,
       {
         tenantId: getRequestTenantId(req),
         user: req.user || null,
@@ -641,7 +669,7 @@ router.delete('/cart', async (req, res) => {
 // ==========================================
 router.get('/orders/my', auth, async (req, res) => {
   try {
-    const userId = req.user?.user_id || req.user?.sub;
+    const userId = req.user?.id || req.user?.userId || req.user?.user_id || req.user?.sub;
     const data = await storefrontCheckoutService.getOrders({ userId, page: 1, limit: 100 });
     res.json({ success: true, data: { orders: data.orders } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -713,26 +741,10 @@ router.put('/orders/:orderId/status', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.put('/orders/:orderId/cancel', async (req, res) => {
-  try {
-    const order = await storefrontCheckoutService.updateOrderStatus(req.params.orderId, {
-      status: 'cancelled',
-      note: req.body.reason || 'Cancelled by user',
-    });
-    res.json({ success: true, data: { orderId: order.orderId, status: 'cancelled' } });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+router.put('/orders/:id/cancel', auth, validate(orderValidation.cancelOrder), orderController.cancelOrder);
 
 // Alias: POST /orders/my/:orderId/cancel (frontend compatibility)
-router.post('/orders/my/:orderId/cancel', async (req, res) => {
-  try {
-    const order = await storefrontCheckoutService.updateOrderStatus(req.params.orderId, {
-      status: 'cancelled',
-      note: req.body.reason || 'Cancelled by user',
-    });
-    res.json({ success: true, data: { orderId: order.orderId, status: 'cancelled' } });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+router.post('/orders/my/:id/cancel', auth, validate(orderValidation.cancelOrder), orderController.cancelOrder);
 
 router.get('/orders/:orderId/tracking', shipmentController.getOrderTracking);
 
@@ -1262,6 +1274,90 @@ router.post('/orders/admin/shipping/shiprocket/serviceability', (req, res, next)
 // ==========================================
 // COUPONS
 // ==========================================
+const couponAdminAuth = [auth, requireRole('Admin', 'Editor')];
+
+router.get('/coupons/validate/:code', async (req, res) => {
+  try {
+    const data = await couponService.getCouponValidationPreview(req.params.code);
+    res.json({ success: true, data });
+  } catch (err) {
+    if (err.statusCode === 404) {
+      return res.json({
+        success: true,
+        data: {
+          valid: false,
+          code: req.params.code,
+          message: 'Invalid coupon code',
+        },
+      });
+    }
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/coupons/validate', async (req, res) => {
+  try {
+    const data = await couponService.getCouponValidationPreview(req.body?.code);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
+});
+
+router.get('/coupons', ...couponAdminAuth, async (req, res) => {
+  try {
+    const result = await couponService.getAllCoupons(req.query);
+    res.json({
+      success: true,
+      message: 'Coupons retrieved successfully',
+      data: { coupons: result.coupons },
+      error: null,
+      meta: {
+        pagination: result.pagination,
+        stats: result.stats,
+      },
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
+});
+
+router.get('/coupons/:id', ...couponAdminAuth, async (req, res) => {
+  try {
+    const data = await couponService.getCouponById(req.params.id);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/coupons', ...couponAdminAuth, async (req, res) => {
+  try {
+    const data = await couponService.createCoupon(req.body);
+    res.status(201).json({ success: true, message: 'Coupon created successfully', data });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/coupons/:id', ...couponAdminAuth, async (req, res) => {
+  try {
+    const data = await couponService.updateCoupon(req.params.id, req.body);
+    res.json({ success: true, message: 'Coupon updated successfully', data });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/coupons/:id', ...couponAdminAuth, async (req, res) => {
+  try {
+    const data = await couponService.deleteCoupon(req.params.id);
+    res.json({ success: true, message: 'Coupon deleted successfully', data });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+  }
+});
+
 // ==========================================
 // COUPONS
 // ==========================================
