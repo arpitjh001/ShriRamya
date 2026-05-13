@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-const srvUrl = "mongodb+srv://arpitjh001:DpyoKp8in9QBhoqW@shriramya-cluster.wwimqmj.mongodb.net/shriramya?appName=ShriRamya-Cluster";
-const nonSrvUrl = "mongodb://arpitjh001:DpyoKp8in9QBhoqW@ac-e7drapw-shard-00-00.wwimqmj.mongodb.net:27017,ac-e7drapw-shard-00-01.wwimqmj.mongodb.net:27017,ac-e7drapw-shard-00-02.wwimqmj.mongodb.net:27017/shriramya?tls=true&authSource=admin&replicaSet=atlas-10ml3p-shard-0&retryWrites=true&w=majority&appName=ShriRamya-Cluster";
+const srvUrl = process.env.MONGO_URL || "mongodb://localhost:27017/shriramya";
+const nonSrvUrl = process.env.MONGODB_NON_SRV_URL || srvUrl;
 
 async function diagnose() {
   try {

@@ -1,4 +1,0 @@
-User admin@shriramya.com found.
-Password 'Admin@123' check: MATCH
-Stored Hash: $2a$10$84xLeFNZ3oBSvoM7UADf/e93nBpaGnJC4/wIwpVVMDynF1fBcAoYG
-User Role: admin

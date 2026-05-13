@@ -1,7 +1,7 @@
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = 'shriramya_super_secure_jwt_secret_key_2026_production_ready';
+const JWT_SECRET = process.env.JWT_SECRET || 'shriramya_development_secret_2026';
 const API_BASE = 'http://127.0.0.1:8000/api/v1';
 
 // Generate a valid admin token
