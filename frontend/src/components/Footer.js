@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Mail } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -67,10 +67,6 @@ const Footer = () => {
           <div>
             <h4 className="mb-6 text-2xl font-medium text-accent">Stay Connected</h4>
             <ul className="space-y-5 text-sm text-primary-foreground/78">
-              <li className="flex items-start gap-3">
-                <MapPin className="mt-0.5 h-4 w-4 text-accent" />
-                <span>The Royal Studio, 123 Ethnic Street, Jaipur, Rajasthan 302001</span>
-              </li>
               <li className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-accent" />
                 <span>admin@shriramya.com</span>
