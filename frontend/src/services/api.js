@@ -1261,7 +1261,11 @@ export const analyticsAPI = {
 export const uploadAPI = {
   uploadImage: async (formData) => {
     try {
-      return await api.post("/upload/image", formData);
+      return await api.post("/upload/image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
     } catch (err) {
       handleError(err);
     }
@@ -1269,7 +1273,11 @@ export const uploadAPI = {
 
   uploadImages: async (formData) => {
     try {
-      return await api.post("/upload/images", formData);
+      return await api.post("/upload/images", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
     } catch (err) {
       handleError(err);
     }
