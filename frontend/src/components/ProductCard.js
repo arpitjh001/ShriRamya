@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import QuickViewModal from './QuickViewModal';
 import { cn, formatPrice } from '../utils';
 import { getCartErrorMessage } from '../utils/cartError';
+import { trackAnalyticsEvent } from '../services/analyticsTracker';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1756483510798-c1fe4e476ecd?auto=format&fit=crop&w=2400&q=80';
 
@@ -206,6 +207,11 @@ const ProductCard = ({
       } else {
         await wishlistAPI.add(wishlistProductId);
         setIsWishlisted(true);
+        trackAnalyticsEvent('wishlist_added', {
+          user_id: user?._id || user?.id || null,
+          product_id: wishlistProductId,
+          metadata: { product_name: product?.name },
+        });
         toast.success('Added to wishlist');
       }
     } catch {

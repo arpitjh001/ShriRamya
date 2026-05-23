@@ -6,9 +6,10 @@ import { ordersAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { formatPrice, getCartItemPrice, getShippingCharge } from '../utils';
+import { formatPrice, getCartItemPrice, getSessionId, getShippingCharge } from '../utils';
 import { toast } from 'sonner';
 import { Tag, X, Loader2 } from 'lucide-react';
+import { trackAnalyticsEvent } from '../services/analyticsTracker';
 
 const CheckoutPage = () => {
   const { cart, clearCart, appliedCoupon, discountAmount, removeCoupon, calculateSubtotal } = useCart();
@@ -32,6 +33,19 @@ const CheckoutPage = () => {
   const subtotal = calculateSubtotal();
   const shipping = getShippingCharge(subtotal);
   const total = Math.max(0, subtotal - discountAmount + shipping);
+
+  useEffect(() => {
+    if (!cart.items || cart.items.length === 0) return;
+
+    trackAnalyticsEvent('checkout_started', {
+      user_id: user?._id || user?.id || null,
+      cart_id: getSessionId(),
+      metadata: {
+        cart_items: cart.items.length,
+        cart_total: total,
+      },
+    });
+  }, [cart.items?.length]);
 
   useEffect(() => {
     if (user) {
@@ -109,6 +123,15 @@ const CheckoutPage = () => {
 
   const finalizeOrder = async (orderId, paymentPayload) => {
     await ordersAPI.confirmPayment(orderId, paymentPayload);
+    trackAnalyticsEvent('payment_success', {
+      user_id: user?._id || user?.id || null,
+      order_id: orderId,
+      cart_id: getSessionId(),
+      metadata: {
+        payment_method: 'razorpay',
+        amount: total,
+      },
+    });
     await clearCart();
     toast.success('Order placed successfully!');
     navigate(`/order-success/${orderId}`);
@@ -194,6 +217,28 @@ const CheckoutPage = () => {
         throw new Error('Order creation response is missing Razorpay amount');
       }
 
+      trackAnalyticsEvent('order_created', {
+        user_id: user?._id || user?.id || null,
+        order_id: orderId,
+        cart_id: getSessionId(),
+        metadata: {
+          amount: total,
+          payment_method: 'razorpay',
+          item_count: cart.items.length,
+        },
+      });
+
+      trackAnalyticsEvent('payment_initiated', {
+        user_id: user?._id || user?.id || null,
+        order_id: orderId,
+        cart_id: getSessionId(),
+        metadata: {
+          amount: total,
+          payment_method: 'razorpay',
+          razorpay_order_id: razorpayOrderId || null,
+        },
+      });
+
       if (isMockPayment) {
         console.log('[Checkout] Processing mock payment');
         await finalizeOrder(orderId, {
@@ -229,6 +274,12 @@ const CheckoutPage = () => {
             });
           } catch (error) {
             console.error('[Checkout] Verification failed:', error);
+            trackAnalyticsEvent('payment_failed', {
+              user_id: user?._id || user?.id || null,
+              order_id: orderId,
+              cart_id: getSessionId(),
+              metadata: { reason: error.message || 'verification_failed' },
+            });
             toast.error('Payment verification failed');
           }
         },
@@ -243,6 +294,15 @@ const CheckoutPage = () => {
       const paymentObject = new window.Razorpay(options);
       paymentObject.on('payment.failed', function (resp) {
         console.error('[Checkout] Razorpay failed:', resp.error);
+        trackAnalyticsEvent('payment_failed', {
+          user_id: user?._id || user?.id || null,
+          order_id: orderId,
+          cart_id: getSessionId(),
+          metadata: {
+            reason: resp.error?.description || resp.error?.reason || 'razorpay_failed',
+            code: resp.error?.code,
+          },
+        });
         toast.error('Payment failed: ' + resp.error.description);
         setLoading(false);
       });
@@ -250,6 +310,11 @@ const CheckoutPage = () => {
       setLoading(false);
     } catch (error) {
       console.error('[Checkout] Error:', error);
+      trackAnalyticsEvent('payment_failed', {
+        user_id: user?._id || user?.id || null,
+        cart_id: getSessionId(),
+        metadata: { reason: error.message || 'checkout_failed' },
+      });
       toast.error(error.response?.data?.message || 'Checkout failed. Please try again.');
       setLoading(false);
     }

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { cartAPI, couponsAPI } from '../services/api';
 import { getCartItemPrice, getSessionId, getShippingCharge } from '../utils';
 import { useAuth } from './AuthContext';
+import { trackAnalyticsEvent } from '../services/analyticsTracker';
 
 const CartContext = createContext(null);
 
@@ -74,6 +75,17 @@ export const CartProvider = ({ children }) => {
       }
 
       setCart(response.data);
+      trackAnalyticsEvent('add_to_cart', {
+        user_id: user?._id || user?.id || null,
+        product_id: payload.productId,
+        cart_id: response.data?.id || response.data?._id || response.data?.cartId || storedSessionId || sessionId,
+        metadata: {
+          quantity,
+          variant_id: payload.variantId || null,
+          color: payload.color || null,
+          size: payload.size || null,
+        },
+      });
       return response.data;
     } catch (error) {
       console.error('Failed to add to cart:', error?.response?.data || error.message);
@@ -98,6 +110,11 @@ export const CartProvider = ({ children }) => {
       const storedSessionId = getSessionId() || sessionId;
       const response = await cartAPI.remove(cartItemId, storedSessionId);
       setCart(response.data);
+      trackAnalyticsEvent('remove_from_cart', {
+        user_id: user?._id || user?.id || null,
+        cart_id: response.data?.id || response.data?._id || response.data?.cartId || storedSessionId || sessionId,
+        metadata: { cart_item_id: cartItemId },
+      });
     } catch (error) {
       console.error('Failed to remove from cart:', error);
       throw error;
@@ -122,13 +139,21 @@ export const CartProvider = ({ children }) => {
   // ==========================================
 
   const applyCoupon = async (code) => {
+    const storedSessionId = getSessionId() || sessionId;
+    let couponFailureTracked = false;
+
     try {
       setCouponLoading(true);
-      const storedSessionId = getSessionId() || sessionId;
       
       // First validate the coupon
       const validation = await couponsAPI.validateCoupon(code);
       if (!validation.data?.valid) {
+        trackAnalyticsEvent('coupon_failed', {
+          user_id: user?._id || user?.id || null,
+          cart_id: storedSessionId || sessionId,
+          metadata: { coupon_code: code, reason: validation.data?.message || 'invalid' },
+        });
+        couponFailureTracked = true;
         throw new Error(validation.data?.message || 'Invalid coupon code');
       }
 
@@ -138,12 +163,24 @@ export const CartProvider = ({ children }) => {
       if (response.data) {
         setAppliedCoupon(response.data.coupon || response.data);
         setDiscountAmount(response.data.discount_amount || response.data.discount || 0);
+        trackAnalyticsEvent('coupon_applied', {
+          user_id: user?._id || user?.id || null,
+          cart_id: storedSessionId || sessionId,
+          metadata: { coupon_code: code },
+        });
         // Refresh cart to get updated totals
         await fetchCart();
       }
 
       return response.data;
     } catch (error) {
+      if (!couponFailureTracked) {
+        trackAnalyticsEvent('coupon_failed', {
+          user_id: user?._id || user?.id || null,
+          cart_id: storedSessionId || sessionId,
+          metadata: { coupon_code: code, reason: error.message || 'apply_failed' },
+        });
+      }
       console.error('Failed to apply coupon:', error?.response?.data || error.message);
       throw error;
     } finally {

@@ -9,8 +9,19 @@ export const analyticsService = {
   /**
    * Get dashboard overview
    */
-  getOverview() {
-    return api.get('/admin/analytics/overview');
+  trackEvent(eventName, data = {}) {
+    return api.post('/analytics/events', { ...data, event_name: eventName });
+  },
+
+  getOverview(params = {}) {
+    return api.get('/admin/analytics/overview', { params });
+  },
+
+  /**
+   * Get visitor analytics
+   */
+  getVisitors(params = {}) {
+    return api.get('/admin/analytics/visitors', { params });
   },
 
   /**
@@ -32,6 +43,34 @@ export const analyticsService = {
    */
   getRevenue(params = {}) {
     return api.get('/admin/analytics/revenue', { params });
+  },
+
+  /**
+   * Get cart and checkout analytics
+   */
+  getCart(params = {}) {
+    return api.get('/admin/analytics/cart', { params });
+  },
+
+  /**
+   * Get category analytics
+   */
+  getCategories(params = {}) {
+    return api.get('/admin/analytics/categories', { params });
+  },
+
+  /**
+   * Get customer analytics
+   */
+  getCustomers(params = {}) {
+    return api.get('/admin/analytics/customers', { params });
+  },
+
+  /**
+   * Get search analytics
+   */
+  getSearch(params = {}) {
+    return api.get('/admin/analytics/search', { params });
   },
 
   /**

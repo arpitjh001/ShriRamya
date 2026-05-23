@@ -43,6 +43,12 @@ const categorySlug = {
   }),
 };
 
+const categoryFilters = {
+  params: Joi.object().keys({
+    categorySlug: Joi.string().required(),
+  }),
+};
+
 const getProductsByCategory = {
   params: Joi.object().keys({
     categoryId: resourceId.required(),
@@ -59,5 +65,6 @@ module.exports = {
   updateCategory,
   categoryId,
   categorySlug,
+  categoryFilters,
   getProductsByCategory,
 };

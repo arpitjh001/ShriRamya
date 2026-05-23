@@ -1,847 +1,705 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { analyticsAPI } from '../services/api';
+import { Button } from '../components/ui/button';
+import { Calendar } from '../components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
+import { Skeleton } from '../components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { 
-  TrendingUp, DollarSign, Package, Users, ShoppingCart, 
-  Calendar, Download, RefreshCw, Globe2, MapPin
-} from 'lucide-react';
+import { cn } from '../utils';
 import { toast } from 'sonner';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
-import { Button } from '../components/ui/button';
-import { Skeleton } from '../components/ui/skeleton';
+import {
+  CalendarDays,
+  CreditCard,
+  IndianRupee,
+  Package,
+  RefreshCw,
+  Search,
+  ShoppingCart,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+const TIMEZONE = 'Asia/Kolkata';
+const COLORS = ['#7A2638', '#C7A15A', '#256F5B', '#2F5F98', '#8A4F2B', '#5B6472'];
+
+const pad = (value) => String(value).padStart(2, '0');
+
+const dateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+const parseDateKey = (value) => {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const [, year, month, day] = match.map(Number);
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const addDays = (date, days) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
+
+const endOfPreviousMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 0);
+
+const defaultRange = () => {
+  const today = new Date();
+  return { from: dateKey(addDays(today, -29)), to: dateKey(today) };
+};
+
+const presetRanges = () => {
+  const today = new Date();
+  const yesterday = addDays(today, -1);
+  const previousMonthEnd = endOfPreviousMonth(today);
+
+  return [
+    { id: 'today', label: 'Today', range: { from: dateKey(today), to: dateKey(today) } },
+    { id: 'yesterday', label: 'Yesterday', range: { from: dateKey(yesterday), to: dateKey(yesterday) } },
+    { id: 'last7', label: 'Last 7 Days', range: { from: dateKey(addDays(today, -6)), to: dateKey(today) } },
+    { id: 'last30', label: 'Last 30 Days', range: defaultRange() },
+    { id: 'thisMonth', label: 'This Month', range: { from: dateKey(startOfMonth(today)), to: dateKey(today) } },
+    {
+      id: 'previousMonth',
+      label: 'Previous Month',
+      range: {
+        from: dateKey(startOfMonth(previousMonthEnd)),
+        to: dateKey(previousMonthEnd),
+      },
+    },
+  ];
+};
+
+const rangesEqual = (left, right) => left?.from === right?.from && left?.to === right?.to;
+
+const resolvePreset = (range) => presetRanges().find((preset) => rangesEqual(preset.range, range))?.id || 'custom';
+
+const formatDisplayDate = (value) => {
+  const date = parseDateKey(value);
+  if (!date) return value || '';
+
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+};
+
+const formatRangeLabel = (range) => {
+  if (!range?.from || !range?.to) return 'Select date range';
+  if (range.from === range.to) return formatDisplayDate(range.from);
+  return `${formatDisplayDate(range.from)} to ${formatDisplayDate(range.to)}`;
+};
+
+const toCalendarRange = (range) => ({
+  from: parseDateKey(range?.from),
+  to: parseDateKey(range?.to),
+});
+
+const normalizeRangeFromQuery = (params) => {
+  const fallback = defaultRange();
+  const from = params.get('from');
+  const to = params.get('to');
+
+  if (!parseDateKey(from) || !parseDateKey(to)) return fallback;
+  if (parseDateKey(from) > parseDateKey(to)) return fallback;
+
+  return { from, to };
+};
+
+const unwrap = (response) => response?.data || response || {};
+
+const numberValue = (value) => Number(value || 0);
+
+const formatNumber = (value) => new Intl.NumberFormat('en-IN').format(numberValue(value));
+
+const formatCurrency = (value) => new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+}).format(numberValue(value));
+
+const formatPercent = (value) => `${numberValue(value).toFixed(2)}%`;
+
+const formatMetric = (value, type) => {
+  if (type === 'currency') return formatCurrency(value);
+  if (type === 'percent') return formatPercent(value);
+  return formatNumber(value);
+};
 
 const AdminAnalyticsPage = () => {
-  const { user, isAdmin, isEditor, canViewDashboard } = useAuth();
-  const navigate = useNavigate();
-  
-  const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('30');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
-  
-  const [overview, setOverview] = useState(null);
-  const [salesData, setSalesData] = useState([]);
-  const [productData, setProductData] = useState([]);
-  const [revenueData, setRevenueData] = useState(null);
-  const [customerData, setCustomerData] = useState([]);
-  const [visitorData, setVisitorData] = useState({
-    summary: { totalVisitors: 0, totalPageviews: 0, countryCount: 0, regionCount: 0 },
-    regions: [],
-    countries: [],
-    daily: []
+  const [loading, setLoading] = useState(true);
+  const [appliedRange, setAppliedRange] = useState(() => normalizeRangeFromQuery(searchParams));
+  const [draftRange, setDraftRange] = useState(() => normalizeRangeFromQuery(searchParams));
+  const [data, setData] = useState({
+    overview: {},
+    visitors: {},
+    products: {},
+    sales: {},
+    cart: {},
+    categories: {},
+    customers: {},
+    search: {},
   });
 
   useEffect(() => {
-    if (user) {
-      loadAnalytics();
-    }
-  }, [user, timeRange]);
+    const nextRange = normalizeRangeFromQuery(searchParams);
+    setAppliedRange(nextRange);
+    setDraftRange(nextRange);
+  }, [searchParams]);
 
-  const loadAnalytics = async () => {
+  const params = useMemo(() => ({
+    from: appliedRange.from,
+    to: appliedRange.to,
+    timezone: searchParams.get('timezone') || TIMEZONE,
+  }), [appliedRange, searchParams]);
+
+  const loadAnalytics = useCallback(async () => {
     setLoading(true);
-    try {
-      // Calculate date range based on selection
-      const now = new Date();
-      const startDate = new Date();
-      startDate.setDate(now.getDate() - parseInt(timeRange));
-      
-      const rangeParams = {
-        start_date: startDate.toISOString(),
-        end_date: now.toISOString()
-      };
 
-      const [overviewRes, salesRes, productsRes, revenueRes, customersRes, visitorsRes] = await Promise.all([
-        analyticsAPI.getOverview(rangeParams),
-        analyticsAPI.getSales({ ...rangeParams, group_by: 'day' }),
-        analyticsAPI.getProducts({ ...rangeParams, limit: 10 }),
-        analyticsAPI.getRevenue(rangeParams),
-        analyticsAPI.getTopCustomers({ ...rangeParams, limit: 10 }),
-        analyticsAPI.getVisitorRegions({ ...rangeParams, limit: 12 })
+    try {
+      const [
+        overviewRes,
+        visitorsRes,
+        productsRes,
+        salesRes,
+        cartRes,
+        categoriesRes,
+        customersRes,
+        searchRes,
+      ] = await Promise.all([
+        analyticsAPI.getOverview(params),
+        analyticsAPI.getVisitors(params),
+        analyticsAPI.getProducts({ ...params, limit: 25 }),
+        analyticsAPI.getSales(params),
+        analyticsAPI.getCart(params),
+        analyticsAPI.getCategories(params),
+        analyticsAPI.getTopCustomers(params),
+        analyticsAPI.getSearch(params),
       ]);
 
-      // Handle both raw data and .data wrapped responses from api.js
-      setOverview(overviewRes?.data || overviewRes || {});
-      setSalesData(salesRes?.data?.data || salesRes?.data || salesRes || []);
-      setProductData(productsRes?.data?.products || productsRes?.products || []);
-      setRevenueData(revenueRes?.data || revenueRes || {});
-      setCustomerData(customersRes?.data?.customers || customersRes?.customers || []);
-      setVisitorData(visitorsRes?.data || visitorsRes || {});
+      setData({
+        overview: unwrap(overviewRes),
+        visitors: unwrap(visitorsRes),
+        products: unwrap(productsRes),
+        sales: unwrap(salesRes),
+        cart: unwrap(cartRes),
+        categories: unwrap(categoriesRes),
+        customers: unwrap(customersRes),
+        search: unwrap(searchRes),
+      });
     } catch (error) {
       console.error('Failed to load analytics:', error);
-      // Let the global api interceptor and AdminProtectedRoute handle 401/403
       if (error.response?.status !== 401 && error.response?.status !== 403) {
-        toast.error('Failed to load analytics dashboard');
+        toast.error(error.response?.data?.message || 'Failed to load analytics dashboard');
       }
     } finally {
       setLoading(false);
     }
+  }, [params]);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
+
+  const activePreset = resolvePreset(draftRange);
+
+  const applyRange = () => {
+    const fromDate = parseDateKey(draftRange.from);
+    const toDate = parseDateKey(draftRange.to || draftRange.from);
+
+    if (!fromDate || !toDate) {
+      toast.error('Select a valid date range');
+      return;
+    }
+
+    if (fromDate > toDate) {
+      toast.error('From date cannot be later than To date');
+      return;
+    }
+
+    setSearchParams({
+      from: dateKey(fromDate),
+      to: dateKey(toDate),
+      timezone: TIMEZONE,
+    });
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(value);
+  const resetRange = () => {
+    const range = defaultRange();
+    setDraftRange(range);
+    setSearchParams({ ...range, timezone: TIMEZONE });
   };
 
-  const formatNumber = (value) => new Intl.NumberFormat('en-IN').format(Number(value || 0));
-  const visitorSummary = visitorData?.summary || {};
-  const visitorTotal = visitorSummary.totalVisitors || 0;
-  const visitorRegions = (visitorData?.regions || []).map((region) => {
-    const knownCities = (region.cities || []).filter((city) => city && city !== 'Unknown');
-    const regionLabel = region.regionCode && region.regionCode !== 'Unknown'
-      ? `${region.regionCode}, ${region.countryCode || region.country}`
-      : (region.country || 'Unknown');
+  const overviewCards = data.overview?.cards || {};
+  const visitorSummary = data.visitors?.summary || {};
+  const salesSummary = data.sales?.summary || {};
+  const cartSummary = data.cart?.summary || {};
+  const products = data.products?.products || [];
+  const categories = data.categories?.categories || [];
+  const topCategories = data.categories?.revenueByCategory || data.sales?.revenueByCategory || [];
+  const searchKeywords = data.search?.keywords || [];
+  const topCustomers = data.customers?.topCustomers || data.customers?.customers || [];
 
-    return {
-      ...region,
-      regionLabel,
-      cityLabel: knownCities.slice(0, 3).join(', '),
-      share: visitorTotal > 0 ? Math.round((Number(region.visitors || 0) / visitorTotal) * 100) : 0
-    };
-  });
-  const visitorCountries = visitorData?.countries || [];
+  const revenueTrend = data.sales?.revenueByDate || data.sales?.data || [];
+  const visitorTrend = data.visitors?.daily || [];
+  const deviceRows = data.visitors?.devices || [];
+  const topPages = data.visitors?.topPages || [];
+  const locations = data.visitors?.locations || [];
+  const browsers = data.visitors?.browsers || [];
+  const sources = data.visitors?.sources || [];
+  const funnelRows = data.cart?.funnel || [];
+  const paymentRows = data.sales?.revenueByPaymentMethod || [];
 
   return (
     <div className="admin-dashboard-shell min-h-screen pt-24 pb-12 font-body">
-      {/* Premium Header */}
-      <div className="mb-8 overflow-hidden rounded-2xl border border-border bg-white shadow-luxury-sm">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between p-8">
-          <div className="space-y-1">
-            <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
-              Analytics <span className="text-royal-maroon">Dashboard</span>
-            </h1>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Luxury Performance Tracking
+      <section className="mb-6 border border-border bg-white p-5 shadow-luxury-sm">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <h1 className="font-heading text-3xl font-bold text-foreground">Analytics Dashboard</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatRangeLabel(appliedRange)} - {params.timezone}
             </p>
           </div>
-          
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="group relative">
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="w-44 border-border bg-slate-50 text-foreground transition-all hover:bg-slate-100">
-                  <Calendar className="mr-2 h-4 w-4 text-royal-maroon" />
-                  <SelectValue placeholder="Time Range" />
-                </SelectTrigger>
-                <SelectContent className="border-border bg-white text-foreground">
-                  <SelectItem value="7">Last 7 Days</SelectItem>
-                  <SelectItem value="30">Last 30 Days</SelectItem>
-                  <SelectItem value="90">Last 90 Days</SelectItem>
-                  <SelectItem value="365">Last Year</SelectItem>
-                </SelectContent>
-              </Select>
+
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex flex-wrap gap-2">
+              {presetRanges().map((preset) => (
+                <Button
+                  key={preset.id}
+                  type="button"
+                  size="sm"
+                  variant={activePreset === preset.id ? 'default' : 'outline'}
+                  className={cn(
+                    'h-9 rounded-md',
+                    activePreset === preset.id && 'bg-royal-maroon text-white hover:bg-royal-maroon/90'
+                  )}
+                  onClick={() => setDraftRange(preset.range)}
+                >
+                  {preset.label}
+                </Button>
+              ))}
             </div>
-            
-            <Button 
-              onClick={loadAnalytics} 
-              variant="outline" 
-              className="border-border bg-slate-50 text-foreground shadow-sm hover:bg-slate-100"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Sync Data
-            </Button>
-            
-            <Button 
-              className="bg-royal-maroon text-white shadow-luxury hover:bg-royal-maroon/90"
-              data-testid="export-csv-btn"
-              onClick={async () => {
-                try {
-                  const res = await analyticsAPI.api.get('/admin/analytics/export', { responseType: 'blob' });
-                  const blob = res.data;
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `shriramya_sales_${new Date().toISOString().split('T')[0]}.csv`;
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  toast.success('Sales report exported');
-                } catch (err) { 
-                  console.error('Export error:', err);
-                  toast.error('Export failed'); 
-                }
-              }}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" className="h-9 min-w-[260px] justify-start rounded-md bg-white">
+                  <CalendarDays className="mr-2 h-4 w-4 text-royal-maroon" />
+                  {formatRangeLabel(draftRange)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  numberOfMonths={2}
+                  selected={toCalendarRange(draftRange)}
+                  onSelect={(range) => {
+                    if (!range?.from) return;
+                    setDraftRange({
+                      from: dateKey(range.from),
+                      to: dateKey(range.to || range.from),
+                    });
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <div className="flex gap-2">
+              <Button type="button" className="h-9 rounded-md bg-royal-maroon text-white hover:bg-royal-maroon/90" onClick={applyRange}>
+                Apply
+              </Button>
+              <Button type="button" variant="outline" className="h-9 rounded-md" onClick={resetRange}>
+                Reset
+              </Button>
+              <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-md" onClick={loadAnalytics}>
+                <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+              </Button>
+            </div>
           </div>
         </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <MetricCard title="Total Revenue" value={overviewCards.totalRevenue?.value ?? salesSummary.totalRevenue} type="currency" icon={IndianRupee} change={overviewCards.totalRevenue?.change} loading={loading} />
+        <MetricCard title="Total Orders" value={overviewCards.totalOrders?.value ?? salesSummary.totalOrders} type="number" icon={ShoppingCart} change={overviewCards.totalOrders?.change} loading={loading} />
+        <MetricCard title="Total Visitors" value={overviewCards.totalVisitors?.value ?? visitorSummary.uniqueVisitors} type="number" icon={Users} change={overviewCards.totalVisitors?.change} loading={loading} />
+        <MetricCard title="Conversion Rate" value={overviewCards.conversionRate?.value} type="percent" icon={TrendingUp} change={overviewCards.conversionRate?.change} loading={loading} />
+        <MetricCard title="Average Order Value" value={overviewCards.averageOrderValue?.value ?? salesSummary.averageOrderValue} type="currency" icon={CreditCard} change={overviewCards.averageOrderValue?.change} loading={loading} />
+        <MetricCard title="Cart Abandonment" value={overviewCards.cartAbandonmentRate?.value ?? cartSummary.cartAbandonmentRate} type="percent" icon={Package} change={overviewCards.cartAbandonmentRate?.change} loading={loading} inverse loadingLabel="-" />
       </div>
 
-      {/* Main Content Areas */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-        <TabsList className="h-auto w-full justify-start gap-4 bg-transparent p-0 overflow-x-auto pb-4 scrollbar-hide">
-          {['overview', 'sales', 'products', 'revenue', 'visitors', 'customers'].map((tab) => (
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8 space-y-6">
+        <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto bg-transparent p-0">
+          {['overview', 'visitors', 'products', 'sales', 'cart', 'categories', 'customers', 'search'].map((tab) => (
             <TabsTrigger
               key={tab}
               value={tab}
-              className="rounded-full border border-border bg-slate-50 px-8 py-2.5 text-xs font-bold uppercase tracking-widest text-muted-foreground transition-all data-[state=active]:border-royal-maroon/50 data-[state=active]:bg-royal-maroon/10 data-[state=active]:text-royal-maroon data-[state=active]:shadow-xl"
+              className="rounded-md border border-border bg-white px-4 py-2 text-sm capitalize text-muted-foreground data-[state=active]:border-royal-maroon data-[state=active]:bg-royal-maroon/10 data-[state=active]:text-royal-maroon"
             >
               {tab}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-8 animate-slide-up outline-none">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-6">
-            <StatCard
-              title="Range Revenue"
-              value={overview?.range?.revenue ?? overview?.month?.revenue ?? 0}
-              format="currency"
-              icon={DollarSign}
-              trend="+12.5%"
-              delay="delay-0"
-              color="maroon"
-              loading={loading}
-              subtext={`Online: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.onlineRevenue ?? overview?.month?.onlineRevenue ?? 0))} | Offline: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((overview?.range?.offlineRevenue ?? overview?.month?.offlineRevenue ?? 0))}`}
-            />
-            <StatCard
-              title="Range Orders"
-              value={overview?.range?.orders ?? overview?.month?.orders ?? 0}
-              format="number"
-              icon={ShoppingCart}
-              trend="+8.2%"
-              delay="delay-150"
-              color="emerald"
-              loading={loading}
-              subtext={`Online: ${overview?.range?.onlineOrders ?? overview?.month?.onlineOrders ?? 0} | Offline: ${overview?.range?.offlineOrders ?? overview?.month?.offlineOrders ?? 0}`}
-            />
-            <StatCard
-              title="Today's Revenue"
-              value={overview?.today?.revenue || 0}
-              format="currency"
-              icon={TrendingUp}
-              delay="delay-75"
-              color="emerald"
-              loading={loading}
-              subtext={`Online: ${overview?.today?.onlineOrders || 0} orders`}
-            />
-            <StatCard
-              title="Total Products"
-              value={overview?.totals?.products || 0}
-              format="number"
-              icon={Package}
-              delay="delay-200"
-              color="gold"
-              loading={loading}
-              subtext={`${overview?.totals?.activeProducts || 0} Active / Published`}
-            />
-            <StatCard
-              title="Total Customers"
-              value={overview?.totals?.customers || 0}
-              format="number"
-              icon={Users}
-              trend="+4.1%"
-              delay="delay-250"
-              color="charcoal"
-              loading={loading}
-            />
-            <StatCard
-              title="Site Visitors"
-              value={visitorSummary.totalVisitors || 0}
-              format="number"
-              icon={Globe2}
-              delay="delay-250"
-              color="maroon"
-              loading={loading}
-              subtext={`${formatNumber(visitorSummary.totalPageviews || 0)} pageviews | ${formatNumber(visitorSummary.countryCount || 0)} countries`}
-            />
-          </div>
+        <TabsContent value="overview" className="space-y-6 outline-none">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <ChartCard title="Revenue by Date" description="Paid revenue and order count" loading={loading} className="xl:col-span-2">
+              <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value, name) => [name === 'revenue' ? formatCurrency(value) : formatNumber(value), name]} />
+                  <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#7A2638" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="orders" name="Orders" stroke="#256F5B" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Sales Flow Chart */}
-            <Card className="lg:col-span-2 border-border bg-white shadow-luxury-sm">
-              <CardHeader className="border-b border-border bg-slate-50">
-                <CardTitle className="font-heading text-xl text-foreground">Sales Flow</CardTitle>
-                <CardDescription className="text-muted-foreground">Revenue vs Order volume over time</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-8">
-                {loading ? (
-                  <Skeleton className="h-[350px] w-full bg-slate-100" />
-                ) : (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <AreaChart data={salesData}>
-                      <defs>
-                        <linearGradient id="maroonGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6A1E2D" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#6A1E2D" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="emeraldGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                      <XAxis 
-                        dataKey="period" 
-                        stroke="#94a3b8" 
-                        fontSize={10} 
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis 
-                        stroke="#94a3b8" 
-                        fontSize={10}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v) => `₹${v/1000}k`}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#ffffff', 
-                          border: '1px solid #e2e8f0', 
-                          borderRadius: '12px',
-                          color: '#1e293b',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                        }} 
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="onlineRevenue" 
-                        stroke="#6A1E2D" 
-                        strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#maroonGradient)" 
-                        name="Online Revenue"
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="offlineRevenue" 
-                        stroke="#10b981" 
-                        strokeWidth={2}
-                        fillOpacity={1} 
-                        fill="url(#emeraldGradient)" 
-                        name="Offline Revenue"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Top Products */}
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle className="font-heading text-xl text-foreground">Boutique Favorites</CardTitle>
-                <CardDescription className="text-muted-foreground">Highest performing pieces</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {loading ? (
-                  <div className="space-y-6">
-                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16 w-full bg-slate-50" />)}
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {productData.slice(0, 5).map((product, index) => (
-                      <div key={product.id} className="group relative flex items-center justify-between rounded-xl border border-border bg-slate-50 p-4 transition-all hover:bg-slate-100">
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-royal-maroon/20 text-royal-maroon font-heading font-bold text-lg">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-foreground group-hover:text-royal-maroon transition-colors">{product.name}</p>
-                            <p className="text-[9px] font-mono font-bold text-royal-maroon/60 uppercase tracking-tighter">SKU: {product.sku || 'N/A'}</p>
-                            <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">
-                              {product.totalQuantity} Pieces Crafted
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-foreground">₹{Number(product.totalRevenue).toLocaleString()}</p>
-                          <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-600">
-                            <span className="text-royal-maroon">★</span> {product.avgRating}
-                          </div>
-                        </div>
-                      </div>
+            <ChartCard title="Device Breakdown" description="Visitors by device" loading={loading}>
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie data={deviceRows} dataKey="visitors" nameKey="device" innerRadius={74} outerRadius={112} paddingAngle={4}>
+                    {deviceRows.map((entry, index) => (
+                      <Cell key={entry.device || index} fill={COLORS[index % COLORS.length]} />
                     ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  </Pie>
+                  <Tooltip formatter={(value) => formatNumber(value)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <LegendRows rows={deviceRows.map((row) => ({ label: row.device, value: row.visitors }))} />
+            </ChartCard>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <DataTable
+              title="Top Products"
+              columns={['Product', 'Views', 'Add to Cart', 'Purchases', 'Conversion']}
+              rows={products.slice(0, 8).map((product) => [
+                product.name || 'Unknown product',
+                formatNumber(product.views),
+                formatNumber(product.addToCart),
+                formatNumber(product.purchases),
+                formatPercent(product.conversionRate),
+              ])}
+              loading={loading}
+            />
+            <DataTable
+              title="Top Categories"
+              columns={['Category', 'Visits', 'Purchases', 'Revenue', 'Conversion']}
+              rows={topCategories.slice(0, 8).map((category) => [
+                category.name || category.slug || 'Uncategorized',
+                formatNumber(category.visits),
+                formatNumber(category.purchases),
+                formatCurrency(category.revenue),
+                formatPercent(category.conversionRate),
+              ])}
+              loading={loading}
+            />
           </div>
         </TabsContent>
 
-        <TabsContent value="sales" className="space-y-8 animate-slide-up outline-none">
-          <Card className="border-border bg-white shadow-luxury-sm">
-            <CardHeader className="border-b border-border bg-slate-50">
-              <CardTitle className="font-heading text-2xl text-foreground">Market Performance</CardTitle>
-              <CardDescription className="text-muted-foreground">Detailed sales and revenue metrics</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-8">
-              {loading ? (
-                <Skeleton className="h-[450px] w-full bg-slate-100" />
-              ) : (
-                <ResponsiveContainer width="100%" height={450}>
-                  <BarChart data={salesData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis 
-                      dataKey="period" 
-                      stroke="#94a3b8" 
-                      fontSize={10} 
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis 
-                      stroke="#94a3b8" 
-                      fontSize={10} 
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip 
-                       contentStyle={{ 
-                        backgroundColor: '#ffffff', 
-                        border: '1px solid #e2e8f0', 
-                        borderRadius: '12px',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                       }}
-                    />
-                    <Legend iconType="diamond" verticalAlign="top" wrapperStyle={{ paddingBottom: '30px', color: '#94a3b8' }} />
-                    <Bar dataKey="totalRevenue" fill="#6A1E2D" name="Boutique Revenue" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="orderCount" fill="#C8A96A" name="Patron Orders" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <TabsContent value="visitors" className="space-y-6 outline-none">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <MiniMetric label="Total Visitors" value={visitorSummary.totalVisitors ?? visitorSummary.uniqueVisitors} loading={loading} />
+            <MiniMetric label="Unique Visitors" value={visitorSummary.uniqueVisitors} loading={loading} />
+            <MiniMetric label="Page Views" value={visitorSummary.pageViews} loading={loading} />
+            <MiniMetric label="Sessions" value={visitorSummary.sessions} loading={loading} />
+            <MiniMetric label="New Visitors" value={visitorSummary.newVisitors} loading={loading} />
+            <MiniMetric label="Returning Visitors" value={visitorSummary.returningVisitors} loading={loading} />
+          </div>
 
-        <TabsContent value="products" className="space-y-8 animate-slide-up outline-none">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle className="font-heading text-xl text-foreground">Revenue Contribution</CardTitle>
-                <CardDescription className="text-muted-foreground">Bestsellers share of market</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-8">
-                {loading ? (
-                  <Skeleton className="h-[350px] w-full bg-slate-100 rounded-full" />
-                ) : (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <PieChart>
-                      <Pie
-                        data={productData.slice(0, 8)}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={80}
-                        outerRadius={120}
-                        paddingAngle={5}
-                        dataKey="totalRevenue"
-                        nameKey="name"
-                      >
-                        {productData.slice(0, 8).map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={[ '#6A1E2D', '#C8A96A', '#10b981', '#94a3b8', '#c084fc'][index % 5]} 
-                            stroke="#ffffff"
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#1e293b' }}
-                        formatter={(value) => formatCurrency(value)} 
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <ChartCard title="Daily Visitors" description="Unique visitors and page views" loading={loading}>
+              <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={visitorTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => formatNumber(value)} />
+                  <Line type="monotone" dataKey="visitors" name="Visitors" stroke="#7A2638" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="pageViews" name="Page Views" stroke="#2F5F98" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle className="font-heading text-xl text-foreground">Craftsmanship Demand</CardTitle>
-                <CardDescription className="text-muted-foreground">Units sold by collection</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-8">
-                {loading ? (
-                  <Skeleton className="h-[350px] w-full bg-slate-100" />
-                ) : (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={productData.slice(0, 8)} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                      <XAxis type="number" stroke="#94a3b8" fontSize={10} hide />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
-                        width={100} 
-                        stroke="#94a3b8" 
-                        fontSize={9} 
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip 
-                         contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px' }}
-                      />
-                      <Bar dataKey="totalQuantity" fill="#C8A96A" radius={[0, 4, 4, 0]} barSize={20} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+            <ChartCard title="Traffic Sources" description="Direct, search, social, referral" loading={loading}>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={sources}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                  <XAxis dataKey="source" tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => formatNumber(value)} />
+                  <Bar dataKey="visitors" name="Visitors" fill="#7A2638" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <DataTable title="Top Pages" columns={['Page', 'Visitors', 'Views']} rows={topPages.map((page) => [page.title || page.path, formatNumber(page.visitors), formatNumber(page.pageViews)])} loading={loading} />
+            <DataTable title="Browsers" columns={['Browser', 'Visitors', 'Views']} rows={browsers.map((browser) => [browser.browser, formatNumber(browser.visitors), formatNumber(browser.pageViews)])} loading={loading} />
+            <DataTable title="Locations" columns={['Location', 'Visitors', 'Views']} rows={locations.map((location) => [`${location.city || 'Unknown'}, ${location.region || location.country || 'Unknown'}`, formatNumber(location.visitors), formatNumber(location.pageViews)])} loading={loading} />
           </div>
         </TabsContent>
 
-        <TabsContent value="revenue" className="space-y-8 animate-slide-up outline-none">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="border-border bg-slate-50">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Online Revenue</p>
-                <h3 className="font-heading text-2xl font-bold text-foreground">
-                  {formatCurrency(revenueData?.metrics?.onlineRevenue || 0)}
-                </h3>
-                <p className="text-[9px] text-slate-600 uppercase tracking-tighter">Orders: {revenueData?.metrics?.onlineOrders || 0}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-emerald-500/20 bg-emerald-50">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600">Offline Revenue</p>
-                <h3 className="font-heading text-2xl font-bold text-emerald-600">
-                  {formatCurrency(revenueData?.metrics?.offlineRevenue || 0)}
-                </h3>
-                <p className="text-[9px] text-emerald-600/60 uppercase tracking-tighter">Orders: {revenueData?.metrics?.offlineOrders || 0}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-500/20 bg-blue-50">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-600">Gross Inflow</p>
-                <h3 className="font-heading text-2xl font-bold text-blue-600">
-                  {formatCurrency(revenueData?.metrics?.grossRevenue || 0)}
-                </h3>
-              </CardContent>
-            </Card>
-            <Card className="border-royal-maroon/20 bg-royal-maroon/5">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-royal-maroon/60">Net Treasury</p>
-                <h3 className="font-heading text-2xl font-bold text-royal-maroon">
-                  {formatCurrency(revenueData?.metrics?.netRevenue || 0)}
-                </h3>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-border bg-white shadow-luxury-sm">
-            <CardHeader className="border-b border-border bg-slate-50">
-              <CardTitle className="font-heading text-xl text-foreground">Settlement Methods</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-8">
-              {loading ? (
-                <Skeleton className="h-[300px] w-full bg-slate-50 rounded-xl" />
-              ) : (
-                <ResponsiveContainer width="100%" height={350}>
-                  <PieChart>
-                    <Pie
-                      data={revenueData?.byPaymentMethod || []}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={100}
-                      outerRadius={140}
-                      paddingAngle={8}
-                      dataKey="totalRevenue"
-                      nameKey="method"
-                    >
-                      {(revenueData?.byPaymentMethod || []).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={[ '#C8A96A', '#10b981', '#6A1E2D', '#94a3b8'][index % 4]} stroke="#ffffff" />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                       contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', color: '#1e293b' }}
-                       formatter={(value) => formatCurrency(value)} 
-                    />
-                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ color: '#94a3b8', paddingTop: '20px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="products" className="space-y-6 outline-none">
+          <DataTable
+            title="Product Analytics"
+            columns={['Product Name', 'Views', 'Add to Cart', 'Removed', 'Purchases', 'Revenue', 'Conversion Rate']}
+            rows={products.map((product) => [
+              product.name || 'Unknown product',
+              formatNumber(product.views),
+              formatNumber(product.addToCart),
+              formatNumber(product.removedFromCart),
+              formatNumber(product.purchases),
+              formatCurrency(product.revenue),
+              formatPercent(product.conversionRate),
+            ])}
+            loading={loading}
+          />
         </TabsContent>
 
-        <TabsContent value="visitors" className="space-y-8 animate-slide-up outline-none">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Unique Visitors</p>
-                <h3 className="font-heading text-3xl font-bold text-royal-maroon">
-                  {formatNumber(visitorSummary.totalVisitors || 0)}
-                </h3>
-              </CardContent>
-            </Card>
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Page Views</p>
-                <h3 className="font-heading text-3xl font-bold text-foreground">
-                  {formatNumber(visitorSummary.totalPageviews || 0)}
-                </h3>
-              </CardContent>
-            </Card>
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Countries</p>
-                <h3 className="font-heading text-3xl font-bold text-amber-600">
-                  {formatNumber(visitorSummary.countryCount || 0)}
-                </h3>
-              </CardContent>
-            </Card>
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardContent className="pt-8 text-center space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Regions</p>
-                <h3 className="font-heading text-3xl font-bold text-emerald-600">
-                  {formatNumber(visitorSummary.regionCount || 0)}
-                </h3>
-              </CardContent>
-            </Card>
+        <TabsContent value="sales" className="space-y-6 outline-none">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <MiniMetric label="Total Revenue" value={salesSummary.totalRevenue} format="currency" loading={loading} />
+            <MiniMetric label="Total Orders" value={salesSummary.totalOrders} loading={loading} />
+            <MiniMetric label="Paid Orders" value={salesSummary.paidOrders} loading={loading} />
+            <MiniMetric label="Cancelled" value={salesSummary.cancelledOrders} loading={loading} />
+            <MiniMetric label="Refunded" value={salesSummary.refundedOrders} loading={loading} />
+            <MiniMetric label="AOV" value={salesSummary.averageOrderValue} format="currency" loading={loading} />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <Card className="xl:col-span-2 border-border bg-white shadow-luxury-sm">
-              <CardHeader className="border-b border-border bg-slate-50">
-                <CardTitle className="font-heading text-xl text-foreground">Visitor Regions</CardTitle>
-                <CardDescription className="text-muted-foreground">Unique visitors and page views by region</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-8">
-                {loading ? (
-                  <Skeleton className="h-[360px] w-full bg-slate-100" />
-                ) : visitorRegions.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={360}>
-                    <BarChart data={visitorRegions.slice(0, 8)} margin={{ top: 20, right: 30, left: 20, bottom: 32 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                      <XAxis
-                        dataKey="regionLabel"
-                        stroke="#94a3b8"
-                        fontSize={10}
-                        tickLine={false}
-                        axisLine={false}
-                        interval={0}
-                        tickFormatter={(value) => String(value).length > 14 ? `${String(value).slice(0, 14)}...` : value}
-                      />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip
-                        formatter={(value) => formatNumber(value)}
-                        contentStyle={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '12px',
-                          color: '#1e293b',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                        }}
-                      />
-                      <Legend iconType="diamond" verticalAlign="top" wrapperStyle={{ paddingBottom: '24px', color: '#94a3b8' }} />
-                      <Bar dataKey="visitors" fill="#6A1E2D" name="Visitors" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="pageviews" fill="#C8A96A" name="Page Views" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-[360px] items-center justify-center rounded-xl border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
-                    Visitor region data will appear after production traffic is tracked.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <ChartCard title="Orders by Date" description="Paid orders per day" loading={loading}>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#64748B" tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => formatNumber(value)} />
+                  <Bar dataKey="orders" name="Orders" fill="#256F5B" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-            <Card className="border-border bg-white shadow-luxury-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle className="font-heading text-xl text-foreground">Top Countries</CardTitle>
-                <CardDescription className="text-muted-foreground">Visitor concentration by country</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {loading ? (
-                  <div className="space-y-5">
-                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full bg-slate-50" />)}
-                  </div>
-                ) : visitorCountries.length > 0 ? (
-                  <div className="space-y-5">
-                    {visitorCountries.slice(0, 6).map((country) => {
-                      const share = visitorTotal > 0 ? Math.round((Number(country.visitors || 0) / visitorTotal) * 100) : 0;
-
-                      return (
-                        <div key={country.countryCode || country.country} className="space-y-2">
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="text-sm font-bold text-foreground">{country.country || 'Unknown'}</p>
-                              <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">{formatNumber(country.pageviews || 0)} page views</p>
-                            </div>
-                            <p className="font-heading text-lg font-bold text-royal-maroon">{formatNumber(country.visitors || 0)}</p>
-                          </div>
-                          <div className="h-2 rounded-full bg-slate-100">
-                            <div className="h-2 rounded-full bg-royal-maroon" style={{ width: `${Math.min(share, 100)}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
-                    No country data yet.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <DataTable title="Revenue by Payment Method" columns={['Method', 'Orders', 'Revenue']} rows={paymentRows.map((row) => [row.method || 'unknown', formatNumber(row.orders), formatCurrency(row.totalRevenue)])} loading={loading} />
           </div>
-
-          <Card className="border-border bg-white shadow-luxury-sm">
-            <CardHeader className="border-b border-border bg-slate-50">
-              <CardTitle className="font-heading text-xl text-foreground">Regional Detail</CardTitle>
-              <CardDescription className="text-muted-foreground">Where storefront visitors are coming from</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full bg-slate-50" />)}
-                </div>
-              ) : visitorRegions.length > 0 ? (
-                <div className="relative overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full text-left text-sm text-slate-600">
-                    <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500">
-                      <tr>
-                        <th className="px-6 py-4 font-bold">Region</th>
-                        <th className="px-6 py-4 font-bold">Cities</th>
-                        <th className="px-6 py-4 font-bold text-right">Visitors</th>
-                        <th className="px-6 py-4 font-bold text-right">Page Views</th>
-                        <th className="px-6 py-4 font-bold text-right text-royal-maroon">Share</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {visitorRegions.map((region) => (
-                        <tr key={`${region.countryCode}-${region.regionCode}`} className="transition-colors hover:bg-slate-50">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-royal-maroon/10 text-royal-maroon">
-                                <MapPin className="h-4 w-4" />
-                              </div>
-                              <div>
-                                <p className="font-bold text-foreground">{region.region || region.country || 'Unknown'}</p>
-                                <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500">{region.countryCode || 'XX'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500">{region.cityLabel || 'Unknown'}</td>
-                          <td className="px-6 py-4 text-right font-bold text-foreground">{formatNumber(region.visitors || 0)}</td>
-                          <td className="px-6 py-4 text-right font-medium text-muted-foreground">{formatNumber(region.pageviews || 0)}</td>
-                          <td className="px-6 py-4 text-right font-bold text-royal-maroon">{region.share}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
-                  No regional visitor data for this time range.
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
-        <TabsContent value="customers" className="space-y-8 animate-slide-up outline-none">
-          <Card className="border-border bg-white shadow-luxury-sm">
-            <CardHeader className="border-b border-border bg-slate-50">
-              <CardTitle className="font-heading text-xl text-foreground">Patron Honor Roll</CardTitle>
-              <CardDescription className="text-muted-foreground">Most frequent and valuable customers</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-8">
-              {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full bg-slate-50" />)}
-                </div>
-              ) : (
-                <div className="relative overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full text-left text-sm text-slate-600">
-                    <thead className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500">
-                      <tr>
-                        <th className="px-6 py-4 font-bold">Patron</th>
-                        <th className="px-6 py-4 font-bold">Inquiries</th>
-                        <th className="px-6 py-4 font-bold text-right">Orders</th>
-                        <th className="px-6 py-4 font-bold text-right text-royal-maroon">Investment</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {customerData.map((customer, index) => (
-                        <tr key={index} className="transition-colors hover:bg-slate-50">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-royal-maroon/20 text-xs font-bold text-royal-maroon capitalize">
-                                {customer.firstName?.[0] || customer.name?.[0] || 'U'}
-                              </div>
-                              <span className="font-bold text-foreground">{customer.name || `${customer.firstName} ${customer.lastName}`}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500 font-mono text-xs">{customer.email}</td>
-                          <td className="px-6 py-4 text-right font-medium text-muted-foreground">{customer.orderCount}</td>
-                          <td className="px-6 py-4 text-right font-bold text-foreground">₹{Number(customer.totalSpent).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="cart" className="space-y-6 outline-none">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <MiniMetric label="Add to Cart" value={cartSummary.addToCart} loading={loading} />
+            <MiniMetric label="Checkout Started" value={cartSummary.checkoutStarted} loading={loading} />
+            <MiniMetric label="Payment Initiated" value={cartSummary.paymentInitiated} loading={loading} />
+            <MiniMetric label="Payment Success" value={cartSummary.paymentSuccess} loading={loading} />
+            <MiniMetric label="Payment Failed" value={cartSummary.paymentFailed} loading={loading} />
+            <MiniMetric label="Checkout Abandonment" value={cartSummary.checkoutAbandonmentRate} format="percent" loading={loading} />
+          </div>
+
+          <ChartCard title="Checkout Funnel" description="Product view to payment success" loading={loading}>
+            <div className="space-y-4">
+              {funnelRows.map((step, index) => {
+                const max = Math.max(...funnelRows.map((row) => numberValue(row.count)), 1);
+                const width = Math.max((numberValue(step.count) / max) * 100, step.count ? 8 : 0);
+                return (
+                  <div key={step.step} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground">{index + 1}. {step.step}</span>
+                      <span className="font-semibold text-royal-maroon">{formatNumber(step.count)}</span>
+                    </div>
+                    <div className="h-9 overflow-hidden rounded-md bg-slate-100">
+                      <div className="h-full rounded-md bg-royal-maroon" style={{ width: `${width}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ChartCard>
+        </TabsContent>
+
+        <TabsContent value="categories" className="space-y-6 outline-none">
+          <DataTable
+            title="Category Analytics"
+            columns={['Category', 'Visits', 'Visitors', 'Purchases', 'Revenue', 'Conversion Rate']}
+            rows={categories.map((category) => [
+              category.name || category.slug || 'Uncategorized',
+              formatNumber(category.visits),
+              formatNumber(category.visitors),
+              formatNumber(category.purchases),
+              formatCurrency(category.revenue),
+              formatPercent(category.conversionRate),
+            ])}
+            loading={loading}
+          />
+        </TabsContent>
+
+        <TabsContent value="customers" className="space-y-6 outline-none">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+            <MiniMetric label="New Customers" value={data.customers?.summary?.newCustomers} loading={loading} />
+            <MiniMetric label="Returning Customers" value={data.customers?.summary?.returningCustomers} loading={loading} />
+            <MiniMetric label="Registered Users" value={data.customers?.summary?.registeredUsers} loading={loading} />
+            <MiniMetric label="Guest Users" value={data.customers?.summary?.guestUsers} loading={loading} />
+            <MiniMetric label="Repeat Purchase Rate" value={data.customers?.summary?.repeatPurchaseRate} format="percent" loading={loading} />
+          </div>
+          <DataTable title="Top Customers by Revenue" columns={['Customer', 'Email', 'Orders', 'Revenue']} rows={topCustomers.map((customer) => [customer.name || 'Customer', customer.email || '-', formatNumber(customer.orderCount), formatCurrency(customer.totalSpent)])} loading={loading} />
+        </TabsContent>
+
+        <TabsContent value="search" className="space-y-6 outline-none">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <MiniMetric label="Total Searches" value={data.search?.summary?.totalSearches} loading={loading} />
+            <MiniMetric label="No Result Searches" value={data.search?.summary?.noResultSearches} loading={loading} />
+          </div>
+          <DataTable
+            title="Search Analytics"
+            columns={['Keyword', 'Searches', 'No Result', 'Click Rate', 'Purchase Rate']}
+            rows={searchKeywords.map((keyword) => [
+              keyword.keyword || '-',
+              formatNumber(keyword.searches),
+              formatNumber(keyword.noResultSearches),
+              formatPercent(keyword.searchToProductClickRate),
+              formatPercent(keyword.searchToPurchaseRate),
+            ])}
+            loading={loading}
+            emptyIcon={Search}
+          />
         </TabsContent>
       </Tabs>
     </div>
   );
 };
 
-// Premium Stat Card
-const StatCard = ({ title, value, format, icon: Icon, color, trend, delay, loading, subtext }) => {
-  const formatValue = () => {
-    if (format === 'currency') {
-      return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0
-      }).format(value);
-    }
-    return new Intl.NumberFormat('en-IN').format(value);
-  };
-
-  const schemeOptions = {
-    maroon: { bg: 'bg-royal-maroon/5', text: 'text-royal-maroon', iconColor: 'text-royal-maroon', glow: 'shadow-luxury' },
-    emerald: { bg: 'bg-emerald-500/5', text: 'text-emerald-600', iconColor: 'text-emerald-500', glow: 'shadow-emerald-500/10' },
-    gold: { bg: 'bg-amber-500/5', text: 'text-amber-600', iconColor: 'text-amber-500', glow: 'shadow-gold-glow' },
-    charcoal: { bg: 'bg-slate-50', text: 'text-foreground', iconColor: 'text-muted-foreground', glow: 'shadow-luxury-sm' }
-  };
-
-  const scheme = schemeOptions[color] || schemeOptions.charcoal;
+const MetricCard = ({ title, value, type = 'number', icon: Icon, change, loading, inverse = false }) => {
+  const numericChange = Number(change);
+  const hasChange = Number.isFinite(numericChange);
+  const positive = inverse ? numericChange < 0 : numericChange >= 0;
 
   return (
-    <div className={`animate-scale-in ${delay} group relative overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-luxury-sm transition-all hover:scale-[1.02] hover:shadow-luxury`}>
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-accent/5 transition-transform group-hover:scale-150" />
-      
-      <div className="relative z-10 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10`}>
-            <Icon className={`h-6 w-6 ${scheme.iconColor}`} />
+    <Card className="border-border bg-white shadow-luxury-sm">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            {loading ? (
+              <Skeleton className="mt-3 h-8 w-28" />
+            ) : (
+              <p className="mt-2 truncate font-heading text-2xl font-bold text-foreground">{formatMetric(value, type)}</p>
+            )}
           </div>
-          {trend && (
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-600">
-              {trend}
-            </span>
-          )}
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-royal-maroon/10 text-royal-maroon">
+            <Icon className="h-5 w-5" />
+          </span>
         </div>
-        
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
-          {loading ? (
-            <div className="h-9 w-24 bg-slate-100 animate-pulse rounded mt-1" />
-          ) : (
-            <h3 className={`mt-1 font-heading text-3xl font-bold tracking-tight ${scheme.text}`}>
-              {formatValue()}
-            </h3>
-          )}
-          {subtext && <p className="text-[11px] text-muted-foreground mt-1">{subtext}</p>}
-        </div>
-      </div>
-    </div>
+        {!loading && hasChange && (
+          <p className={cn('mt-3 text-sm font-medium', positive ? 'text-emerald-700' : 'text-rose-700')}>
+            {numericChange > 0 ? '+' : ''}{numericChange.toFixed(1)}% compared to previous period
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 };
+
+const MiniMetric = ({ label, value, format = 'number', loading }) => (
+  <Card className="border-border bg-white shadow-luxury-sm">
+    <CardContent className="p-5">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      {loading ? (
+        <Skeleton className="mt-3 h-7 w-24" />
+      ) : (
+        <p className="mt-2 font-heading text-2xl font-bold text-foreground">{formatMetric(value, format)}</p>
+      )}
+    </CardContent>
+  </Card>
+);
+
+const ChartCard = ({ title, description, loading, children, className }) => (
+  <Card className={cn('border-border bg-white shadow-luxury-sm', className)}>
+    <CardHeader className="border-b border-border bg-slate-50">
+      <CardTitle className="font-heading text-xl text-foreground">{title}</CardTitle>
+      {description && <CardDescription>{description}</CardDescription>}
+    </CardHeader>
+    <CardContent className="p-6">
+      {loading ? <Skeleton className="h-[320px] w-full" /> : children}
+    </CardContent>
+  </Card>
+);
+
+const DataTable = ({ title, columns, rows, loading, emptyIcon: EmptyIcon = Package }) => (
+  <Card className="border-border bg-white shadow-luxury-sm">
+    <CardHeader className="border-b border-border bg-slate-50">
+      <CardTitle className="font-heading text-xl text-foreground">{title}</CardTitle>
+    </CardHeader>
+    <CardContent className="p-0">
+      {loading ? (
+        <div className="space-y-3 p-5">
+          {[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-12 w-full" />)}
+        </div>
+      ) : rows.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white text-muted-foreground">
+              <tr>
+                {columns.map((column) => (
+                  <th key={column} className="whitespace-nowrap px-5 py-3 font-semibold">{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((row, rowIndex) => (
+                <tr key={`${title}-${rowIndex}`} className="hover:bg-slate-50">
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${title}-${rowIndex}-${cellIndex}`} className={cn('px-5 py-4', cellIndex === 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="flex h-52 flex-col items-center justify-center gap-3 text-muted-foreground">
+          <EmptyIcon className="h-8 w-8" />
+          <p className="text-sm">No data for this date range.</p>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+);
+
+const LegendRows = ({ rows }) => (
+  <div className="mt-4 space-y-2">
+    {rows.map((row, index) => (
+      <div key={`${row.label}-${index}`} className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+          {row.label || 'unknown'}
+        </span>
+        <span className="font-semibold text-foreground">{formatNumber(row.value)}</span>
+      </div>
+    ))}
+  </div>
+);
 
 export default AdminAnalyticsPage;

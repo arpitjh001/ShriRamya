@@ -28,6 +28,15 @@ export const adminOrderService = {
   },
 
   /**
+   * Delete order (admin)
+   */
+  deleteOrder(id, secretCode) {
+    return api.delete(`/orders/admin/${id}`, {
+      params: { secretCode }
+    });
+  },
+
+  /**
    * Get all shipments
    */
   getAllShipments(params = {}) {

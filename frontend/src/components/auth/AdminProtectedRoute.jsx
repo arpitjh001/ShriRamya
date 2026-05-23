@@ -8,7 +8,7 @@ import { authAPI } from '../../services/api';
  * If not authenticated, redirects to the /admin/dashboard (Admin Vault login page).
  */
 const AdminProtectedRoute = ({ children }) => {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const location = useLocation();
     const [adminCheck, setAdminCheck] = useState('checking'); // 'checking' | 'admin' | 'denied' | 'login'
 
@@ -21,6 +21,11 @@ const AdminProtectedRoute = ({ children }) => {
 
     useEffect(() => {
         const verifyAdmin = async () => {
+            if (loading) {
+                setAdminCheck('checking');
+                return;
+            }
+
             if (!user) {
                 setAdminCheck('login');
                 return;
@@ -49,7 +54,7 @@ const AdminProtectedRoute = ({ children }) => {
         };
 
         verifyAdmin();
-    }, [user]);
+    }, [user, loading]);
 
     if (adminCheck === 'checking') {
         return (

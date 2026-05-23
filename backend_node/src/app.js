@@ -218,11 +218,11 @@ const dbRoutes = require('./routes/dbRoutes');
 // Protect state-changing browser requests before dbRoutes, which owns many active handlers.
 app.use('/api/v1', csrfProtection);
 
-// DB-backed routes handle products, categories, cart, search, auth, orders, blogs, wishlist, admin
-app.use('/api/v1', dbRoutes);
-
 // Original v1 routes for modern controller-based features
 app.use('/api/v1', routes);
+
+// DB-backed routes handle products, categories, cart, search, auth, orders, blogs, wishlist, admin
+app.use('/api/v1', dbRoutes);
 
 /**
  * 404 Handler

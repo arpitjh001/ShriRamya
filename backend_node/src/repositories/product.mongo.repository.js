@@ -293,6 +293,58 @@ class ProductMongoRepository {
 
     return result.modifiedCount > 0;
   }
+
+  async getDistinctFabricsByCategory(categorySlug) {
+    const category = await Category.findOne({ slug: categorySlug.toLowerCase(), is_deleted: { $ne: true } });
+    if (!category) return [];
+
+    const categoryId = category._id;
+    return await Product.distinct('fabric', {
+      $or: [{ categoryId: categoryId }, { categories: categoryId }],
+      is_deleted: { $ne: true },
+      status: { $in: ['published', 'publish'] },
+      fabric: { $ne: null, $exists: true }
+    });
+  }
+
+  async getFabricCountsByCategory(categorySlug) {
+    const category = await Category.findOne({ slug: categorySlug.toLowerCase(), is_deleted: { $ne: true } });
+    if (!category) return null;
+
+    const categoryId = category._id;
+    const matchQuery = {
+      $or: [{ categoryId: categoryId }, { categories: categoryId }],
+      is_deleted: { $ne: true },
+      status: { $in: ['published', 'publish'] },
+      fabric: { $ne: null, $exists: true }
+    };
+
+    const results = await Product.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$fabric',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          fabric: '$_id',
+          count: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    return {
+      category: {
+        id: category._id.toString(),
+        slug: category.slug,
+        name: category.name
+      },
+      rawFabrics: results
+    };
+  }
 }
 
 module.exports = new ProductMongoRepository();

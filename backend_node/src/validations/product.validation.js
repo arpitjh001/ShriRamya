@@ -96,6 +96,8 @@ const createProduct = {
     metaKeywords: Joi.string().allow('').optional(),
     // Root level fields that are normalized into default variant if provided
     price: Joi.number().min(0).optional(),
+    salePrice: Joi.number().min(0).allow(null, '').optional(),
+    sale_price: Joi.number().min(0).allow(null, '').optional(),
     discountPrice: Joi.number().min(0).allow(null, '').optional(),
     stock: Joi.number().integer().min(0).optional(),
     lowStockThreshold: Joi.number().integer().min(0).optional(),
@@ -151,6 +153,8 @@ const updateProduct = {
     metaKeywords: Joi.string().allow('').optional(),
     // Root level fields that are normalized into default variant if provided
     price: Joi.number().min(0).optional(),
+    salePrice: Joi.number().min(0).allow(null, '').optional(),
+    sale_price: Joi.number().min(0).allow(null, '').optional(),
     discountPrice: Joi.number().min(0).allow(null, '').optional(),
     stock: Joi.number().integer().min(0).optional(),
     lowStockThreshold: Joi.number().integer().min(0).optional(),

@@ -8,6 +8,7 @@ import MobileFilterDrawer from '../components/MobileFilterDrawer';
 import { Button } from '../components/ui/button';
 import { X, SlidersHorizontal } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
+import { trackAnalyticsEvent } from '../services/analyticsTracker';
 
 const PER_PAGE = 20;
 const ARRAY_FILTER_KEYS = ['category', 'size', 'color', 'fabric', 'occasion', 'pattern', 'style', 'neck', 'sleeve', 'brand', 'material'];
@@ -96,6 +97,15 @@ const ProductsPage = () => {
       if (response.sortOptions?.length > 0) setSortOptions(response.sortOptions);
       setTotalProducts(response.pagination?.total || response.totalProducts || 0);
       setHasMore(response.pagination?.hasNext || newProducts.length === PER_PAGE);
+
+      if (reset && selectedFilters.search) {
+        trackAnalyticsEvent('product_search', {
+          search_query: selectedFilters.search,
+          metadata: {
+            result_count: response.pagination?.total || response.totalProducts || newProducts.length || 0,
+          },
+        });
+      }
     } catch (err) {
       setError('Unable to load products. Please try again.');
       if (reset) setProducts([]);

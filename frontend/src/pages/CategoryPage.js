@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard';
 import { categoriesAPI, productsAPI } from '../services/api';
+import { trackAnalyticsEvent } from '../services/analyticsTracker';
 
 const titleizeCategorySlug = (value = '') => {
     const decodedValue = (() => {
@@ -90,6 +91,13 @@ const CategoryPage = () => {
                 }
                 const resolvedCategory = categoryData || buildFallbackCategory(slug);
                 setCategory(resolvedCategory);
+                trackAnalyticsEvent('category_view', {
+                    category_id: resolvedCategory.id || resolvedCategory._id || resolvedCategory.slug || slug,
+                    metadata: {
+                        category_name: resolvedCategory.name,
+                        category_slug: resolvedCategory.slug || slug,
+                    },
+                });
                 document.title = `${resolvedCategory.name} | ShriRamya`;
                 let metaDesc = document.querySelector('meta[name="description"]');
                 if (!metaDesc) {
@@ -112,11 +120,18 @@ const CategoryPage = () => {
             const fetchedProducts = prodRes.data || [];
             
             // Extract available fabrics for this category on initial load
-            if (isInitial && prodRes.filters?.fabrics) {
-                const fabrics = Object.keys(prodRes.filters.fabrics)
-                    .filter(f => f && f !== 'null' && f !== 'undefined')
-                    .sort();
-                setAvailableFabrics(fabrics);
+            if (isInitial) {
+                try {
+                    const filterRes = await categoriesAPI.getCategoryFilters(slug);
+                    if (filterRes && filterRes.filters?.fabrics) {
+                        setAvailableFabrics(filterRes.filters.fabrics);
+                    } else {
+                        setAvailableFabrics([]);
+                    }
+                } catch (filterError) {
+                    console.warn('Unable to load category fabric filters:', filterError?.message || filterError);
+                    setAvailableFabrics([]);
+                }
             }
             
             setProducts(prev => isInitial ? fetchedProducts : [...prev, ...fetchedProducts]);
@@ -192,8 +207,8 @@ const CategoryPage = () => {
                             >
                                 <option value="">All Fabrics</option>
                                 {availableFabrics.map((fabric) => (
-                                    <option key={fabric} value={fabric}>
-                                        {fabric}
+                                    <option key={fabric.value} value={fabric.value}>
+                                        {fabric.label} {fabric.count > 0 ? `(${fabric.count})` : ''}
                                     </option>
                                 ))}
                             </select>

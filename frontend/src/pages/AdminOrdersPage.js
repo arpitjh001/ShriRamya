@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, Search, Filter, ChevronDown, Eye, Truck, CheckCircle, XCircle, 
-  Clock, ArrowUpDown, RefreshCw, TrendingUp, AlertTriangle, Users, ExternalLink, Download, ArrowRight, Save
+  Clock, ArrowUpDown, RefreshCw, TrendingUp, AlertTriangle, Users, ExternalLink, Download, ArrowRight, Save, Trash2
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { 
@@ -53,6 +53,11 @@ const AdminOrdersPage = () => {
   const [showShipmentModal, setShowShipmentModal] = useState(false);
   const [shipmentDetails, setShipmentDetails] = useState(null);
   const [fetchingShipment, setFetchingShipment] = useState(false);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+  const [deleteSecretInput, setDeleteSecretInput] = useState('');
+  const [deletingOrder, setDeletingOrder] = useState(false);
 
   const [adminNotes, setAdminNotes] = useState('');
   const [adminStatus, setAdminStatus] = useState('');
@@ -123,6 +128,30 @@ const AdminOrdersPage = () => {
       toast.error('Failed to update status'); 
     }
     setUpdatingStatus(false);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    if (!deleteSecretInput) {
+      toast.error('Secret code is required');
+      return;
+    }
+    setDeletingOrder(true);
+    try {
+      const res = await ordersAPI.delete(orderToDelete._id, deleteSecretInput);
+      if (res) {
+        toast.success(`Order #${orderToDelete.orderId} deleted successfully`);
+        fetchOrders();
+      }
+    } catch (err) {
+      console.error('Delete order error:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete order');
+    } finally {
+      setDeletingOrder(false);
+      setShowDeleteConfirm(false);
+      setOrderToDelete(null);
+      setDeleteSecretInput('');
+    }
   };
 
   const fetchShipmentDetails = async (orderRecordId) => {
@@ -322,6 +351,12 @@ const AdminOrdersPage = () => {
                               fetchShipmentDetails(getOrderIdentifier(order));
                             }} className="h-8 w-8 text-slate-400 hover:bg-slate-100 hover:text-royal-maroon transition-all" data-testid={`view-order-${order.orderId}`}>
                               <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => {
+                              setOrderToDelete(order);
+                              setShowDeleteConfirm(true);
+                            }} className="h-8 w-8 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-all" data-testid={`delete-order-${order.orderId}`}>
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                             {order.status === 'pending' && (
                               <Button size="sm" onClick={() => updateOrderStatus(order._id, 'confirmed', 'Confirmed by admin')} className="bg-royal-maroon hover:bg-royal-maroon/90 text-white font-bold uppercase tracking-widest text-[9px] h-7" disabled={updatingStatus}>
@@ -675,6 +710,80 @@ const AdminOrdersPage = () => {
               </AnimatePresence>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Order Confirmation Dialog */}
+      <Dialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          setShowDeleteConfirm(open);
+          if (!open) {
+            setOrderToDelete(null);
+            setDeleteSecretInput('');
+          }
+        }}
+      >
+        <DialogContent className="max-w-md p-6 bg-white border-none shadow-luxury rounded-2xl text-slate-900">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-600 animate-pulse" />
+              Confirm Order Deletion
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-2">
+              This action is <span className="font-bold text-rose-600">permanent</span> and will delete the order record, shipments, events, and refunds.
+            </DialogDescription>
+          </DialogHeader>
+
+          {orderToDelete && (
+            <div className="space-y-4 my-4">
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl">
+                <p className="text-xs font-semibold text-rose-800">
+                  Deleting Order ID: <span className="font-mono font-bold">{orderToDelete.orderId}</span>
+                </p>
+                <p className="text-[10px] text-rose-600 mt-1 uppercase tracking-wider">
+                  Customer: {orderToDelete.userName || 'Guest'} | Total: ₹{(orderToDelete.total || 0).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="delete-secret-code" className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Enter Secret Deletion Code
+                </Label>
+                <input
+                  id="delete-secret-code"
+                  data-testid="delete-secret-input"
+                  type="password"
+                  placeholder="Enter secret code to authorize..."
+                  value={deleteSecretInput}
+                  onChange={(e) => setDeleteSecretInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-slate-900 font-sans"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2 gap-2 flex flex-row justify-end">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setOrderToDelete(null);
+                setDeleteSecretInput('');
+              }}
+              className="font-bold uppercase tracking-widest text-[10px] h-10 text-slate-400 hover:text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteOrder}
+              disabled={deletingOrder}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold uppercase tracking-widest text-[10px] h-10 shadow-md px-6 rounded-xl"
+              data-testid="confirm-delete-order-btn"
+            >
+              {deletingOrder ? 'Deleting...' : 'Permanently Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

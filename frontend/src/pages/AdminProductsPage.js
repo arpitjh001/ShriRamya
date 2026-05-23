@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { compressImageForFunctionUpload, formatFileSize } from '../utils/imageUploadCompression';
 
 const PRODUCT_STATUS_VALUES = {
   publish: 'published',
@@ -84,6 +85,12 @@ const parseMaterialGuideList = (value = '') => (
     .map((entry) => entry.trim())
     .filter(Boolean)
 );
+
+const parseOptionalNumber = (value) => {
+  if (value === '' || value == null) return null;
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+};
 
 const AdminProductsPage = ({ initialTab = 'products' }) => {
   const { user, loading: authLoading } = useAuth();
@@ -438,14 +445,21 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
     try {
       // Generate product-level SKU if not provided
       const productSku = productForm.sku || productForm.name?.substring(0, 3).toUpperCase() + '-' + Date.now().toString().substring(5);
+      const basePrice = parseFloat(productForm.basePrice) || 0;
+      const saleValuation = parseOptionalNumber(productForm.discountPrice);
+
+      if (saleValuation != null && basePrice > 0 && saleValuation >= basePrice) {
+        toast.error('Sale valuation must be lower than base valuation');
+        return;
+      }
 
       // Format variants with proper structure
       // All variants share the same product SKU
       const cleanVariants = (productForm.variants || []).map(v => {
         const variantPayload = {
           sku: productSku, // All variants share product SKU
-          price: parseFloat(v.price) || parseFloat(productForm.basePrice) || 0,
-          discountPrice: (productForm.discountPrice !== '' && productForm.discountPrice !== null) ? parseFloat(productForm.discountPrice) : null,
+          price: parseFloat(v.price) || basePrice,
+          discountPrice: saleValuation,
           stock: parseInt(v.stock, 10) || 0,
           image: v.image || '',
           color: v.color || '',
@@ -494,7 +508,9 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
         modelHeight: productForm.modelHeight?.trim() || '',
         materialGuide,
         occasion: productForm.occasion,
-        basePrice: parseFloat(productForm.basePrice) || 0,
+        basePrice,
+        salePrice: saleValuation,
+        discountPrice: saleValuation,
         status: normalizeProductStatus(productForm.status, 'published'),
         images: productForm.images,
         categories: selectedCategoryIds,
@@ -564,8 +580,12 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
     try {
       const uploadedUrls = [];
       for (const file of files) {
+        const preparedImage = await compressImageForFunctionUpload(file, {
+          preserveOriginal: productForm.originalOnly,
+        });
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', preparedImage.file);
+        formData.append('category', 'products');
         formData.append('originalOnly', productForm.originalOnly ? 'true' : 'false');
         const response = await uploadAPI.uploadImage(formData);
         const uploaded = response?.data || {};
@@ -578,7 +598,7 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
       setProductForm(prev => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
       toast.success(uploadedUrls.length > 1 ? 'Images uploaded successfully' : 'Image uploaded successfully');
     } catch (error) {
-      toast.error('Failed to upload image(s)');
+      toast.error(error.message || 'Failed to upload image(s)');
     } finally {
       setUploadingImage(false);
       // Reset file input back to empty
@@ -660,16 +680,20 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
 
     setUploadingImage(true);
     try {
+      const preparedImage = await compressImageForFunctionUpload(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', preparedImage.file);
+      formData.append('category', 'categories');
       const response = await uploadAPI.uploadImage(formData);
       const uploaded = response?.data || {};
       const imageUrl = uploaded?.cdn?.medium || uploaded?.medium || uploaded?.original || uploaded?.url;
       if (!imageUrl) throw new Error('Upload succeeded but no image URL returned');
       setCategoryForm(prev => ({ ...prev, image: imageUrl }));
-      toast.success('Image uploaded successfully');
+      toast.success(preparedImage.compressed
+        ? `Image compressed from ${formatFileSize(preparedImage.originalSize)} to ${formatFileSize(preparedImage.compressedSize)} and uploaded`
+        : 'Image uploaded successfully');
     } catch (error) {
-      toast.error('Failed to upload image');
+      toast.error(error.message || 'Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
@@ -1348,6 +1372,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
                   <Input
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={productForm.basePrice}
                     onChange={(e) => setProductForm({ ...productForm, basePrice: e.target.value })}
                     className="pl-7 bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"
@@ -1361,6 +1387,8 @@ const AdminProductsPage = ({ initialTab = 'products' }) => {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
                   <Input
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={productForm.discountPrice}
                     onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
                     className="pl-7 bg-white/5 border-white/10 text-foreground placeholder:text-slate-600 focus:ring-royal-maroon/20 focus:border-royal-maroon/50"

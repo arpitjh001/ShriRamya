@@ -12,21 +12,8 @@ describe('📦 Orders API', () => {
   let sessionId;
   
   beforeAll(async () => {
-    // Authenticate as customer
-    const customerRes = await request(BACKEND_URL)
-      .post('/api/v1/auth/login')
-      .send({ email: 'customer@shriramya.com', password: 'Customer@123' });
-    
-    customerToken = customerRes.body.data?.token;
-    
-    // Authenticate as admin
-    const adminRes = await request(BACKEND_URL)
-      .post('/api/v1/auth/login')
-      .send({ email: 'admin@shriramya.com', password: 'Admin@123' });
-    
-    adminToken = adminRes.body.data?.token;
-    
-    // Generate session for cart operations
+    customerToken = global.testState.customerToken;
+    adminToken = global.testState.adminToken;
     sessionId = `test_order_session_${Date.now()}`;
   });
   
@@ -42,7 +29,7 @@ describe('📦 Orders API', () => {
         pincode: '400001',
       },
       email: 'customer@shriramya.com',
-      payment_method: 'cod',
+      paymentMethod: 'cod',
     };
     
     it('❌ should fail without authentication', async () => {
@@ -50,7 +37,7 @@ describe('📦 Orders API', () => {
         .post('/api/v1/orders')
         .send(orderData);
       
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(403);
     });
     
     it('❌ should fail with empty cart', async () => {
@@ -72,35 +59,29 @@ describe('📦 Orders API', () => {
       const productsRes = await request(BACKEND_URL)
         .get('/api/v1/products');
       
-      const productId = productsRes.body.data?.products?.[0]?.id;
+      const productId = productsRes.body.data?.[0]?.id || productsRes.body.data?.products?.[0]?.id;
       
       if (!productId) {
         console.warn('⚠️ No products available for order testing');
         return;
       }
       
-      // Add to cart
-      await request(BACKEND_URL)
-        .post('/api/v1/cart/add')
-        .set(getSessionHeaders(sessionId))
-        .send({ product_id: productId, quantity: 1 });
-      
-      // Create order (this might fail if cart session doesn't match auth)
+      // Create order
       const response = await request(BACKEND_URL)
         .post('/api/v1/orders')
         .set(getAuthHeaders(customerToken))
         .send({
           ...orderData,
-          session_id: sessionId,
+          items: [{ productId: productId, quantity: 1 }]
         });
       
-      // Order creation may succeed or fail based on cart state
-      expect([200, 400]).toContain(response.status);
+      // Order creation may succeed or fail
+      expect([201, 400]).toContain(response.status);
       
-      if (response.status === 200) {
-        testOrderId = response.body.data?.order?.id || response.body.data?.id;
+      if (response.status === 201) {
+        testOrderId = response.body.data?._id || response.body.data?.id;
         expect(response.body.success).toBe(true);
-        expect(response.body.data).toHaveProperty('order');
+        expect(response.body.data).toHaveProperty('_id');
       }
     });
   });
@@ -122,8 +103,7 @@ describe('📦 Orders API', () => {
       
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('orders');
-      expect(Array.isArray(response.body.data.orders)).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
     });
   });
   
@@ -142,7 +122,7 @@ describe('📦 Orders API', () => {
           .get('/api/v1/orders/my')
           .set(getAuthHeaders(customerToken));
         
-        testOrderId = ordersRes.body.data?.orders?.[0]?.id;
+        testOrderId = ordersRes.body.data?.[0]?.id || ordersRes.body.data?.[0]?._id;
       }
       
       if (!testOrderId) {
@@ -156,7 +136,7 @@ describe('📦 Orders API', () => {
       
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('id', testOrderId);
+      expect(response.body.data).toHaveProperty('_id', testOrderId);
     });
     
     it('❌ should return 404 for non-existent order', async () => {
@@ -212,8 +192,7 @@ describe('📦 Orders API', () => {
       
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('shipments');
-      expect(Array.isArray(response.body.data.shipments)).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
     });
   });
   
@@ -316,6 +295,111 @@ describe('📦 Orders API', () => {
         const response = await request(BACKEND_URL)
           .get('/api/v1/orders/admin/shipments/pending')
           .set(getAuthHeaders(adminToken));
+        
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+    });
+
+    describe('DELETE /api/v1/orders/admin/:id (Delete Order)', () => {
+      let orderIdToDelete;
+
+      beforeAll(async () => {
+        if (!adminToken) return;
+        // Fetch existing products
+        const productsRes = await request(BACKEND_URL).get('/api/v1/products');
+        const productId = productsRes.body.data?.products?.[0]?.id || productsRes.body.data?.[0]?.id;
+        
+        if (productId && customerToken) {
+          const createRes = await request(BACKEND_URL)
+            .post('/api/v1/orders')
+            .set(getAuthHeaders(customerToken))
+            .send({
+              items: [{ productId: productId, quantity: 1 }],
+              shipping: {
+                name: 'Delete Test Customer',
+                phone: '9876543210',
+                address_line1: '123 Test Street',
+                address_line2: 'Apt 4B',
+                city: 'Mumbai',
+                state: 'Maharashtra',
+                pincode: '400001',
+              },
+              email: 'customer@shriramya.com',
+              paymentMethod: 'cod'
+            });
+          
+          orderIdToDelete = createRes.body.data?.id || createRes.body.data?._id;
+        }
+
+        // Fallback: If we couldn't create an order, find an existing one
+        if (!orderIdToDelete) {
+          const ordersRes = await request(BACKEND_URL)
+            .get('/api/v1/orders/admin/all')
+            .set(getAuthHeaders(adminToken));
+          const ordersList = ordersRes.body.data?.orders || [];
+          if (ordersList.length > 0) {
+            orderIdToDelete = ordersList[0]._id || ordersList[0].id;
+          }
+        }
+      });
+
+      it('❌ should fail without authentication', async () => {
+        if (!orderIdToDelete) return;
+        const response = await request(BACKEND_URL)
+          .delete(`/api/v1/orders/admin/${orderIdToDelete}`)
+          .query({ secretCode: '284001' });
+        
+        expect(response.status).toBe(403);
+      });
+
+      it('❌ should fail for non-admin user', async () => {
+        if (!orderIdToDelete) return;
+        const response = await request(BACKEND_URL)
+          .delete(`/api/v1/orders/admin/${orderIdToDelete}`)
+          .set(getAuthHeaders(customerToken))
+          .query({ secretCode: '284001' });
+        
+        expect(response.status).toBe(403);
+      });
+
+      it('❌ should fail with missing secret code', async () => {
+        if (!orderIdToDelete) return;
+        const response = await request(BACKEND_URL)
+          .delete(`/api/v1/orders/admin/${orderIdToDelete}`)
+          .set(getAuthHeaders(adminToken));
+        
+        expect(response.status).toBe(400);
+      });
+
+      it('❌ should fail with incorrect secret code', async () => {
+        if (!orderIdToDelete) return;
+        const response = await request(BACKEND_URL)
+          .delete(`/api/v1/orders/admin/${orderIdToDelete}`)
+          .set(getAuthHeaders(adminToken))
+          .query({ secretCode: 'wrong_code' });
+        
+        expect(response.status).toBe(400);
+      });
+
+      it('❌ should return 404 for non-existent order', async () => {
+        const response = await request(BACKEND_URL)
+          .delete('/api/v1/orders/admin/65f1c9c7f1a23b4567890123')
+          .set(getAuthHeaders(adminToken))
+          .query({ secretCode: '284001' });
+        
+        expect(response.status).toBe(404);
+      });
+
+      it('✅ should successfully delete order with correct secret code', async () => {
+        if (!orderIdToDelete) {
+          console.warn('⚠️ No test order available to delete, skipping assertion');
+          return;
+        }
+        const response = await request(BACKEND_URL)
+          .delete(`/api/v1/orders/admin/${orderIdToDelete}`)
+          .set(getAuthHeaders(adminToken))
+          .query({ secretCode: '284001' });
         
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);

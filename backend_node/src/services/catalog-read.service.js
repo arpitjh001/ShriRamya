@@ -523,7 +523,12 @@ class CatalogReadService {
     }
 
     if (fabricFilters.length > 0) {
-      filteredProducts = filteredProducts.filter((product) => fabricFilters.includes(String(product.fabric || '').toLowerCase()));
+      filteredProducts = filteredProducts.filter((product) => {
+        const prodFabric = String(product.fabric || '').trim();
+        if (!prodFabric) return false;
+        const normalizedProdFabric = prodFabric.toLowerCase().replace(/\s+/g, '-');
+        return fabricFilters.includes(normalizedProdFabric) || fabricFilters.includes(prodFabric.toLowerCase());
+      });
     }
 
     if (occasionFilters.length > 0) {

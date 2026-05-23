@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getBackendBaseUrl } from '../../utils/apiBase';
+import { getSessionId } from '../../utils';
+import { getAnalyticsVisitorId } from '../../services/analyticsTracker';
 
 const TRACKING_URL = `${getBackendBaseUrl()}/api/v1/analytics/visit`;
 const IGNORED_PATH_PREFIXES = ['/admin'];
@@ -10,16 +12,18 @@ const shouldTrackPath = (path) => (
 );
 
 const sendVisit = (payload) => {
-  const searchParams = new URLSearchParams(payload);
+  const body = new URLSearchParams(payload);
 
-  if (navigator.sendBeacon && navigator.sendBeacon(TRACKING_URL, searchParams)) {
-    return;
+  try {
+    if (navigator.sendBeacon && navigator.sendBeacon(TRACKING_URL, body)) return;
+  } catch {
+    // Fallback below.
   }
 
   fetch(TRACKING_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body,
     keepalive: true,
     credentials: 'omit',
   }).catch(() => {});
@@ -40,6 +44,8 @@ const VercelVisitTracker = () => {
       path,
       title: document.title || '',
       referrer: document.referrer || '',
+      visitor_id: getAnalyticsVisitorId(),
+      session_id: getSessionId(),
       timestamp: new Date().toISOString(),
     });
   }, [location.pathname, location.search]);

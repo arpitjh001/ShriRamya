@@ -9,6 +9,7 @@ import { Trash2, Plus, Minus, ShoppingBag, Loader2, Tag, X } from 'lucide-react'
 import { formatPrice, getCartItemOriginalPrice, getCartItemPrice, getSessionId, getShippingCharge } from '../utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { trackAnalyticsEvent } from '../services/analyticsTracker';
 
 const CartPage = () => {
   const { cart, fetchCart, appliedCoupon, discountAmount, applyCoupon, removeCoupon, calculateSubtotal } = useCart();
@@ -75,6 +76,15 @@ const CartPage = () => {
       const sessionId = getSessionId();
       await cartAPI.remove(item.cartItemId || item.id, sessionId);
       await fetchCart();
+      trackAnalyticsEvent('remove_from_cart', {
+        product_id: item.productId?._id || item.productId || item.id,
+        cart_id: sessionId,
+        metadata: {
+          cart_item_id: item.cartItemId || item.id,
+          quantity: item.quantity,
+          product_name: item.name,
+        },
+      });
       toast.success('Item removed from cart');
     } catch (error) {
       console.error('Failed to remove item:', error);
@@ -379,7 +389,16 @@ const CartPage = () => {
               data-testid="checkout-button"
               className="w-full"
               size="lg"
-              onClick={() => navigate('/checkout')}
+              onClick={() => {
+                trackAnalyticsEvent('checkout_started', {
+                  cart_id: getSessionId(),
+                  metadata: {
+                    cart_items: cart.items?.length || 0,
+                    cart_total: total,
+                  },
+                });
+                navigate('/checkout');
+              }}
             >
               Proceed to Checkout
             </Button>

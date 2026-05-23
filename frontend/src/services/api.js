@@ -819,6 +819,16 @@ export const ordersAPI = {
       handleError(err);
       return { data: [] };
     }
+  },
+
+  delete: async (id, secretCode) => {
+    try {
+      return await api.delete(`/orders/admin/${id}`, {
+        params: { secretCode }
+      });
+    } catch (err) {
+      handleError(err);
+    }
   }
 };
 
@@ -1141,9 +1151,30 @@ export const inventoryAPI = {
 ========================= */
 
 export const analyticsAPI = {
+  trackEvent: async (eventName, data = {}) => {
+    try {
+      return await api.post("/analytics/events", {
+        ...data,
+        event_name: eventName,
+      });
+    } catch (err) {
+      console.warn("Analytics event unavailable:", err?.response?.data || err.message);
+      return { data: { accepted: false } };
+    }
+  },
+
   getOverview: async (params = {}) => {
     try {
       return await api.get("/admin/analytics/overview", { params });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  getVisitors: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/visitors", { params });
     } catch (err) {
       handleError(err);
       throw err;
@@ -1177,9 +1208,36 @@ export const analyticsAPI = {
     }
   },
 
+  getCart: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/cart", { params });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  getCategories: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/categories", { params });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
   getTopCustomers: async (params = {}) => {
     try {
       return await api.get("/admin/analytics/customers", { params });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  getSearch: async (params = {}) => {
+    try {
+      return await api.get("/admin/analytics/search", { params });
     } catch (err) {
       handleError(err);
       throw err;
@@ -1203,9 +1261,7 @@ export const analyticsAPI = {
 export const uploadAPI = {
   uploadImage: async (formData) => {
     try {
-      return await api.post("/upload/image", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      return await api.post("/upload/image", formData);
     } catch (err) {
       handleError(err);
     }
@@ -1213,9 +1269,7 @@ export const uploadAPI = {
 
   uploadImages: async (formData) => {
     try {
-      return await api.post("/upload/images", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      return await api.post("/upload/images", formData);
     } catch (err) {
       handleError(err);
     }
@@ -1361,6 +1415,16 @@ export const categoriesAPI = {
     } catch (err) {
       handleError(err);
       throw err;
+    }
+  },
+
+  getCategoryFilters: async (categorySlug) => {
+    try {
+      const response = await api.get(`/storefront/categories/${encodeURIComponent(categorySlug)}/filters`);
+      return response.data || null;
+    } catch (err) {
+      handleError(err);
+      return null;
     }
   }
 };

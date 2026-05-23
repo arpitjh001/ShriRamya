@@ -2,12 +2,14 @@ const rateLimit = require('express-rate-limit');
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 
+const isTestOrDev = process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
+
 /**
  * Auth Rate Limiter (Login/Register)
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: isTestOrDev ? 10000 : 10,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many login attempts. Please try again after 15 minutes.'
@@ -21,7 +23,7 @@ const authLimiter = rateLimit({
  */
 const registrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // 5 registrations per hour
+  max: isTestOrDev ? 10000 : 5, // 5 registrations per hour
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many registration attempts from this IP. Please try again after an hour.'
@@ -35,7 +37,7 @@ const registrationLimiter = rateLimit({
  */
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 100,
+  max: isTestOrDev ? 100000 : 100,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many requests. Please slow down.'
@@ -49,7 +51,7 @@ const apiLimiter = rateLimit({
  */
 const searchLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 30,
+  max: isTestOrDev ? 10000 : 30,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many search requests. Please try again later.'
@@ -63,7 +65,7 @@ const searchLimiter = rateLimit({
  */
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: isTestOrDev ? 10000 : 20,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many upload requests. Please try again later.'
@@ -77,7 +79,7 @@ const uploadLimiter = rateLimit({
  */
 const reviewLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 5,
+  max: isTestOrDev ? 10000 : 5,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many review submissions. Please slow down.'
@@ -91,7 +93,7 @@ const reviewLimiter = rateLimit({
  */
 const couponLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: isTestOrDev ? 10000 : 10,
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many coupon attempts. Please try again later.'
@@ -105,7 +107,7 @@ const couponLimiter = rateLimit({
  */
 const couponValidationLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 5, // 5 attempts per minute
+  max: isTestOrDev ? 10000 : 5, // 5 attempts per minute
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many coupon validation attempts. Please try again later.'
@@ -119,7 +121,7 @@ const couponValidationLimiter = rateLimit({
  */
 const cartLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, // 30 cart operations per minute
+  max: isTestOrDev ? 10000 : 30, // 30 cart operations per minute
   message: new ApiError(
     httpStatus.TOO_MANY_REQUESTS,
     'Too many cart operations. Please try again later.'
@@ -139,3 +141,4 @@ module.exports = {
   couponValidationLimiter,
   cartLimiter
 };
+

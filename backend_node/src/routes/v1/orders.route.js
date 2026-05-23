@@ -15,56 +15,6 @@ const { auth, optionalAuth, requireRole } = require('../../middlewares/authRBAC'
 const router = express.Router();
 
 // ==========================================
-// Customer Order Routes
-// ==========================================
-
-// Create order (primary route) - Supports Guest Checkout
-router.post('/',
-    optionalAuth,
-    validate(orderValidation.createOrder),
-    orderController.createOrder
-);
-
-// Create order (alias for backward compatibility with frontend)
-router.post('/create',
-    optionalAuth,
-    validate(orderValidation.createOrder),
-    orderController.createOrder
-);
-
-// Get customer's orders
-router.get('/my', auth, orderController.getCustomerOrders);
-
-// Get order details
-router.get('/:id', auth, orderController.getOrder);
-
-// Confirm payment for order
-router.post('/:id/payment', optionalAuth, orderController.confirmPayment);
-
-// Cancel order
-router.post('/my/:id/cancel',
-    auth,
-    validate(orderValidation.cancelOrder),
-    orderController.cancelOrder
-);
-
-// Get order tracking
-router.get('/:id/tracking', shipmentController.getOrderTracking);
-
-// Get order shipments
-router.get('/:id/shipments', auth, shipmentController.getOrderShipments);
-
-// Request refund
-router.post('/:id/refunds',
-    auth,
-    validate(orderValidation.createRefund),
-    refundController.createRefund
-);
-
-// Get order refunds
-router.get('/:id/refunds', auth, refundController.getOrderRefunds);
-
-// ==========================================
 // Admin Order Routes
 // ==========================================
 
@@ -77,6 +27,15 @@ router.patch('/admin/:id/status',
     validate(orderValidation.updateOrderStatus),
     orderController.updateOrderStatus
 );
+
+// Delete order
+router.delete('/admin/:id',
+    auth,
+    requireRole('admin'),
+    validate(orderValidation.deleteOrder),
+    orderController.deleteOrder
+);
+
 
 // Get all shipments (MUST be before /admin/:id/shipments to avoid route conflict)
 router.get('/admin/shipments',
@@ -139,6 +98,56 @@ router.post('/admin/refunds/:id/reject', auth, requireRole('admin'), refundContr
 
 // Get refund details
 router.get('/admin/refunds/:id', auth, requireRole('admin'), refundController.getRefund);
+
+// ==========================================
+// Customer Order Routes
+// ==========================================
+
+// Create order (primary route) - Supports Guest Checkout
+router.post('/',
+    optionalAuth,
+    validate(orderValidation.createOrder),
+    orderController.createOrder
+);
+
+// Create order (alias for backward compatibility with frontend)
+router.post('/create',
+    optionalAuth,
+    validate(orderValidation.createOrder),
+    orderController.createOrder
+);
+
+// Get customer's orders
+router.get('/my', auth, orderController.getCustomerOrders);
+
+// Get order details
+router.get('/:id', auth, orderController.getOrder);
+
+// Confirm payment for order
+router.post('/:id/payment', optionalAuth, orderController.confirmPayment);
+
+// Cancel order
+router.post('/my/:id/cancel',
+    auth,
+    validate(orderValidation.cancelOrder),
+    orderController.cancelOrder
+);
+
+// Get order tracking
+router.get('/:id/tracking', shipmentController.getOrderTracking);
+
+// Get order shipments
+router.get('/:id/shipments', auth, shipmentController.getOrderShipments);
+
+// Request refund
+router.post('/:id/refunds',
+    auth,
+    validate(orderValidation.createRefund),
+    refundController.createRefund
+);
+
+// Get order refunds
+router.get('/:id/refunds', auth, refundController.getOrderRefunds);
 
 // ==========================================
 // Analytics Routes

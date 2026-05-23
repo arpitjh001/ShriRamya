@@ -11,6 +11,7 @@ class CacheInvalidationService {
       cacheService.delPattern('product:detail:*'),
       cacheService.delPattern('categories:*'),
       cacheService.delPattern('category:*'),
+      cacheService.delPattern('category_filters:*'),
     ]);
   }
 
@@ -21,6 +22,7 @@ class CacheInvalidationService {
       cacheService.delPattern('products:list:*'),
       cacheService.delPattern('catalog:base-products:*'),
       cacheService.delPattern('homepage:*'),
+      cacheService.delPattern('category_filters:*'),
     ]);
   }
 

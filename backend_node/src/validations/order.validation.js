@@ -194,6 +194,15 @@ const processRefund = {
   }),
 };
 
+const deleteOrder = {
+  params: Joi.object({
+    id: Joi.string().required(),
+  }),
+  query: Joi.object({
+    secretCode: Joi.string().required(),
+  }),
+};
+
 module.exports = {
   createOrder,
   updateOrderStatus,
@@ -203,4 +212,6 @@ module.exports = {
   getShipmentsQuery,
   createRefund,
   processRefund,
+  deleteOrder,
 };
+

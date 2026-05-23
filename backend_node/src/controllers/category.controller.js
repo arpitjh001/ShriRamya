@@ -3,6 +3,7 @@ const { successResponse } = require('../utils/response');
 const categoryService = require('../services/category.service');
 const catalogReadService = require('../services/catalog-read.service');
 const cacheInvalidationService = require('../services/cacheInvalidation.service');
+const categoryFilterService = require('../services/categoryFilter.service');
 
 const createCategory = async (req, res, next) => {
     try {
@@ -114,6 +115,20 @@ const getProductsByCategory = async (req, res, next) => {
     }
 };
 
+const getCategoryFilters = async (req, res, next) => {
+    try {
+        const { categorySlug } = req.params;
+        const result = await categoryFilterService.getAvailableFiltersByCategory(categorySlug);
+        return successResponse(res, result);
+    } catch (error) {
+        if (error.message === 'Category not found') {
+            const ApiError = require('../utils/ApiError');
+            return next(new ApiError(httpStatus.NOT_FOUND, 'Category not found'));
+        }
+        next(error);
+    }
+};
+
 module.exports = {
     createCategory,
     getCategoryById,
@@ -122,4 +137,5 @@ module.exports = {
     updateCategory,
     deleteCategory,
     getProductsByCategory,
+    getCategoryFilters,
 };

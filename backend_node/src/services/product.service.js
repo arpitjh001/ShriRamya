@@ -12,6 +12,14 @@ class ProductService {
     return normalizedValue || '';
   }
 
+  normalizeOptionalNumber(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+
+    const normalizedValue = Number(value);
+    return Number.isFinite(normalizedValue) ? normalizedValue : null;
+  }
+
   normalizeMaterialGuide(materialGuide) {
     if (!materialGuide || typeof materialGuide !== 'object') {
       return null;
@@ -321,6 +329,16 @@ class ProductService {
 
   normalizeProductData(productData = {}) {
     const normalizedProductData = { ...productData };
+    const hasRootSalePrice = ['salePrice', 'sale_price', 'discountPrice'].some((field) => (
+      Object.prototype.hasOwnProperty.call(normalizedProductData, field)
+    ));
+    const rootSalePrice = hasRootSalePrice
+      ? this.normalizeOptionalNumber(
+          normalizedProductData.salePrice
+            ?? normalizedProductData.sale_price
+            ?? normalizedProductData.discountPrice
+        )
+      : undefined;
     const basePrice = Number(
       normalizedProductData.basePrice
         ?? normalizedProductData.base_price
@@ -364,11 +382,24 @@ class ProductService {
       normalizedProductData.lowStockThreshold = Math.max(0, parseInt(normalizedProductData.lowStockThreshold || 5, 10)) || 5;
     }
 
+    if (hasRootSalePrice) {
+      normalizedProductData.salePrice = rootSalePrice;
+      delete normalizedProductData.sale_price;
+      delete normalizedProductData.discountPrice;
+    }
+
     if (Array.isArray(normalizedProductData.variants)) {
       normalizedProductData.variants = normalizedProductData.variants.map((variant) => {
         const normalizedVariant = this.normalizeVariantForPersistence(variant);
         if ((Number(normalizedVariant.price || 0) || 0) <= 0 && basePrice > 0) {
           normalizedVariant.price = basePrice;
+        }
+        if (
+          hasRootSalePrice
+          && !Object.prototype.hasOwnProperty.call(variant, 'discountPrice')
+          && !Object.prototype.hasOwnProperty.call(variant, 'discount_price')
+        ) {
+          normalizedVariant.discountPrice = rootSalePrice;
         }
         return normalizedVariant;
       });

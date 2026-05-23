@@ -43,6 +43,7 @@ const productSchema = new mongoose.Schema(
     images: [{ type: String, trim: true }],
     thumbnail: { type: String, trim: true },
     basePrice: { type: Number, default: 0 },
+    salePrice: { type: Number, default: null },
     rating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },
     isFeatured: { type: Boolean, default: false },

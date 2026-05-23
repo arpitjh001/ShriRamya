@@ -34,6 +34,7 @@ import { addToRecentlyViewed } from '../components/RecentlyViewed';
 import { getFabricGuide } from '../utils/fabricGuide';
 import SEOMeta from '../components/SEOMeta';
 import { getCartErrorMessage } from '../utils/cartError';
+import { trackAnalyticsEvent } from '../services/analyticsTracker';
 
 const SHIPPING_DELIVERY_COPY = 'Orders are dispatched within 24-48 hours across India. International orders may take 5-7 business days. Shipping charges are calculated at checkout.';
 const PRODUCT_IMAGE_FALLBACK = '/uploads/woocommerce-placeholder.webp';
@@ -173,6 +174,15 @@ const ProductDetailPage = () => {
         setProduct(productRes.data);
         setRecommendations(recsRes.data || []);
         addToRecentlyViewed(id);
+        trackAnalyticsEvent('product_view', {
+          user_id: user?._id || user?.id || null,
+          product_id: productRes.data?.id || productRes.data?._id || productRes.data?.productId || id,
+          category_id: productRes.data?.categoryId || productRes.data?.category || productRes.data?.categories?.[0]?._id || null,
+          metadata: {
+            product_name: productRes.data?.name,
+            sku: productRes.data?.sku,
+          },
+        });
 
         // Fetch reviews
         try {
@@ -426,6 +436,11 @@ const ProductDetailPage = () => {
       } else {
         await wishlistAPI.add(pid);
         setWish(true);
+        trackAnalyticsEvent('wishlist_added', {
+          user_id: user?._id || user?.id || null,
+          product_id: product.id || product._id || product.productId || pid,
+          metadata: { product_name: product.name },
+        });
         toast.success('Added to wishlist');
       }
     } catch (error) {

@@ -4,12 +4,14 @@
  */
 
 const httpStatus = require('http-status');
-const { Order, User, Product, OrderEvent } = require('../models');
+const mongoose = require('mongoose');
+const { Order, User, Product, OrderEvent, Shipment, Refund } = require('../models');
+const config = require('../config/config');
 const orderEventService = require('../services/events/orderEvent.service');
 const couponService = require('../services/coupon.service');
 const analyticsService = require('../services/analytics/analytics.service');
 const productService = require('../services/product.service');
-const { successResponse } = require('../utils/response');
+const { successResponse, paginatedResponse } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
 const { buildTenantScope, andQuery } = require('../utils/tenantScope');
 const orderStateMachine = require('../services/orderStateMachine.service');
@@ -307,7 +309,7 @@ const getCustomerOrders = async (req, res, next) => {
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
 
-        return res.paginatedResponse(orders, {
+        return paginatedResponse(res, orders, {
             page: parseInt(page),
             limit: parseInt(limit),
             total
@@ -322,6 +324,9 @@ const getCustomerOrders = async (req, res, next) => {
  */
 const getOrder = async (req, res, next) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+        }
         const order = await Order.findById(req.params.id);
         if (!order) {
             throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
@@ -578,6 +583,37 @@ const confirmPayment = async (req, res, next) => {
     }
 };
 
+const deleteOrder = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { secretCode } = req.query;
+        
+        const expectedSecret = Buffer.from(config.deleteOrderSecret || '', 'base64').toString('utf8');
+        if (secretCode !== expectedSecret) {
+            throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid secret code');
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+        }
+
+        const order = await Order.findById(id);
+        if (!order) {
+            throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+        }
+
+        // Cascade delete related records
+        await Order.findByIdAndDelete(id);
+        await OrderEvent.deleteMany({ orderId: id });
+        await Shipment.deleteMany({ orderId: id });
+        await Refund.deleteMany({ orderId: id });
+
+        return successResponse(res, null, 'Order deleted successfully');
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createOrder,
     getCustomerOrders,
@@ -586,5 +622,6 @@ module.exports = {
     cancelOrder,
     getAllOrders,
     updateOrderStatus,
-    getOrderAnalytics
+    getOrderAnalytics,
+    deleteOrder
 };

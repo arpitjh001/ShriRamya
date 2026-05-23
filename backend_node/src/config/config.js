@@ -151,7 +151,8 @@ const envVarsSchema = Joi.object()
     SMTP_PASS: Joi.string().allow('', null),
     SMS_PROVIDER: Joi.string().allow('', null).default('twilio'),
     SMS_API_KEY: Joi.string().allow('', null),
-    SMS_SENDER_ID: Joi.string().allow('', null)
+    SMS_SENDER_ID: Joi.string().allow('', null),
+    DELETE_ORDER_SECRET: Joi.string().required().description('Base64-encoded order deletion secret')
   })
   .unknown();
 
@@ -243,6 +244,6 @@ module.exports = {
     provider: envVars.SMS_PROVIDER,
     apiKey: envVars.SMS_API_KEY,
     senderId: envVars.SMS_SENDER_ID
-  }
+  },
+  deleteOrderSecret: envVars.DELETE_ORDER_SECRET
 };
-

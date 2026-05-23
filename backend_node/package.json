@@ -19,11 +19,14 @@
     "seed:admin": "node scripts/seed-admin-user.js",
     "seed:rbac": "node scripts/seed-rbac-roles.js",
     "migrate": "node scripts/run-migrations.js",
+    "migrate:analytics": "node scripts/ensure-analytics-indexes.js",
     "migrate:categories": "node scripts/migrate-categories.js",
     "migrate:data": "node scripts/migrate-data-to-tenant.js",
     "migrate:rollback": "node -e \"require('./src/utils/dbMigration').rollbackMigration()\"",
     "queue:process": "node -e \"const q = require('./src/services/queue/jobQueue.service'); q.setupQueueListeners(); console.log('Queue processor started');\"",
-    "optimize:images": "node scripts/optimize-images.js"
+    "optimize:images": "node scripts/optimize-images.js",
+    "cache:warm-category-filters": "node src/scripts/warmCategoryFilters.js",
+    "analytics:warm-category-filters": "node src/scripts/warmCategoryFilters.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
