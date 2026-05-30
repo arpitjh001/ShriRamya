@@ -82,7 +82,7 @@ const login = async (req, res, next) => {
  */
 const refreshTokens = async (req, res, next) => {
     try {
-        const refreshToken = req.cookies.refresh_token || req.body.refresh_token;
+        const refreshToken = req.body.refresh_token || req.cookies.refresh_token;
         const deviceId = req.headers['x-device-id'] || 'unknown_device';
         const fallbackUserId = req.body.user_id || req.body.userId || req.body.sub;
 

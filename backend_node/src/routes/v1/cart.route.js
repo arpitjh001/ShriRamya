@@ -20,10 +20,9 @@ router.use(apiLimiter);
  * 4. Origin Validation: CORS middleware validates request origin
  * 5. Rate Limiting: Prevents brute-force attacks
  * 
- * All state-changing operations (POST, PUT, DELETE) require:
- * - Valid CSRF token in x-csrf-token header matching csrf-token cookie
- * - Valid JWT token in Authorization header (for authenticated users)
- * - Request from allowed origin (CORS)
+ * State-changing cookie-authenticated operations require a valid CSRF token.
+ * Guest cart mutations use the explicit x-session-id header, so they do not rely
+ * on ambient browser cookies for authority.
  */
 
 // Apply CSRF protection to all cart routes

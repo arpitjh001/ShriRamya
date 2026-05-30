@@ -1064,6 +1064,65 @@ export const couponsAPI = {
   },
 };
 
+export const promoBarsAPI = {
+  getAll: async (params = {}) => {
+    try {
+      const res = await api.get("/admin/promo-bars", { params });
+      const promoBars = Array.isArray(res.data) ? res.data : [];
+      return { ...res, promoBars, data: promoBars };
+    } catch (err) {
+      handleError(err);
+      return { promoBars: [], data: [] };
+    }
+  },
+
+  create: async (data) => {
+    try {
+      return await api.post("/admin/promo-bars", data);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  update: async (id, data) => {
+    try {
+      return await api.put(`/admin/promo-bars/${id}`, data);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  toggle: async (id, isActive) => {
+    try {
+      return await api.patch(`/admin/promo-bars/${id}/toggle`, { isActive });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      return await api.delete(`/admin/promo-bars/${id}`);
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
+  getStorefront: async (location = 'all') => {
+    try {
+      const res = await api.get("/storefront/promo-bar", { params: { location } });
+      return { ...res, promoBar: res.data || null, data: res.data || null };
+    } catch (err) {
+      console.warn("Promo bar unavailable:", err?.response?.data || err.message);
+      return { promoBar: null, data: null };
+    }
+  },
+};
+
 /* =========================
    ADMIN - WAREHOUSE APIs
 ========================= */

@@ -1,8 +1,38 @@
 const httpStatus = require('http-status');
 const cartService = require('../services/cart.service');
 const couponService = require('../services/coupon.service');
+const storefrontCheckoutService = require('../services/storefront-checkout.service');
 const { successResponse } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
+
+const getSessionId = (req) => (
+    req.headers['x-session-id']
+    || req.body?.sessionId
+    || req.query.sessionId
+    || req.query.session_id
+    || storefrontCheckoutService.generateSessionId()
+);
+
+const setSessionHeader = (res, sessionId) => {
+    if (sessionId) {
+        res.setHeader('x-session-id', sessionId);
+    }
+};
+
+const handleCartError = (error, res, next) => {
+    const statusCode = error.statusCode || (error.code === 'INSUFFICIENT_STOCK' ? httpStatus.CONFLICT : null);
+
+    if ([httpStatus.BAD_REQUEST, httpStatus.FORBIDDEN, httpStatus.NOT_FOUND, httpStatus.CONFLICT].includes(statusCode)) {
+        return res.status(statusCode).send({
+            success: false,
+            message: error.message,
+            ...(error.code ? { code: error.code } : {}),
+            ...(error.availableStock != null ? { availableStock: error.availableStock } : {}),
+        });
+    }
+
+    return next(error);
+};
 
 /**
  * Get or create cart for user/session
@@ -10,22 +40,9 @@ const ApiError = require('../utils/ApiError');
  */
 const getCart = async (req, res, next) => {
     try {
-        const userId = req.user?.id || null;
-        const sessionId = req.headers['x-session-id'] || req.query.session_id || null;
-
-        if (!userId && !sessionId) {
-            // Generate a new session for guest
-            const newSessionId = cartService.generateSessionId();
-            const cart = await cartService.getOrCreateCart(null, newSessionId);
-            
-            res.setHeader('x-session-id', newSessionId);
-            return successResponse(res, {
-                ...cart,
-                sessionId: newSessionId,
-            });
-        }
-
-        const cart = await cartService.getOrCreateCart(userId, sessionId);
+        const sessionId = getSessionId(req);
+        const cart = await storefrontCheckoutService.getCart(sessionId);
+        setSessionHeader(res, sessionId);
         return successResponse(res, cart);
     } catch (error) {
         next(error);
@@ -38,35 +55,19 @@ const getCart = async (req, res, next) => {
  */
 const addToCart = async (req, res, next) => {
     try {
-        const userId = req.user?.id || null;
-        const sessionId = req.headers['x-session-id'] || req.body.sessionId || null;
-        const { variantId, quantity } = req.body;
+        const sessionId = getSessionId(req);
+        const { productId, variantId, quantity, size, color } = req.body;
 
-        if (!variantId) {
-            return res.status(httpStatus.BAD_REQUEST).send({
-                success: false,
-                message: 'variantId is required',
-            });
-        }
-
-        if (!quantity || quantity < 1) {
-            return res.status(httpStatus.BAD_REQUEST).send({
-                success: false,
-                message: 'quantity must be at least 1',
-            });
-        }
-
-        const cart = await cartService.addToCart({
-            userId,
+        const cart = await storefrontCheckoutService.addToCart({
             sessionId,
+            productId,
             variantId,
             quantity,
+            size,
+            color,
         });
 
-        // If guest, return session ID in header
-        if (!userId && cart.sessionId) {
-            res.setHeader('x-session-id', cart.sessionId);
-        }
+        setSessionHeader(res, cart.sessionId || sessionId);
 
         return successResponse(
             res,
@@ -75,27 +76,7 @@ const addToCart = async (req, res, next) => {
             httpStatus.CREATED
         );
     } catch (error) {
-        if (error.statusCode === 404) {
-            return res.status(httpStatus.NOT_FOUND).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        if (error.statusCode === 409) {
-            return res.status(httpStatus.CONFLICT).send({
-                success: false,
-                message: error.message,
-                code: error.code,
-                availableStock: error.availableStock,
-            });
-        }
-        if (error.statusCode === 400) {
-            return res.status(httpStatus.BAD_REQUEST).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        next(error);
+        return handleCartError(error, res, next);
     }
 };
 
@@ -105,16 +86,9 @@ const addToCart = async (req, res, next) => {
  */
 const updateCartItem = async (req, res, next) => {
     try {
-        const userId = req.user?.id || null;
-        const cartItemId = parseInt(req.params.id, 10);
+        const sessionId = getSessionId(req);
+        const cartItemId = req.params.id;
         const { quantity } = req.body;
-
-        if (Number.isNaN(cartItemId)) {
-            return res.status(httpStatus.BAD_REQUEST).send({
-                success: false,
-                message: 'Invalid cart item ID',
-            });
-        }
 
         if (quantity === undefined || quantity === null) {
             return res.status(httpStatus.BAD_REQUEST).send({
@@ -123,35 +97,16 @@ const updateCartItem = async (req, res, next) => {
             });
         }
 
-        const cart = await cartService.updateCartItem({
-            cartItemId,
+        const cart = await storefrontCheckoutService.updateCartItem({
+            sessionId,
+            itemId: cartItemId,
             quantity,
-            userId,
         });
 
+        setSessionHeader(res, cart.sessionId || sessionId);
         return successResponse(res, cart, 'Cart item updated successfully');
     } catch (error) {
-        if (error.statusCode === 404) {
-            return res.status(httpStatus.NOT_FOUND).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        if (error.statusCode === 403) {
-            return res.status(httpStatus.FORBIDDEN).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        if (error.statusCode === 409) {
-            return res.status(httpStatus.CONFLICT).send({
-                success: false,
-                message: error.message,
-                code: error.code,
-                availableStock: error.availableStock,
-            });
-        }
-        next(error);
+        return handleCartError(error, res, next);
     }
 };
 
@@ -161,36 +116,18 @@ const updateCartItem = async (req, res, next) => {
  */
 const removeCartItem = async (req, res, next) => {
     try {
-        const userId = req.user?.id || null;
-        const cartItemId = parseInt(req.params.id, 10);
+        const sessionId = getSessionId(req);
+        const cartItemId = req.params.id;
 
-        if (Number.isNaN(cartItemId)) {
-            return res.status(httpStatus.BAD_REQUEST).send({
-                success: false,
-                message: 'Invalid cart item ID',
-            });
-        }
-
-        const cart = await cartService.removeCartItem({
-            cartItemId,
-            userId,
+        const cart = await storefrontCheckoutService.removeCartItem({
+            sessionId,
+            itemId: cartItemId,
         });
 
+        setSessionHeader(res, cart.sessionId || sessionId);
         return successResponse(res, cart, 'Item removed from cart successfully');
     } catch (error) {
-        if (error.statusCode === 404) {
-            return res.status(httpStatus.NOT_FOUND).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        if (error.statusCode === 403) {
-            return res.status(httpStatus.FORBIDDEN).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        next(error);
+        return handleCartError(error, res, next);
     }
 };
 
@@ -200,51 +137,13 @@ const removeCartItem = async (req, res, next) => {
  */
 const clearCart = async (req, res, next) => {
     try {
-        const userId = req.user?.id || null;
-        const sessionId = req.headers['x-session-id'] || req.query.session_id || null;
-        const cartId = req.query.cart_id ? parseInt(req.query.cart_id, 10) : null;
+        const sessionId = getSessionId(req);
+        const cart = await storefrontCheckoutService.clearCart(sessionId);
 
-        // Get cart ID from query or fetch from user/session
-        let targetCartId = cartId;
-
-        if (!targetCartId) {
-            let cart = null;
-            if (userId) {
-                cart = await cartService.getOrCreateCart(userId, null);
-            } else if (sessionId) {
-                cart = await cartService.getOrCreateCart(null, sessionId);
-            }
-
-            if (!cart) {
-                return res.status(httpStatus.NOT_FOUND).send({
-                    success: false,
-                    message: 'Cart not found',
-                });
-            }
-
-            targetCartId = cart.id;
-        }
-
-        const cart = await cartService.clearCart({
-            cartId: targetCartId,
-            userId,
-        });
-
+        setSessionHeader(res, cart.sessionId || sessionId);
         return successResponse(res, cart, 'Cart cleared successfully');
     } catch (error) {
-        if (error.statusCode === 404) {
-            return res.status(httpStatus.NOT_FOUND).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        if (error.statusCode === 403) {
-            return res.status(httpStatus.FORBIDDEN).send({
-                success: false,
-                message: error.message,
-            });
-        }
-        next(error);
+        return handleCartError(error, res, next);
     }
 };
 
@@ -254,14 +153,7 @@ const clearCart = async (req, res, next) => {
  */
 const getCartById = async (req, res, next) => {
     try {
-        const cartId = parseInt(req.params.id, 10);
-
-        if (Number.isNaN(cartId)) {
-            return res.status(httpStatus.BAD_REQUEST).send({
-                success: false,
-                message: 'Invalid cart ID',
-            });
-        }
+        const cartId = req.params.id;
 
         const cart = await cartService.getCart(cartId);
         return successResponse(res, cart);

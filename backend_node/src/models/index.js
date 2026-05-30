@@ -6,6 +6,7 @@ const Wishlist = require('./wishlist.model');
 const Cart = require('./cart.model');
 const Review = require('./review.model');
 const Coupon = require('./coupon.model');
+const PromoBar = require('./promoBar.model');
 const InventoryAuditLog = require('./inventoryAudit.model');
 const OfflineSale = require('./offlineSale.model');
 const Role = require('./role.model');
@@ -32,7 +33,7 @@ const VisitorRegionDaily = require('./visitorRegionDaily.model');
 
 module.exports = { 
   Product, User, Order, Blog, Wishlist, Cart, 
-  Review, Coupon, InventoryAuditLog, OfflineSale,
+  Review, Coupon, PromoBar, InventoryAuditLog, OfflineSale,
   Role, Permission, Tenant,
   Category, SubcategoryGroup, SubcategoryValue,
   DailyStats, ProductPerformance,
