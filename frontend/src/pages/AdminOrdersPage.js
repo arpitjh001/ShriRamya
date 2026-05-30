@@ -261,6 +261,7 @@ const AdminOrdersPage = () => {
               placeholder="Search by order ID, customer name, or email..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              autoComplete="off"
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-border rounded-xl text-sm text-foreground placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-royal-maroon/20"
             />
           </div>
@@ -725,6 +726,10 @@ const AdminOrdersPage = () => {
         }}
       >
         <DialogContent className="max-w-md p-6 bg-white border-none shadow-luxury rounded-2xl text-slate-900">
+          {/* Dummy hidden inputs to intercept browser autofill and prevent it from polluting the search bar */}
+          <input type="text" name="dummy-username" style={{ display: 'none' }} autoComplete="username" />
+          <input type="password" name="dummy-password" style={{ display: 'none' }} autoComplete="current-password" />
+
           <DialogHeader className="pb-4">
             <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-600 animate-pulse" />
@@ -757,6 +762,7 @@ const AdminOrdersPage = () => {
                   placeholder="Enter secret code to authorize..."
                   value={deleteSecretInput}
                   onChange={(e) => setDeleteSecretInput(e.target.value)}
+                  autoComplete="new-password"
                   className="w-full px-3 py-2 bg-slate-50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-slate-900 font-sans"
                 />
               </div>
