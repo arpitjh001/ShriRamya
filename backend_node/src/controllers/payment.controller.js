@@ -49,9 +49,9 @@ const initiatePayment = async (req, res, next) => {
 
         // Store payment record
         await Payment.create({
-            orderId: order._id,
+            orderId: String(order._id),
             orderNumber: order.orderNumber,
-            userId,
+            userId: userId ? String(userId) : null,
             amount,
             currency,
             payment_method: 'razorpay',
@@ -71,14 +71,15 @@ const initiatePayment = async (req, res, next) => {
             'customer'
         );
 
+        const amountInPaise = razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise;
+        
         return successResponse(res, {
             orderId: razorpayOrder.orderId,
-            amount: razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise || Math.round(razorpayOrder.amount * 100),
-            amount_in_paise: razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise || Math.round(razorpayOrder.amount * 100),
-            amountInPaise: razorpayOrder.amountInPaise || razorpayOrder.amount_in_paise || Math.round(razorpayOrder.amount * 100),
+            amount_in_paise: amountInPaise,
+            amountInPaise: amountInPaise,
             display_amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
-            key: process.env.RAZORPAY_KEY_ID,
+            key: process.env.RAZORPAY_KEY_ID || '',
             receipt: razorpayOrder.receipt,
             status: razorpayOrder.status
         }, 'Payment order created successfully');
@@ -134,6 +135,7 @@ const verifyPayment = async (req, res, next) => {
         const order = await Order.findById(payment.orderId);
         if (order) {
             order.paymentStatus = 'paid';
+            order.payment_status = 'paid';
             order.status = 'processing';
             await order.save();
             

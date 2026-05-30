@@ -48,9 +48,11 @@ class RazorpayGateway {
         try {
             const razorpay = getRazorpayClient();
             if (!razorpay) {
+                const errorMsg = 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)';
+                console.error('RazorpayGateway error:', errorMsg);
                 return {
                     success: false,
-                    error: 'Razorpay is not configured (missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET)',
+                    error: errorMsg,
                 };
             }
 
@@ -78,10 +80,10 @@ class RazorpayGateway {
                 status: rzOrder.status
             };
         } catch (error) {
-            console.error('Razorpay createPayment error:', error);
+            console.error('Razorpay createPayment error:', error.message);
             return {
                 success: false,
-                error: error.message
+                error: error.message || 'Failed to create Razorpay order'
             };
         }
     }

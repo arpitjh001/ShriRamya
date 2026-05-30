@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
+import { motion, useScroll, useMotionValueEvent } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { wishlistAPI } from '../services/api';
+import { wishlistAPI, promoBarsAPI } from '../services/api';
 import AuthDialog from './AuthDialog';
 
 // Sub-components
 import PromoBar from './navbar/PromoBar';
 import NavIcons from './navbar/NavIcons';
 import SearchAutocomplete from './navbar/SearchAutocomplete';
-import MegaMenu from './navbar/MegaMenu';
 import MobileNav from './navbar/MobileNav';
 
 /**
@@ -29,6 +28,8 @@ const Navbar = ({ isHome = false }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [promoBar, setPromoBar] = useState(null);
+  const [isPromoBarLoading, setIsPromoBarLoading] = useState(true);
   
   // Scroll State
   const { scrollY } = useScroll();
@@ -98,7 +99,14 @@ const Navbar = ({ isHome = false }) => {
   });
 
   const isAdminPage = location.pathname.startsWith('/admin');
-  const isProductDetail = location.pathname.startsWith('/products/');
+  const promoLocation = useMemo(() => {
+    if (location.pathname === '/') return 'home';
+    if (location.pathname.startsWith('/category/')) return 'category';
+    if (location.pathname.startsWith('/products/')) return 'product';
+    if (location.pathname === '/cart') return 'cart';
+    if (location.pathname === '/checkout') return 'checkout';
+    return 'all';
+  }, [location.pathname]);
   const overlapsHero = isHome && !isAdminPage;
   const navbarTop = overlapsHero ? (isScrolled ? 0 : promoBarHeight) : 0;
 
@@ -167,14 +175,41 @@ const Navbar = ({ isHome = false }) => {
     }
   }, [location.pathname, location.hash]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadPromoBar = async () => {
+      setIsPromoBarLoading(true);
+      try {
+        const response = await promoBarsAPI.getStorefront(promoLocation);
+        if (!isCancelled) {
+          setPromoBar(response.promoBar || null);
+        }
+      } catch (error) {
+        console.warn('Promo bar fetch failed:', error?.message || error);
+        if (!isCancelled) {
+          setPromoBar(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsPromoBarLoading(false);
+        }
+      }
+    };
+
+    loadPromoBar();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [promoLocation]);
+
   return (
     <header className={`${overlapsHero ? 'relative' : 'sticky'} left-0 right-0 top-0 z-[110]`}>
       <div ref={promoBarRef}>
         <PromoBar
-          messages={isHome 
-          ? ["Experience Royal Elegance", "Use code: FESTIVE15 for 15% OFF", "Free shipping on orders above ₹2500"] 
-            : ["Luxury Heritage Wear", "Use code: FESTIVE15 for 15% OFF"]
-          }
+          promoBar={promoBar}
+          loading={isPromoBarLoading}
           variant="default"
           showDashboard={user && isAdmin()}
           onDashboardClick={() => navigate('/admin/dashboard')}

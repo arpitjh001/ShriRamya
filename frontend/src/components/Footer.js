@@ -23,13 +23,19 @@ const Footer = () => {
             </p>
             <div className="flex gap-3">
               <a
-                href="#"
+                href="https://www.facebook.com/share/1E721X6FAg/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
                 className="glass-dark inline-flex h-10 w-10 items-center justify-center rounded-full text-accent transition-all hover:-translate-y-0.5 hover:bg-accent/20 hover:text-primary-foreground"
               >
                 <Facebook className="h-4 w-4" />
               </a>
               <a
-                href="#"
+                href="https://www.instagram.com/shriramya_royal_ethnic_attire?utm_source=qr&igsh=MW1wbHVwenhtdzAwcw=="
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
                 className="glass-dark inline-flex h-10 w-10 items-center justify-center rounded-full text-accent transition-all hover:-translate-y-0.5 hover:bg-accent/20 hover:text-primary-foreground"
               >
                 <Instagram className="h-4 w-4" />

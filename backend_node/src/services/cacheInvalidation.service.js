@@ -39,6 +39,10 @@ class CacheInvalidationService {
     const normalizedCode = String(code || '*').trim().toLowerCase();
     await cacheService.delPattern(`coupon:validate:${normalizedCode}:*`);
   }
+
+  async invalidatePromoBars() {
+    await cacheService.delPattern('promo_bar:*');
+  }
 }
 
 module.exports = new CacheInvalidationService();

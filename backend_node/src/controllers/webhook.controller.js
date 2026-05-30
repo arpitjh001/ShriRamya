@@ -145,7 +145,7 @@ async function handleRazorpayPaymentStatus(payment, status) {
 
         // Update Payment record
         await Payment.findOneAndUpdate(
-            { orderId: order._id },
+            { orderId: String(order._id) },
             { 
                 $set: { 
                     status, 
@@ -197,7 +197,7 @@ async function handleStripePaymentStatus(paymentIntent, status) {
         }
 
         await Payment.findOneAndUpdate(
-            { orderId: order._id },
+            { orderId: String(order._id) },
             { 
                 $set: { 
                     status, 
