@@ -75,6 +75,14 @@ export const CartProvider = ({ children }) => {
       }
 
       setCart(response.data);
+      if (response.data?.appliedCoupon) {
+        setAppliedCoupon(response.data.appliedCoupon);
+        setDiscountAmount(response.data.appliedCoupon.discount_amount || 0);
+      } else {
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+      }
+
       trackAnalyticsEvent('add_to_cart', {
         user_id: user?._id || user?.id || null,
         product_id: payload.productId,
@@ -98,6 +106,13 @@ export const CartProvider = ({ children }) => {
       const storedSessionId = getSessionId() || sessionId;
       const response = await cartAPI.updateQuantity(cartItemId, quantity, storedSessionId);
       setCart(response.data);
+      if (response.data?.appliedCoupon) {
+        setAppliedCoupon(response.data.appliedCoupon);
+        setDiscountAmount(response.data.appliedCoupon.discount_amount || 0);
+      } else {
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+      }
       return response.data;
     } catch (error) {
       console.error('Failed to update quantity:', error);
@@ -110,6 +125,13 @@ export const CartProvider = ({ children }) => {
       const storedSessionId = getSessionId() || sessionId;
       const response = await cartAPI.remove(cartItemId, storedSessionId);
       setCart(response.data);
+      if (response.data?.appliedCoupon) {
+        setAppliedCoupon(response.data.appliedCoupon);
+        setDiscountAmount(response.data.appliedCoupon.discount_amount || 0);
+      } else {
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+      }
       trackAnalyticsEvent('remove_from_cart', {
         user_id: user?._id || user?.id || null,
         cart_id: response.data?.id || response.data?._id || response.data?.cartId || storedSessionId || sessionId,

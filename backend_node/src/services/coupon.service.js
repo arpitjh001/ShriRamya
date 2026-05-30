@@ -499,6 +499,30 @@ class CouponService {
     return cart.appliedCoupon || null;
   }
 
+  async recalculateAppliedCoupon(cart) {
+    if (!cart || !cart.appliedCoupon || !cart.appliedCoupon.code) {
+      return cart;
+    }
+
+    try {
+      const couponCode = cart.appliedCoupon.code;
+      const subtotal = this.calculateCartSubtotal(cart);
+      
+      const { coupon, discount, finalTotal, source } = await this.validateAndApplyCoupon(
+        couponCode,
+        { subtotal, items: cart.items || [] },
+        cart.userId ? String(cart.userId) : null
+      );
+      
+      cart.appliedCoupon = this.serializeAppliedCoupon(coupon, source, discount, finalTotal);
+    } catch (error) {
+      console.log(`[CouponService] Removing coupon ${cart.appliedCoupon.code} due to invalidation: ${error.message}`);
+      cart.appliedCoupon = null;
+    }
+
+    return cart;
+  }
+
   _validateCouponData(data) {
     if (!data.code || data.code.trim().length === 0) throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code is required');
     if (data.type !== 'free_shipping' && (!data.value || data.value <= 0)) {

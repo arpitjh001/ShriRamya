@@ -336,6 +336,7 @@ class StorefrontCheckoutService {
       totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
       createdAt: cart.created_at || cart.createdAt || null,
       updatedAt: cart.updated_at || cart.updatedAt || null,
+      appliedCoupon: cart.appliedCoupon || null,
     };
   }
 
@@ -389,6 +390,9 @@ class StorefrontCheckoutService {
       });
     }
 
+    if (cart.appliedCoupon) {
+      await couponService.recalculateAppliedCoupon(cart);
+    }
     await cart.save();
     return this.serializeCart(cart);
   }
@@ -431,6 +435,9 @@ class StorefrontCheckoutService {
 
     cartItem.quantity = nextQuantity;
     cartItem.priceSnapshot = this.getEffectivePrice(product, variant);
+    if (cart.appliedCoupon) {
+      await couponService.recalculateAppliedCoupon(cart);
+    }
     await cart.save();
 
     return this.serializeCart(cart);
@@ -443,6 +450,9 @@ class StorefrontCheckoutService {
     }
 
     cart.items.pull(String(itemId));
+    if (cart.appliedCoupon) {
+      await couponService.recalculateAppliedCoupon(cart);
+    }
     await cart.save();
     return this.serializeCart(cart);
   }
