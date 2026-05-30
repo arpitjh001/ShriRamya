@@ -25,6 +25,12 @@ function generateOrderNumber() {
     return `ORD-${year}-${timestamp}`;
 }
 
+function buildRazorpayReceipt(order) {
+    const orderIdPart = String(order?._id || '').slice(-12);
+    const timePart = String(Date.now()).slice(-8);
+    return `rcpt_${orderIdPart}_${timePart}`;
+}
+
 function escapeRegex(value = '') {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -143,11 +149,14 @@ const createOrder = async (req, res, next) => {
         const shippingCost = calculateShippingCharge(subtotal);
         const grandTotal = Math.round((subtotal - discountTotal + taxTotal + shippingCost) * 100) / 100;
 
+        const normalizedPaymentMethod = paymentMethod || 'cod';
+        const isOnlinePayment = normalizedPaymentMethod !== 'cod';
+
         const order = await Order.create({
             userId,
             tenant_id: tenantId,
             orderId: generateOrderNumber(),
-            status: 'pending',
+            status: isOnlinePayment ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING,
             paymentStatus: 'pending',
             fulfillment_status: 'unfulfilled',
             items: processedItems,
@@ -163,7 +172,7 @@ const createOrder = async (req, res, next) => {
             finalTotal: grandTotal,
             couponId: appliedCouponId,
             couponCode: appliedCouponCode,
-            paymentMethod: paymentMethod || 'cod',
+            paymentMethod: normalizedPaymentMethod,
             userEmail: user?.email || shippingToSave.email,
             userName: user?.name || shippingToSave.name,
             customerEmail: user?.email || shippingToSave.email,
@@ -174,7 +183,7 @@ const createOrder = async (req, res, next) => {
             customerNotes
         });
         
-        if (paymentMethod === 'cod') {
+        if (normalizedPaymentMethod === 'cod') {
             try {
                 // Use OrderStateMachine to handle PAID status and stock reduction for COD
                 await orderStateMachine.transitionStatus(order._id, ORDER_STATUS.PAID, {
@@ -192,7 +201,7 @@ const createOrder = async (req, res, next) => {
             await orderEventService.logEvent(
                 order._id,
                 'order_created',
-                `Order ${order.orderId} created (${paymentMethod === 'cod' ? 'COD' : 'Online'})`,
+                `Order ${order.orderId} created (${normalizedPaymentMethod === 'cod' ? 'COD' : 'Online'})`,
                 { grandTotal },
                 userId,
                 userId ? 'customer' : 'guest'
@@ -202,8 +211,11 @@ const createOrder = async (req, res, next) => {
         }
 
         let razorpayData = null;
-        if (paymentMethod !== 'cod') {
+        if (normalizedPaymentMethod !== 'cod') {
             const RazorpayGateway = require('../services/payments/RazorpayGateway');
+            const isProductionRuntime = String(config.env || process.env.NODE_ENV || '').toLowerCase() === 'production'
+                || String(process.env.VERCEL_ENV || '').toLowerCase() === 'production';
+            const razorpayKeyId = config.razorpay?.keyId || process.env.RAZORPAY_KEY_ID;
             
             if (RazorpayGateway.isConfigured()) {
                 try {
@@ -213,7 +225,7 @@ const createOrder = async (req, res, next) => {
                         userId,
                         amount: grandTotal,
                         currency: 'INR',
-                        receipt: `order_${order._id}_${Date.now()}`
+                        receipt: buildRazorpayReceipt(order)
                     });
 
                     if (paymentResult.success) {
@@ -225,11 +237,14 @@ const createOrder = async (req, res, next) => {
                             amountInPaise: paymentResult.amountInPaise || paymentResult.amount_in_paise || Math.round(paymentResult.amount * 100),
                             display_amount: paymentResult.amount,
                             currency: paymentResult.currency,
-                            razorpay_key_id: process.env.RAZORPAY_KEY_ID,
-                            key: process.env.RAZORPAY_KEY_ID
+                            razorpay_key_id: razorpayKeyId,
+                            key: razorpayKeyId
                         };
                     } else {
                         console.warn('[OrderController] Razorpay createPayment returned failure:', paymentResult.error);
+                        if (isProductionRuntime) {
+                            throw new ApiError(httpStatus.BAD_GATEWAY, paymentResult.error || 'Unable to initialize Razorpay payment');
+                        }
                         // Fall back to mock payment
                         razorpayData = {
                             razorpay_order_id: `order_mock_${Date.now()}`,
@@ -247,6 +262,9 @@ const createOrder = async (req, res, next) => {
                     }
                 } catch (rzpError) {
                     console.error('[OrderController] Razorpay payment error:', rzpError.message);
+                    if (isProductionRuntime) {
+                        throw rzpError;
+                    }
                     // Fall back to mock payment on any exception
                     razorpayData = {
                         razorpay_order_id: `order_mock_${Date.now()}`,
@@ -263,6 +281,9 @@ const createOrder = async (req, res, next) => {
                     };
                 }
             } else {
+                if (isProductionRuntime) {
+                    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Razorpay is not configured on the server');
+                }
                 razorpayData = {
                     razorpay_order_id: `order_mock_${Date.now()}`,
                     razorpayOrderId: `order_mock_${Date.now()}`,

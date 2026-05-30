@@ -1,16 +1,22 @@
 const Joi = require('joi');
 
+const mongoOrNumericId = Joi.alternatives().try(
+    Joi.string().trim().min(1),
+    Joi.number().integer().min(1)
+);
+
 /**
  * Add item to cart validation
  */
 const addToCart = {
     body: Joi.object().keys({
-        variantId: Joi.number().integer().min(1).required()
+        productId: mongoOrNumericId.optional()
             .messages({
-                'number.base': 'variantId must be a number',
-                'number.integer': 'variantId must be an integer',
-                'number.min': 'variantId must be at least 1',
-                'any.required': 'variantId is required',
+                'alternatives.match': 'productId must be a valid product identifier',
+            }),
+        variantId: mongoOrNumericId.optional()
+            .messages({
+                'alternatives.match': 'variantId must be a valid variant identifier',
             }),
         quantity: Joi.number().integer().min(1).default(1)
             .messages({
@@ -18,10 +24,14 @@ const addToCart = {
                 'number.integer': 'quantity must be an integer',
                 'number.min': 'quantity must be at least 1',
             }),
+        color: Joi.string().allow('', null).optional(),
+        size: Joi.string().allow('', null).optional(),
         sessionId: Joi.string().optional()
             .messages({
                 'string.base': 'sessionId must be a string',
             }),
+    }).or('productId', 'variantId').messages({
+        'object.missing': 'productId or variantId is required',
     }),
 };
 
@@ -30,11 +40,9 @@ const addToCart = {
  */
 const updateCartItem = {
     params: Joi.object().keys({
-        id: Joi.number().integer().min(1).required()
+        id: mongoOrNumericId.required()
             .messages({
-                'number.base': 'Cart item ID must be a number',
-                'number.integer': 'Cart item ID must be an integer',
-                'number.min': 'Cart item ID must be at least 1',
+                'alternatives.match': 'Cart item ID must be a valid identifier',
                 'any.required': 'Cart item ID is required',
             }),
     }),
@@ -54,11 +62,9 @@ const updateCartItem = {
  */
 const removeCartItem = {
     params: Joi.object().keys({
-        id: Joi.number().integer().min(1).required()
+        id: mongoOrNumericId.required()
             .messages({
-                'number.base': 'Cart item ID must be a number',
-                'number.integer': 'Cart item ID must be an integer',
-                'number.min': 'Cart item ID must be at least 1',
+                'alternatives.match': 'Cart item ID must be a valid identifier',
                 'any.required': 'Cart item ID is required',
             }),
     }),
@@ -69,11 +75,9 @@ const removeCartItem = {
  */
 const getCartById = {
     params: Joi.object().keys({
-        id: Joi.number().integer().min(1).required()
+        id: mongoOrNumericId.required()
             .messages({
-                'number.base': 'Cart ID must be a number',
-                'number.integer': 'Cart ID must be an integer',
-                'number.min': 'Cart ID must be at least 1',
+                'alternatives.match': 'Cart ID must be a valid identifier',
                 'any.required': 'Cart ID is required',
             }),
     }),
@@ -84,11 +88,9 @@ const getCartById = {
  */
 const clearCart = {
     query: Joi.object().keys({
-        cart_id: Joi.number().integer().min(1).optional()
+        cart_id: mongoOrNumericId.optional()
             .messages({
-                'number.base': 'cart_id must be a number',
-                'number.integer': 'cart_id must be an integer',
-                'number.min': 'cart_id must be at least 1',
+                'alternatives.match': 'cart_id must be a valid identifier',
             }),
         session_id: Joi.string().optional()
             .messages({

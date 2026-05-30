@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -8,15 +7,61 @@ import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
-import { Tag, Edit, Trash2, Plus, Search, Loader2, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
-import { couponsAPI, categoriesAPI } from '../services/api';
+import { Switch } from '../components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Textarea } from '../components/ui/textarea';
+import { Tag, Edit, Trash2, Plus, Search, Loader2, Clock, CheckCircle, XCircle, TrendingUp, Megaphone, Eye } from 'lucide-react';
+import { couponsAPI, categoriesAPI, promoBarsAPI } from '../services/api';
 import { toast } from 'sonner';
-import { Skeleton } from '../components/ui/skeleton';
+
+const PROMO_LOCATIONS = [
+  { value: 'all', label: 'All pages' },
+  { value: 'home', label: 'Home' },
+  { value: 'category', label: 'Category' },
+  { value: 'product', label: 'Product' },
+  { value: 'cart', label: 'Cart' },
+  { value: 'checkout', label: 'Checkout' },
+];
+
+const emptyPromoBarForm = {
+  title: '',
+  promoText: '',
+  couponCode: '',
+  displayLocation: 'all',
+  isActive: true,
+  startDate: '',
+  endDate: '',
+  priority: '0',
+  backgroundColor: '',
+  textColor: '',
+};
+
+const toDateTimeLocalInputValue = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const pad = (part) => String(part).padStart(2, '0');
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join('-') + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const toIsoFromDateTimeLocalInput = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+};
 
 const AdminCouponsPage = () => {
   const [coupons, setCoupons] = useState([]);
+  const [promoBars, setPromoBars] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [promoBarsLoading, setPromoBarsLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState('coupons');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -32,7 +77,11 @@ const AdminCouponsPage = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPromoCreateDialog, setShowPromoCreateDialog] = useState(false);
+  const [showPromoEditDialog, setShowPromoEditDialog] = useState(false);
+  const [showPromoDeleteDialog, setShowPromoDeleteDialog] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
+  const [selectedPromoBar, setSelectedPromoBar] = useState(null);
   
   // Form states
   const [saving, setSaving] = useState(false);
@@ -51,6 +100,7 @@ const AdminCouponsPage = () => {
     buy_x_qty: 1,
     get_y_qty: 1,
   });
+  const [promoFormData, setPromoFormData] = useState({ ...emptyPromoBarForm });
 
   useEffect(() => {
     loadCoupons(1);
@@ -59,6 +109,12 @@ const AdminCouponsPage = () => {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    if (activeSection === 'promo-bars') {
+      loadPromoBars();
+    }
+  }, [activeSection]);
 
   // Debounced search
   useEffect(() => {
@@ -95,6 +151,19 @@ const AdminCouponsPage = () => {
       toast.error('Failed to load coupons');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPromoBars = async () => {
+    setPromoBarsLoading(true);
+    try {
+      const response = await promoBarsAPI.getAll();
+      setPromoBars(response.promoBars || []);
+    } catch (error) {
+      console.error('Failed to load promo bars:', error);
+      toast.error('Failed to load promo bars');
+    } finally {
+      setPromoBarsLoading(false);
     }
   };
 
@@ -164,6 +233,92 @@ const AdminCouponsPage = () => {
       buy_x_qty: 1,
       get_y_qty: 1,
     });
+  };
+
+  const resetPromoForm = () => {
+    setPromoFormData({ ...emptyPromoBarForm });
+  };
+
+  const buildPromoBarPayload = () => ({
+    title: promoFormData.title?.trim() || '',
+    promoText: promoFormData.promoText?.trim(),
+    couponCode: promoFormData.couponCode?.trim() || null,
+    displayLocation: promoFormData.displayLocation,
+    isActive: Boolean(promoFormData.isActive),
+    startDate: toIsoFromDateTimeLocalInput(promoFormData.startDate),
+    endDate: toIsoFromDateTimeLocalInput(promoFormData.endDate),
+    priority: promoFormData.priority === '' ? 0 : Number(promoFormData.priority),
+    backgroundColor: promoFormData.backgroundColor?.trim() || '',
+    textColor: promoFormData.textColor?.trim() || '',
+  });
+
+  const handleCreatePromoBar = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await promoBarsAPI.create(buildPromoBarPayload());
+      toast.success('Promo bar created successfully');
+      setShowPromoCreateDialog(false);
+      resetPromoForm();
+      loadPromoBars();
+    } catch (error) {
+      console.error('Failed to create promo bar:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to create promo bar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdatePromoBar = async (e) => {
+    e.preventDefault();
+    if (!selectedPromoBar) return;
+    setSaving(true);
+    try {
+      await promoBarsAPI.update(selectedPromoBar.id || selectedPromoBar._id, buildPromoBarPayload());
+      toast.success('Promo bar updated successfully');
+      setShowPromoEditDialog(false);
+      setSelectedPromoBar(null);
+      resetPromoForm();
+      loadPromoBars();
+    } catch (error) {
+      console.error('Failed to update promo bar:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to update promo bar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTogglePromoBar = async (promoBar, isActive) => {
+    const id = promoBar.id || promoBar._id;
+    try {
+      setPromoBars((current) => current.map((item) => (
+        (item.id || item._id) === id ? { ...item, isActive } : item
+      )));
+      await promoBarsAPI.toggle(id, isActive);
+      toast.success(isActive ? 'Promo bar enabled' : 'Promo bar disabled');
+      loadPromoBars();
+    } catch (error) {
+      console.error('Failed to toggle promo bar:', error);
+      toast.error('Failed to update promo bar status');
+      loadPromoBars();
+    }
+  };
+
+  const handleDeletePromoBar = async () => {
+    if (!selectedPromoBar) return;
+    setSaving(true);
+    try {
+      await promoBarsAPI.delete(selectedPromoBar.id || selectedPromoBar._id);
+      toast.success('Promo bar deleted successfully');
+      setShowPromoDeleteDialog(false);
+      setSelectedPromoBar(null);
+      loadPromoBars();
+    } catch (error) {
+      console.error('Failed to delete promo bar:', error);
+      toast.error('Failed to delete promo bar');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCreate = async (e) => {
@@ -264,6 +419,23 @@ const AdminCouponsPage = () => {
     });
     setShowEditDialog(true);
   };
+
+  const openPromoEditDialog = (promoBar) => {
+    setSelectedPromoBar(promoBar);
+    setPromoFormData({
+      title: promoBar.title || '',
+      promoText: promoBar.promoText || '',
+      couponCode: promoBar.couponCode || '',
+      displayLocation: promoBar.displayLocation || 'all',
+      isActive: Boolean(promoBar.isActive),
+      startDate: toDateTimeLocalInputValue(promoBar.startDate),
+      endDate: toDateTimeLocalInputValue(promoBar.endDate),
+      priority: String(promoBar.priority ?? 0),
+      backgroundColor: promoBar.backgroundColor || '',
+      textColor: promoBar.textColor || '',
+    });
+    setShowPromoEditDialog(true);
+  };
   const getTypeBadge = (type, value) => {
     const badges = {
       percentage: `${value}% OFF`,
@@ -288,8 +460,14 @@ const AdminCouponsPage = () => {
     setShowDeleteDialog(true);
   };
 
+  const openPromoDeleteDialog = (promoBar) => {
+    setSelectedPromoBar(promoBar);
+    setShowPromoDeleteDialog(true);
+  };
+
   // Data is now filtered server-side
   const displayedCoupons = coupons;
+  const activePromoBarsCount = promoBars.filter((promoBar) => promoBar.isActive).length;
 
   return (
     <div className="admin-dashboard-shell min-h-screen pt-24 pb-12 font-body px-6">
@@ -329,6 +507,25 @@ const AdminCouponsPage = () => {
         />
       </div>
 
+      <Tabs value={activeSection} onValueChange={setActiveSection} className="space-y-6">
+        <TabsList className="h-auto rounded-2xl border border-border bg-white p-1 shadow-luxury-sm">
+          <TabsTrigger
+            value="coupons"
+            className="gap-2 rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-700 data-[state=active]:!bg-blue-950 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-950/20"
+          >
+            <Tag className="h-4 w-4" />
+            Coupons
+          </TabsTrigger>
+          <TabsTrigger
+            value="promo-bars"
+            className="gap-2 rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-700 data-[state=active]:!bg-blue-950 data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-blue-950/20"
+          >
+            <Megaphone className="h-4 w-4" />
+            Promo Bar
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="coupons" className="mt-0">
       {/* Header & Controls Card */}
       <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-luxury-sm border-border space-y-8">
         <div className="flex items-center justify-between">
@@ -715,6 +912,33 @@ const AdminCouponsPage = () => {
           </div>
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="promo-bars" className="mt-0">
+          <PromoBarAdminSection
+            promoBars={promoBars}
+            coupons={coupons}
+            loading={promoBarsLoading}
+            saving={saving}
+            activeCount={activePromoBarsCount}
+            showCreateDialog={showPromoCreateDialog}
+            setShowCreateDialog={setShowPromoCreateDialog}
+            showEditDialog={showPromoEditDialog}
+            setShowEditDialog={setShowPromoEditDialog}
+            showDeleteDialog={showPromoDeleteDialog}
+            setShowDeleteDialog={setShowPromoDeleteDialog}
+            promoFormData={promoFormData}
+            setPromoFormData={setPromoFormData}
+            onCreate={handleCreatePromoBar}
+            onEdit={handleUpdatePromoBar}
+            onDelete={handleDeletePromoBar}
+            onToggle={handleTogglePromoBar}
+            onOpenEdit={openPromoEditDialog}
+            onOpenDelete={openPromoDeleteDialog}
+            resetPromoForm={resetPromoForm}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
@@ -966,6 +1190,484 @@ const CategoryTargetField = ({ categories = [], selectedCategoryIds = [], onChan
           })}
         </div>
       )}
+    </div>
+  );
+};
+
+const PromoBarAdminSection = ({
+  promoBars = [],
+  coupons = [],
+  loading,
+  saving,
+  activeCount,
+  showCreateDialog,
+  setShowCreateDialog,
+  showEditDialog,
+  setShowEditDialog,
+  showDeleteDialog,
+  setShowDeleteDialog,
+  promoFormData,
+  setPromoFormData,
+  onCreate,
+  onEdit,
+  onDelete,
+  onToggle,
+  onOpenEdit,
+  onOpenDelete,
+  resetPromoForm,
+}) => {
+  const formatDate = (value) => {
+    if (!value) return 'Open';
+    return new Date(value).toLocaleDateString();
+  };
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-luxury-sm space-y-8">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-3xl font-heading font-bold text-foreground">Promo Bar</h2>
+          <p className="text-muted-foreground">Manage storefront announcement text and coupon nudges.</p>
+        </div>
+        <Dialog
+          open={showCreateDialog}
+          onOpenChange={(open) => {
+            setShowCreateDialog(open);
+            if (!open) resetPromoForm();
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button className="bg-royal-maroon text-white hover:bg-royal-maroon/90 shadow-lg px-6">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Promo Bar
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl bg-white border-border text-foreground rounded-3xl overflow-hidden shadow-luxury scrollbar-hide">
+            <DialogHeader className="border-b border-border pb-6">
+              <DialogTitle className="text-2xl font-heading font-bold text-foreground tracking-tight">
+                New <span className="text-royal-maroon">Promo</span> Bar
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground italic font-medium">
+                Configure the announcement shown across the storefront.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={onCreate} className="space-y-6 py-6 max-h-[72vh] overflow-y-auto px-1 custom-scrollbar">
+              <PromoBarFormFields
+                formData={promoFormData}
+                setFormData={setPromoFormData}
+                coupons={coupons}
+              />
+              <DialogFooter className="border-t border-border pt-6">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowCreateDialog(false)}
+                  className="text-muted-foreground hover:text-foreground hover:bg-slate-100 px-6 font-bold uppercase tracking-widest text-[10px]"
+                >
+                  Discard
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-royal-maroon hover:bg-royal-maroon/90 text-white px-8 shadow-luxury font-bold uppercase tracking-widest text-[10px] rounded-xl border-none h-11"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Publish Promo'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total messages</p>
+          <p className="mt-2 text-3xl font-bold text-foreground">{promoBars.length}</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Enabled</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-700">{activeCount}</p>
+        </div>
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Priority rule</p>
+          <p className="mt-3 text-sm font-medium leading-relaxed text-slate-600">
+            Highest priority wins for each location.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-white overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+        <Table className="min-w-[980px] lg:min-w-full">
+          <TableHeader className="bg-slate-50">
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="text-muted-foreground">Title</TableHead>
+              <TableHead className="text-muted-foreground">Coupon</TableHead>
+              <TableHead className="text-muted-foreground">Location</TableHead>
+              <TableHead className="text-muted-foreground">Priority</TableHead>
+              <TableHead className="text-muted-foreground">Schedule</TableHead>
+              <TableHead className="text-muted-foreground">Status</TableHead>
+              <TableHead className="text-muted-foreground">Preview</TableHead>
+              <TableHead className="text-right text-muted-foreground">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center text-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                </TableCell>
+              </TableRow>
+            ) : promoBars.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  No promo bar entries found
+                </TableCell>
+              </TableRow>
+            ) : (
+              promoBars.map((promoBar) => (
+                <TableRow key={promoBar.id || promoBar._id} className="border-border hover:bg-slate-50">
+                  <TableCell className="max-w-[300px]">
+                    <div className="font-semibold text-foreground truncate" title={promoBar.title || 'Untitled promo'}>
+                      {promoBar.title || 'Untitled promo'}
+                    </div>
+                    {promoBar.promoText && (
+                      <div className="mt-1 text-xs text-slate-500 truncate" title={promoBar.promoText}>
+                        {promoBar.promoText}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs font-bold text-slate-600">
+                    {promoBar.couponCode || '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="border-slate-200 text-foreground capitalize">
+                      {PROMO_LOCATIONS.find((item) => item.value === promoBar.displayLocation)?.label || promoBar.displayLocation}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-slate-600">{promoBar.priority ?? 0}</TableCell>
+                  <TableCell className="text-xs text-slate-600">
+                    {formatDate(promoBar.startDate)} - {formatDate(promoBar.endDate)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={Boolean(promoBar.isActive)}
+                        onCheckedChange={(checked) => onToggle(promoBar, checked)}
+                        className="data-[state=checked]:bg-royal-maroon"
+                      />
+                      <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                        {promoBar.isActive ? 'On' : 'Off'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <PromoBarPreview promoBar={promoBar} compact />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onOpenEdit(promoBar)}
+                        className="text-slate-400 hover:text-foreground"
+                        aria-label="Edit promo bar"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onOpenDelete(promoBar)}
+                        className="text-red-400 hover:text-red-600"
+                        aria-label="Delete promo bar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl bg-white border-border text-foreground rounded-3xl overflow-hidden shadow-luxury scrollbar-hide">
+          <DialogHeader className="border-b border-border pb-6">
+            <DialogTitle className="text-2xl font-heading font-bold text-foreground tracking-tight">
+              Edit <span className="text-royal-maroon">Promo</span> Bar
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground italic font-medium">
+              Update storefront announcement settings.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={onEdit} className="space-y-6 py-6 max-h-[72vh] overflow-y-auto px-1 custom-scrollbar">
+            <PromoBarFormFields
+              formData={promoFormData}
+              setFormData={setPromoFormData}
+              coupons={coupons}
+            />
+            <DialogFooter className="border-t border-border pt-6">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowEditDialog(false)}
+                className="text-muted-foreground hover:text-foreground hover:bg-slate-100 px-6 font-bold uppercase tracking-widest text-[10px]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-royal-gold hover:bg-royal-gold/90 text-slate-900 px-8 shadow-luxury font-bold uppercase tracking-widest text-[10px] rounded-xl border-none h-11"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Promo'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md bg-white border border-rose-100 text-foreground rounded-3xl overflow-hidden shadow-2xl">
+          <DialogHeader className="pt-4 flex flex-col items-center text-center">
+            <div className="h-16 w-16 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-6">
+              <Trash2 className="w-8 h-8 text-rose-500" />
+            </div>
+            <DialogTitle className="text-2xl font-heading font-bold text-foreground tracking-tight">
+              Delete <span className="text-rose-500">Promo</span> Bar?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground mt-4 px-4">
+              This will remove the selected promo bar entry from storefront configuration.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-3 pt-8 pb-4">
+            <Button
+              variant="ghost"
+              onClick={() => setShowDeleteDialog(false)}
+              className="flex-1 text-muted-foreground hover:text-foreground hover:bg-slate-100 font-bold uppercase tracking-widest text-[10px] h-11"
+            >
+              Keep
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={onDelete}
+              disabled={saving}
+              className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold uppercase tracking-widest text-[10px] h-11 rounded-xl shadow-lg border-none"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+const PromoBarFormFields = ({ formData, setFormData, coupons = [] }) => {
+  const updateField = (field, value) => {
+    setFormData((current) => ({ ...current, [field]: value }));
+  };
+
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="promoText" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+          Promo Text *
+        </Label>
+        <Textarea
+          id="promoText"
+          value={formData.promoText}
+          onChange={(e) => updateField('promoText', e.target.value)}
+          placeholder="Enter storefront announcement"
+          className="min-h-[88px] bg-slate-50 border-border text-foreground placeholder:text-slate-400 focus:ring-royal-maroon/20"
+          required
+          maxLength={240}
+        />
+        <div className="text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          {formData.promoText.length}/240
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="promoTitle" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Title
+          </Label>
+          <Input
+            id="promoTitle"
+            value={formData.title}
+            onChange={(e) => updateField('title', e.target.value)}
+            placeholder="Internal label"
+            className="bg-slate-50 border-border text-foreground h-11"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="couponCode" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Coupon Code
+          </Label>
+          <Input
+            id="couponCode"
+            list="promo-coupon-codes"
+            value={formData.couponCode}
+            onChange={(e) => updateField('couponCode', e.target.value.toUpperCase())}
+            placeholder="Optional"
+            className="bg-slate-50 border-border text-foreground h-11 uppercase font-mono"
+          />
+          <datalist id="promo-coupon-codes">
+            {coupons.map((coupon) => (
+              <option key={coupon.id || coupon._id || coupon.code} value={coupon.code} />
+            ))}
+          </datalist>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="space-y-2">
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Display Location
+          </Label>
+          <Select value={formData.displayLocation} onValueChange={(value) => updateField('displayLocation', value)}>
+            <SelectTrigger className="bg-slate-50 border-border text-foreground h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-white border-border text-foreground">
+              {PROMO_LOCATIONS.map((location) => (
+                <SelectItem key={location.value} value={location.value}>
+                  {location.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="priority" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Priority
+          </Label>
+          <Input
+            id="priority"
+            type="number"
+            min="0"
+            value={formData.priority}
+            onChange={(e) => updateField('priority', e.target.value)}
+            className="bg-slate-50 border-border text-foreground h-11 font-mono"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Active
+          </Label>
+          <div className="flex h-11 items-center gap-3 rounded-md border border-border bg-slate-50 px-3">
+            <Switch
+              checked={Boolean(formData.isActive)}
+              onCheckedChange={(checked) => updateField('isActive', checked)}
+              className="data-[state=checked]:bg-royal-maroon"
+            />
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+              {formData.isActive ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5 space-y-6">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-100">
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">Schedule</span>
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="promoStartDate" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+              Start Date
+            </Label>
+            <Input
+              id="promoStartDate"
+              type="datetime-local"
+              value={formData.startDate}
+              onChange={(e) => updateField('startDate', e.target.value)}
+              className="bg-white border-border text-foreground h-10 text-xs custom-calendar-icon"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="promoEndDate" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+              End Date
+            </Label>
+            <Input
+              id="promoEndDate"
+              type="datetime-local"
+              value={formData.endDate}
+              onChange={(e) => updateField('endDate', e.target.value)}
+              className="bg-white border-border text-foreground h-10 text-xs custom-calendar-icon"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="backgroundColor" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Background Color
+          </Label>
+          <Input
+            id="backgroundColor"
+            value={formData.backgroundColor}
+            onChange={(e) => updateField('backgroundColor', e.target.value)}
+            placeholder="Optional color"
+            className="bg-slate-50 border-border text-foreground h-11 font-mono"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="textColor" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Text Color
+          </Label>
+          <Input
+            id="textColor"
+            value={formData.textColor}
+            onChange={(e) => updateField('textColor', e.target.value)}
+            placeholder="Optional color"
+            className="bg-slate-50 border-border text-foreground h-11 font-mono"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <Eye className="h-3.5 w-3.5" />
+          Preview
+        </div>
+        <PromoBarPreview promoBar={formData} />
+      </div>
+    </>
+  );
+};
+
+const PromoBarPreview = ({ promoBar, compact = false }) => {
+  const style = {
+    ...(promoBar.backgroundColor ? { backgroundColor: promoBar.backgroundColor } : {}),
+    ...(promoBar.textColor ? { color: promoBar.textColor } : {}),
+  };
+  const text = promoBar.promoText || 'Preview';
+
+  return (
+    <div
+      style={style}
+      className={`relative overflow-hidden border border-white/15 bg-royal-maroon text-ivory shadow-[0_10px_28px_rgba(64,13,23,0.18)] ${
+        compact
+          ? 'max-w-[260px] rounded-xl px-3 py-2 text-[9px]'
+          : 'rounded-2xl px-4 py-3 text-[10px] md:text-xs'
+      }`}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="relative z-10 flex min-w-0 items-center justify-center gap-2 text-center font-bold uppercase tracking-[0.24em]">
+        <span className="min-w-0 truncate">{text}</span>
+        {promoBar.couponCode && (
+          <span className="shrink-0 rounded-full border border-current/25 px-2 py-0.5 font-mono tracking-widest">
+            {promoBar.couponCode}
+          </span>
+        )}
+      </div>
     </div>
   );
 };

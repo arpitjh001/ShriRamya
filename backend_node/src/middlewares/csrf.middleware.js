@@ -34,6 +34,20 @@ const tokensMatch = (left, right) => {
   return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 };
 
+const getHeaderValue = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const hasHeaderValue = (value) => getHeaderValue(value).length > 0;
+
+const usesNonCookieCredentials = (req) => {
+  const authorization = getHeaderValue(req.headers.authorization);
+  const hasBearerToken = authorization.toLowerCase().startsWith('bearer ');
+  const hasCartSessionHeader = hasHeaderValue(req.headers['x-session-id']);
+  const hasBodyRefreshToken = /\/api\/v1\/auth\/refresh$/.test(req.originalUrl || req.path || '')
+    && hasHeaderValue(req.body?.refresh_token);
+
+  return hasBearerToken || hasCartSessionHeader || hasBodyRefreshToken;
+};
+
 const CSRF_EXEMPT_PATHS = [
   /^\/api\/v1\/orders\/webhooks\/payment\//,
   /^\/api\/v1\/payment\/webhooks\//,
@@ -67,12 +81,9 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  const hasBearerToken = typeof req.headers.authorization === 'string'
-    && req.headers.authorization.startsWith('Bearer ');
-  const hasCookieHeader = Boolean(req.headers.cookie);
-
-  // Non-browser API clients using only Authorization headers are not CSRF-prone.
-  if (hasBearerToken && !hasCookieHeader) {
+  // Requests authenticated by app-controlled headers are not relying on ambient cookies.
+  // This covers admin/editor Bearer JWT writes and guest cart mutations with x-session-id.
+  if (usesNonCookieCredentials(req)) {
     return next();
   }
 
