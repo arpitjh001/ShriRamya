@@ -173,6 +173,8 @@ class CatalogReadService {
       const attributes = this.normalizeAttributes(source.attributes);
       const color = this.getVariantAttribute(source, 'color') || source.color || null;
       const size = this.getVariantAttribute(source, 'size') || source.size || null;
+      const colorName = source.colorName || color || '';
+      const hexCode = source.hexCode || '#CCCCCC';
 
       return {
         ...source,
@@ -189,10 +191,14 @@ class CatalogReadService {
         lowStockThreshold: Number(source.lowStockThreshold || 5) || 5,
         color,
         size,
+        colorName,
+        hexCode,
         attributes: {
           ...attributes,
           color,
           size,
+          colorName,
+          hexCode,
           Color: attributes.Color || color || '',
           Size: attributes.Size || size || '',
         },
@@ -634,6 +640,7 @@ class CatalogReadService {
     const metadata = {
       sizes: {},
       colors: {},
+      colorHexes: {},
       fabrics: {},
       occasions: {},
       patterns: {},
@@ -652,7 +659,23 @@ class CatalogReadService {
     const prices = [];
     products.forEach((product) => {
       this.getProductSizes(product).forEach((size) => this.incrementCounter(metadata.sizes, size));
-      this.getProductColors(product).forEach((color) => this.incrementCounter(metadata.colors, color));
+      this.getProductColors(product).forEach((color) => {
+        this.incrementCounter(metadata.colors, color);
+        // Find variant with this color and get its hexCode
+        const variant = Array.isArray(product.variants) 
+          ? product.variants.find(v => (v.color === color || v.colorName === color))
+          : null;
+        if (variant && variant.hexCode) {
+          metadata.colorHexes[color] = variant.hexCode;
+        } else {
+          // Check local map fallback
+          const normalized = color.toLowerCase().trim();
+          const fashionColorMap = require('../constants/fashionColorMap');
+          if (fashionColorMap[normalized]) {
+            metadata.colorHexes[color] = fashionColorMap[normalized];
+          }
+        }
+      });
       this.incrementCounter(metadata.fabrics, product.fabric);
       this.incrementCounter(metadata.occasions, product.occasion);
 

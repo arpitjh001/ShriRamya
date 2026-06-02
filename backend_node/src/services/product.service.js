@@ -178,6 +178,8 @@ class ProductService {
       : (source?.attributes || {});
     const color = attributes.color || attributes.Color || source?.color || null;
     const size = attributes.size || attributes.Size || source?.size || null;
+    const colorName = source?.colorName || color || '';
+    const hexCode = source?.hexCode || '#CCCCCC';
 
     const normalizedVariant = {
       id: this.normalizeIdentifier(source?.id || source?._id),
@@ -187,10 +189,14 @@ class ProductService {
       discountStart: this.toIsoDateOrNull(source?.discountStart),
       discountEnd: this.toIsoDateOrNull(source?.discountEnd),
       stock: Number(source?.stock || 0),
+      colorName,
+      hexCode,
       attributes: {
         ...attributes,
         color,
         size,
+        colorName,
+        hexCode,
         Color: attributes.Color || color || '',
         Size: attributes.Size || size || '',
       },
@@ -287,6 +293,8 @@ class ProductService {
       : { ...(source.attributes || {}) };
     const color = source.color || attributes.color || attributes.Color || '';
     const size = source.size || attributes.size || attributes.Size || '';
+    const colorName = source.colorName || color || '';
+    const hexCode = source.hexCode || '';
 
     delete source.id;
     delete source._id;
@@ -303,10 +311,14 @@ class ProductService {
       lowStockThreshold: Number(source.lowStockThreshold || 5) || 5,
       color,
       size,
+      colorName,
+      hexCode,
       attributes: {
         ...attributes,
         color,
         size,
+        colorName,
+        hexCode,
         Color: attributes.Color || color || '',
         Size: attributes.Size || size || '',
       },
@@ -418,6 +430,30 @@ class ProductService {
       // 1. Normalize data
       console.log('[ProductService] Step 1: Normalizing product data...');
       productData = this.normalizeProductData(productData);
+
+      // 1b. Resolve color names to hex codes for variants
+      if (Array.isArray(productData.variants)) {
+        console.log('[ProductService] Resolving color names for variants...');
+        const colorResolverService = require('./colorResolver.service');
+        for (const variant of productData.variants) {
+          const colorName = variant.color || '';
+          if (colorName && !variant.hexCode) {
+            try {
+              const resolved = await colorResolverService.resolveColorName(colorName);
+              variant.hexCode = resolved.hexCode || '#CCCCCC';
+              variant.colorName = colorName;
+              if (variant.attributes) {
+                variant.attributes.hexCode = resolved.hexCode || '#CCCCCC';
+                variant.attributes.colorName = colorName;
+              }
+            } catch (err) {
+              console.error(`[ProductService] Failed to resolve color "${colorName}":`, err.message);
+              variant.hexCode = '#CCCCCC';
+              variant.colorName = colorName;
+            }
+          }
+        }
+      }
       
       // 2. Ensure default category
       console.log('[ProductService] Step 2: Ensuring category assignment...');
@@ -486,9 +522,26 @@ class ProductService {
   /**
    * Add a single variant to an existing product
    */
-  async addVariant(productId, variantData) {
+   async addVariant(productId, variantData) {
     try {
       console.log(`[ProductService] Adding variant to product ${productId}: ${variantData.sku}`);
+
+      const colorName = variantData.color || '';
+      if (colorName && !variantData.hexCode) {
+        try {
+          const colorResolverService = require('./colorResolver.service');
+          const resolved = await colorResolverService.resolveColorName(colorName);
+          variantData.hexCode = resolved.hexCode || '#CCCCCC';
+          variantData.colorName = colorName;
+          if (variantData.attributes) {
+            variantData.attributes.hexCode = resolved.hexCode || '#CCCCCC';
+            variantData.attributes.colorName = colorName;
+          }
+        } catch (err) {
+          variantData.hexCode = '#CCCCCC';
+          variantData.colorName = colorName;
+        }
+      }
 
       const variantId = await mongoProductRepository.addVariant(productId, this.normalizeVariantForPersistence(variantData));
       const variant = await mongoProductRepository.getVariantById(productId, variantId);
@@ -505,6 +558,24 @@ class ProductService {
   async updateVariant(productId, variantId, variantData) {
     try {
       console.log(`[ProductService] Updating variant ${variantId} for product ${productId}`);
+
+      const colorName = variantData.color || '';
+      if (colorName && !variantData.hexCode) {
+        try {
+          const colorResolverService = require('./colorResolver.service');
+          const resolved = await colorResolverService.resolveColorName(colorName);
+          variantData.hexCode = resolved.hexCode || '#CCCCCC';
+          variantData.colorName = colorName;
+          if (variantData.attributes) {
+            variantData.attributes.hexCode = resolved.hexCode || '#CCCCCC';
+            variantData.attributes.colorName = colorName;
+          }
+        } catch (err) {
+          variantData.hexCode = '#CCCCCC';
+          variantData.colorName = colorName;
+        }
+      }
+
       const updatedVariant = await mongoProductRepository.updateVariant(productId, variantId, this.normalizeVariantForPersistence(variantData));
       return this.formatVariantForResponse(updatedVariant);
     } catch (error) {
@@ -629,6 +700,31 @@ class ProductService {
     try {
       console.log(`[ProductService] Updating native product: ${id} for tenant: ${tenantId}`);
       updateData = this.normalizeProductData(updateData);
+
+      // Resolve color names to hex codes for variants in updateData
+      if (Array.isArray(updateData.variants)) {
+        console.log('[ProductService] Resolving color names for variants during update...');
+        const colorResolverService = require('./colorResolver.service');
+        for (const variant of updateData.variants) {
+          const colorName = variant.color || '';
+          if (colorName && !variant.hexCode) {
+            try {
+              const resolved = await colorResolverService.resolveColorName(colorName);
+              variant.hexCode = resolved.hexCode || '#CCCCCC';
+              variant.colorName = colorName;
+              if (variant.attributes) {
+                variant.attributes.hexCode = resolved.hexCode || '#CCCCCC';
+                variant.attributes.colorName = colorName;
+              }
+            } catch (err) {
+              console.error(`[ProductService] Failed to resolve color "${colorName}":`, err.message);
+              variant.hexCode = '#CCCCCC';
+              variant.colorName = colorName;
+            }
+          }
+        }
+      }
+
       await this._ensureDefaultCategory(updateData, true);
 
       const product = await mongoProductRepository.getProduct(id, tenantId);

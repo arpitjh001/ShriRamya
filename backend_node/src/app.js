@@ -218,6 +218,9 @@ const dbRoutes = require('./routes/dbRoutes');
 // Protect state-changing browser requests before dbRoutes, which owns many active handlers.
 app.use('/api/v1', csrfProtection);
 
+// Direct mount for colors to support /api/colors/resolve
+app.use('/api/colors', require('./routes/v1/color.route'));
+
 // Original v1 routes for modern controller-based features
 app.use('/api/v1', routes);
 

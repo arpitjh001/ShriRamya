@@ -101,7 +101,7 @@ const envVarsSchema = Joi.object()
     DB_NAME: Joi.string().allow('', null),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
     CORS_ORIGINS: Joi.string().default('*'),
-    PUBLIC_BASE_URL: Joi.string().default('http://localhost:8000'),
+    PUBLIC_BASE_URL: Joi.string().default('https://www.shriramya.com'),
     REDIS_ENABLED: Joi.string().default('auto'),
     REDIS_URL: Joi.string().allow('', null).default('').description('Redis URL'),
     REDIS_HOST: Joi.string().allow('', null).default('').description('Redis host for Docker/local deployments'),

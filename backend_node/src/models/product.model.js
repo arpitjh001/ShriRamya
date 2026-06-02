@@ -8,6 +8,8 @@ const productVariantSchema = new mongoose.Schema({
   discountEnd: { type: Date, default: null },
   image: { type: String, trim: true },
   color: { type: String, trim: true },
+  colorName: { type: String, trim: true },
+  hexCode: { type: String, trim: true },
   size: { type: String, trim: true },
   stock: { type: Number, default: 0 },
   lowStockThreshold: { type: Number, default: 5 },

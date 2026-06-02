@@ -58,11 +58,15 @@ class VariantInventoryService {
       isLowStock: stock > 0 && stock <= lowStockThreshold,
       color,
       size,
+      colorName: variant?.colorName || color || '',
+      hexCode: variant?.hexCode || '#CCCCCC',
       image: variant?.image || productImages[0] || product?.thumbnail || null,
       attributes: {
         ...attributes,
         color,
         size,
+        colorName: variant?.colorName || color || '',
+        hexCode: variant?.hexCode || '#CCCCCC',
         Color: attributes.Color || color || '',
         Size: attributes.Size || size || '',
       },
@@ -188,8 +192,30 @@ class VariantInventoryService {
         throw new Error('Product not found');
       }
 
-      product.variants = variants.map((variant) => {
+      const colorResolverService = require('./colorResolver.service');
+      const normalizedVariants = [];
+
+      for (const variant of variants) {
         const attributes = this.normalizeAttributes(variant.attributes);
+        const color = variant.color || attributes.color || attributes.Color || '';
+        const size = variant.size || attributes.size || attributes.Size || '';
+        
+        let colorName = variant.colorName || color || '';
+        let hexCode = variant.hexCode || '';
+
+        if (color && !hexCode) {
+          try {
+            const resolved = await colorResolverService.resolveColorName(color);
+            hexCode = resolved.hexCode;
+            colorName = color;
+          } catch (err) {
+            console.error(`[VariantInventory] Failed to resolve color during matrix sync "${color}":`, err.message);
+            hexCode = '#CCCCCC';
+          }
+        } else if (!hexCode) {
+          hexCode = '#CCCCCC';
+        }
+
         const normalizedVariant = {
           sku: variant.sku || product.sku || '',
           price: Number(variant.price || product.basePrice || 0) || 0,
@@ -199,12 +225,16 @@ class VariantInventoryService {
           stock: Number(variant.stock ?? variant.stock_quantity ?? 0) || 0,
           lowStockThreshold: Number(variant.lowStockThreshold || 5) || 5,
           image: variant.image || null,
-          color: variant.color || attributes.color || attributes.Color || '',
-          size: variant.size || attributes.size || attributes.Size || '',
+          color,
+          size,
+          colorName,
+          hexCode,
           attributes: {
             ...attributes,
-            color: variant.color || attributes.color || attributes.Color || '',
-            size: variant.size || attributes.size || attributes.Size || '',
+            color,
+            size,
+            colorName,
+            hexCode,
           },
         };
 
@@ -213,9 +243,10 @@ class VariantInventoryService {
           normalizedVariant._id = new mongoose.Types.ObjectId(String(variantId));
         }
 
-        return normalizedVariant;
-      });
+        normalizedVariants.push(normalizedVariant);
+      }
 
+      product.variants = normalizedVariants;
       await product.save();
       return this.getVariantMatrix(productId);
     } catch (error) {

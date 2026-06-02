@@ -1518,11 +1518,35 @@ export const usersAPI = {
   }
 };
 
+/* =========================
+   COLORS APIs
+========================= */
+
+export const colorsAPI = {
+  resolve: async (colorName) => {
+    try {
+      const res = await api.post("/colors/resolve", { colorName });
+      return res.data;
+    } catch (err) {
+      handleError(err);
+    }
+  },
+
+  saveOverride: async (colorName, hexCode) => {
+    try {
+      const res = await api.post("/colors/override", { colorName, hexCode });
+      return res.data;
+    } catch (err) {
+      handleError(err);
+    }
+  }
+};
+
 // Export all services
 export default api;
 
 // Export centralized API client
-export { api as apiClient, authAPI as auth, handleError };
+export { api as apiClient, authAPI as auth, colorsAPI as colors, handleError };
 
 // Export admin services
 export { default as adminOrderService } from './adminOrderService';

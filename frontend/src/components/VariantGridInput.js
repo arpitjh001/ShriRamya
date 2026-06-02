@@ -6,6 +6,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from './ui/badge';
 import { Trash2, Plus, Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { colorsAPI } from '../services/api';
+
+const standardColorHexes = {
+  Black: '#000000',
+  White: '#FFFFFF',
+  Red: '#EF4444',
+  Blue: '#3B82F6',
+  Green: '#22C55E',
+  Yellow: '#EAB308',
+  Pink: '#EC4899',
+  Purple: '#A855F7',
+  Orange: '#F97316',
+  Grey: '#6B7280',
+  Navy: '#1E3A8A',
+  Brown: '#78350F',
+  Beige: '#F5F5DC',
+  Maroon: '#800000',
+  Teal: '#008080',
+  Gold: '#FFD700',
+  Silver: '#C0C0C0'
+};
 
 /**
  * VariantGridInput - Admin component for managing product variants
@@ -23,6 +44,13 @@ const VariantGridInput = ({
   const [showBulkInput, setShowBulkInput] = useState(false);
   const [customColor, setCustomColor] = useState('');
 
+  const [colorMap, setColorMap] = useState({});
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolvedHex, setResolvedHex] = useState('');
+  const [resolvedConfidence, setResolvedConfidence] = useState(null);
+  const [manualHexEnabled, setManualHexEnabled] = useState(false);
+  const [manualHex, setManualHex] = useState('');
+
   const normalizedLowStockThreshold = useMemo(() => {
     const parsed = parseInt(lowStockThreshold, 10);
     if (Number.isNaN(parsed)) return 5;
@@ -37,6 +65,62 @@ const VariantGridInput = ({
   ];
 
   const predefinedSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'ONE_SIZE'];
+
+  // Sync colorMap from existing variants
+  React.useEffect(() => {
+    const initialMap = {};
+    variants.forEach(v => {
+      if (v.color && v.hexCode) {
+        initialMap[v.color] = v.hexCode;
+      }
+    });
+    setColorMap(prev => ({ ...initialMap, ...prev }));
+  }, [variants]);
+
+  // Debounced custom color name resolution
+  React.useEffect(() => {
+    if (!customColor.trim()) {
+      setResolvedHex('');
+      setResolvedConfidence(null);
+      setManualHex('');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsResolving(true);
+      try {
+        const response = await colorsAPI.resolve(customColor);
+        if (response && response.success) {
+          setResolvedHex(response.hexCode);
+          setResolvedConfidence(response.confidence);
+          if (!manualHexEnabled) {
+            setManualHex(response.hexCode);
+          }
+        } else {
+          setResolvedHex('#CCCCCC');
+          setResolvedConfidence('low');
+          if (!manualHexEnabled) {
+            setManualHex('#CCCCCC');
+          }
+        }
+      } catch (err) {
+        console.error("Failed to resolve color name:", err);
+        setResolvedHex('#CCCCCC');
+        setResolvedConfidence('low');
+        if (!manualHexEnabled) {
+          setManualHex('#CCCCCC');
+        }
+      } finally {
+        setIsResolving(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [customColor, manualHexEnabled]);
+
+  const isValidHex = (hex) => {
+    return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
+  };
 
   // Get unique colors and sizes from variants
   const variantColors = useMemo(() => {
@@ -76,16 +160,18 @@ const VariantGridInput = ({
       );
     } else {
       // Create new variant
+      const finalHex = colorMap[color] || standardColorHexes[color] || '#CCCCCC';
       newVariants = [
         ...variants,
         {
           id: `new_${color}_${size}_${Date.now()}`,
           color,
           size,
+          hexCode: finalHex,
           stock: parseInt(stock, 10) || 0,
           stock_quantity: parseInt(stock, 10) || 0,
           price: basePrice,
-          attributes: { color, size },
+          attributes: { color, size, hexCode: finalHex },
         },
       ];
     }
@@ -128,9 +214,10 @@ const VariantGridInput = ({
     setShowBulkInput(false);
   };
 
-  const addColorVariants = (color) => {
+  const addColorVariants = (color, hex = null) => {
     const sizesForColor = sizes.length > 0 ? sizes : predefinedSizes;
     const newVariants = [...variants];
+    const finalHex = hex || colorMap[color] || standardColorHexes[color] || '#CCCCCC';
 
     sizesForColor.forEach(size => {
       if (!newVariants.some(v => v.color === color && v.size === size)) {
@@ -138,10 +225,11 @@ const VariantGridInput = ({
           id: `new_${color}_${size}_${Date.now()}`,
           color,
           size,
+          hexCode: finalHex,
           stock: 0,
           stock_quantity: 0,
           price: basePrice,
-          attributes: { color, size },
+          attributes: { color, size, hexCode: finalHex },
         });
       }
     });
@@ -149,11 +237,30 @@ const VariantGridInput = ({
     onChange(newVariants);
   };
 
-  const handleAddCustomColor = (event) => {
+  const handleAddCustomColor = async (event) => {
     event.preventDefault();
 
     const normalizedColor = customColor.trim().replace(/\s+/g, ' ');
     if (!normalizedColor) return;
+
+    let finalHex = resolvedHex || '#CCCCCC';
+    if (manualHexEnabled) {
+      if (!isValidHex(manualHex)) {
+        alert("Please enter a valid HEX code (e.g. #E1AD01)");
+        return;
+      }
+      finalHex = manualHex;
+      try {
+        await colorsAPI.saveOverride(normalizedColor, finalHex);
+      } catch (err) {
+        console.error("Failed to save manual override:", err);
+      }
+    }
+
+    setColorMap(prev => ({
+      ...prev,
+      [normalizedColor]: finalHex
+    }));
 
     const existingColor = [...predefinedColors, ...colors].find(color => (
       color.toLowerCase() === normalizedColor.toLowerCase()
@@ -161,10 +268,13 @@ const VariantGridInput = ({
     const colorToAdd = existingColor || normalizedColor;
 
     if (!colors.includes(colorToAdd)) {
-      addColorVariants(colorToAdd);
+      addColorVariants(colorToAdd, finalHex);
     }
 
     setCustomColor('');
+    setManualHexEnabled(false);
+    setResolvedHex('');
+    setResolvedConfidence(null);
   };
 
   // Toggle color selection
@@ -190,14 +300,16 @@ const VariantGridInput = ({
       
       colors.forEach(color => {
         if (!getVariant(color, size)) {
+          const finalHex = colorMap[color] || standardColorHexes[color] || '#CCCCCC';
           newVariants.push({
             id: `new_${color}_${size}_${Date.now()}`,
             color,
             size,
+            hexCode: finalHex,
             stock: 0,
             stock_quantity: 0,
             price: basePrice,
-            attributes: { color, size },
+            attributes: { color, size, hexCode: finalHex },
           });
         }
       });
@@ -237,16 +349,21 @@ const VariantGridInput = ({
               type="button"
               key={color}
               onClick={() => toggleColor(color)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 colors.includes(color)
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
+              <span 
+                className={`w-2.5 h-2.5 rounded-full border ${colors.includes(color) ? 'border-white/50' : 'border-gray-300'}`} 
+                style={{ backgroundColor: standardColorHexes[color] || '#CCCCCC' }}
+              />
               {color}
             </button>
           ))}
         </div>
+        
         <form onSubmit={handleAddCustomColor} className="grid grid-cols-1 gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50/70 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="space-y-1.5">
             <Label htmlFor="custom-color" className="text-xs font-medium text-gray-600">Enter New Color</Label>
@@ -257,17 +374,89 @@ const VariantGridInput = ({
               placeholder="e.g. Peacock Blue"
               className="h-9 bg-white"
             />
+            {customColor.trim() && (
+              <div className="mt-2 flex flex-wrap items-center gap-3 bg-white p-2 rounded-lg border border-gray-100 shadow-sm transition-all duration-300">
+                {isResolving ? (
+                  <div className="flex items-center gap-2 text-xs text-gray-500 py-1">
+                    <div className="animate-spin rounded-full h-3 w-3 border border-indigo-600 border-t-transparent" />
+                    <span>Resolving color name...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <div 
+                        className="w-5.5 h-5.5 rounded border border-gray-200 shadow-inner transition-colors duration-300"
+                        style={{ width: '22px', height: '22px', backgroundColor: manualHexEnabled && isValidHex(manualHex) ? manualHex : resolvedHex }}
+                      />
+                      <span className="text-xs font-mono font-semibold text-gray-700">
+                        {manualHexEnabled && isValidHex(manualHex) ? manualHex.toUpperCase() : resolvedHex.toUpperCase()}
+                      </span>
+                    </div>
+
+                    {resolvedConfidence === 'low' && !manualHexEnabled && (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-[10px] py-0.5 px-1.5 font-normal">
+                        ⚠️ Custom shade (Auto-fallback)
+                      </Badge>
+                    )}
+
+                    {resolvedConfidence && resolvedConfidence !== 'low' && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] py-0.5 px-1.5 font-normal">
+                        ✓ Resolved ({resolvedConfidence})
+                      </Badge>
+                    )}
+
+                    <div className="flex items-center gap-1.5 ml-auto border-l border-gray-200 pl-3">
+                      <input
+                        type="checkbox"
+                        id="manual-hex-toggle"
+                        checked={manualHexEnabled}
+                        onChange={(e) => {
+                          setManualHexEnabled(e.target.checked);
+                          if (e.target.checked) {
+                            setManualHex(resolvedHex || '#CCCCCC');
+                          }
+                        }}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="manual-hex-toggle" className="text-xs font-medium text-gray-600 select-none cursor-pointer">
+                        Edit HEX manually
+                      </label>
+                    </div>
+
+                    {manualHexEnabled && (
+                      <div className="flex items-center gap-1.5 transition-all">
+                        <Input
+                          type="text"
+                          value={manualHex}
+                          onChange={(e) => setManualHex(e.target.value)}
+                          placeholder="#HEXCODE"
+                          className={`h-7 w-24 text-xs font-mono uppercase px-2 py-1 ${
+                            isValidHex(manualHex) ? 'border-green-300 focus-visible:ring-green-400' : 'border-red-300 focus-visible:ring-red-400'
+                          }`}
+                        />
+                        {isValidHex(manualHex) ? (
+                          <Check className="w-3.5 h-3.5 text-green-500" />
+                        ) : (
+                          <X className="w-3.5 h-3.5 text-red-500" />
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <Button
             type="submit"
             size="sm"
-            disabled={!customColor.trim()}
+            disabled={!customColor.trim() || isResolving || (manualHexEnabled && !isValidHex(manualHex))}
             className="gap-2"
           >
             <Plus className="w-4 h-4" />
             Add Color
           </Button>
         </form>
+
         {customColors.length > 0 && (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
             {customColors.map(color => (
@@ -276,10 +465,14 @@ const VariantGridInput = ({
                 key={color}
                 onClick={() => toggleColor(color)}
                 aria-label={`Remove ${color} color`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-md transition-all hover:bg-indigo-700"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50"
               >
+                <span 
+                  className="w-3 h-3 rounded-full border border-gray-200" 
+                  style={{ backgroundColor: colorMap[color] || '#CCCCCC' }}
+                />
                 {color}
-                <X className="w-3 h-3" />
+                <X className="w-3 h-3 text-gray-400 hover:text-gray-600" />
               </button>
             ))}
           </div>
@@ -391,7 +584,15 @@ const VariantGridInput = ({
               <TableBody>
                 {variants.map((variant, index) => (
                   <TableRow key={variant.id || index} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{variant.color || '-'}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-4 h-4 rounded-full border border-gray-200 shadow-inner flex-shrink-0" 
+                          style={{ backgroundColor: variant.hexCode || colorMap[variant.color] || standardColorHexes[variant.color] || '#CCCCCC' }} 
+                        />
+                        <span>{variant.color || '-'}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="w-16 justify-center">
                         {variant.size || '-'}

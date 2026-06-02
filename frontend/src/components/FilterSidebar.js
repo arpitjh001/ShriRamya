@@ -91,7 +91,7 @@ const CheckboxGroup = ({ title, options, selected, onChange, showCounts = true, 
 // ==========================================
 // COLOR SELECTOR COMPONENT
 // ==========================================
-const ColorSelector = ({ colors, selected, onChange, counts = {} }) => {
+const ColorSelector = ({ colors, selected, onChange, counts = {}, colorHexes = {} }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const handleToggle = (colorName) => {
@@ -102,33 +102,58 @@ const ColorSelector = ({ colors, selected, onChange, counts = {} }) => {
   };
 
   const colorMap = {
-    'Red': '#DC2626',
-    'Blue': '#2563EB',
-    'Green': '#16A34A',
-    'Yellow': '#EAB308',
-    'Pink': '#EC4899',
-    'Purple': '#9333EA',
-    'Orange': '#EA580C',
-    'Black': '#171717',
-    'White': '#FAFAFA',
-    'Maroon': '#7F1D1D',
-    'Teal': '#0D9488',
-    'Gold': '#CA8A04',
-    'Beige': '#D4C4A8',
-    'Navy': '#1E3A5F',
-    'Coral': '#F87171',
-    'Mint': '#86EFAC',
-    'Mustard': '#CA8A04',
-    'Lavender': '#C4B5FD',
-    'Peach': '#FECACA',
-    'Burgundy': '#7F1D1D',
-    'Royal Blue': '#1E40AF',
-    'Magenta': '#DB2777',
-    'Cream': '#FEF3C7',
-    'Wine': '#881337',
-    'Silver': '#94A3B8',
-    'Rose Gold': '#F472B6',
-    'Turquoise': '#14B8A6',
+    red: '#DC2626',
+    blue: '#2563EB',
+    green: '#16A34A',
+    yellow: '#EAB308',
+    pink: '#EC4899',
+    purple: '#9333EA',
+    orange: '#EA580C',
+    black: '#171717',
+    white: '#FAFAFA',
+    maroon: '#7F1D1D',
+    teal: '#0D9488',
+    gold: '#CA8A04',
+    beige: '#D4C4A8',
+    navy: '#1E3A5F',
+    coral: '#F87171',
+    mint: '#86EFAC',
+    mustard: '#CA8A04',
+    lavender: '#C4B5FD',
+    peach: '#FECACA',
+    burgundy: '#7F1D1D',
+    'royal blue': '#1E40AF',
+    magenta: '#DB2777',
+    cream: '#FEF3C7',
+    wine: '#881337',
+    silver: '#94A3B8',
+    'rose gold': '#F472B6',
+    turquoise: '#14B8A6',
+    'mustard yellow': '#FFDB58',
+    'haldi': '#F6C324',
+    'haldi yellow': '#F6C324',
+    'rani': '#E0115F',
+    'rani pink': '#E0115F',
+    'mehendi': '#556B2F',
+    'mehendi green': '#556B2F',
+    'wine red': '#722F37',
+    'peacock blue': '#005F69',
+    'off white': '#FAF9F6',
+    'onion pink': '#E6A8A8',
+    'gajri': '#F28C8C',
+    'rust': '#B7410E',
+    'olive green': '#808000',
+    'bottle green': '#006A4E',
+    'emerald green': '#50C878',
+    'sage green': '#9CAF88',
+    'mauve': '#E0B0FF',
+    'lilac': '#C8A2C8',
+    'navy blue': '#000080',
+    'sky blue': '#87CEEB',
+    'golden': '#FFD700',
+    'copper': '#B87333',
+    'bronze': '#CD7F32',
+    'charcoal': '#36454F'
   };
 
   return (
@@ -158,7 +183,11 @@ const ColorSelector = ({ colors, selected, onChange, counts = {} }) => {
             const colorName = typeof color === 'object' ? color.name : color;
             const count = counts[colorName] || 0;
             const isSelected = selected.includes(colorName);
-            const hexColor = colorMap[colorName] || '#888888';
+            const cleanName = String(colorName).trim().toLowerCase();
+            const resolvedHex = colorHexes[colorName] || colorHexes[cleanName];
+            const hexColor = (resolvedHex && resolvedHex.toUpperCase() !== '#CCCCCC')
+              ? resolvedHex
+              : (colorMap[cleanName] || colorMap[colorName] || '#888888');
 
             return (
               <button
@@ -464,7 +493,8 @@ const FilterSidebar = ({
     sleeveTypes = {},
     categories = {},
     priceRange = { min: 0, max: 100000 },
-    discountRanges = {}
+    discountRanges = {},
+    colorHexes = {}
   } = filterMetadata;
 
   // New product-specific filters (brands, materials)
@@ -567,6 +597,7 @@ const FilterSidebar = ({
             selected={filters.color || []}
             onChange={(values) => handleArrayFilterChange('color', values)}
             counts={colors}
+            colorHexes={colorHexes}
           />
         )}
 

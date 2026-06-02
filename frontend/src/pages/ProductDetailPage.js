@@ -116,29 +116,67 @@ const getCategoryLabel = (product = {}) => {
 };
 
 const COLOR_SWATCHES = {
-  Black: '#1A1A1A',
-  White: '#FFFFFF',
-  Red: '#DC2626',
-  Blue: '#2563EB',
-  'Royal Blue': '#1D4ED8',
-  Green: '#16A34A',
-  Yellow: '#EAB308',
-  Pink: '#EC4899',
-  Purple: '#7C3AED',
-  Orange: '#EA580C',
-  Grey: '#6B7280',
-  Gray: '#6B7280',
-  Navy: '#1E3A5F',
-  Brown: '#92400E',
-  Maroon: '#7F1D1D',
-  Gold: '#D4A843',
-  Cream: '#FFFDD0',
-  Ivory: '#FFFFF0',
-  Wine: '#722F37',
-  Mustard: '#E2B714',
+  black: '#1A1A1A',
+  white: '#FFFFFF',
+  red: '#DC2626',
+  blue: '#2563EB',
+  green: '#16A34A',
+  yellow: '#EAB308',
+  pink: '#EC4899',
+  purple: '#7C3AED',
+  orange: '#EA580C',
+  grey: '#6B7280',
+  gray: '#6B7280',
+  navy: '#1E3A5F',
+  brown: '#92400E',
+  maroon: '#7F1D1D',
+  gold: '#D4A843',
+  cream: '#FFFDD0',
+  ivory: '#FFFFF0',
+  wine: '#722F37',
+  mustard: '#E2B714',
+
+  // Curated fashion & ethnic colors
+  'mustard yellow': '#FFDB58',
+  'haldi': '#F6C324',
+  'haldi yellow': '#F6C324',
+  'rani': '#E0115F',
+  'rani pink': '#E0115F',
+  'mehendi': '#556B2F',
+  'mehendi green': '#556B2F',
+  'wine red': '#722F37',
+  'peacock blue': '#005F69',
+  'off white': '#FAF9F6',
+  'onion pink': '#E6A8A8',
+  'gajri': '#F28C8C',
+  'peach': '#FFE5B4',
+  'fuchsia': '#FF00FF',
+  'magenta': '#FF00FF',
+  'turquoise': '#40E0D0',
+  'teal': '#008080',
+  'coral': '#FF7F50',
+  'rust': '#B7410E',
+  'olive green': '#808000',
+  'bottle green': '#006A4E',
+  'emerald green': '#50C878',
+  'sage green': '#9CAF88',
+  'lavender': '#E6E6FA',
+  'mauve': '#E0B0FF',
+  'lilac': '#C8A2C8',
+  'navy blue': '#000080',
+  'royal blue': '#4169E1',
+  'sky blue': '#87CEEB',
+  'golden': '#FFD700',
+  'copper': '#B87333',
+  'bronze': '#CD7F32',
+  'charcoal': '#36454F'
 };
 
-const getColorSwatch = (color) => COLOR_SWATCHES[color] || String(color || '').toLowerCase();
+const getColorSwatch = (color) => {
+  if (!color) return '#CCCCCC';
+  const cleanColor = String(color).trim().toLowerCase();
+  return COLOR_SWATCHES[cleanColor] || cleanColor;
+};
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -735,6 +773,9 @@ const ProductDetailPage = () => {
                     {availableColors.map((color, index) => {
                       const hasStock = variantMatrix.some(v => getVariantColor(v) === color && getVariantStock(v) > 0);
                       const isSelected = selectedColor === color;
+                      const matchedVariant = variantMatrix.find(v => getVariantColor(v) === color);
+                      const resolvedHex = matchedVariant?.hexCode || matchedVariant?.attributes?.hexCode;
+                      const swatchBg = (resolvedHex && resolvedHex !== '#CCCCCC') ? resolvedHex : getColorSwatch(color);
 
                       return (
                         <button
@@ -748,7 +789,7 @@ const ProductDetailPage = () => {
                         >
                           <div
                             className="h-full w-full rounded-full border border-charcoal/10 shadow-inner"
-                            style={{ backgroundColor: getColorSwatch(color) }}
+                            style={{ backgroundColor: swatchBg }}
                           />
                           {!hasStock && (
                             <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-full flex items-center justify-center">
