@@ -108,8 +108,8 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
     ? variants.reduce((sum, variant) => sum + getVariantStock(variant), 0)
     : Number(product?.totalStock ?? product?.stock_quantity ?? product?.stock ?? 0) || 0;
   const stockLabel = variants.length > 0
-    ? (selectedVariant ? (selectedStock <= 0 ? 'Out of stock' : `${selectedStock} ready`) : `${totalStock} total`)
-    : (product?.in_stock === false || totalStock <= 0 ? 'Out of stock' : `${totalStock} ready`);
+    ? (selectedVariant ? (selectedStock <= 0 ? 'Sold out' : `${selectedStock} ready`) : `${totalStock} total`)
+    : (product?.in_stock === false || totalStock <= 0 ? 'Sold out' : `${totalStock} ready`);
   const colorLabel = colors.length > 0 ? `${colors.length} color${colors.length > 1 ? 's' : ''}` : 'Curated';
   const sizeLabel = visibleSizes.length > 0 ? `${visibleSizes.length} size${visibleSizes.length > 1 ? 's' : ''}` : 'Free size';
 
@@ -129,7 +129,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
       return;
     }
     if (isOutOfStock) {
-      toast.error('This variant is out of stock');
+      toast.error('This variant is sold out');
       return;
     }
 
@@ -299,7 +299,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
 
               {selectedVariant && (
                 <p className={`mb-3 text-xs font-medium ${selectedStock <= 0 ? 'text-primary' : selectedStock <= 3 ? 'text-amber-700' : 'text-muted-foreground'}`}>
-                  {selectedStock <= 0 ? 'Out of stock' : selectedStock <= 3 ? `Only ${selectedStock} left` : 'In stock'}
+                  {selectedStock <= 0 ? 'Sold out' : selectedStock <= 3 ? `Only ${selectedStock} left` : 'In stock'}
                 </p>
               )}
 
@@ -356,7 +356,7 @@ const QuickViewModal = ({ open, onOpenChange, productId }) => {
                         : missingOptions
                         ? 'Select Options'
                         : isOutOfStock
-                        ? 'Out of Stock'
+                        ? 'Sold Out'
                         : `Add to Cart - ${formatPrice(displayPrice * quantity)}`}
                     </span>
                   </div>

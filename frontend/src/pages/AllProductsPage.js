@@ -298,7 +298,7 @@ const AllProductsPage = () => {
                                                         borderRadius: 12,
                                                         background: product.stock_quantity > 0 ? '#dcfce7' : '#fee2e2',
                                                     }}>
-                                                        {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out of stock'}
+                                                        {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Sold Out'}
                                                     </span>
                                                     {product.variants && product.variants.length > 1 && (
                                                         <span style={{
@@ -394,7 +394,7 @@ const AllProductsPage = () => {
                                                         background: product.stock_quantity > 0 ? '#dcfce7' : '#fee2e2',
                                                         color: product.stock_quantity > 0 ? '#16a34a' : '#dc2626',
                                                     }}>
-                                                        {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out'}
+                                                        {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Sold Out'}
                                                     </span>
                                                     {product.variants && product.variants.length > 1 && (
                                                         <span style={{

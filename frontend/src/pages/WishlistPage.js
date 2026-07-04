@@ -46,7 +46,7 @@ const WishlistPage = () => {
       const inStockVariants = variants.filter((variant) => Number(variant.stock ?? variant.stock_quantity ?? 0) > 0);
 
       if (variants.length === 0 || inStockVariants.length === 0) {
-        toast.error('This item is currently out of stock');
+        toast.error('This item is currently sold out');
         return;
       }
 

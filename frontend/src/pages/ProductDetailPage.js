@@ -383,7 +383,7 @@ const ProductDetailPage = () => {
 
   const handleAddToCart = async () => {
     if (productOutOfStock) {
-      toast.error('This product is out of stock');
+      toast.error('This product is sold out');
       return false;
     }
 
@@ -407,7 +407,7 @@ const ProductDetailPage = () => {
 
       // Validate stock only if variant is selected
       if ((hasColors || hasSizes) && variantStock && variantStock.isOutOfStock) {
-        toast.error('This variant is out of stock');
+        toast.error('This variant is sold out');
         return;
       }
 
@@ -553,7 +553,7 @@ const ProductDetailPage = () => {
   const sizeSummary = formatDisplayList(visibleSizeOptions, product.sizes?.length ? formatDisplayList(product.sizes) : 'Free size');
   const aggregateStock = variantMatrix.length > 0 ? variantMatrixStock : productStock;
   const stockSummary = productOutOfStock
-    ? 'Out of stock'
+    ? 'Sold out'
     : aggregateStock > 0
     ? `${aggregateStock} available`
     : 'Ready to ship';
@@ -860,7 +860,7 @@ const ProductDetailPage = () => {
                       }`}
                     >
                       {variantStock.isOutOfStock
-                        ? 'This variant is currently out of stock'
+                        ? 'This variant is currently sold out'
                         : variantStock.isLowStock
                         ? `Hurry! Only ${variantStock.stock} pieces left`
                         : 'In stock'}
@@ -879,7 +879,7 @@ const ProductDetailPage = () => {
                   className="h-12 w-full rounded-xl bg-charcoal px-4 text-center text-xs font-bold uppercase leading-tight tracking-[0.14em] text-white shadow-[0_16px_34px_rgba(31,31,31,0.18)] transition-all hover:bg-black disabled:cursor-not-allowed disabled:bg-charcoal/20 disabled:text-charcoal/45 sm:flex-[2]"
                 >
                   <ShoppingBag className="mr-3 h-5 w-5 shrink-0" />
-                  {productOutOfStock ? 'Out of Stock' : 'Add to Shopping Bag'}
+                  {productOutOfStock ? 'Sold Out' : 'Add to Shopping Bag'}
                 </Button>
                 <Button
                   variant="outline"

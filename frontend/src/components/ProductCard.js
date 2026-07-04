@@ -169,7 +169,7 @@ const ProductCard = ({
     if (product?.luxury_collection || occasion.includes('festive')) nextBadges.push('Festive Pick');
     
     // Status Badges (Prioritized)
-    if (isOutOfStock) nextBadges.unshift('Out of Stock');
+    if (isOutOfStock) nextBadges.unshift('Sold Out');
     else if (isLimitedStock) nextBadges.push('Limited Stock');
 
     return [...new Set(nextBadges)].slice(0, 2);
@@ -242,7 +242,7 @@ const ProductCard = ({
   if (!product) return null;
 
   const quickActionText = isOutOfStock
-    ? 'Out of Stock'
+    ? 'Sold Out'
     : quickActionLabel || 'View';
   const wishlistLabel = isWishlisted ? 'Remove from wishlist' : 'Add to wishlist';
 
@@ -284,7 +284,7 @@ const ProductCard = ({
             {isOutOfStock && (
               <div className="absolute inset-0 flex items-center justify-center bg-charcoal/38 backdrop-blur-[1px]">
                 <span className="rounded-full border border-ivory/50 bg-ivory/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-charcoal">
-                  Out of Stock
+                  Sold Out
                 </span>
               </div>
             )}
@@ -348,7 +348,7 @@ const ProductCard = ({
 
         {isOutOfStock && (
           <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-600">
-            Out of Stock
+            Sold Out
           </p>
         )}
 
