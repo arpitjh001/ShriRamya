@@ -148,7 +148,32 @@ const createOrder = async (req, res, next) => {
         };
 
         const taxTotal = processedItems.reduce((sum, i) => sum + (i.taxAmount || 0), 0);
-        const shippingCost = calculateShippingCharge(subtotal);
+        
+        let shippingCost = calculateShippingCharge(subtotal);
+        if ((resolvedShipping?.postcode || resolvedShipping?.pincode) && subtotal < FREE_SHIPPING_THRESHOLD) {
+            try {
+                const shiprocketService = require('../services/shipping/shiprocket.service');
+                const shipmentService = require('../services/shipment.service');
+                if (shiprocketService.isConfigured()) {
+                    const pincode = resolvedShipping.postcode || resolvedShipping.pincode;
+                    const serviceability = await shipmentService.checkShiprocketServiceability({
+                        destination: pincode,
+                        orderAmount: subtotal || 1,
+                    });
+                    if (serviceability.serviceable && serviceability.couriers.length > 0) {
+                        const rates = serviceability.couriers
+                            .map(c => Number(c.rate))
+                            .filter(r => Number.isFinite(r) && r > 0);
+                        if (rates.length > 0) {
+                            shippingCost = Math.round(Math.min(...rates));
+                        }
+                    }
+                }
+            } catch (shiprocketError) {
+                console.warn('[OrderController] Shiprocket dynamic shipping on createOrder failed:', shiprocketError.message);
+            }
+        }
+        
         const grandTotal = Math.round((subtotal - discountTotal + taxTotal + shippingCost) * 100) / 100;
 
         const normalizedPaymentMethod = paymentMethod || 'cod';
@@ -604,6 +629,68 @@ const confirmPayment = async (req, res, next) => {
     }
 };
 
+/**
+ * Calculate Shipping Rate (Customer/Guest Checkout)
+ */
+const calculateShippingRate = async (req, res, next) => {
+    try {
+        const { pincode, subtotal } = req.body;
+        if (!pincode) {
+            throw new ApiError(httpStatus.BAD_REQUEST, 'Pincode is required');
+        }
+
+        // If the subtotal qualifies for free shipping, return 0
+        const numericSubtotal = Number(subtotal || 0);
+        if (numericSubtotal >= FREE_SHIPPING_THRESHOLD) {
+            return successResponse(res, {
+                shipping: 0,
+                serviceable: true,
+                cheapestCourier: 'Free Shipping',
+                free: true
+            }, 'Free shipping applies');
+        }
+
+        try {
+            const shiprocketService = require('../services/shipping/shiprocket.service');
+            const shipmentService = require('../services/shipment.service');
+            if (shiprocketService.isConfigured()) {
+                const serviceability = await shipmentService.checkShiprocketServiceability({
+                    destination: pincode,
+                    orderAmount: subtotal || 1,
+                });
+
+                if (serviceability.serviceable && serviceability.couriers.length > 0) {
+                    const rates = serviceability.couriers
+                        .map(c => ({ name: c.courier_name, rate: Number(c.rate) }))
+                        .filter(c => Number.isFinite(c.rate) && c.rate > 0);
+
+                    if (rates.length > 0) {
+                        rates.sort((a, b) => a.rate - b.rate);
+                        const cheapest = rates[0];
+                        return successResponse(res, {
+                            shipping: Math.round(cheapest.rate),
+                            serviceable: true,
+                            cheapestCourier: cheapest.name
+                        }, 'Shipping calculated via Shiprocket');
+                    }
+                }
+            }
+        } catch (shiprocketError) {
+            console.warn('[OrderController] Shiprocket shipping calculation failed, falling back to default:', shiprocketError.message);
+        }
+
+        // Fallback to default shipping charge
+        const defaultShipping = calculateShippingCharge(subtotal);
+        return successResponse(res, {
+            shipping: defaultShipping,
+            serviceable: true,
+            cheapestCourier: 'Standard Delivery (Fallback)'
+        }, 'Shipping calculated via fallback');
+    } catch (error) {
+        next(error);
+    }
+};
+
 const deleteOrder = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -644,5 +731,6 @@ module.exports = {
     getAllOrders,
     updateOrderStatus,
     getOrderAnalytics,
-    deleteOrder
+    deleteOrder,
+    calculateShippingRate
 };

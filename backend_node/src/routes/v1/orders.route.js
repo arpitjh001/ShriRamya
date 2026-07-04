@@ -103,6 +103,12 @@ router.get('/admin/refunds/:id', auth, requireRole('admin'), refundController.ge
 // Customer Order Routes
 // ==========================================
 
+// Calculate shipping rate using Shiprocket (Supports Guest Checkout)
+router.post('/calculate-shipping',
+    optionalAuth,
+    orderController.calculateShippingRate
+);
+
 // Create order (primary route) - Supports Guest Checkout
 router.post('/',
     optionalAuth,

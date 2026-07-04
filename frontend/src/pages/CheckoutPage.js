@@ -31,7 +31,9 @@ const CheckoutPage = () => {
   });
 
   const subtotal = calculateSubtotal();
-  const shipping = getShippingCharge(subtotal);
+  const [shipping, setShipping] = useState(() => getShippingCharge(subtotal));
+  const [calculatingShipping, setCalculatingShipping] = useState(false);
+  const [courierName, setCourierName] = useState('');
   const total = Math.max(0, subtotal - discountAmount + shipping);
 
   useEffect(() => {
@@ -58,6 +60,36 @@ const CheckoutPage = () => {
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+    const pin = String(shippingData.pincode || '').trim();
+    if (pin.length === 6 && /^\d+$/.test(pin)) {
+      setCalculatingShipping(true);
+      ordersAPI.calculateShipping(pin, subtotal)
+        .then(res => {
+          // Handle both standardized wrapper formats
+          const data = res?.data?.data || res?.data || res;
+          if (data && data.shipping !== undefined) {
+            setShipping(data.shipping);
+            setCourierName(data.cheapestCourier || '');
+          } else {
+            setShipping(getShippingCharge(subtotal));
+            setCourierName('');
+          }
+        })
+        .catch(err => {
+          console.warn('[Checkout] Failed to calculate shipping:', err);
+          setShipping(getShippingCharge(subtotal));
+          setCourierName('');
+        })
+        .finally(() => {
+          setCalculatingShipping(false);
+        });
+    } else {
+      setShipping(getShippingCharge(subtotal));
+      setCourierName('');
+    }
+  }, [shippingData.pincode, subtotal]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -504,8 +536,21 @@ const CheckoutPage = () => {
                   <span>{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span>{formatPrice(shipping)}</span>
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    Shipping
+                    {courierName && (
+                      <span className="text-[10px] bg-secondary/10 text-secondary px-1.5 py-0.5 rounded font-medium">
+                        {courierName}
+                      </span>
+                    )}
+                  </span>
+                  <span>
+                    {calculatingShipping ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      formatPrice(shipping)
+                    )}
+                  </span>
                 </div>
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">

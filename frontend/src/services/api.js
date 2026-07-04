@@ -709,6 +709,15 @@ export const ordersAPI = {
     }
   },
 
+  calculateShipping: async (pincode, subtotal) => {
+    try {
+      return await api.post("/orders/calculate-shipping", { pincode, subtotal });
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  },
+
   getAll: async (params = {}) => {
     try {
       let res;
