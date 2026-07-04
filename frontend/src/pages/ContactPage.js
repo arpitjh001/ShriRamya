@@ -48,8 +48,8 @@ const ContactPage = () => {
               </div>
               <h3 className="font-heading font-medium mb-2">Visit Us</h3>
               <p className="text-muted-foreground text-sm">
-                123 Ethnic Street<br />
-                Jaipur, Rajasthan 302001<br />
+                481, Mission Compound<br />
+                Jhansi - 284001<br />
                 India
               </p>
             </div>
@@ -60,7 +60,7 @@ const ContactPage = () => {
               </div>
               <h3 className="font-heading font-medium mb-2">Call Us</h3>
               <p className="text-muted-foreground text-sm">
-                +91 98765 43210<br />
+                +91 9140889367<br />
                 Mon-Sat: 10 AM - 7 PM IST
               </p>
             </div>
